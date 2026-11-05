@@ -170,7 +170,7 @@ curl -s -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' \
 
 设置页打开「允许局域网访问」，保证 Token 非空并保存。把卡片里显示的
 `http://<手机IP>:8771/mcp` 连同 `Authorization: Bearer <token>` 头注册到 MCP 客户端即可，
-不需要 adb、不需要 root、不需要数据线。
+不需要 adb、不需要 root、不需要数据线。桥随小爱进程启动，请保持小爱在后台运行。
 
 **B. adb 隧道（USB/无线 adb）**
 
