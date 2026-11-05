@@ -1,7 +1,7 @@
 # 交接说明（2026-11-05）
 
-> 状态：**可交接**。版本 0.11.0-beta.3（versionCode 14），工程化收敛 P0~P3b 完成。
-> JVM 单测 413 断言全绿，真机契约 45/45 全绿。
+> 状态：**可交接**。版本 0.11.0-beta.4（versionCode 15），工程化收敛 P0~P3b 完成。
+> JVM 单测 416 断言全绿，真机契约 45/45 全绿。
 
 ## 1. 这是什么
 
@@ -16,7 +16,7 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 | 手机 | 小米 HyperOS 设备（机型与系统版本因环境而异） |
 | 连接 | USB adb 或无线 adb（IP 与串号属于本机环境，换成你自己的） |
 | 小爱 | 8.2.65.4714（版本白名单精确匹配，不在名单自动 no-op） |
-| 模块 | 0.11.0-beta.3（测试版），LSPosed 已启用，作用域只勾「超级小爱」 |
+| 模块 | 0.11.0-beta.4（测试版），LSPosed 已启用，作用域只勾「超级小爱」 |
 | 当前模型 | 任意 OpenAI 兼容端点与模型（BYOK） |
 | MCP token | 存在 `config.json` 的 `mcp.token`，同时在 `~/.config/xiaoi/token`（本机，不进仓库） |
 
@@ -35,7 +35,7 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 ## 4. 常用验证命令
 
 ```bash
-./tests/run.sh                     # JVM 单测（413 断言，无需设备）
+./tests/run.sh                     # JVM 单测（416 断言，无需设备）
 ./scripts/check-all.sh             # 单测 + aoci check + 真机契约
 XIAOI_TOKEN=$(cat ~/.config/xiaoi/token) ./scripts/contract-test.sh --check  # 契约 45 项
 ./scripts/ime.sh on|off|type "文本" # adb 输入法（中文/符号），用完 off
@@ -80,6 +80,15 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 - **P3a/P3b 设计系统**：数字砖改真实「今日三方/今日官方」；FAB 干净态可读；
   对话框补齐 values-night；删 Monet 统一品牌色；Toast → 应用内提示条；
   颜色令牌 32 → 19；新增 `dimens.xml` 与 `Widget.XiaoiPlus.PageTitle`
+
+**0.11.0-beta.4 测试版（令牌轮换修复）**：
+
+- `/config` 推送支持多令牌：先试新 token，失败后回退上一次成功推送的 token
+- 写模块 prefs 改 `commit()`，保证轮换时镜像先落盘
+- 真机验证：生成新令牌 → 保存 → 旧 token 两个端口 401、新 token 200
+- JVM 单测 416 断言（新增 BridgePusher 轮换用例）
+
+详见 `CHANGELOG.md` 0.11.0-beta.4。
 
 **0.11.0-beta.3 测试版（局域网 MCP）**：
 

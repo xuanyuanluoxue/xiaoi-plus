@@ -6,14 +6,14 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](../../releases)。
 >
-> 📦 当前测试版：**v0.11.0-beta.3** ·
-> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.11.0-beta.3)
+> 📦 当前测试版：**v0.11.0-beta.4** ·
+> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.11.0-beta.4)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
 >
-> ✅ beta.3 已在真机（HyperOS + LSPosed）验证：局域网 MCP 直连、Bearer 鉴权、
-> 远程 `/mcp` 工具调用、关闭开关立即回到仅本机；四页 UI/图标、深浅主题照常。
+> ✅ beta.4 已在真机（HyperOS + LSPosed）验证：局域网 MCP 直连、Bearer 鉴权、
+> 远程 `/mcp` 工具调用、令牌轮换、关闭开关立即回到仅本机；四页 UI/图标、深浅主题照常。
 > ⚠️ 输出前缀暂隐藏；官方模型调用量尚未在真机触发；完整 45 项契约需本机设备脚本。
 
 ## 它做什么
@@ -181,7 +181,9 @@ adb forward tcp:8771 tcp:8771
 ```
 
 > 局域网模式只开放 `/health`、`/logs`、`/stats`、`/cli`、`/mcp`；
-> `/config`（写配置）和 `/island`（弹提示）始终只允许本机。
+> `/config`（裸配置推送）和 `/island`（免 token 弹提示）始终只允许本机。
+> 注意：`/mcp` 里的 `xiaoai_switch_model`、`xiaoai_island` 工具在局域网下仍可用，
+> 它们和其余 MCP 工具一样受 Bearer token 保护。
 > 公共 Wi-Fi / 公司网络建议用 adb 隧道或关闭局域网开关。
 
 ### 全程用 MCP 运维（推荐）

@@ -45,9 +45,10 @@
   Token 为空时即使开关打开也只绑 loopback；关闭开关会立即重绑回 loopback。
 - **Bearer token 鉴权**：每个请求必须带 `Authorization: Bearer <token>`，token 在设置页填写；
   **留空 = 拒绝所有请求（401）**，不存在「默认无鉴权」的窗口。
-- **写配置与弹提示始终只限本机**：`POST /config` 与 `POST /island` 在局域网模式下仍返回 403，
-  只有手机上的 App / adb 隧道能调用；远端最多能读状态、日志、统计，或通过 `/mcp`、`/cli`
-  驱动小爱执行任务。
+- **裸端点写配置/弹提示只限本机**：`POST /config` 与 `POST /island` 在局域网模式下仍返回 403，
+  只有手机上的 App / adb 隧道能调用。注意 `/mcp` 的 `xiaoai_switch_model`（写 prefs）与
+  `xiaoai_island`（弹提示）工具在局域网下仍可用，它们和其他 MCP 工具一样必须带 token；
+  远端因此能在授权后切模型或弹一次岛，但不能用裸 `/config` 覆盖整份配置。
 - **日志边界**：运行日志只含 hook 成败、模型名、端口与调用摘要，**不含 apiKey / token / 对话正文**；内存保留 300 条，并滚动落盘到小爱私有目录 `files/xiaoi_plus.log`（256KB，保留 `.1`），卸载即随应用数据删除。
 - **端点很少**：`GET /health`（自检）、`GET /logs`（日志）、`GET /cli`（转发一条 CLI 命令）、`POST /mcp`（标准 MCP，JSON-RPC）、`POST /island`（触发一次岛提示，仅本机）、`POST /config`（仅本机推送配置；v0.8 起**缺失字段保持当前值**，换 token 只需推 `{"token":"..."}`，鉴权接受内存或模块 prefs 任一 token）。`/mcp` 与 `/cli` 等价，是同一 token 下的同一能力，不额外扩大权限面。
 - **默认关闭**：设置页「MCP 接口」与「允许局域网访问」默认都不勾选。

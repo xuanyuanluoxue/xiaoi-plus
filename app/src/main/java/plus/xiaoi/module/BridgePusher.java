@@ -87,7 +87,18 @@ public final class BridgePusher {
     public static Result pushAll(String token, String body) {
         int[] ports = new int[PORT_TO - PORT_FROM + 1];
         for (int i = 0; i < ports.length; i++) ports[i] = PORT_FROM + i;
-        return pushAll(token, body, ports);
+        return pushAll(new String[]{token}, body, ports);
+    }
+
+    /**
+     * 依次尝试多个 token（token 轮换时先试新 token，再试旧 token）。
+     * 旧 token 只用于「确认这是本模块的桥」和推送一次 `/config`；
+     * 推送成功后桥的内存 token 已切成新值。
+     */
+    public static Result pushAll(String[] tokens, String body) {
+        int[] ports = new int[PORT_TO - PORT_FROM + 1];
+        for (int i = 0; i < ports.length; i++) ports[i] = PORT_FROM + i;
+        return pushAll(tokens, body, ports);
     }
 
     /**
@@ -97,17 +108,22 @@ public final class BridgePusher {
      * @param body  POST /config 的 JSON
      */
     public static Result pushAll(String token, String body, int[] ports) {
+        return pushAll(new String[]{token}, body, ports);
+    }
+
+    /** 多 token 版本的 pushAll；token 按顺序尝试，任一可用即继续推送。 */
+    public static Result pushAll(String[] tokens, String body, int[] ports) {
         Result r = new Result();
         if (ports == null) return r;
         for (int port : ports) {
             r.probed++;
-            String why = claim(port, token);
+            String why = claim(port, tokens);
             if (why != null) {
                 r.errors.add(port + ": " + why);
                 continue;
             }
             r.total++;
-            String err = send(port, token, body);
+            String err = send(port, tokens, body);
             if (err == null) {
                 r.pushed++;
                 r.ports.add(port);
@@ -125,37 +141,60 @@ public final class BridgePusher {
      * 认领端口：GET /health，只有状态 200 且 body 匹配身份判据才算桥。
      * @return null = 认领成功；否则返回失败原因
      */
-    private static String claim(int port, String token) {
-        HttpURLConnection c = null;
-        try {
-            c = open(port, "/health", "GET", token, null);
-            int code = c.getResponseCode();
-            if (code != 200) return "health " + code;
-            String text = readBody(c);
-            if (!isOurBridge(text)) return "非本模块桥: " + shortText(text);
-            return null;
-        } catch (Throwable t) {
-            return "连接失败: " + brief(t);
-        } finally {
-            close(c);
+    private static String claim(int port, String[] tokens) {
+        String last = null;
+        for (String token : distinct(tokens)) {
+            HttpURLConnection c = null;
+            try {
+                c = open(port, "/health", "GET", token, null);
+                int code = c.getResponseCode();
+                if (code == 200) {
+                    String text = readBody(c);
+                    if (isOurBridge(text)) return null;
+                    last = "非本模块桥: " + shortText(text);
+                    continue;
+                }
+                last = "health " + code;
+            } catch (Throwable t) {
+                last = "连接失败: " + brief(t);
+            } finally {
+                close(c);
+            }
         }
+        return last == null ? "health 401" : last;
     }
 
     /** POST /config。@return null = 成功；否则失败原因 */
-    private static String send(int port, String token, String body) {
-        HttpURLConnection c = null;
-        try {
-            byte[] bytes = body == null ? new byte[0] : body.getBytes("UTF-8");
-            c = open(port, "/config", "POST", token, bytes);
-            int code = c.getResponseCode();
-            if (code != 200) return "config " + code;
-            readBody(c); // 读完再断开，避免连接复用异常
-            return null;
-        } catch (Throwable t) {
-            return "推送失败: " + brief(t);
-        } finally {
-            close(c);
+    private static String send(int port, String[] tokens, String body) {
+        String last = null;
+        for (String token : distinct(tokens)) {
+            HttpURLConnection c = null;
+            try {
+                byte[] bytes = body == null ? new byte[0] : body.getBytes("UTF-8");
+                c = open(port, "/config", "POST", token, bytes);
+                int code = c.getResponseCode();
+                if (code == 200) {
+                    readBody(c); // 读完再断开，避免连接复用异常
+                    return null;
+                }
+                last = "config " + code;
+            } catch (Throwable t) {
+                last = "推送失败: " + brief(t);
+            } finally {
+                close(c);
+            }
         }
+        return last == null ? "推送失败" : last;
+    }
+
+    private static String[] distinct(String[] tokens) {
+        if (tokens == null || tokens.length == 0) return new String[]{""};
+        java.util.List<String> out = new java.util.ArrayList<String>();
+        for (String t : tokens) {
+            String v = t == null ? "" : t.trim();
+            if (!out.contains(v)) out.add(v);
+        }
+        return out.toArray(new String[0]);
     }
 
     private static HttpURLConnection open(int port, String path, String method,

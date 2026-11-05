@@ -19,6 +19,13 @@ public final class ConfigRepository {
 
     private static final String FILE = "config.json";
     private static ConfigRepository sInstance;
+    /**
+     * 写入前模块 prefs 里的旧 token。token 轮换时先用它认领桥，再用新 token 推送；
+     * 推成功后桥的内存 token 已切换。只保留最近一次，推完即清。
+     */
+    private volatile String sPreviousToken = "";
+    /** 最近一次推送成功的 token；进程重启后丢失，但正常轮换路径已足够。 */
+    private volatile String sLastPushedToken = "";
 
     private final Context ctx;
 
@@ -84,6 +91,7 @@ public final class ConfigRepository {
     public void save(AppConfig c) throws Exception {
         String err = validate(c);
         if (err != null) throw new IllegalStateException(err);
+        capturePreviousToken();
         write(c);
         writePrefs(c);
         ConfigSync.markApplied(ctx);
@@ -94,6 +102,7 @@ public final class ConfigRepository {
     public void saveQuiet(AppConfig c) throws Exception {
         String err = validate(c);
         if (err != null) throw new IllegalStateException(err);
+        capturePreviousToken();
         write(c);
         writePrefs(c);
     }
@@ -105,14 +114,27 @@ public final class ConfigRepository {
 
     /** 写 prefs 并推送到小爱（config.json 变更后的热应用）。 */
     public void applyToTarget(AppConfig c) {
+        capturePreviousToken();
         writePrefs(c);
         pushAsync(c);
     }
 
+    /** 记录写入前模块 prefs 的 token（用于 token 轮换时兼容旧桥）。 */
+    private void capturePreviousToken() {
+        try {
+            sPreviousToken = Config.forApp(ctx).token();
+        } catch (Throwable ignored) {
+        }
+    }
+
     /** 同步推送一次（供需要结果对象的调用方/UI 使用）；调用方自己保证不在主线程。 */
     public BridgePusher.Result pushSync(AppConfig c) {
+        String previous = sPreviousToken;
+        String lastPushed = sLastPushedToken;
+        sPreviousToken = "";
         BridgePusher.Result r = BridgePusher.pushAll(
-                c.mcpToken, BridgePusher.payloadFor(c));
+                new String[]{c.mcpToken, previous, lastPushed}, BridgePusher.payloadFor(c));
+        if (r.pushed > 0) sLastPushedToken = c.mcpToken == null ? "" : c.mcpToken;
         boolean pending = r.pushed == 0;
         ConfigSync.markPending(ctx, pending);
         if (pending) {
@@ -155,17 +177,24 @@ public final class ConfigRepository {
     }
 
     private void writePrefs(AppConfig c) {
-        ctx.getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE).edit()
-                .putString(Config.KEY_BASE_URL, c.baseUrl())
-                .putString(Config.KEY_API_KEY, c.apiKey())
-                .putString(Config.KEY_MODEL, c.model())
-                .putBoolean(Config.KEY_MARKER, c.marker)
-                .putString(Config.KEY_MARKER_TPL, c.markerTemplate == null ? "" : c.markerTemplate)
-                .putString(Config.KEY_ENABLED, c.enabled ? "1" : "0")
-                .putBoolean(Config.KEY_BRIDGE, c.mcpEnabled)
-                .putBoolean(Config.KEY_MCP_LAN, c.mcpLan)
-                .putString(Config.KEY_TOKEN, c.mcpToken)
-                .apply();
+        try {
+            // 用 commit 而不是 apply：token 轮换时紧接着要推送，必须保证 prefs 已落盘，
+            // 否则 /health 仍看到旧 token，推新 token 会被 401（v0.8 的轮换死锁）。
+            boolean ok = ctx.getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE).edit()
+                    .putString(Config.KEY_BASE_URL, c.baseUrl())
+                    .putString(Config.KEY_API_KEY, c.apiKey())
+                    .putString(Config.KEY_MODEL, c.model())
+                    .putBoolean(Config.KEY_MARKER, c.marker)
+                    .putString(Config.KEY_MARKER_TPL, c.markerTemplate == null ? "" : c.markerTemplate)
+                    .putString(Config.KEY_ENABLED, c.enabled ? "1" : "0")
+                    .putBoolean(Config.KEY_BRIDGE, c.mcpEnabled)
+                    .putBoolean(Config.KEY_MCP_LAN, c.mcpLan)
+                    .putString(Config.KEY_TOKEN, c.mcpToken)
+                    .commit();
+            if (!ok) android.util.Log.w("xiaoi-sync", "prefs 写入返回 false");
+        } catch (Throwable t) {
+            android.util.Log.w("xiaoi-sync", "prefs 写入失败: " + t);
+        }
     }
 
     /**

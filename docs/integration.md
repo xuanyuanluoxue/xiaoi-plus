@@ -75,7 +75,8 @@ adb forward tcp:8771 tcp:8771
 # Header : Authorization: Bearer <TOKEN>
 ```
 
-局域网模式下 `/config` 与 `/island` 仍只接受手机本机请求（远端返回 403）。
+局域网模式下 `/config` 与 `/island` 裸端点仍只接受手机本机请求（远端返回 403）；
+但 `/mcp` 的 `xiaoai_switch_model` / `xiaoai_island` 工具在局域网下可用（需 Bearer token）。
 手机直连时不要在公共 Wi-Fi 上长期开启；不用时把开关关掉即可立即回到 loopback。
 
 手机上可直接 `curl -d @payload.json`（见上一节）。

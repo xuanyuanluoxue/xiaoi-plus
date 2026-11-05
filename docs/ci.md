@@ -13,7 +13,7 @@
 4. 无 `KEYSTORE_PASSWORD` 时 `build.sh` 产出未签名 APK；有 `KEYSTORE_BASE64` 时由
    `scripts/ci-sign.sh` 重新签名，否则警告 + 临时签名
 5. 产物与 Release Notes 上传 artifact；tag 构建自动建 Release；
-   版本号含 `-`（如 `0.11.0-beta.3`）自动标为 prerelease
+   版本号含 `-`（如 `0.11.0-beta.4`）自动标为 prerelease
 
 ## 2. 本地全量门禁（`scripts/check-all.sh`）
 

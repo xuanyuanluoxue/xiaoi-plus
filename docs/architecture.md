@@ -29,7 +29,8 @@
 `POST /mcp` 由能力桥进程内的同一个 HTTP server 提供，不新增 hook、不扩大作用域。
 它只是把已有的 `/cli`（CliDispatcher 透传）按 MCP 的 `tools/call` 语义包装了一层，
 因此权限边界与 `/cli` 完全一致：同一 Bearer token、同样的本机/局域网准入规则、
-同一个“驱动小爱”的能力。写配置的 `/config` 和弹提示的 `/island` 始终只允许 loopback。
+同一个“驱动小爱”的能力。裸端点 `/config` 和 `/island` 始终只允许 loopback；
+MCP 的 `xiaoai_switch_model` / `xiaoai_island` 工具在局域网下仍可用，但必须带 token。
 
 ## 为什么不用改包
 

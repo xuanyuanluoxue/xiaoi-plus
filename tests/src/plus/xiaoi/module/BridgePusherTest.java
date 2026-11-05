@@ -95,6 +95,17 @@ public final class BridgePusherTest {
         T.ok("部分成功 allOk=false", !r.allOk());
         T.eq("部分成功文案", "已推送 1/2，其余进程将在 800ms 内从 prefs 生效", r.message());
 
+        // ------------------------------------------------------------ token 轮换：旧 token 兜底
+        HttpServer oldOnly = serveToken("tok-old");
+        r = BridgePusher.pushAll(new String[]{"tok-new", "tok-old"}, "{}",
+                new int[]{oldOnly.getAddress().getPort()});
+        T.eq("轮换：新 token 失败后旧 token 成功", 1, r.pushed);
+        r = BridgePusher.pushAll(new String[]{"tok-new"}, "{}",
+                new int[]{oldOnly.getAddress().getPort()});
+        T.eq("轮换：只用新 token 无法认领", 0, r.pushed);
+        T.ok("轮换：失败原因含 401", hasError(r, oldOnly.getAddress().getPort(), "health 401"));
+        oldOnly.stop(0);
+
         // ------------------------------------------------------------ 空/异常输入
         T.eq("null 端口列表 total", 0, BridgePusher.pushAll(TOKEN, "{}", null).total);
         T.eq("空端口列表 probed", 0, BridgePusher.pushAll(TOKEN, "{}", new int[0]).probed);
@@ -178,6 +189,31 @@ public final class BridgePusherTest {
                 send(x, configCode, "{\"ok\":true}");
             }
         });
+        s.start();
+        return s;
+    }
+
+    /** 只接受指定 Bearer token 的桩，用于 token 轮换测试。 */
+    private static HttpServer serveToken(final String expected) throws Exception {
+        final HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        final int port = s.getAddress().getPort();
+        HttpHandler h = new HttpHandler() {
+            public void handle(HttpExchange x) throws java.io.IOException {
+                String a = x.getRequestHeaders().getFirst("Authorization");
+                if (!("Bearer " + expected).equals(a)) {
+                    send(x, 401, "unauthorized");
+                    return;
+                }
+                if (x.getRequestURI().getPath().equals("/health")) {
+                    send(x, 200, "ok facade=true port=" + port);
+                } else {
+                    read(x);
+                    send(x, 200, "{\"ok\":true}");
+                }
+            }
+        };
+        s.createContext("/health", h);
+        s.createContext("/config", h);
         s.start();
         return s;
     }
