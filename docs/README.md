@@ -13,3 +13,5 @@
 | [ci.md](ci.md) | CI 与本地门禁：单测、认知检查、真机契约、token 存放 |
 | [release.md](release.md) | 版本号、签名、发 tag |
 | [feature-candidates.md](feature-candidates.md) | 功能候选与路线图 |
+| [refactor/PLAN.md](refactor/PLAN.md) | 0.12.0 核心重构：目标、架构、工作包、验收 |
+| [refactor/WORKPACKAGES.md](refactor/WORKPACKAGES.md) | 重构工作包与子 Agent 指令 |
