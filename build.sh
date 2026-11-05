@@ -42,7 +42,14 @@ KP="${KEYSTORE_PASSWORD:-}"
 if [ -z "$KP" ] && [ -f "$HOME/.config/xiaoi/keystore_pass" ]; then
   KP="$(cat "$HOME/.config/xiaoi/keystore_pass")"
 fi
-[ -n "$KP" ] || { echo "缺少签名口令：设置 KEYSTORE_PASSWORD 或写入 ~/.config/xiaoi/keystore_pass" >&2; exit 1; }
+if [ -z "$KP" ]; then
+  # CI 的 Build 步骤不注入签名口令，正式签名由后面的 ci-sign.sh 完成；
+  # 本地缺少口令时也产出未签名 APK，方便先验证编译。
+  echo "未设置签名口令，跳过签名（CI 会重新签）"
+  cp "$OUT/xiaoi-plus-aligned.apk" "$ROOT/build/xiaoi-plus.apk"
+  echo "OK (unsigned): $ROOT/build/xiaoi-plus.apk"
+  exit 0
+fi
 mkdir -p "$ROOT/keystore"
 [ -f "$KS" ] || keytool -genkeypair -keystore "$KS" -storepass "$KP" -keypass "$KP" \
   -alias xiaoi -keyalg RSA -keysize 2048 -validity 10000 \
