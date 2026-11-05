@@ -1,0 +1,43 @@
+name: contract
+
+# 真机契约测试（可选）：需要一台自带 adb 设备与 aoci 的 runner。
+# 默认不挂任何自动事件——只允许在 Actions 页面手动 workflow_dispatch。
+#
+# ⚠️ 安全提示（本仓库是公开仓库）：
+#   不要把自建 runner 注册到公开仓库。fork PR 的 workflow 可能命中你的
+#   runner 并执行任意代码。若确要启用，至少做到：
+#     1) 保持本文件只允许 workflow_dispatch（无 pull_request / push 触发）；
+#     2) runner 使用独立低权限账号与专用机器，不放敏感数据；
+#     3) token 放在 runner 本机的 ~/.config/xiaoi/token（chmod 600），不要进仓库 secrets。
+#   更安全的等效做法：在网关机本地跑 scripts/check-all.sh（见 docs/ci.md）。
+on:
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: [self-hosted, xiaoi-device]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JVM 单测
+        run: |
+          chmod +x tests/run.sh
+          ./tests/run.sh
+
+      - name: AOCI 认知检查
+        run: |
+          if command -v aoci >/dev/null 2>&1; then
+            aoci check
+          elif [ -x "$HOME/.local/bin/aoci" ]; then
+            "$HOME/.local/bin/aoci" check
+          else
+            echo "aoci 未安装，跳过"
+          fi
+
+      - name: 真机契约（--check，对比基线）
+        env:
+          ANDROID_SERIAL: ${{ vars.ANDROID_SERIAL }}
+        run: |
+          chmod +x scripts/contract-test.sh
+          ./scripts/contract-test.sh --check

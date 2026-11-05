@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 圆角方块底 -->
+    <path
+        android:fillColor="#2F4A6B"
+        android:pathData="M6,2h12a4,4 0 0 1 4,4v12a4,4 0 0 1 -4,4H6a4,4 0 0 1 -4,-4V6a4,4 0 0 1 4,-4z" />
+
+    <!-- 左眼 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M9,8.7m-1.25,0a1.25,1.25 0 1,0 2.5,0a1.25,1.25 0 1,0 -2.5,0" />
+
+    <!-- 右眼：一横，做出 ;) 的眨眼感 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13.6,8h2.9v1.5h-2.9z" />
+
+    <!-- 笑 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M7.8,14.2c1.4,2.4 7,2.4 8.4,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round" />
+</vector>

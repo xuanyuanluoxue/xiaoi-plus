@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 运行时生成的胶囊（服务商/模型 chips）。样式与外观卡的 chip 同源，
+     背景与文字色由 ConfigActivity 按选中态切换（bg_chip / bg_chip_ok）。 -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.XiaoiPlus.Chip"
+    android:layout_width="wrap_content"
+    android:layout_height="28dp"
+    android:layout_marginRight="8dp" />

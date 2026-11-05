@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置页（P3 重排）：
+     1) 顶部状态条：单一事实来源（未配置/待校验/校验中/可用/密钥无效/模型不存在/端点不可达）
+        + 一行「是否已推到小爱」，推送失败时点按重试
+     2) 模型卡：服务商/模型 chips（点击即选，选中态 bg_chip_ok）+ 尾部「管理」入口
+     3) 外部文件冲突条：黄色提示，点按才载入（不静默覆盖未保存输入）
+     - 全部内容进 XML；颜色/字号走令牌，深浅两套同构
+     - 底部导航容器 wrap_content（修复 80dp 容器装 81dp 内容被裁切） -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fitsSystemWindows="true">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bg"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:orientation="vertical"
+            android:paddingLeft="@dimen/page_pad"
+            android:paddingRight="@dimen/page_pad"
+            android:paddingTop="@dimen/page_pad_top"
+            android:paddingBottom="168dp">
+
+            <!-- 1. 页面标题 -->
+            <TextView
+                style="@style/Widget.XiaoiPlus.PageTitle"
+                android:text="配置" />
+
+            <!-- 1.5 外部文件冲突条：仅在「文件变了 + 页面有未保存输入」时出现 -->
+            <LinearLayout
+                android:id="@+id/banner_conflict"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_banner_warn"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="配置文件已被外部修改"
+                    android:textColor="@color/warning"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="页面有未保存输入，点按载入文件内容（会丢弃当前编辑）"
+                    android:textColor="@color/warning"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- 1.6 运行时冲突条：只读探测到「小爱在用的模型/开关」与文件不一致时出现 -->
+            <LinearLayout
+                android:id="@+id/banner_runtime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_banner_warn"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_runtime_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="小爱与配置文件不一致"
+                    android:textColor="@color/warning"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tv_runtime_desc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="点按以文件为准重新推送"
+                    android:textColor="@color/warning"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- 2. 状态条：模型可用性 + 小爱推送状态（点按=重新校验） -->
+            <LinearLayout
+                android:id="@+id/card_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_card"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingLeft="@dimen/page_pad"
+                android:paddingRight="@dimen/page_pad"
+                android:paddingTop="@dimen/page_pad_top"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_status_dot"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="●"
+                        android:textColor="@color/text_hint"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tv_status_title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="8dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-medium"
+                        android:singleLine="true"
+                        android:text="未配置"
+                        android:textColor="@color/text"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="↻"
+                        android:textColor="@color/text_hint"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_status_desc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="20dp"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="3dp"
+                    android:text="选择服务商与模型后即可启用"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@color/line" />
+
+                <LinearLayout
+                    android:id="@+id/row_push"
+                    android:layout_width="match_parent"
+                    android:layout_height="38dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_push_state"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:text="推送状态未知 · 点按推送"
+                        android:textColor="@color/text_hint"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tv_push_action"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="8dp"
+                        android:text="↻"
+                        android:textColor="@color/text_hint"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 3. 总开关 -->
+            <LinearLayout
+                style="@style/Widget.XiaoiPlus.Card"
+                android:layout_marginTop="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowTitle"
+                            android:text="启用第三方模型" />
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowDesc"
+                            android:text="关闭后小爱使用原生模型，配置全部保留" />
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/sw_enabled"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 4. 模型 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:text="模型"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:id="@+id/card_model_fields"
+                style="@style/Widget.XiaoiPlus.Card"
+                android:layout_marginTop="0dp">
+
+                <!-- 服务商 chips：点击即切换（同时切换该服务商的密钥） -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="44dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Widget.XiaoiPlus.Label"
+                        android:layout_width="60dp"
+                        android:text="服务商" />
+
+                    <HorizontalScrollView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:scrollbars="none">
+
+                        <LinearLayout
+                            android:id="@+id/box_provider_chips"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal" />
+                    </HorizontalScrollView>
+                </LinearLayout>
+
+                <!-- 模型 chips：当前服务商的候选模型 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="44dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Widget.XiaoiPlus.Label"
+                        android:layout_width="60dp"
+                        android:text="模型" />
+
+                    <HorizontalScrollView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:scrollbars="none">
+
+                        <LinearLayout
+                            android:id="@+id/box_model_chips"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal" />
+                    </HorizontalScrollView>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Widget.XiaoiPlus.Label"
+                        android:layout_width="60dp"
+                        android:text="密钥" />
+
+                    <EditText
+                        android:id="@+id/et_api_key"
+                        style="@style/Widget.XiaoiPlus.Input"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:hint="sk-…（只存本机）"
+                        android:inputType="textPassword" />
+
+                    <TextView
+                        android:id="@+id/btn_key_eye"
+                        style="@style/Widget.XiaoiPlus.Chip"
+                        android:layout_marginLeft="8dp"
+                        android:text="显示" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/row_model_check"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Widget.XiaoiPlus.Label"
+                        android:layout_width="60dp"
+                        android:text="模型状态" />
+
+                    <TextView
+                        android:id="@+id/tv_model_check"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:gravity="end"
+                        android:singleLine="true"
+                        android:text="未校验 · 点按校验"
+                        android:textColor="@color/text_hint"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="8dp"
+                        android:text="↻"
+                        android:textColor="@color/text_hint"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <!-- 管理入口：选择/重命名/删除模型 + 删除服务商，全在一个列表对话框里 -->
+                <LinearLayout
+                    android:id="@+id/row_manage"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="管理服务商与模型"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/text_hint" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 5. 输出前缀：响应侧注入在多进程下会重复（待单点注入修复），
+                 先整体隐藏，避免暴露“能开但不生效”的假功能。 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:text="输出前缀"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                style="@style/Widget.XiaoiPlus.Card"
+                android:layout_marginTop="0dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowTitle"
+                            android:text="回复加模型前缀" />
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowDesc"
+                            android:text="每条回复开头插入前缀，用于区分三方模型是否生效" />
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/sw_prefix"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/row_prefix_tpl"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Widget.XiaoiPlus.Label"
+                        android:layout_width="88dp"
+                        android:text="前缀模板" />
+
+                    <EditText
+                        android:id="@+id/et_prefix_tpl"
+                        style="@style/Widget.XiaoiPlus.Input"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:hint="[模型: {model}]"
+                        android:inputType="text"
+                        android:singleLine="true" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_prefix_help"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="模板占位符：{model} 替换为当前模型名。留空时使用默认 [模型: {model}]。开关关闭则完全不注入。"
+                    android:textColor="@color/text_hint"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- 6. MCP -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:text="MCP"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                style="@style/Widget.XiaoiPlus.Card"
+                android:layout_marginTop="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowTitle"
+                            android:text="MCP 接口" />
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowDesc"
+                            android:text="本机开放口，让电脑上的 Agent 直接指挥小爱" />
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/sw_mcp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/row_token"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Widget.XiaoiPlus.Label"
+                        android:layout_width="88dp"
+                        android:text="令牌" />
+
+                    <EditText
+                        android:id="@+id/et_token"
+                        style="@style/Widget.XiaoiPlus.Input"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:hint="留空则拒绝所有请求"
+                        android:inputType="text"
+                        android:singleLine="true" />
+
+                    <TextView
+                        android:id="@+id/btn_gen_token"
+                        style="@style/Widget.XiaoiPlus.Chip"
+                        android:layout_marginLeft="8dp"
+                        android:text="生成" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_mcp_url"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="monospace"
+                    android:lineSpacingExtra="4dp"
+                    android:text="http://127.0.0.1:8771/mcp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <!-- 终端风格 JSON：展示「文件里的期望配置」，token 只显示是否设置 -->
+                <LinearLayout
+                    android:id="@+id/box_mcp_json"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@color/surface_2"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tv_mcp_json"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:lineSpacingExtra="3dp"
+                        android:textColor="@color/text"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tv_mcp_json_hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:lineSpacingExtra="3dp"
+                        android:text="以上是 config.json 里的期望配置，不代表小爱运行时（是否已推送见顶部状态条）；token 只显示是否设置。"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btn_copy_mcp"
+                        style="@style/Widget.XiaoiPlus.Chip"
+                        android:text="复制连接信息" />
+
+                    <TextView
+                        android:id="@+id/btn_copy_skill"
+                        style="@style/Widget.XiaoiPlus.Chip"
+                        android:layout_marginLeft="8dp"
+                        android:text="复制 Skill" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 7. 配置编辑 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:text="配置编辑"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                style="@style/Widget.XiaoiPlus.Card"
+                android:layout_marginTop="0dp">
+
+                <LinearLayout
+                    android:id="@+id/row_import"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="从运行中小爱导入"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="↧"
+                        android:textColor="@color/primary"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_export"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="导出（脱敏）"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/text_hint" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_backup"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="备份（含密钥）"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/text_hint" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_restore"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="从文件还原"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/text_hint" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_share"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="分享配置"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/text_hint" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 8. 外观 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:text="外观"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                style="@style/Widget.XiaoiPlus.Card"
+                android:layout_marginTop="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="主题"
+                        android:textColor="@color/text"
+                        android:textSize="15sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/chip_theme_0"
+                            style="@style/Widget.XiaoiPlus.Chip"
+                            android:layout_marginRight="8dp"
+                            android:text="跟随系统" />
+
+                        <TextView
+                            android:id="@+id/chip_theme_1"
+                            style="@style/Widget.XiaoiPlus.Chip"
+                            android:layout_marginRight="8dp"
+                            android:text="浅色" />
+
+                        <TextView
+                            android:id="@+id/chip_theme_2"
+                            style="@style/Widget.XiaoiPlus.Chip"
+                            android:text="深色" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 9. 底部导航（wrap_content：分割线 1dp + 导航条 80dp，修复裁切） -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@color/bg"
+        android:orientation="vertical">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/line" />
+
+        <include layout="@layout/nav_bar" />
+    </LinearLayout>
+
+    <!-- 10. 脏标记 + 悬浮保存 -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginRight="16dp"
+        android:layout_marginBottom="96dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_dirty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="12dp"
+            android:text="未保存"
+            android:textColor="@color/primary"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/fab_save"
+            android:layout_width="@dimen/fab_size"
+            android:layout_height="@dimen/fab_size"
+            android:background="@drawable/bg_button_primary"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:text="保存"
+            android:textColor="@color/on_primary"
+            android:textSize="14sp" />
+    </LinearLayout>
+</FrameLayout>

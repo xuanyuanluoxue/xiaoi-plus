@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主页：空心笑脸。圆脸 + 实心双眼 + 圆头弧嘴，不使用眨眼横杠。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 脸 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M3.9,12a8.1,8.1 0 1,0 16.2,0a8.1,8.1 0 1,0 -16.2,0"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 双眼 -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M9.35,10.1m-1.15,0a1.15,1.15 0 1,0 2.3,0a1.15,1.15 0 1,0 -2.3,0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M14.65,10.1m-1.15,0a1.15,1.15 0 1,0 2.3,0a1.15,1.15 0 1,0 -2.3,0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 圆头弧嘴 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8.5,14C9.4,16.4 14.6,16.4 15.5,14"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

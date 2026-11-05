@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","capabilities":{"tools":{"listChanged":false}},"serverInfo":{"name":"xiaoi-plus","version":"0.9.0"},"instructions":"小爱同学（手机端）能力桥：xiaoai_submit 让小爱执行一句话任务，xiaoai_status 探活，xiaoai_cli 走原始 CLI，xiaoai_stats 看三方/官方模型调用量。所有调用都发生在手机本机回环地址上。"}}

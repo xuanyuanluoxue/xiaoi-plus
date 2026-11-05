@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 版本号：45° 圆角标签 + 靠端部的圆孔。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M16.27,4.89L19.11,7.73Q20.09,8.70 19.11,9.68L9.68,19.11Q8.70,20.09 7.73,19.11L4.89,16.27Q3.91,15.30 4.89,14.32L14.32,4.89Q15.30,3.91 16.27,4.89Z"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 标签孔 -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M14.84,9.16m-1.28,0a1.28,1.28 0 1,0 2.56,0a1.28,1.28 0 1,0 -2.56,0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

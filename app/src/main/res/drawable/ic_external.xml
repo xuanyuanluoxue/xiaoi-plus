@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 外链：方框缺口 + 右上箭头（GitHub 等「跳到外部」语义）。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M13.6,4.4L5.6,4.4A1.2,1.2 0 0,0 4.4,5.6L4.4,18.4A1.2,1.2 0 0,0 5.6,19.6L18.4,19.6A1.2,1.2 0 0,0 19.6,18.4L19.6,10.4"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M14.4,3.6H20.4V9.6 M20.4,3.6L11.8,12.2"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

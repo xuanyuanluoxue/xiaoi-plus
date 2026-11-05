@@ -1,0 +1,124 @@
+name: build
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SDK: ${{ github.workspace }}/.android-sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: .android-sdk
+          key: android-sdk-bt35-plat35-${{ runner.os }}-v1
+
+      - name: Prepare cache dir
+        run: mkdir -p .android-sdk
+
+      - name: Install Android SDK
+        run: bash scripts/ci-sdk.sh
+
+      - name: Read version
+        id: version
+        run: |
+          echo "name=$(bash scripts/version.sh name)" >> "$GITHUB_OUTPUT"
+          echo "code=$(bash scripts/version.sh code)" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag matches version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.version.outputs.name }}"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::tag $GITHUB_REF_NAME 与 versionName $VERSION 不一致"
+            exit 1
+          fi
+
+      - name: Unit tests (JVM)
+        run: |
+          chmod +x tests/run.sh
+          ./tests/run.sh
+
+      - name: Build
+        run: |
+          chmod +x build.sh scripts/*.sh
+          ./build.sh
+
+      - name: Sign with release keystore
+        id: sign
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+        run: |
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "::warning::未配置 secrets.KEYSTORE_BASE64，跳过正式签名。产物用临时密钥签名，仅供测试，不能覆盖安装正式版。"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${KEYSTORE_PASSWORD:-}" ]; then
+            echo "::error::配置了 KEYSTORE_BASE64 但缺少 secrets.KEYSTORE_PASSWORD"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore/release.keystore"
+          KEYSTORE_FILE="$RUNNER_TEMP/keystore/release.keystore" \
+            bash scripts/ci-sign.sh build/xiaoi-plus-aligned.apk build/xiaoi-plus.apk
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Package artifact
+        run: |
+          V="${{ steps.version.outputs.name }}"
+          mkdir -p dist
+          cp build/xiaoi-plus.apk "dist/xiaoi-plus-$V.apk"
+          ( cd dist && sha256sum "xiaoi-plus-$V.apk" > "xiaoi-plus-$V.apk.sha256" )
+          bash scripts/release-notes.sh "$V" "dist/xiaoi-plus-$V.apk" > "dist/release-notes-$V.md"
+          if [ "${{ steps.sign.outputs.signed }}" != "true" ]; then
+            printf '\n> ⚠️ 本次构建未配置正式签名密钥，产物用临时密钥签名，仅供测试，不能覆盖安装正式版。\n' >> "dist/release-notes-$V.md"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaoi-plus-${{ steps.version.outputs.name }}
+          path: |
+            dist/xiaoi-plus-*.apk
+            dist/xiaoi-plus-*.apk.sha256
+            dist/release-notes-*.md
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: dist/release-notes-${{ steps.version.outputs.name }}.md
+          files: |
+            dist/xiaoi-plus-${{ steps.version.outputs.name }}.apk
+            dist/xiaoi-plus-${{ steps.version.outputs.name }}.apk.sha256
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.name, '-') }}
+          fail_on_unmatched_files: true

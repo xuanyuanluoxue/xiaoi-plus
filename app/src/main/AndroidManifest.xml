@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="plus.xiaoi.module"
+    android:versionCode="12"
+    android:versionName="0.11.0-beta.1">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- minSdk / targetSdk 都显式钉在 26：保留 127.0.0.1 明文 HTTP 与旧版窗口行为。
+         升级 targetSdk 会引入 edge-to-edge 等行为变更，必须单独评估。 -->
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="26" />
+
+    <application
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.XiaoiPlus"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
+
+        <meta-data android:name="xposedmodule" android:value="true" />
+        <meta-data android:name="xposeddescription"
+            android:value="小爱同学plus：模型重定向 / 输出标记 / 能力桥（仅本机）" />
+        <meta-data android:name="xposedminversion" android:value="93" />
+
+        <activity
+            android:name=".HomeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.XiaoiPlus">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ConfigActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
+        <activity android:name=".LogsActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
+        <activity android:name=".AboutActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
+
+        <provider
+            android:name=".ShareProvider"
+            android:authorities="plus.xiaoi.module.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

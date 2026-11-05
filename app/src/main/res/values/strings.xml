@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 说明：build.sh 以 aapt2 link -R 传入资源（overlay 模式），新增的 values 资源需 add-resource 声明，否则报 “does not override an existing resource”。 -->
+<resources>
+    <add-resource type="string" name="group_connection" />
+    <add-resource type="string" name="group_enhance" />
+    <add-resource type="string" name="group_device" />
+    <add-resource type="string" name="hint_openai_only" />
+    <add-resource type="string" name="device_info_title" />
+    <add-resource type="string" name="action_expand" />
+    <add-resource type="string" name="action_collapse" />
+    <add-resource type="string" name="app_name" />
+    <add-resource type="string" name="app_subtitle" />
+    <add-resource type="string" name="app_version" />
+    <add-resource type="string" name="card_device" />
+    <add-resource type="string" name="action_island" />
+    <add-resource type="string" name="card_model" />
+    <add-resource type="string" name="card_model_desc" />
+    <add-resource type="string" name="card_enhance" />
+    <add-resource type="string" name="card_enhance_desc" />
+    <add-resource type="string" name="label_base_url" />
+    <add-resource type="string" name="hint_base_url" />
+    <add-resource type="string" name="label_api_key" />
+    <add-resource type="string" name="hint_api_key" />
+    <add-resource type="string" name="label_model" />
+    <add-resource type="string" name="hint_model" />
+    <add-resource type="string" name="switch_marker" />
+    <add-resource type="string" name="switch_marker_desc" />
+    <add-resource type="string" name="switch_bridge" />
+    <add-resource type="string" name="switch_bridge_desc" />
+    <add-resource type="string" name="label_token" />
+    <add-resource type="string" name="hint_token" />
+    <add-resource type="string" name="action_generate" />
+    <add-resource type="string" name="action_show" />
+    <add-resource type="string" name="action_hide" />
+    <add-resource type="string" name="action_save" />
+    <add-resource type="string" name="status_idle" />
+    <add-resource type="string" name="status_pushing" />
+    <add-resource type="string" name="status_ok" />
+    <add-resource type="string" name="status_saved_only" />
+    <add-resource type="string" name="status_serialize_fail" />
+    <add-resource type="string" name="status_bad_endpoint" />
+    <add-resource type="string" name="status_card_title" />
+    <add-resource type="string" name="state_configured" />
+    <add-resource type="string" name="state_unconfigured" />
+    <add-resource type="string" name="state_unconfigured_desc" />
+    <add-resource type="string" name="state_header_on" />
+    <add-resource type="string" name="state_header_off" />
+    <add-resource type="string" name="bridge_on" />
+    <add-resource type="string" name="bridge_off" />
+    <add-resource type="string" name="action_test" />
+    <add-resource type="string" name="status_testing" />
+    <add-resource type="string" name="status_test_ok" />
+    <add-resource type="string" name="status_test_fail" />
+    <add-resource type="string" name="status_test_auth" />
+
+    <string name="app_name">小爱同学plus</string>
+    <string name="app_subtitle">模型重定向 · 能力桥</string>
+    <string name="app_version">0.6.0</string>
+    <string name="card_device">设备与运行状态</string>
+    <string name="action_island">显示超级岛（单次）</string>
+
+    <string name="card_model">模型</string>
+    <string name="card_model_desc">OpenAI 兼容端点，保存后推送到本机小爱</string>
+    <string name="card_enhance">增强</string>
+    <string name="card_enhance_desc">回复标记与本地能力桥</string>
+
+    <string name="label_base_url">接口地址</string>
+    <string name="hint_base_url">https://api.deepseek.com/v1</string>
+    <string name="label_api_key">密钥</string>
+    <string name="hint_api_key">sk-…</string>
+    <string name="label_model">模型</string>
+    <string name="hint_model">deepseek-chat</string>
+
+    <string name="switch_marker">模型标识</string>
+    <string name="switch_marker_desc">在请求头标注模型来源，不改提示词</string>
+    <string name="switch_bridge">能力桥</string>
+    <string name="switch_bridge_desc">向本机开放 MCP 接口 /mcp</string>
+
+    <string name="label_token">能力桥 Token</string>
+    <string name="hint_token">留空则拒绝所有桥请求</string>
+    <string name="action_generate">生成</string>
+    <string name="action_show">显示</string>
+    <string name="action_hide">隐藏</string>
+    <string name="action_test">测试连接</string>
+
+    <string name="action_save">保存并推送</string>
+
+    <string name="status_card_title">配置状态</string>
+    <string name="state_configured">已配置</string>
+    <string name="state_unconfigured">尚未配置</string>
+    <string name="state_unconfigured_desc">填写端点与模型后保存</string>
+    <string name="state_header_on">已启用</string>
+    <string name="state_header_off">未配置</string>
+    <string name="bridge_on">能力桥 开</string>
+    <string name="bridge_off">能力桥 关</string>
+
+    <string name="status_idle">未推送</string>
+    <string name="status_pushing">推送中…</string>
+    <string name="status_ok">已推送 · 端口 %1$d</string>
+    <string name="status_saved_only">已保存，未推送（小爱未运行或未启用模块）</string>
+    <string name="status_serialize_fail">已保存，推送失败：配置序列化异常</string>
+    <string name="status_bad_endpoint">请先填写端点和模型名</string>
+    <string name="status_testing">测试中…</string>
+    <string name="status_test_ok">连接正常 · 端口 %1$d</string>
+    <string name="status_test_fail">连接失败：未发现能力桥服务</string>
+    <string name="status_test_auth">连接失败：Token 不匹配（HTTP 401）</string>
+    <string name="group_connection">连接</string>
+    <string name="group_enhance">增强</string>
+    <string name="group_device">设备</string>
+    <string name="hint_openai_only">需兼容 OpenAI 格式，地址一般含 /v1</string>
+    <string name="device_info_title">设备信息</string>
+    <string name="action_expand">展开</string>
+    <string name="action_collapse">收起</string>
+</resources>

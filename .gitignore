@@ -1,0 +1,37 @@
+.gradle/
+build/
+tests/.build/
+local.properties
+*.iml
+.idea/
+*.jks
+*.keystore
+app/release/
+build/
+.gradle/
+*.keystore
+
+# AOCI agent host integration (machine-bound; do not commit)
+opencode.json
+opencode.json.backup.*
+
+# 构建产物与发布归档（二进制进 Release，不进源码仓）
+dist/
+
+# AOCI 认知索引（机器绑定，本地保留不进仓库）
+aoci.txt
+aoci.meta.txt
+aoci.code.txt
+.aoci/
+
+# 运行/发布敏感产物（开源仓不收录）
+logs/
+*.log
+*.apk
+*.sha256
+*.idsig
+kpass.txt
+*.p12
+*.pfx
+keystore/
+.env

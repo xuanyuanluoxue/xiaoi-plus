@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <add-resource type="style" name="Theme.XiaoiPlus" />
+    <add-resource type="style" name="Theme.XiaoiPlus.Dialog" />
+    <style name="Theme.XiaoiPlus" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:colorAccent">@color/primary</item>
+        <item name="android:colorControlActivated">@color/primary</item>
+        <item name="android:colorControlNormal">@color/text_secondary</item>
+        <item name="android:colorControlHighlight">#33C7D2FE</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+    </style>
+    <!-- 深色对话框：与浅色同名，parent 换成深色 Material，颜色仍走令牌 -->
+    <style name="Theme.XiaoiPlus.Dialog" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+        <item name="android:colorAccent">@color/primary</item>
+    </style>
+</resources>

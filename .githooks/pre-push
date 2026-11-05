@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# pre-push 门禁：推送前跑 JVM 单测与工程一致性检查。
+# 启用（每台克隆一次）：git config core.hooksPath .githooks
+# 设备契约较重（会重启小爱），不放进 hook；需要时跑 scripts/check-all.sh。
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+if ! "$ROOT/scripts/check-consistency.sh" >/dev/null 2>&1; then
+    echo ""
+    echo "pre-push: 工程一致性检查失败，推送中止。输出："
+    "$ROOT/scripts/check-consistency.sh"
+    exit 1
+fi
+
+if ! "$ROOT/tests/run.sh" >/dev/null 2>&1; then
+    echo ""
+    echo "pre-push: 单元测试失败，推送中止。输出："
+    "$ROOT/tests/run.sh"
+    exit 1
+fi
+
+echo "pre-push: 单测与一致性检查通过"

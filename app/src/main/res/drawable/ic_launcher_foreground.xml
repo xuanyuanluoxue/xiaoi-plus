@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- launcher 前景：108×108，内容收在中心 66×66 安全区内。
+     背景由 @drawable/ic_launcher_background 提供，这里只画白色笑脸。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 脸 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M30,54a24,24 0 1,0 48,0a24,24 0 1,0 -48,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 双眼 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,46m-4,0a4,4 0 1,0 8,0a4,4 0 1,0 -8,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M63,46m-4,0a4,4 0 1,0 8,0a4,4 0 1,0 -8,0" />
+
+    <!-- 圆头弧嘴 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M41,61C45.5,70.5 62.5,70.5 67,61"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 品牌色：launcher 背景固定品牌蓝，不跟随深浅色主题，保证两种主题下图标一致。 -->
+<resources>
+    <add-resource type="color" name="brand_bg" />
+
+    <color name="brand_bg">#2F4A6B</color>
+</resources>

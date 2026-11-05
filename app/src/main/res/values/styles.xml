@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 说明：build.sh 以 aapt2 link -R 传入资源（overlay 模式），新增的 values 资源需 add-resource 声明，否则报 “does not override an existing resource”。 -->
+<resources>
+    <add-resource type="style" name="Theme.XiaoiPlus" />
+    <add-resource type="style" name="Widget.XiaoiPlus.PageTitle" />
+    <add-resource type="style" name="Widget.XiaoiPlus.Card" />
+    <add-resource type="style" name="Widget.XiaoiPlus.CardTitle" />
+    <add-resource type="style" name="Widget.XiaoiPlus.CardDesc" />
+    <add-resource type="style" name="Widget.XiaoiPlus.Label" />
+    <add-resource type="style" name="Widget.XiaoiPlus.RowTitle" />
+    <add-resource type="style" name="Widget.XiaoiPlus.RowDesc" />
+    <add-resource type="style" name="Widget.XiaoiPlus.Input" />
+    <add-resource type="style" name="Widget.XiaoiPlus.Chip" />
+    <add-resource type="style" name="Widget.XiaoiPlus.Button.Primary" />
+    <add-resource type="style" name="Widget.XiaoiPlus.Button.Secondary" />
+    <add-resource type="style" name="Widget.XiaoiPlus.Status" />
+    <add-resource type="style" name="Theme.XiaoiPlus.Dialog" />
+
+    <!-- 浅色主题：无 ActionBar，近白灰底 -->
+    <style name="Theme.XiaoiPlus" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:colorAccent">@color/primary</item>
+        <item name="android:colorControlActivated">@color/primary</item>
+        <item name="android:colorControlNormal">@color/text_secondary</item>
+        <item name="android:colorControlHighlight">#142F4A6B</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+
+    <!-- 页面标题：22sp medium，四页唯一写法 -->
+    <style name="Widget.XiaoiPlus.PageTitle" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textSize">@dimen/text_title</item>
+    </style>
+
+    <!-- 卡片：surface 底、24dp 圆角、20dp 内边距、无描边 -->
+    <style name="Widget.XiaoiPlus.Card" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:background">@drawable/bg_card</item>
+        <item name="android:padding">20dp</item>
+        <item name="android:layout_marginTop">14dp</item>
+    </style>
+
+    <!-- 卡片标题 17sp bold -->
+    <style name="Widget.XiaoiPlus.CardTitle" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <!-- 卡片说明 14sp -->
+    <style name="Widget.XiaoiPlus.CardDesc" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:lineSpacingExtra">1dp</item>
+    </style>
+
+    <!-- 字段标签 14sp -->
+    <style name="Widget.XiaoiPlus.Label" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- 开关行标题 15sp -->
+    <style name="Widget.XiaoiPlus.RowTitle" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <!-- 开关行说明 14sp -->
+    <style name="Widget.XiaoiPlus.RowDesc" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- 输入框：白底 12dp 圆角，聚焦深蓝描边 -->
+    <style name="Widget.XiaoiPlus.Input" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">46dp</item>
+        <item name="android:background">@drawable/bg_input</item>
+        <item name="android:paddingLeft">14dp</item>
+        <item name="android:paddingRight">14dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:inputType">text</item>
+    </style>
+
+    <!-- 小胶囊（显示/隐藏、生成、状态） -->
+    <style name="Widget.XiaoiPlus.Chip" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">28dp</item>
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:gravity">center</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 主胶囊按钮：深蓝填充白字 -->
+    <style name="Widget.XiaoiPlus.Button.Primary" parent="">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@drawable/bg_button_primary</item>
+        <item name="android:textColor">@color/on_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:gravity">center</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- 次胶囊按钮：浅底深蓝字 -->
+    <style name="Widget.XiaoiPlus.Button.Secondary" parent="Widget.XiaoiPlus.Button.Primary">
+        <item name="android:background">@drawable/bg_button_secondary</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:layout_marginLeft">12dp</item>
+    </style>
+
+    <!-- 底部状态行 -->
+    <style name="Widget.XiaoiPlus.Status" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">16dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- 对话框主题：跟随应用令牌（深色模式下不再出现浅底浅字）。
+         ConfigActivity 用 getIdentifier("Theme_XiaoiPlus_Dialog", "style") 取用。 -->
+    <style name="Theme.XiaoiPlus.Dialog" parent="android:Theme.Material.Light.Dialog.Alert">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+        <item name="android:colorAccent">@color/primary</item>
+    </style>
+</resources>

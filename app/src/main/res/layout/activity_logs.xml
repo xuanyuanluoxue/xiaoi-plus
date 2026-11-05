@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  日志页 · 纯 framework 布局（无 androidx / RecyclerView）
+  结构：工具条 / 跟随行 / 分割线 / 日志滚动区 / 空状态 / 底部导航
+  列表由 Java 向 @id/ll_logs 动态 addView，行布局见 design-system.md 5.14 LogRow
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical"
+    android:paddingLeft="0dp"
+    android:paddingRight="0dp">
+
+    <!-- 1. 顶部工具条 56dp：标题 + 全部 / 清空 / 分享 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="16dp"
+        android:paddingRight="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.XiaoiPlus.PageTitle"
+            android:text="日志" />
+
+        <TextView
+            android:id="@+id/btn_filter"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minWidth="48dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:text="全部"
+            android:textColor="@color/primary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/btn_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minWidth="48dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:text="清空"
+            android:textColor="@color/primary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/btn_share_logs"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minWidth="48dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:text="分享"
+            android:textColor="@color/primary"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- 2. 跟随行 40dp：跟随最新开关 + 条数 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp">
+
+        <Switch
+            android:id="@+id/sw_follow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="跟随最新"
+            android:textColor="@color/text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="right"
+            android:text="0 条"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- 3. 分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/line" />
+
+    <!-- 能力桥不可用提示（小爱未运行），由 Java 控制可见性 -->
+    <TextView
+        android:id="@+id/tv_unavailable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="16dp"
+        android:paddingTop="8dp"
+        android:paddingRight="16dp"
+        android:text="小爱未运行"
+        android:textColor="@color/error"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <!-- 4/5. 日志滚动区 + 居中空状态 -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ScrollView
+        android:id="@+id/scroll_logs"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/ll_logs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="16dp"
+                android:paddingTop="8dp"
+                android:paddingRight="16dp"
+                android:paddingBottom="16dp" />
+        </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/tv_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="○"
+                android:textColor="@color/text_hint"
+                android:textSize="34sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="暂无日志"
+                android:textColor="@color/text"
+                android:textSize="16sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="开启 MCP 接口后才会采集"
+                android:textColor="@color/text_hint"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- 6. 底部导航（共享布局，选中态由 BaseActivity.setupNav 设置） -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg"
+        android:orientation="vertical">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/line" />
+
+        <include layout="@layout/nav_bar" />
+    </LinearLayout>
+</LinearLayout>
