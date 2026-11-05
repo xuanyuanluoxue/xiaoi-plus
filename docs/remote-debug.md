@@ -47,7 +47,7 @@ adb logcat -s VectorLegacyBridge:I | grep "xiaoi+"
 
 ## 4. 本机桥与 MCP
 
-桥只绑手机自己的 `127.0.0.1:8771~8775`，网关必须做端口转发：
+默认只绑手机自己的 `127.0.0.1:8771~8775`，网关做端口转发：
 
 ```bash
 adb forward tcp:8771 tcp:8771
@@ -55,7 +55,13 @@ curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8771/health
 # ok facade=true port=8771
 ```
 
-MCP 探测：
+也可以在设置页打开「允许局域网访问」（Token 非空）后直接走内网，不需要 adb：
+
+```bash
+curl -s -H "Authorization: Bearer <token>" http://<PHONE_IP>:8771/health
+```
+
+MCP 探测（两种接入都把 URL 换成对应地址）：
 
 ```bash
 curl -s -X POST http://127.0.0.1:8771/mcp \
@@ -64,6 +70,7 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 ```
 
 > `adb forward` 的生命周期跟着 adb server；adb 重启后要重跑，MCP 会表现为超时。
+> 局域网模式不受 adb 影响，但端口可能在重绑后落到 8772~8775，客户端应按设置页显示的地址填。
 
 ## 5. root 操作
 

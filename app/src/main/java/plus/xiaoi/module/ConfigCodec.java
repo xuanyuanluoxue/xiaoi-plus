@@ -48,6 +48,7 @@ public final class ConfigCodec {
         if (mcpV instanceof Map) {
             Map<?, ?> mcp = (Map<?, ?>) mcpV;
             c.mcpEnabled = Json.optBoolean(mcp, "enabled", false);
+            c.mcpLan = Json.optBoolean(mcp, "lan", false);
             c.mcpToken = Json.optString(mcp, "token", "");
         }
 
@@ -175,6 +176,7 @@ public final class ConfigCodec {
 
         Map<String, Object> mcp = Json.obj();
         mcp.put("enabled", c.mcpEnabled);
+        mcp.put("lan", c.mcpLan);
         mcp.put("token", c.mcpToken == null ? "" : c.mcpToken);
         o.put("mcp", mcp);
 
@@ -209,6 +211,11 @@ public final class ConfigCodec {
     /** @return 错误文案；null = 通过。暂停状态（enabled=false）视为合法。 */
     public static String validate(AppConfig c) {
         if (c == null) return "配置为空";
+        // MCP 与模型重定向相互独立：暂停模型时桥仍可运行，因此这条校验放在暂停判断之前。
+        String token = c.mcpToken == null ? "" : c.mcpToken.trim();
+        if (c.mcpEnabled && c.mcpLan && token.length() == 0) {
+            return "局域网访问必须设置 MCP 令牌（留空会让同一 Wi-Fi 下的设备直接控制小爱）";
+        }
         if (!c.enabled) return null;
         AppConfig.Provider p = c.activeProvider();
         AppConfig.ModelItem m = c.activeModel();
@@ -220,7 +227,6 @@ public final class ConfigCodec {
         String key = p.apiKey == null ? "" : p.apiKey.trim();
         if (key.length() == 0) return "密钥不能为空";
         // 防呆：把 MCP token 误填进密钥是最常见的复制错误
-        String token = c.mcpToken == null ? "" : c.mcpToken.trim();
         if (token.length() > 0 && key.equals(token)) return "密钥填成了 MCP Token（复制错了字段）";
         return null;
     }

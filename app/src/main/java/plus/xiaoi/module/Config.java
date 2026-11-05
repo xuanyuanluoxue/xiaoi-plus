@@ -18,6 +18,7 @@ public final class Config {
     public static final String KEY_MARKER_TPL = "marker_tpl";
     public static final String KEY_ENABLED = "enabled";
     public static final String KEY_BRIDGE = "bridge";
+    public static final String KEY_MCP_LAN = "mcp_lan";
     public static final String KEY_TOKEN = "tok" + "en";
 
     private final String baseUrl;
@@ -29,6 +30,8 @@ public final class Config {
     /** 显式启用位：false = 暂停重定向（保留配置），区别于「未配置」。 */
     private final boolean enabled;
     private final boolean bridge;
+    /** true = 能力桥监听 0.0.0.0（局域网可访问）；仍需非空 token。 */
+    private final boolean lan;
     private final String token;
 
     /** 供能力桥热更新使用；所有字段自动归一化为非 null。 */
@@ -39,17 +42,23 @@ public final class Config {
 
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
                                 boolean bridge, String token, String markerTemplate) {
-        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, true);
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, true, false);
     }
 
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
                                 boolean bridge, String token, String markerTemplate,
                                 boolean enabled) {
-        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled);
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, false);
+    }
+
+    public static Config create(String baseUrl, String apiKey, String model, boolean marker,
+                                boolean bridge, String token, String markerTemplate,
+                                boolean enabled, boolean lan) {
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan);
     }
 
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
-                   String token, String markerTemplate, boolean enabled) {
+                   String token, String markerTemplate, boolean enabled, boolean lan) {
         this.baseUrl = baseUrl == null ? "" : baseUrl;
         this.apiKey = apiKey == null ? "" : apiKey;
         this.model = model == null ? "" : model;
@@ -58,6 +67,7 @@ public final class Config {
         this.token = token == null ? "" : token;
         this.markerTemplate = markerTemplate == null ? "" : markerTemplate;
         this.enabled = enabled;
+        this.lan = lan;
     }
 
     /** 跨进程热读缓存：prefs 文件 mtime 变了就重解析，最多 800ms 跟上。 */
@@ -110,7 +120,8 @@ public final class Config {
         return new Config(p.getString(KEY_BASE_URL, ""), p.getString(KEY_API_KEY, ""),
                 p.getString(KEY_MODEL, ""), p.getBoolean(KEY_MARKER, true),
                 p.getBoolean(KEY_BRIDGE, false), p.getString(KEY_TOKEN, ""),
-                p.getString(KEY_MARKER_TPL, ""), parseFlag(p.getString(KEY_ENABLED, "1")));
+                p.getString(KEY_MARKER_TPL, ""), parseFlag(p.getString(KEY_ENABLED, "1")),
+                p.getBoolean(KEY_MCP_LAN, false));
     }
 
     public static Config forTarget() {
@@ -118,7 +129,8 @@ public final class Config {
         String[] t = parsePrefs("/data/data/com.miui.voiceassist/shared_prefs/" + PREFS + ".xml");
         if (t != null) {
             android.util.Log.i("xiaoi+", "配置来源：小爱 prefs");
-            return new Config(t[0], t[1], t[2], true, true, t[3], t[4], parseFlag(t[5]));
+            return new Config(t[0], t[1], t[2], true, true, t[3], t[4], parseFlag(t[5]),
+                    "1".equals(t[6]));
         }
         // 2) 次选：模块自己的 prefs（XSharedPreferences，可能被 SELinux 拦）
         try {
@@ -131,11 +143,12 @@ public final class Config {
                 return new Config(b, p.getString(KEY_API_KEY, ""), m,
                         p.getBoolean(KEY_MARKER, true), p.getBoolean(KEY_BRIDGE, false),
                         p.getString(KEY_TOKEN, ""), p.getString(KEY_MARKER_TPL, ""),
-                        parseFlag(p.getString(KEY_ENABLED, "1")));
+                        parseFlag(p.getString(KEY_ENABLED, "1")),
+                        p.getBoolean(KEY_MCP_LAN, false));
             }
         } catch (Throwable ignored) {}
         android.util.Log.w("xiaoi+", "没有可用配置");
-        return new Config("", "", "", true, false, "", "", false);
+        return new Config("", "", "", true, false, "", "", false, false);
     }
 
     /** 解析 prefs XML，失败返回 null */
@@ -152,13 +165,21 @@ public final class Config {
             String m = pick(xml, KEY_MODEL);
             if (b.length() == 0 || m.length() == 0) return null;
             return new String[]{b, pick(xml, KEY_API_KEY), m, pick(xml, KEY_TOKEN),
-                    pick(xml, KEY_MARKER_TPL), pick(xml, KEY_ENABLED)};
+                    pick(xml, KEY_MARKER_TPL), pick(xml, KEY_ENABLED),
+                    pickBoolean(xml, KEY_MCP_LAN)};
         } catch (Throwable t) {
             android.util.Log.w("xiaoi+", "解析 prefs 失败: " + t);
             return null;
         } finally {
             try { if (in != null) in.close(); } catch (Throwable ignored) {}
         }
+    }
+
+    /** prefs XML 里的布尔值；缺失/无法识别按 false。 */
+    private static String pickBoolean(String xml, String key) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "<boolean name=\"" + key + "\" value=\"(true|false)\"").matcher(xml);
+        return m.find() && "true".equals(m.group(1)) ? "1" : "0";
     }
 
 
@@ -182,6 +203,9 @@ public final class Config {
     /** 输出前缀模板；空 = 不注入。支持 {model} 占位符。 */
     public String markerTemplate() { return markerTemplate; }
     public boolean bridge() { return bridge; }
+
+    /** true = 允许同一局域网访问能力桥（仍要求非空 Bearer token）。 */
+    public boolean lan() { return lan; }
 
     /** 能力桥的 Bearer token；为空表示拒绝所有桥请求 */
     public String token() { return token; }

@@ -48,6 +48,8 @@ public final class AppConfig {
     /** 输出前缀模板；空 = 不注入提示词前缀。支持 {model} 占位符。 */
     public String markerTemplate = "";
     public boolean mcpEnabled;
+    /** true = 能力桥监听 0.0.0.0，同一局域网可用 Bearer token 直连；默认 false 仅本机。 */
+    public boolean mcpLan;
     public String mcpToken = "";
     public String activeProviderId = "";
     public String activeModelId = "";

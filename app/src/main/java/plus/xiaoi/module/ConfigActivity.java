@@ -81,8 +81,8 @@ public class ConfigActivity extends BaseActivity {
         public void run() { checkModelNow(false); }
     };
 
-    private Switch swEnabled, swMcp, swPrefix;
-    private View cardModel, rowToken, rowPrefixTpl, tvPrefixHelp, boxMcpJson, tvDirty;
+    private Switch swEnabled, swMcp, swPrefix, swMcpLan;
+    private View cardModel, rowToken, rowMcpLan, rowPrefixTpl, tvPrefixHelp, boxMcpJson, tvDirty;
     private TextView fab;
     private View rowModelCheck, rowManage, rowPush, bannerConflict, bannerRuntime;
     private LinearLayout boxProviderChips, boxModelChips;
@@ -120,6 +120,8 @@ public class ConfigActivity extends BaseActivity {
 
         swEnabled = (Switch) find(R.id.sw_enabled);
         swMcp = (Switch) find(R.id.sw_mcp);
+        swMcpLan = (Switch) find(R.id.sw_mcp_lan);
+        rowMcpLan = find(R.id.row_mcp_lan);
         swPrefix = (Switch) find(R.id.sw_prefix);
         cardModel = find(R.id.card_model_fields);
         rowToken = find(R.id.row_token);
@@ -225,6 +227,22 @@ public class ConfigActivity extends BaseActivity {
             public void onCheckedChanged(android.widget.CompoundButton v, boolean on) {
                 if (rendering) return;
                 cfg.mcpEnabled = on;
+                applyMcpState();
+                markDirty();
+            }
+        });
+        swMcpLan.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(android.widget.CompoundButton v, boolean on) {
+                if (rendering) return;
+                cfg.mcpLan = on;
+                // 局域网必须带 token；打开开关时自动补一个随机令牌，避免保存被校验拦下。
+                if (on && cfg.mcpToken.trim().length() == 0) {
+                    cfg.mcpToken = newToken();
+                    rendering = true;
+                    etToken.setText(cfg.mcpToken);
+                    rendering = false;
+                    toast("已自动生成令牌（局域网访问必须）");
+                }
                 applyMcpState();
                 markDirty();
             }
@@ -349,6 +367,7 @@ public class ConfigActivity extends BaseActivity {
         try {
             swEnabled.setChecked(cfg.enabled);
             swMcp.setChecked(cfg.mcpEnabled);
+            swMcpLan.setChecked(cfg.mcpLan);
             swPrefix.setChecked(cfg.markerTemplate.trim().length() > 0);
             AppConfig.Provider p = provider();
             AppConfig.ModelItem m = cfg.activeModel();
@@ -419,8 +438,22 @@ public class ConfigActivity extends BaseActivity {
         v.setAlpha(enabled ? 1f : 0.6f);
     }
 
-    private String mcpUrl() {
+    private String localMcpUrl() {
         return "http://127.0.0.1:" + bridgePort + "/mcp";
+    }
+
+    private String mcpUrl() {
+        return Lan.mcpUrl(bridgePort, cfg.mcpLan);
+    }
+
+    /** 展示用：局域网模式同时给出局域网与本机地址；没连 Wi-Fi 时明确提示。 */
+    private String mcpUrlHint() {
+        if (!cfg.mcpLan) return localMcpUrl();
+        String lan = Lan.mcpUrl(bridgePort, true);
+        if (lan.contains("127.0.0.1")) {
+            return "未检测到局域网 IPv4（连上 Wi-Fi 后重进本页）\n" + localMcpUrl();
+        }
+        return lan + "\n" + localMcpUrl() + "（本机）";
     }
 
     /** 后台探一次真实桥端口；10 秒节流，失败保留默认 8771。 */
@@ -438,7 +471,7 @@ public class ConfigActivity extends BaseActivity {
                 bridgePort = p;
                 AppExecutors.ui(new Runnable() {
                     public void run() {
-                        if (!isFinishing() && tvMcpUrl != null) tvMcpUrl.setText(mcpUrl());
+                        if (!isFinishing() && tvMcpUrl != null) tvMcpUrl.setText(mcpUrlHint());
                     }
                 });
             }
@@ -448,10 +481,11 @@ public class ConfigActivity extends BaseActivity {
     private void applyMcpState() {
         boolean on = cfg.mcpEnabled;
         if (rowToken != null) rowToken.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (rowMcpLan != null) rowMcpLan.setVisibility(on ? View.VISIBLE : View.GONE);
         if (boxMcpJson != null) boxMcpJson.setVisibility(on ? View.VISIBLE : View.GONE);
         if (tvMcpUrl != null) {
             tvMcpUrl.setVisibility(on ? View.VISIBLE : View.GONE);
-            tvMcpUrl.setText(mcpUrl());
+            tvMcpUrl.setText(mcpUrlHint());
         }
         if (on && tvMcpJson != null) tvMcpJson.setText(mcpJsonSummary());
     }
@@ -473,8 +507,11 @@ public class ConfigActivity extends BaseActivity {
         sb.append("  \"protocol\":  \"JSON-RPC 2.0 (MCP 2025-03-26)\",\n");
         sb.append("  \"model\":     \"").append(model).append("\",\n");
         sb.append("  \"enabled\":   ").append(enabled).append(",\n");
+        sb.append("  \"lan\":       ").append(cfg.mcpLan ? "true" : "false").append(",\n");
         sb.append("  \"tools\":     \"").append(Mcp.toolNames(" · ")).append("\",\n");
-        sb.append("  \"bind\":      \"127.0.0.1 仅本机可访问，外网无法连入\"\n");
+        sb.append("  \"bind\":      \"").append(cfg.mcpLan
+                ? "0.0.0.0（同一局域网可访问，必须带 Bearer token）"
+                : "127.0.0.1（仅本机可访问）").append("\"\n");
         sb.append("}");
         return sb.toString();
     }
@@ -1243,6 +1280,9 @@ public class ConfigActivity extends BaseActivity {
                         lastPushError = fex;
                         renderPush();
                         toast(pushToast(fr, fex, fromSave));
+                        // 局域网开关可能导致桥重绑到相邻端口：强制重新探一次，URL 立即指向真实端口。
+                        lastPortProbeAt = 0;
+                        refreshBridgePort();
                         // 推送后核对运行时模型/开关：不一致时出黄色冲突条（只读，不写文件）。
                         ui.postDelayed(new Runnable() {
                             public void run() { checkRuntimeDrift(); }
@@ -1550,22 +1590,42 @@ public class ConfigActivity extends BaseActivity {
     }
 
     private void copyMcp() {
-        String url = mcpUrl();
         String token = cfg.mcpToken == null ? "" : cfg.mcpToken;
-        String txt = "URL : " + url + "\nAuth: Bearer " + token
-                + "\n前置: adb forward tcp:" + bridgePort + " tcp:" + bridgePort
-                + "\n\n客户端片段：\n{\"mcpServers\":{\"xiaoi-plus\":{\"url\":\"" + url
-                + "\",\"headers\":{\"Authorization\":\"Bearer " + token + "\"}}}}";
+        String local = localMcpUrl();
+        boolean lanOn = cfg.mcpLan;
+        String lanUrl = Lan.mcpUrl(bridgePort, true);
+        boolean hasLanIp = !lanUrl.contains("127.0.0.1");
+        String url = lanOn && hasLanIp ? lanUrl : local;
+        StringBuilder txt = new StringBuilder();
+        txt.append("URL : ").append(url).append('\n');
+        if (lanOn && hasLanIp) {
+            txt.append("本机: ").append(local).append('\n');
+            txt.append("前置: 手机与电脑在同一 Wi-Fi，无需 adb forward\n");
+        } else {
+            txt.append("前置: adb forward tcp:").append(bridgePort)
+                    .append(" tcp:").append(bridgePort).append('\n');
+        }
+        txt.append("Auth: Bearer ").append(token)
+                .append("\n\n客户端片段：\n{\"mcpServers\":{\"xiaoi-plus\":{\"url\":\"")
+                .append(url).append("\",\"headers\":{\"Authorization\":\"Bearer ")
+                .append(token).append("\"}}}}");
         android.content.ClipboardManager cm = (android.content.ClipboardManager)
                 getSystemService(CLIPBOARD_SERVICE);
-        cm.setPrimaryClip(android.content.ClipData.newPlainText("xiaoi mcp", txt));
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("xiaoi mcp", txt.toString()));
         toast("已复制 MCP 连接信息");
     }
 
     private void copySkill() {
+        String local = localMcpUrl();
+        boolean lanOn = cfg.mcpLan;
+        String url = Lan.mcpUrl(bridgePort, true);
+        if (!lanOn || url.contains("127.0.0.1")) url = local;
+        String pre = lanOn && !url.equals(local)
+                ? "前置：手机与电脑在同一 Wi-Fi，无需 adb forward\n"
+                : "前置：adb forward tcp:" + bridgePort + " tcp:" + bridgePort + "\n";
         String skill = "# 小爱同学plus MCP\n\n"
-                + "前置：adb forward tcp:" + bridgePort + " tcp:" + bridgePort + "\n"
-                + "端点：" + mcpUrl() + "（streamable-http，Bearer token）\n\n"
+                + pre
+                + "端点：" + url + "（streamable-http，Bearer token）\n\n"
                 + "工具：\n" + Mcp.toolListText();
         android.content.ClipboardManager cm = (android.content.ClipboardManager)
                 getSystemService(CLIPBOARD_SERVICE);

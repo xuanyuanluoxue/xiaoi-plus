@@ -250,7 +250,7 @@ public final class McpTest {
         eq("xiaoai_config",
                 "{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"{\\\"model\\\":\\\"deepseek-chat\\\",\\\"baseUrl\\\":\\\"https://api.deepseek.com/v1\\\","
-                        + "\\\"enabled\\\":true,\\\"marker\\\":true,\\\"markerTemplate\\\":\\\"\\\",\\\"bridge\\\":true,\\\"apiKeySet\\\":true,\\\"tokenSet\\\":true,"
+                        + "\\\"enabled\\\":true,\\\"marker\\\":true,\\\"markerTemplate\\\":\\\"\\\",\\\"bridge\\\":true,\\\"lan\\\":false,\\\"apiKeySet\\\":true,\\\"tokenSet\\\":true,"
                         + "\\\"port\\\":8771,\\\"version\\\":\\\"9.9.9\\\"}\"}],\"isError\":false}}",
                 call(h, 5, "xiaoai_config", null));
 
@@ -320,6 +320,7 @@ public final class McpTest {
         eq("merge empty body keeps model", "m-1", m.model);
         eq("merge empty body keeps marker", true, m.marker);
         eq("merge empty body keeps bridge", true, m.bridge);
+        eq("merge empty body keeps lan", false, m.lan);
         eq("merge empty body keeps token", "tok-old", m.token);
 
         m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"token\":\"tok-new\"}"), cur);
@@ -342,6 +343,10 @@ public final class McpTest {
         m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"marker\":false}"), cur);
         eq("merge explicit false flips", false, m.marker);
         eq("merge explicit false keeps bridge", true, m.bridge);
+
+        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"lan\":true}"), cur);
+        eq("merge lan flips", true, m.lan);
+        eq("merge lan keeps model", "m-1", m.model);
 
         m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"token\":null}"), cur);
         eq("merge explicit null clears token", "", m.token);

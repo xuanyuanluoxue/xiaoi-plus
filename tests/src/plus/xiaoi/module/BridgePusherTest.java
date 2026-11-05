@@ -118,6 +118,7 @@ public final class BridgePusherTest {
         T.ok("无密钥不含 enabled", !noKeyMap.containsKey("enabled"));
         T.eq("无密钥仍推 markerTemplate", "[T] ", String.valueOf(noKeyMap.get("markerTemplate")));
         T.eq("无密钥仍推 bridge", Boolean.TRUE, noKeyMap.get("bridge"));
+        T.eq("无密钥仍推 lan", Boolean.FALSE, noKeyMap.get("lan"));
         T.eq("无密钥仍推 token", "tok", String.valueOf(noKeyMap.get("token")));
         T.eq("无密钥仍推 marker", Boolean.TRUE, noKeyMap.get("marker"));
 
@@ -129,12 +130,14 @@ public final class BridgePusherTest {
         withKey.activeProviderId = "p";
         withKey.activeModelId = "m2";
         withKey.mcpToken = "tok2";
+        withKey.mcpLan = true;
         java.util.Map<?, ?> fullMap = asMap(BridgePusher.payloadFor(withKey));
         T.eq("有密钥推 apiKey", "sk-secret", String.valueOf(fullMap.get("apiKey")));
         T.eq("有密钥推 baseUrl", "https://api.example.com/v1", String.valueOf(fullMap.get("baseUrl")));
         T.eq("有密钥推 model", "m2", String.valueOf(fullMap.get("model")));
         T.eq("有密钥推 enabled", Boolean.FALSE, fullMap.get("enabled"));
         T.eq("有密钥推 token", "tok2", String.valueOf(fullMap.get("token")));
+        T.eq("有密钥推 lan", Boolean.TRUE, fullMap.get("lan"));
         T.ok("null 配置返回空对象", "{}".equals(BridgePusher.payloadFor(null)));
 
         ok1.stop(0);

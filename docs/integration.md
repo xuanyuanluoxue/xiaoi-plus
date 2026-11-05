@@ -59,15 +59,23 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
 
 - 传输：Streamable HTTP，只回 JSON（不提供 SSE，`GET /mcp` → 405）
 - 鉴权：与 `/cli` 相同，`Authorization: Bearer <TOKEN>`
-- 工具（7 个）：`xiaoai_status` / `xiaoai_submit` / `xiaoai_cli` / `xiaoai_config` /
-  `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island`，语义与 README 的 MCP 工具表一致
+- 工具（8 个）：`xiaoai_status` / `xiaoai_submit` / `xiaoai_cli` / `xiaoai_config` /
+  `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats`，语义与 README 的 MCP 工具表一致
 
-电脑上先做端口映射，再把 URL 注册进 MCP 客户端：
+电脑上接入有两种方式：
 
 ```bash
+# A. 同一 Wi-Fi 直连（设置页打开「允许局域网访问」，Token 非空）
+# MCP URL: http://<手机IP>:8771/mcp
+# Header : Authorization: Bearer <TOKEN>
+
+# B. adb 隧道（USB / 无线 adb）
 adb forward tcp:8771 tcp:8771
 # MCP URL: http://127.0.0.1:8771/mcp
 # Header : Authorization: Bearer <TOKEN>
 ```
+
+局域网模式下 `/config` 与 `/island` 仍只接受手机本机请求（远端返回 403）。
+手机直连时不要在公共 Wi-Fi 上长期开启；不用时把开关关掉即可立即回到 loopback。
 
 手机上可直接 `curl -d @payload.json`（见上一节）。

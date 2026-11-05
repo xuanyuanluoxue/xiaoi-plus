@@ -62,6 +62,8 @@ public final class Mcp {
         /** 显式启用位：false = 暂停重定向（保留配置）。 */
         public final boolean enabled;
         public final boolean bridge;
+        /** true = 允许同一局域网访问能力桥（仍要求非空 token）。 */
+        public final boolean lan;
         public final String token;
 
         public Snapshot(String baseUrl, String apiKey, String model, boolean marker,
@@ -76,6 +78,12 @@ public final class Mcp {
 
         public Snapshot(String baseUrl, String apiKey, String model, boolean marker,
                         boolean bridge, String token, String markerTemplate, boolean enabled) {
+            this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, false);
+        }
+
+        public Snapshot(String baseUrl, String apiKey, String model, boolean marker,
+                        boolean bridge, String token, String markerTemplate, boolean enabled,
+                        boolean lan) {
             this.baseUrl = baseUrl == null ? "" : baseUrl;
             this.apiKey = apiKey == null ? "" : apiKey;
             this.model = model == null ? "" : model;
@@ -83,6 +91,7 @@ public final class Mcp {
             this.markerTemplate = markerTemplate == null ? "" : markerTemplate;
             this.enabled = enabled;
             this.bridge = bridge;
+            this.lan = lan;
             this.token = token == null ? "" : token;
         }
     }
@@ -399,6 +408,7 @@ public final class Mcp {
                 r.put("marker", c.marker);
                 r.put("markerTemplate", c.markerTemplate);
                 r.put("bridge", c.bridge);
+                r.put("lan", c.lan);
                 r.put("apiKeySet", c.apiKey.length() > 0);
                 r.put("tokenSet", c.token.length() > 0);
                 r.put("port", (long) host.port());
@@ -422,7 +432,7 @@ public final class Mcp {
                 if (base.length() == 0) {
                     return toolText("missing argument: baseUrl（当前没有可用端点）", true);
                 }
-                Snapshot next = new Snapshot(base, key, model, marker, bridgeOn, cur.token, markerTemplate, cur.enabled);
+                Snapshot next = new Snapshot(base, key, model, marker, bridgeOn, cur.token, markerTemplate, cur.enabled, cur.lan);
                 if (!host.writeConfig(next)) return toolText("write prefs failed", true);
                 Map<String, Object> r = Json.obj();
                 r.put("ok", true);
@@ -499,11 +509,13 @@ public final class Mcp {
                 ? Json.optString(body, "markerTemplate", "") : cur.markerTemplate;
         boolean bridge = Json.has(body, "bridge")
                 ? Json.optBoolean(body, "bridge", cur.bridge) : cur.bridge;
+        boolean lan = Json.has(body, "lan")
+                ? Json.optBoolean(body, "lan", cur.lan) : cur.lan;
         String token = Json.has(body, "token")
                 ? Json.optString(body, "token", "") : cur.token;
         boolean enabled = Json.has(body, "enabled")
                 ? Json.optBoolean(body, "enabled", cur.enabled) : cur.enabled;
-        return new Snapshot(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled);
+        return new Snapshot(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan);
     }
 
     // ------------------------------------------------------------- 会话辅助

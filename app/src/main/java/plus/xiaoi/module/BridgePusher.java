@@ -250,6 +250,7 @@ public final class BridgePusher {
             o.put("model", c.model());
         }
         o.put("bridge", Boolean.valueOf(c.mcpEnabled));
+        o.put("lan", Boolean.valueOf(c.mcpLan));
         o.put("token", c.mcpToken == null ? "" : c.mcpToken);
         o.put("marker", Boolean.valueOf(c.marker));
         o.put("markerTemplate", c.markerTemplate == null ? "" : c.markerTemplate);

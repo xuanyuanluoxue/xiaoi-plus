@@ -503,11 +503,40 @@
 
                         <TextView
                             style="@style/Widget.XiaoiPlus.RowDesc"
-                            android:text="本机开放口，让电脑上的 Agent 直接指挥小爱" />
+                            android:text="本机或同一局域网的 Agent，凭 Bearer token 直接指挥小爱" />
                     </LinearLayout>
 
                     <Switch
                         android:id="@+id/sw_mcp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/row_mcp_lan"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowTitle"
+                            android:text="允许局域网访问" />
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowDesc"
+                            android:text="同一 Wi-Fi 可直连；必须设置令牌，留空则保持仅本机" />
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/sw_mcp_lan"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
                 </LinearLayout>

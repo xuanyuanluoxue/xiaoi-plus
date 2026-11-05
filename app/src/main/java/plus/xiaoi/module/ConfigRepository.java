@@ -163,6 +163,7 @@ public final class ConfigRepository {
                 .putString(Config.KEY_MARKER_TPL, c.markerTemplate == null ? "" : c.markerTemplate)
                 .putString(Config.KEY_ENABLED, c.enabled ? "1" : "0")
                 .putBoolean(Config.KEY_BRIDGE, c.mcpEnabled)
+                .putBoolean(Config.KEY_MCP_LAN, c.mcpLan)
                 .putString(Config.KEY_TOKEN, c.mcpToken)
                 .apply();
     }

@@ -13,7 +13,7 @@
 4. 无 `KEYSTORE_PASSWORD` 时 `build.sh` 产出未签名 APK；有 `KEYSTORE_BASE64` 时由
    `scripts/ci-sign.sh` 重新签名，否则警告 + 临时签名
 5. 产物与 Release Notes 上传 artifact；tag 构建自动建 Release；
-   版本号含 `-`（如 `0.11.0-beta.2`）自动标为 prerelease
+   版本号含 `-`（如 `0.11.0-beta.3`）自动标为 prerelease
 
 ## 2. 本地全量门禁（`scripts/check-all.sh`）
 
@@ -29,7 +29,7 @@ scripts/check-all.sh --no-device  # 跳过设备契约
 | 层 | 内容 | 失败即中止 |
 |---|---|---|
 | 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/死资源） | ✅ |
-| JVM 单测 | `tests/run.sh`（397 断言） | ✅ |
+| JVM 单测 | `tests/run.sh`（413 断言） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |
 | 真机契约 | `scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ |
 

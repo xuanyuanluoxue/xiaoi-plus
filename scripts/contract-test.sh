@@ -59,6 +59,8 @@ normalize() {
     # 因此每个字段都要同时处理未转义与转义两种形态，否则版本噪声与隐私值会漏网。
     sed -e 's/"version":"[^"]*"/"version":"V"/g' \
         -e 's/\\"version\\":\\"[^"\\]*\\"/\\"version\\":\\"V\\"/g' \
+        -e 's/"lan":\(true\|false\)/"lan":L/g' \
+        -e 's/\\"lan\\":\(true\|false\)/\\"lan\\":L/g' \
         -e 's/"port":[0-9][0-9]*/"port":P/g' \
         -e 's/\\"port\\":[0-9][0-9]*/\\"port\\":P/g' \
         -e 's/"baseUrl":"[^"]*"/"baseUrl":"B"/g' \

@@ -241,7 +241,8 @@ J3 是这一轮真正的新东西。J1/J2 是"把已经做了一半的补齐并�
 | `version` | int | `2` | 结构版本，只影响读写兼容 | `toJson` | `parse` | 不读 = 无法回滚 |
 | `marker` | bool | `false` | 上一代"标记"遗留位；**本轮起不再驱动任何行为**（仅保留兼容，`Hook` 里已由 `markerTemplate` 取代） | 配置页 | 兼容读 | 两套开关并存 → 用户困惑（见 D5） |
 | `markerTemplate` | string | `""` | 输出前缀模板，`{model}` 占位。空 = 不注入。**开关 = 是否存在模板** | 配置页 | `Hook.prefixGuard()`（当前禁用） | 开关与内容双源 |
-| `mcp.enabled` | bool | `false` | 桥是否监听 127.0.0.1 | 配置页 | `Bridge` | — |
+| `mcp.enabled` | bool | `false` | MCP/桥开关；关闭时局域网模式也不生效 | 配置页 | `Bridge` | — |
+| `mcp.lan` | bool | `false` | 是否允许局域网访问；需 `mcp.enabled` 且 token 非空才真正绑 `0.0.0.0` | 配置页 | `Bridge` | 误以为开了就能连 → 实际无 token 仍只绑 loopback |
 | `mcp.token` | string | `""` | 桥 Bearer token。空 = 拒绝所有请求 | 配置页 / `switch_model` 保留 | `Bridge.authorized` | 填成 apiKey → 桥与模型同时失效 |
 | `providers[].id` | string | — | **稳定标识，永不复用、永不改**。生成规则见 §3.5 | 配置页 | `activeProviderId` | 复用 id 会让旧引用指向新服务商 |
 | `providers[].name` | string | `id` | 仅显示，可随时改 | 配置页 | UI | 用 name 当 id 会因重名互相覆盖 |
@@ -324,7 +325,8 @@ J3 是这一轮真正的新东西。J1/J2 是"把已经做了一半的补齐并�
 │                                                   │
 │ ③ MCP                                             │
 │   [开关]  令牌 [••••] [生成]                      │
-│   http://127.0.0.1:8771/mcp   [复制连接信息]      │
+│   局域网 [开关]  同一 Wi-Fi 可直连                │
+│   http://192.168.x.x:8771/mcp  [复制连接信息]     │
 │                                                   │
 │ ④ 高级                                            │
 │   从运行中小爱导入 ›   导出（脱敏）›              │

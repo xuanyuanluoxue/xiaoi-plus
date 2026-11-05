@@ -24,17 +24,20 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 
 /**
- * 本地能力桥（可选）：在小爱进程内起一个只绑 127.0.0.1 的 HTTP 服务，
+ * 本地能力桥（可选）：默认只绑 127.0.0.1，开启「局域网访问」且 token 非空时
+ * 改为监听 0.0.0.0，让同一 Wi-Fi 下的电脑/手机用 Bearer token 直连。
  * 端口从 8771 起依次尝试 8771~8775（主进程 / :core / :voice_trigger 共存时自动错开），
- * 供本机脚本调用小爱的 CLI，并接收 {@code POST /config} 推送的配置。
+ * 供本机或局域网脚本调用小爱的 CLI，并接收 {@code POST /config} 推送的配置。
  *
  * v0.8 起协议逻辑拆到纯 JVM 层：HTTP 线协议在 {@link Http}，
  * MCP/JSON-RPC 与工具表在 {@link Mcp}（含各自的桌面单测）；
  * 本类只保留 Android 侧接线：Xposed hook、CLI binder 反射、
  * prefs 写入、socket 生命周期与鉴权策略。
  *
- * 除 {@code POST /config}（仅 loopback，且当前进程尚未配置 token 时允许免鉴权）外，
- * 所有请求必须带 {@code Authorization: Bearer <token>}；token 为空时一律 401。
+ * 除 {@code POST /config}（仅 loopback，且当前进程尚未配置 token 时允许免鉴权）与
+ * {@code POST /island}（仅 loopback，无副作用）外，所有请求必须带
+ * {@code Authorization: Bearer <token>}；token 为空时一律 401。
+ * 局域网模式不会放宽这两条 loopback 限制：改配置和弹岛只能在本机发起。
  *
  * 全部网络/反射操作 fail-soft：异常只写日志，绝不影响模型重定向与标记注入。
  */
@@ -55,6 +58,13 @@ public final class Bridge {
     private static volatile boolean sStarted;
     private static volatile int sPort;
     private static volatile String sToken = "";
+    /** 用户配置：是否允许局域网（还需 token 非空且 MCP 开关开启才真正绑 0.0.0.0）。 */
+    private static volatile boolean sLan;
+    /** 用户配置：MCP 桥开关；关闭时即使 lan=true 也只绑 loopback。 */
+    private static volatile boolean sBridge;
+    /** 当前 socket 实际绑定的模式：true = 0.0.0.0，false = 127.0.0.1。 */
+    private static volatile boolean sBoundLan;
+    private static volatile ServerSocket sServer;
     private static volatile Object sFacade;
     private static volatile Object sCli;
     private static volatile ExecutorService sPool;
@@ -80,15 +90,17 @@ public final class Bridge {
         public Mcp.Snapshot config() {
             Config c = Config.current();
             return new Mcp.Snapshot(c.baseUrl(), c.apiKey(), c.model(),
-                    c.marker(), c.bridge(), c.token(), c.markerTemplate(), c.enabledFlag());
+                    c.marker(), c.bridge(), c.token(), c.markerTemplate(), c.enabledFlag(),
+                    c.lan());
         }
 
         @Override
         public boolean writeConfig(Mcp.Snapshot n) {
             Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker, n.bridge, n.token,
-                    n.markerTemplate, n.enabled);
+                    n.markerTemplate, n.enabled, n.lan);
             if (!writeTargetPrefs(c)) return false;
             sToken = n.token.trim();
+            updateAccess(n.lan, n.bridge);
             Config.setCurrent(c);
             Hook.applyConfig(c);
             return true;
@@ -123,6 +135,8 @@ public final class Bridge {
         }
         try {
             sToken = safeToken();
+            sLan = safeLan();
+            sBridge = safeBridge();
             if (first) {
                 if (sToken.length() == 0) {
                     log("能力桥已开启但未配置 token，仅允许 loopback 首次 POST /config");
@@ -131,8 +145,9 @@ public final class Bridge {
                 hookServiceBinding(cl);
                 bindCli(cl);
             }
-            if (!sStarted && startServer()) {
-                log("能力桥已监听 127.0.0.1:" + sPort);
+            if (!sStarted && startServer(PORT_START)) {
+                log("能力桥已监听 " + bindHost() + ":" + sPort
+                        + (sBoundLan ? "（局域网模式，需要 Bearer token）" : ""));
             }
         } catch (Throwable t) {
             log("能力桥启动失败（已忽略）: " + t);
@@ -148,8 +163,35 @@ public final class Bridge {
     public static void updateToken(String token) {
         try {
             sToken = token == null ? "" : token.trim();
+            // token 从空变为非空、或反过来，都会改变「能否安全开放局域网」的结论。
+            rebindIfNeeded();
         } catch (Throwable ignored) {
         }
+    }
+
+    /** 配置热更新后同步局域网开关与 MCP 开关；绑定模式变化时原地重启监听。 */
+    public static void updateAccess(boolean lan, boolean bridge) {
+        sLan = lan;
+        sBridge = bridge;
+        rebindIfNeeded();
+    }
+
+    private static void rebindIfNeeded() {
+        if (!sStarted) return;
+        boolean want = sLan && sBridge && sToken.length() > 0;
+        if (want == sBoundLan) return;
+        synchronized (LOCK) {
+            int preferred = sPort;
+            closeQuietly(sServer);
+            sServer = null;
+            sStarted = false;
+            sPort = 0;
+            startServer(preferred);
+        }
+    }
+
+    private static String bindHost() {
+        return sBoundLan ? "0.0.0.0" : "127.0.0.1";
     }
 
     private static String safeToken() {
@@ -158,6 +200,22 @@ public final class Bridge {
             return t == null ? "" : t.trim();
         } catch (Throwable t) {
             return "";
+        }
+    }
+
+    private static boolean safeLan() {
+        try {
+            return Config.forTarget().lan();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static boolean safeBridge() {
+        try {
+            return Config.forTarget().bridge();
+        } catch (Throwable t) {
+            return false;
         }
     }
 
@@ -269,35 +327,47 @@ public final class Bridge {
 
     // ------------------------------------------------------------- socket 服务
 
-    private static boolean startServer() {
+    private static boolean startServer(int preferred) {
         if (sStarted) return true;
         synchronized (LOCK) {
             if (sStarted) return true;
-            for (int port = PORT_START; port <= PORT_END; port++) {
+            final boolean lan = sLan && sBridge && sToken.length() > 0;
+            final String host = lan ? "0.0.0.0" : "127.0.0.1";
+            // 先在原端口重绑（token/局域网开关热切换时避免端口乱跳），再扫描其余端口。
+            int[] order = new int[PORT_END - PORT_START + 1];
+            int n = 0;
+            if (preferred >= PORT_START && preferred <= PORT_END) order[n++] = preferred;
+            for (int p = PORT_START; p <= PORT_END; p++) {
+                if (p != preferred) order[n++] = p;
+            }
+            for (int i = 0; i < n; i++) {
+                int port = order[i];
                 ServerSocket ss = null;
                 try {
                     ss = new ServerSocket();
                     ss.setReuseAddress(true);
-                    ss.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port), 16);
+                    ss.bind(new InetSocketAddress(InetAddress.getByName(host), port), 16);
                 } catch (Throwable t) {
                     closeQuietly(ss);
                     // 多个小爱进程都会加载模块，端口被占是预期情况，不报错。
-                    info("127.0.0.1:" + port + " 已被占用，尝试下一个端口");
+                    info(host + ":" + port + " 已被占用，尝试下一个端口");
                     continue;
                 }
                 try {
                     final ServerSocket bound = ss;
-                    // agent.submit 会等 LLM 回复，单次可能几十秒；别让 4 个线程互相饿死。
-                    sPool = Executors.newFixedThreadPool(8, new ThreadFactory() {
-                        private int n;
+                    if (sPool == null) {
+                        // agent.submit 会等 LLM 回复，单次可能几十秒；别让 4 个线程互相饿死。
+                        sPool = Executors.newFixedThreadPool(8, new ThreadFactory() {
+                            private int n;
 
-                        @Override
-                        public Thread newThread(Runnable r) {
-                            Thread t = new Thread(r, "xiaoi-bridge-" + (n++));
-                            t.setDaemon(true);
-                            return t;
-                        }
-                    });
+                            @Override
+                            public Thread newThread(Runnable r) {
+                                Thread t = new Thread(r, "xiaoi-bridge-" + (n++));
+                                t.setDaemon(true);
+                                return t;
+                            }
+                        });
+                    }
                     Thread t = new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -306,13 +376,15 @@ public final class Bridge {
                     }, "xiaoi-bridge-accept");
                     t.setDaemon(true);
                     t.start();
+                    sServer = ss;
+                    sBoundLan = lan;
                     sPort = port;
                     sStarted = true;
-                    log("实际监听端口=" + port);
+                    log("实际监听 " + host + ":" + port + (lan ? "（局域网模式）" : ""));
                     return true;
                 } catch (Throwable t) {
                     closeQuietly(ss);
-                    log("在 127.0.0.1:" + port + " 启动服务失败（已忽略）: " + t);
+                    log("在 " + host + ":" + port + " 启动服务失败（已忽略）: " + t);
                 }
             }
             info("无可用端口 " + PORT_START + "-" + PORT_END + "，能力桥未启动");
@@ -447,7 +519,8 @@ public final class Bridge {
                 respondText(s, 405, "only POST");
                 return;
             }
-            if (!isLoopback(s)) {
+            // 局域网模式只对 MCP 开放；即使绑了 0.0.0.0，也要 token 正确（见下）。
+            if (!isLoopback(s) && !sBoundLan) {
                 respondText(s, 403, "loopback only");
                 return;
             }
@@ -524,7 +597,7 @@ public final class Bridge {
             Mcp.Snapshot merged = Mcp.mergeConfig(o, HOST.config());
             Config c = Config.create(merged.baseUrl, merged.apiKey, merged.model,
                     merged.marker, merged.bridge, merged.token, merged.markerTemplate,
-                    merged.enabled);
+                    merged.enabled, merged.lan);
 
             if (!writeTargetPrefs(c)) {
                 respondText(s, 503, "target context unavailable");
@@ -532,6 +605,7 @@ public final class Bridge {
             }
 
             sToken = c.token().trim();
+            updateAccess(c.lan(), c.bridge());
             try {
                 Hook.applyConfig(c);
             } catch (Throwable t) {
@@ -633,6 +707,7 @@ public final class Bridge {
                     .putString(Config.KEY_MODEL, c.model())
                     .putBoolean(Config.KEY_MARKER, c.marker())
                     .putBoolean(Config.KEY_BRIDGE, c.bridge())
+                    .putBoolean(Config.KEY_MCP_LAN, c.lan())
                     .putString(Config.KEY_TOKEN, c.token())
                     .putString(Config.KEY_MARKER_TPL, c.markerTemplate())
                     .putString(Config.KEY_ENABLED, c.enabledFlag() ? "1" : "0")

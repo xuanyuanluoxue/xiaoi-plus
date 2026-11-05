@@ -6,14 +6,14 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](../../releases)。
 >
-> 📦 当前测试版：**v0.11.0-beta.2** ·
-> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.11.0-beta.2)
+> 📦 当前测试版：**v0.11.0-beta.3** ·
+> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.11.0-beta.3)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
 >
-> ✅ 当前 beta.2 已在真机（HyperOS + LSPosed）验证：四页 UI/图标、深浅主题、
-> 暂停/恢复、备份对话框、MCP health/tools/stats。
+> ✅ beta.3 已在真机（HyperOS + LSPosed）验证：局域网 MCP 直连、Bearer 鉴权、
+> 远程 `/mcp` 工具调用、关闭开关立即回到仅本机；四页 UI/图标、深浅主题照常。
 > ⚠️ 输出前缀暂隐藏；官方模型调用量尚未在真机触发；完整 45 项契约需本机设备脚本。
 
 ## 它做什么
@@ -23,7 +23,8 @@
 | 模型重定向 | 把主对话请求指到你自己的 OpenAI 兼容端点（BYOK） | ✅ 已验证 |
 | 模型标识 | 请求头 `X-Model-Provider-Id: xiaoi-plus`，不往提示词里塞文本 | ✅ 已验证 |
 | 图片理解 | 让第三方模型正常收到截图/图片（hook `getSupportsVision`），不再被换成占位文本 | ✅ 已验证 |
-| 本地能力桥 | 在小爱进程内开一个 `127.0.0.1:8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/config`、`/island`），Bearer token 鉴权 | 🧪 实验性，默认关闭 |
+| 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/config`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1` | 🧪 实验性，默认关闭 |
+| 局域网 MCP | 显式打开「允许局域网访问」且有非空 token 时监听 `0.0.0.0`，同一 Wi-Fi 的电脑可直接连；关闭开关立即回到仅本机 | 🧪 实验性，默认关闭 |
 | MCP 端点 | `POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），MCP 客户端可直接接入 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |
 
@@ -68,8 +69,9 @@ adb install -r xiaoi-plus-<version>.apk
 | 模型 ID | 原样传给上游的 `model` 字段 | `deepseek-chat` |
 | API Key | 服务商给的 key；跟服务商走，明文存在模块私有目录 | `sk-...` |
 | 启用第三方模型 | 暂停只关重定向，不清配置 | 开 |
-| 开启本地能力桥 | 实验性，默认关；监听 `127.0.0.1:8771~8775` | 开 |
-| 能力桥 Token | 调用方必须带 `Authorization: Bearer <token>`；**留空则拒绝所有桥请求** | 一段长随机串 |
+| 开启本地能力桥 | 实验性，默认关；默认监听 `127.0.0.1:8771~8775` | 开 |
+| 允许局域网访问 | 需配合非空 Token；开启后监听 `0.0.0.0`，同一 Wi-Fi 的设备可直连 `/mcp`。关闭后立即回到仅本机 | 关 |
+| 能力桥 Token | 调用方必须带 `Authorization: Bearer <token>`；**留空则拒绝所有请求，且局域网开关不会生效** | 一段长随机串 |
 
 服务商、模型 ID、API Key 三者齐全才会启用；暂停（enabled=false）不会清空这些字段。
 模型标识 `X-Model-Provider-Id` 随启用自动发送，不再提供单独开关。
@@ -116,14 +118,23 @@ v0.5 起标识走请求头，不再往提示词里塞 `[model=...]` 规则——
 
 ### 桥的连通性（可选）
 
-桥只监听手机自己的回环地址，命令要在**手机上**执行（Termux 或 `adb shell`）：
+默认只监听手机自己的回环地址，命令要在**手机上**执行（Termux 或 `adb shell`）：
 
 ```bash
 curl -s -H "Authorization: Bearer <你设置的 token>" http://127.0.0.1:8771~8775/health
 # ok facade=true
 ```
 
-没有 token 或 token 不对会返回 `401 unauthorized`。桥的边界与风险见 [docs/security.md](docs/security.md#3-本地能力桥实验性默认关闭)。
+打开「允许局域网访问」并设置 Token 后，监听地址变为 `0.0.0.0`，同一 Wi-Fi 的电脑可直接：
+
+```bash
+curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/health
+# ok facade=true
+```
+
+手机 IP 与端口会在设置页 MCP 卡片里直接显示。没有 token 或 token 不对会返回
+`401 unauthorized`；关闭局域网开关后，非回环请求会立即被拒绝。桥的边界与风险见
+[docs/security.md](docs/security.md#3-本地能力桥实验性默认关闭)。
 
 ### MCP 端点（可选，随桥开启）
 
@@ -131,14 +142,15 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://127.0.0.1:8771~87
 
 - 协议版本 `2025-03-26`，支持 `initialize`、`notifications/initialized`、`ping`、`tools/list`、`tools/call`
 - 鉴权与 `/cli` 相同：`Authorization: Bearer <token>`；`GET /mcp` 返回 `405`
-- 只监听 loopback，和桥同生共死
+- 默认只监听 loopback；打开「允许局域网访问」后同一 Wi-Fi 可直连，`/config` 与 `/island`
+  仍只接受本机请求
 
 | 工具 | 参数 | 作用 |
 |---|---|---|
 | `xiaoai_status` | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` |
 | `xiaoai_submit` | `text`（必填）、`sessionId`（可选） | 让小爱执行一句话任务并返回回复；不传 sessionId 自动 `session.open` |
 | `xiaoai_cli` | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
-| `xiaoai_config` | 无 | 读当前生效配置：model / baseUrl / marker / bridge / 密钥是否已设 |
+| `xiaoai_config` | 无 | 读当前生效配置：model / baseUrl / marker / bridge / lan / 密钥是否已设 |
 | `xiaoai_switch_model` | `model`（必填）、`baseUrl`/`apiKey`/`marker`/`bridge`（可选） | 热切换模型，写 prefs 后 1 秒内全进程生效，**不用重启小爱、不用开设置页** |
 | `xiaoai_logs` | `limit`（默认 80）、`since`（可选） | 读运行日志：最近 300 条环形缓冲，同时落盘 `files/xiaoi_plus.log`（滚动 256KB） |
 | `xiaoai_island` | `text`（可选）、`force`（默认 true） | 手动发一次超级岛提示，用于验证岛通路；自动路径在首次走第三方模型时弹一次 |
@@ -152,8 +164,25 @@ curl -s -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' \
   http://127.0.0.1:8771/mcp
 ```
 
-从电脑接入：先 `adb forward tcp:8771 tcp:8771`，再把 `http://127.0.0.1:8771/mcp`
-连同 `Authorization: Bearer <token>` 头注册到你的 MCP 客户端。
+从电脑接入有两种方式：
+
+**A. 同一 Wi-Fi 直连（推荐）**
+
+设置页打开「允许局域网访问」，保证 Token 非空并保存。把卡片里显示的
+`http://<手机IP>:8771/mcp` 连同 `Authorization: Bearer <token>` 头注册到 MCP 客户端即可，
+不需要 adb、不需要 root、不需要数据线。
+
+**B. adb 隧道（USB/无线 adb）**
+
+```bash
+adb forward tcp:8771 tcp:8771
+# MCP URL: http://127.0.0.1:8771/mcp
+# Header : Authorization: Bearer <TOKEN>
+```
+
+> 局域网模式只开放 `/health`、`/logs`、`/stats`、`/cli`、`/mcp`；
+> `/config`（写配置）和 `/island`（弹提示）始终只允许本机。
+> 公共 Wi-Fi / 公司网络建议用 adb 隧道或关闭局域网开关。
 
 ### 全程用 MCP 运维（推荐）
 
@@ -213,7 +242,7 @@ scripts/release.sh
    adb shell am force-stop com.miui.voiceassist
    ```
 
-4. 确认日志里不再出现 `provider 标识 hook 完成`，`127.0.0.1:8771~8775` 也不再监听
+4. 确认日志里不再出现 `provider 标识 hook 完成`，`8771~8775` 也不再监听（含局域网模式）
 
 模块只在运行时注入，不写小爱的数据、不改系统分区、不留后台服务；
 卸载时私有目录（含 API Key）一并删除。

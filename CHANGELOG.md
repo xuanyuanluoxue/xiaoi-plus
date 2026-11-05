@@ -1,5 +1,28 @@
 # 更新日志
 
+## 0.11.0-beta.3 — 2026-11-05
+
+> **测试版新能力**：MCP 支持同一局域网直连，不再必须 adb forward。
+> 默认仍只绑 loopback，局域网必须显式开启且设置 token。
+>
+> 交流群：QQ **1121057362**（问题反馈 / 版本适配 / 使用交流）
+
+### 局域网 MCP
+- 设置页新增「允许局域网访问」开关：开启后桥监听 `0.0.0.0:8771~8775`，
+  同一 Wi-Fi 的电脑可直接连 `http://<手机IP>:8771/mcp`
+- 安全约束：`token` 为空时开关不生效（仍只绑 loopback）；MCP/桥开关关闭时同样只绑 loopback；
+  `POST /config` 与 `POST /island` 即使开启局域网也只接受本机请求
+- 开关热生效：保存后立即重绑，无需重启小爱；关闭后回到仅本机
+- 配置页显示局域网 IP 与两个 URL（局域网 / 本机），复制连接信息、Skill 文案按模式生成
+- `config.json` 新增 `mcp.lan`；`xiaoai_config` 返回 `lan` 字段
+
+### 真机验收
+- USB 真机（HyperOS + LSPosed）：局域网 `health`、`tools/list`（8 个）、
+  `initialize`、`ping`、`xiaoai_status`、`xiaoai_cli`、`/logs`、`/stats` 均通过
+- 无 token / 错误 token → 401；局域网 `POST /config`、`POST /island` → 403
+- 关闭局域网开关后端口立即回到 `127.0.0.1`，局域网连接失败；重新开启恢复
+- 清空 token 后即使开关为开也回到 loopback（安全降级）
+
 ## 0.11.0-beta.2 — 2026-11-05
 
 > **测试版修复**：真机验收发现的主页状态滞后、MCP 速览工具缺失、令牌明文显示。

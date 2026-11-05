@@ -11,7 +11,7 @@ public final class ConfigCodecTest {
     private static final String CANONICAL =
             "{\"version\":2,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
             + "\"activeProviderId\":\"crazyai\",\"activeModelId\":\"your-model\","
-            + "\"mcp\":{\"enabled\":true,\"token\":\"tok-123\"},"
+            + "\"mcp\":{\"enabled\":true,\"lan\":false,\"token\":\"tok-123\"},"
             + "\"providers\":[{\"id\":\"crazyai\",\"name\":\"CrashMail\","
             + "\"baseUrl\":\"https://api.example.com/v1\",\"apiKey\":\"sk-abc\","
             + "\"models\":[{\"id\":\"your-model\",\"name\":\"GLM\"},"
@@ -34,6 +34,7 @@ public final class ConfigCodecTest {
         eq("activeProviderId", "crazyai", c.activeProviderId);
         eq("activeModelId", "your-model", c.activeModelId);
         eq("mcpEnabled", true, c.mcpEnabled);
+        eq("mcpLan 默认 false", false, c.mcpLan);
         eq("mcpToken", "tok-123", c.mcpToken);
         eq("providers 数", 1, c.providers.size());
         eq("provider name", "CrashMail", c.providers.get(0).name);
@@ -98,6 +99,19 @@ public final class ConfigCodecTest {
                         + "\"providers\":[{\"id\":\"p1\",\"baseUrl\":\"https://a\",\"apiKey\":\"tok\","
                         + "\"models\":[{\"id\":\"m1\"}]}]}")));
         eq("完整配置校验通过", null, ConfigCodec.validate(ConfigCodec.fromJson(CANONICAL)));
+
+        // 局域网访问：必须带 token；暂停模型时这条规则仍然生效（桥可独立运行）
+        AppConfig lanOk = ConfigCodec.fromJson(
+                "{\"enabled\":false,\"mcp\":{\"enabled\":true,\"lan\":true,\"token\":\"tok\"}}");
+        eq("lan 解析", true, lanOk.mcpLan);
+        eq("暂停但局域网有 token 合法", null, ConfigCodec.validate(lanOk));
+        String lanOut = ConfigCodec.toJson(lanOk);
+        ok("lan 写回", lanOut.contains("\"mcp\":{\"enabled\":true,\"lan\":true,\"token\":\"tok\"}"));
+        AppConfig lanNoToken = ConfigCodec.fromJson(
+                "{\"enabled\":false,\"mcp\":{\"enabled\":true,\"lan\":true,\"token\":\"\"}}");
+        eq("局域网无 token 被拒",
+                "局域网访问必须设置 MCP 令牌（留空会让同一 Wi-Fi 下的设备直接控制小爱）",
+                ConfigCodec.validate(lanNoToken));
 
         // ------------------------------------------------------------ 默认值（升级不丢配置）
         AppConfig d = ConfigCodec.defaults("https://old/v1", "old-model", "sk-old", true, true, "tok");
