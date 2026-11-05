@@ -41,12 +41,14 @@
 - 新增 `core/ControlKeys.java`（Bundle key 常量，纯 JVM）
 - `AndroidManifest.xml` 注册 service（显式 ComponentName，exported）
 - App 侧读取私有 config.json，`pullConfig()` 返回 JSON 快照 + rev
-- 小爱侧 `BridgeClient` 改为 Binder 客户端（绑定、重连、超时、死亡回调）
+- 小爱侧 `BridgeControlClient`（绑定、重连、超时、死亡回调）
 - `register()` 携带 `legacyJson`（桥读取 target/module prefs 的 0.11 快照）
 - `reportState()` / `appendLogs()` 最小实现，App 先落内存/日志
-- 删除 `BridgePusher` 的配置推送路径（先保留类，WP4 删除）
+- **本包是增量**：保留旧 `BridgePusher`/`/config` 推送路径，控制面通过 feature flag
+  `controlPlaneEnabled` 逐步启用；WP3 才切换主路径，WP4 才删除旧路径
 
 **非范围**
+- 不删除 `BridgePusher`/`/config`（WP4）
 - 不改状态 UI（WP6）
 - 不改 ConfigActivity 布局（WP5）
 - 不实现 HMAC/Provider/配对码
@@ -57,7 +59,7 @@
 - voiceassist 能 bind、pullConfig 拿到 config.json 内容
 - App 能通过 callback 发 `reload`，桥收到并重新 pull
 - App force-stop 后桥重连有退避，不崩溃、不刷日志
-- 控制面不可用时不启动数据面（WP3 接入）
+- feature flag 关闭时，旧推送路径行为与 beta.4 一致（回归）
 
 **测试**
 - 纯 JVM：`ControlKeys`、UID 允许集合策略、registry 状态机
@@ -84,9 +86,12 @@
 - 解析失败：保留原文件、写 `.corrupt.<ts>`、UI 只读态（WP7 接 UI）
 - 首次升级：私有文件不存在时，用控制面 `legacyJson` 展示“采用旧配置”
 - 删除 `Config.forTarget()` 的 `marker/bridge` 硬编码；target prefs 读取解析全部键
-- `ConfigSync` 改为“监听私有文件 + 通知桥 reload”，删除 `pushAsync`/HTTP 推送
+- `ConfigSync` 改为“监听私有文件 + 通知桥 reload”；旧 `pushAsync` 标记为 legacy，
+  仅在 `controlPlaneEnabled=false` 时保留（WP3 切换后删除）
 - `ConfigRepository.writePrefs` 只写 legacy 兼容键，带 `cfgRev`
 - `config.json` 不再写 `Android/data`
+- **过渡策略**：WP2 与 WP3 必须同一发布列车；如果 WP2 单独合并，保留旧 HTTP 推送，
+  通过 `controlPlaneEnabled` flag 控制，避免热更新中断
 
 **非范围**
 - 不改 MCP 工具（WP4）
@@ -122,6 +127,9 @@
 - `Config.forTarget()` 读取 `bridge`/`marker`（不再硬编码）
 - leader 通过控制面上报 port/instance；App 不再扫描端口
 - 数据面 `BridgeServer` 核心拆到 `core/`（HTTP 解析/路由/鉴权可测），Android 只接线
+- **切换配置传输**：`controlPlaneEnabled=true` 后，`ConfigSync`/`ConfigRepository` 不再走
+  旧 HTTP 推送；保留旧路径一个版本作为回滚开关
+- 与 WP4 同一发布列车；WP3 单独合并时旧推送仍可用
 
 **非范围**
 - 不改 MCP 工具参数（WP4）

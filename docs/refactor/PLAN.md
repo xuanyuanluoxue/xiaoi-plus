@@ -159,6 +159,10 @@ override 面都不可控；Service 只有一个 Binder 方法面。
 
 详细范围、验收标准、涉及文件、子 Agent 指令见 [WORKPACKAGES.md](WORKPACKAGES.md)。
 
+> **过渡策略**：WP1 是增量（控制面 + feature flag），不删除旧推送；WP2 配置私有化
+> 仍保留旧推送回退；WP3 切换主路径；WP4 删除旧推送与 `/config`。
+> WP2/WP3/WP4 必须同一发布列车，避免中间版本热更新中断。
+
 ## 4. 迁移与回滚
 
 - `0.11.0-beta.4 → 0.12.0-beta.1`：首次启动先读旧配置，用户确认后写私有文件；
