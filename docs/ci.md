@@ -10,8 +10,10 @@
 1. 装 Android SDK（`scripts/ci-sdk.sh`，带 actions/cache）
 2. **JVM 单测**（`tests/run.sh`，测试红则不构建）
 3. `build.sh` 构建
-4. 有 `KEYSTORE_BASE64` 时正式签名（`scripts/ci-sign.sh`），否则警告 + 临时签名
-5. 产物与 Release Notes 上传 artifact；tag 构建自动建 Release
+4. 无 `KEYSTORE_PASSWORD` 时 `build.sh` 产出未签名 APK；有 `KEYSTORE_BASE64` 时由
+   `scripts/ci-sign.sh` 重新签名，否则警告 + 临时签名
+5. 产物与 Release Notes 上传 artifact；tag 构建自动建 Release；
+   版本号含 `-`（如 `0.11.0-beta.2`）自动标为 prerelease
 
 ## 2. 本地全量门禁（`scripts/check-all.sh`）
 
@@ -26,9 +28,10 @@ scripts/check-all.sh --no-device  # 跳过设备契约
 
 | 层 | 内容 | 失败即中止 |
 |---|---|---|
-| JVM 单测 | `tests/run.sh`（185 断言） | ✅ |
+| 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/死资源） | ✅ |
+| JVM 单测 | `tests/run.sh`（397 断言） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |
-| 真机契约 | `scripts/contract-test.sh --check`（42 断言，会重启小爱） | ✅ |
+| 真机契约 | `scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ |
 
 ## 3. pre-push hook（轻量、每次推送自动跑）
 
@@ -36,7 +39,7 @@ scripts/check-all.sh --no-device  # 跳过设备契约
 git config core.hooksPath .githooks   # 每台克隆执行一次
 ```
 
-推送前自动跑「JVM 单测 + aoci check」，失败则拒绝推送。设备契约较重（会重启小爱），不放进 hook。
+推送前自动跑「工程一致性 + JVM 单测 + aoci check」，失败则拒绝推送。设备契约较重（会重启小爱），不放进 hook。
 
 ## 4. 桥 token 的存放
 

@@ -61,6 +61,9 @@ OK: /path/to/xiaoi-plus/build/xiaoi-plus.apk
 | `keystore/xiaoi.keystore` | 首次构建自动生成的测试密钥（口令从 `KEYSTORE_PASSWORD` 或 `~/.config/xiaoi/keystore_pass` 读取，别名 `xiaoi`）；在 `build/` 之外，重跑构建不会丢 |
 | `build/kpass.txt` | 给 `apksigner` 用的临时口令文件（构建结束可删，已被 .gitignore 忽略） |
 
+> 本地没有 `KEYSTORE_PASSWORD` 或 `~/.config/xiaoi/keystore_pass` 时，`build.sh`
+> 只产出**未签名** APK 供编译验证；CI 会用正式/临时密钥重新签名。
+
 安装 / 覆盖安装：
 
 ```bash

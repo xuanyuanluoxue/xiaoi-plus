@@ -1,4 +1,4 @@
-# 交接说明（2026-11-04）
+# 交接说明（2026-11-05）
 
 > 状态：**可交接**。版本 0.11.0-beta.2（versionCode 13），工程化收敛 P0~P3b 完成。
 > JVM 单测 397 断言全绿，真机契约 45/45 全绿。
@@ -16,7 +16,7 @@ OpenAI 兼容端点，并在本机开一个 MCP 接口给电脑端 Agent 用。
 | 手机 | 小米 HyperOS 设备（机型与系统版本因环境而异） |
 | 连接 | USB adb 或无线 adb（IP 与串号属于本机环境，换成你自己的） |
 | 小爱 | 8.2.65.4714（版本白名单精确匹配，不在名单自动 no-op） |
-| 模块 | 0.10.0，LSPosed 已启用，作用域只勾「超级小爱」 |
+| 模块 | 0.11.0-beta.2（测试版），LSPosed 已启用，作用域只勾「超级小爱」 |
 | 当前模型 | 任意 OpenAI 兼容端点与模型（BYOK） |
 | MCP token | 存在 `config.json` 的 `mcp.token`，同时在 `~/.config/xiaoi/token`（本机，不进仓库） |
 
@@ -35,7 +35,7 @@ OpenAI 兼容端点，并在本机开一个 MCP 接口给电脑端 Agent 用。
 ## 4. 常用验证命令
 
 ```bash
-./tests/run.sh                     # JVM 单测（393 断言，无需设备）
+./tests/run.sh                     # JVM 单测（397 断言，无需设备）
 ./scripts/check-all.sh             # 单测 + aoci check + 真机契约
 XIAOI_TOKEN=$(cat ~/.config/xiaoi/token) ./scripts/contract-test.sh --check  # 契约 45 项
 ./scripts/ime.sh on|off|type "文本" # adb 输入法（中文/符号），用完 off
@@ -81,7 +81,17 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
   对话框补齐 values-night；删 Monet 统一品牌色；Toast → 应用内提示条；
   颜色令牌 32 → 19；新增 `dimens.xml` 与 `Widget.XiaoiPlus.PageTitle`
 
-详见 `CHANGELOG.md` 0.10.0 与 `docs/design-system.md`。
+**0.11.0-beta.1 / beta.2 测试版**：
+
+- 图标全套重绘：24dp 单色矢量 + 导航 `setImageTintList` + adaptive launcher；
+  删除 `ic_root/ic_bridge/ic_marker/...` 等一图多义与死图标
+- 主页回前台重新探测运行时；状态缓存 10 分钟 TTL；「已确认/未确认」证据行
+- MCP 速览工具清单走 `Mcp.toolsList()` 单一来源（含 `xiaoai_stats`），端口显示实际值
+- MCP 令牌默认掩码；导出/备份拆分；脱敏文件导入阻断
+- 真机验收（USB adb）：主页/配置/日志/关于、深浅主题、暂停/恢复、备份对话框、
+  MCP health/tools/stats 均通过；beta.2 修复了 beta.1 的三个问题
+
+详见 `CHANGELOG.md` 0.11.0-beta.2 与 `docs/design-system.md`。
 
 ## 6. 已知限制（诚实清单）
 
@@ -95,17 +105,16 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 4. **深色/浅色**均验证过；输入框不再白底浅字。
 5. 契约基线里 `text` 字段整体被脱敏（`"text":"T"`），结构断言由 jq 覆盖。
 6. **官方调用量在真机没有触发过**：`um.h`（TaiyiLlmClient）的 hook 已装好，
-   但本机小爱的文本对话当前一律走 OpenAI 兼容客户端（`qm.i/j`，baseUrl 指向
-   已配置端点），因此 `/stats` 的 official 一直是测试早期留下的 1。要验证官方
-   计数，需要在「未配置模型」的小爱上直接对话（或清掉小爱侧的模型配置后重启）。
+   但小爱的文本对话当前走 OpenAI 兼容客户端（`qm.i/j`），`/stats` 的 official 为 0。
+   要验证官方计数，需要在「未配置模型」的小爱上直接对话。
 7. 计数口径是「模型客户端调用次数」：一次用户消息可能触发多轮 agent 工具循环，
    因此数字会大于消息条数；主对话只统计带 tools 或消息数 ≥6 的调用，子调用在
    `/stats` 的 `sub` 里单列。
 8. `enabled=false` 现在会停掉 baseUrl/apiKey/model 覆盖，但小爱侧若有已持久化的
    模型配置，仍可能走原端点；停止重定向的彻底程度取决于小爱自身缓存。
-9. **本轮未发布构建已修的产品问题**：主页运行时判 `enabled`、状态缓存 10 分钟 TTL、
-   「已确认/未确认」证据行、日志失败四分类与轮询、脱敏文件禁止导入、备份/导出拆分、
-   MCP 复制内容单一来源与真实端口、图标全套重绘（含 adaptive launcher）。
+9. **0.11.0-beta.2 真机验收未覆盖项**：脱敏文件导入阻断只有单测、未在 SAF 选择器里走；
+   日志失败四分类未真机触发（需关 MCP/清令牌）；launcher adaptive-icon 未单独截图；
+   配置页「推送状态未知」仍可能需要手动点一次（P1）；装饰性 `↻`/`↧` 尚未全换矢量。
 10. **重构尚未完成的部分**（P3c/P4）：
    - 四个页面仍有约 100 处硬编码中文，尚未全部迁到 `strings.xml`
    - `ConfigActivity` 仍有 ~1600 行，未拆成 Page/ModelEditor/PushController
@@ -119,8 +128,9 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
    白名单 + 危险动作二次确认 + `POST /action`；开工前跑第 6 节待实测清单（变更性命令需授权）
 2. 输出前缀单点注入（Frida 定位后；修好再恢复配置页卡片）
 3. （可选）`/v1/models` 模型发现——独立规划，不与本轮混做
-4. 收尾 P3c/P4（见 §6 第 10 条）；先稳定跑一段时间，再决定 tag / Release
-   （用户明确要求：稳定后再发布，本轮不打 tag）
+4. 收尾 P3c/P4（见 §6 第 10 条），然后发稳定版（例如 0.11.0 正式版）：
+   `git tag v0.11.0 && git push origin v0.11.0`
+   （beta.1/beta.2 已发布为 prerelease；正式版需去掉版本号里的 `-`）
 
 ## 8. 回滚
 

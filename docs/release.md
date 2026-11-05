@@ -48,7 +48,9 @@ keytool -genkeypair -keystore keystore/xiaoi.keystore -alias xiaoi \
   -dname "CN=XiaoAi Plus, O=OpenSource, C=CN"
 ```
 
-口令自己定，别用 `build.sh` 自动生成时的默认值。生成后**立刻离线备份**（密码管理器 + 仓库外的备份盘）。
+口令自己定，别用仓库里的示例值。本地构建从 `KEYSTORE_PASSWORD` 或
+`~/.config/xiaoi/keystore_pass` 读取，不写进源码。生成后**立刻离线备份**
+（密码管理器 + 仓库外的备份盘）。
 密钥丢失＝无法覆盖安装，只能换包名或让所有用户卸载重装。
 
 ### 配置到 GitHub
@@ -61,12 +63,15 @@ gh secret set KEYSTORE_ALIAS --body xiaoi
 rm /tmp/ks.b64
 ```
 
-`KEYSTORE_KEY_PASSWORD` 可选，仅当 key 口令与 store 口令不同才需要设置。
+`KEYSTORE_KEY_PASSWORD` 可选。PKCS12 keystore 的 key 口令与 store 口令相同，
+通常不需要单独设置。**口令轮换后**要同步更新 `KEYSTORE_PASSWORD`（以及
+`KEYSTORE_KEY_PASSWORD`，如果设置过），否则 CI 签名会失败。
 
 ### 没有密钥时
 
-工作流不会失败：检测不到 `KEYSTORE_BASE64` 就打 `::warning::`，跳过正式签名并继续产出 artifact。
-这种包用 `build.sh` 临时生成的密钥签名，**只能测试，不能覆盖安装正式版**，Release Notes 会自动加警告。
+工作流不会失败：检测不到 `KEYSTORE_BASE64` 就打 `::warning::`，用 CI 临时密钥签名并继续产出 artifact。
+这种包**只能测试，不能覆盖安装正式版**，Release Notes 会自动加警告。
+本地 `build.sh` 缺少签名口令时只产出**未签名** APK（用于编译验证），不会假装签名成功。
 
 ## 3. 本地一键发版
 

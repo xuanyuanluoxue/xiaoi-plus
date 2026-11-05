@@ -9,6 +9,8 @@
 - MCP JSON 速览的工具清单从 `Mcp.toolsList()` 单一来源生成（补 `xiaoai_stats`），
   endpoint 显示实际端口
 - MCP 令牌默认掩码显示，避免截图/旁观泄露
+- 真机验收：主页/配置/日志/关于、深浅主题、暂停/恢复、备份对话框、
+  MCP health/tools/stats 均通过（USB adb）
 
 ## 0.11.0-beta.1 — 2026-11-05
 

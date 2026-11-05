@@ -76,7 +76,15 @@ jobs:
           KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
         run: |
           if [ -z "${KEYSTORE_BASE64:-}" ]; then
-            echo "::warning::未配置 secrets.KEYSTORE_BASE64，跳过正式签名。产物用临时密钥签名，仅供测试，不能覆盖安装正式版。"
+            echo "::warning::未配置 secrets.KEYSTORE_BASE64，使用临时密钥签名。产物仅供测试，不能覆盖安装正式版。"
+            mkdir -p "$RUNNER_TEMP/keystore"
+            keytool -genkeypair -keystore "$RUNNER_TEMP/keystore/temp.keystore" \
+              -storepass temp-xiaoi -keypass temp-xiaoi -alias xiaoi \
+              -keyalg RSA -keysize 2048 -validity 3650 \
+              -dname "CN=XiaoAi Plus Temp, O=OpenSource, C=CN" >/dev/null 2>&1
+            KEYSTORE_FILE="$RUNNER_TEMP/keystore/temp.keystore" \
+              KEYSTORE_PASSWORD=temp-xiaoi KEYSTORE_ALIAS=xiaoi \
+              bash scripts/ci-sign.sh build/xiaoi-plus-aligned.apk build/xiaoi-plus.apk
             echo "signed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
