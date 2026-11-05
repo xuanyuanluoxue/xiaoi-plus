@@ -10,6 +10,9 @@ import java.net.URL;
 public class HomeActivity extends BaseActivity {
 
     private TextView tvState, tvStateSub, tvVersion, tvThird, tvOfficial, tvError;
+    /** 上次桥探测结论；onResume 重绘时先沿用，异步 probe 再刷新。 */
+    private volatile Boolean runtimeActive;
+    private volatile String runtimeModel;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -36,7 +39,6 @@ public class HomeActivity extends BaseActivity {
 
         ConfigSync.start(this);
         refresh();
-        probe();
         loadLastError(currentToken());
     }
 
@@ -45,6 +47,8 @@ public class HomeActivity extends BaseActivity {
         // FileObserver 失效兜底：文件变了就先热应用一次，再刷新界面（§5.2 #6）
         if (ConfigSync.fileChanged(this)) ConfigSync.syncNow(this);
         refresh();
+        // 回到前台必须重新探一次运行时：暂停/恢复、MCP 开关、模型切换都可能发生在别的页面
+        probe();
     }
 
     private void refresh() {
@@ -52,7 +56,7 @@ public class HomeActivity extends BaseActivity {
         AppConfig.Provider p = c.activeProvider();
         AppConfig.ModelItem m = c.activeModel();
         // 状态规则与配置页同源（StatusResolver）；桥拿到运行时结论后再修正一次。
-        renderStatus(c, null, null);
+        renderStatus(c, runtimeActive, runtimeModel);
         if (tvVersion != null) tvVersion.setText(versionLabel());
         // 调用量由 probe() 经桥的 /stats 填充；桥不可达时保持「—」
         if (tvThird != null && tvThird.getText().length() == 0) tvThird.setText("—");
@@ -98,7 +102,7 @@ public class HomeActivity extends BaseActivity {
                 sub = "小爱在用 " + runtimeModel + "（文件 " + m.id + "）";
             } else {
                 sub = "模型重定向 · " + (model.length() > 0 ? model : "已启用");
-                sub += runtimeActive != null ? " · 已确认" : " · 未确认（小爱未运行或 MCP 未开启）";
+                sub += runtimeActive != null ? " · 已确认" : " · 未确认";
             }
         } else if (r.status.isPaused()) {
             sub = "已暂停 · 小爱使用原生模型";
@@ -170,6 +174,8 @@ public class HomeActivity extends BaseActivity {
                     }
                     usage = parseUsage(BridgeClient.stats(port, token, 1));
                 }
+                runtimeActive = active;
+                runtimeModel = model;
                 final Boolean fActive = active;
                 final String fModel = model;
                 final int[] fUsage = usage;

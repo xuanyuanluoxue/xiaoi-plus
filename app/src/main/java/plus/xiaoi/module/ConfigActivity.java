@@ -461,20 +461,19 @@ public class ConfigActivity extends BaseActivity {
      * 明确标注这是「config.json 里的期望配置」；token 只显示是否设置，不回显明文。
      */
     private String mcpJsonSummary() {
-        int port = 8771;
+        int port = bridgePort;
         boolean tokenSet = cfg.mcpToken != null && cfg.mcpToken.trim().length() > 0;
         String enabled = cfg.enabled ? "true" : "false";
         String model = cfg.model().length() == 0 ? "未配置" : cfg.model();
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
         sb.append("  \"source\":    \"config.json（期望配置）\",\n");
-        sb.append("  \"endpoint\":  \"http://127.0.0.1:").append(port)
-                .append("..8775/mcp（首个可用端口）\",\n");
+        sb.append("  \"endpoint\":  \"").append(mcpUrl()).append("\",\n");
         sb.append("  \"auth\":      \"Bearer ").append(tokenSet ? "<已设置>" : "<未设置，接口将拒绝请求>").append("\",\n");
         sb.append("  \"protocol\":  \"JSON-RPC 2.0 (MCP 2025-03-26)\",\n");
         sb.append("  \"model\":     \"").append(model).append("\",\n");
         sb.append("  \"enabled\":   ").append(enabled).append(",\n");
-        sb.append("  \"tools\":     \"status · submit · cli · config · switch_model · logs · island\",\n");
+        sb.append("  \"tools\":     \"").append(Mcp.toolNames(" · ")).append("\",\n");
         sb.append("  \"bind\":      \"127.0.0.1 仅本机可访问，外网无法连入\"\n");
         sb.append("}");
         return sb.toString();

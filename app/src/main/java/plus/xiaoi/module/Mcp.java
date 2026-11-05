@@ -295,6 +295,22 @@ public final class Mcp {
         return r;
     }
 
+    /** 工具名列表（去掉 xiaoai_ 前缀），供状态速览等紧凑展示。 */
+    public static String toolNames(String sep) {
+        StringBuilder sb = new StringBuilder();
+        Object v = toolsList().get("tools");
+        if (!(v instanceof List)) return "";
+        for (Object item : (List<?>) v) {
+            if (!(item instanceof Map)) continue;
+            String name = Json.optString((Map<?, ?>) item, "name", "");
+            if (name.length() == 0) continue;
+            if (name.startsWith("xiaoai_")) name = name.substring(7);
+            if (sb.length() > 0) sb.append(sep);
+            sb.append(name);
+        }
+        return sb.toString();
+    }
+
     /** 工具清单的纯文本（Skill/复制用），从 toolsList 单一来源生成，避免文档漏工具。 */
     public static String toolListText() {
         StringBuilder sb = new StringBuilder();

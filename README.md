@@ -6,8 +6,8 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](../../releases)。
 >
-> 📦 当前测试版：**v0.11.0-beta.1** ·
-> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.11.0-beta.1)
+> 📦 当前测试版：**v0.11.0-beta.2** ·
+> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.11.0-beta.2)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
