@@ -57,7 +57,8 @@ flowchart LR
 
 ### 2.2 控制面协议
 
-App 侧 `BridgeControlService`（exported=false + 显式 ComponentName 仍可被系统外应用 bind；
+App 侧 `BridgeControlService`（`exported=true` + 显式 ComponentName、无 intent-filter；
+安全边界在每个 Binder transaction 首行的 UID 校验，而不是靠 `exported=false`；
 必须在每个 Binder 方法首行做 UID 校验）：
 
 ```java
