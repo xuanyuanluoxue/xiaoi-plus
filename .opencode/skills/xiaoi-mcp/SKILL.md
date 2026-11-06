@@ -5,6 +5,10 @@ description: 通过 xiaoi-plus 的 MCP 能力桥调用手机上的小爱同学�
 
 # 调用小爱同学（xiaoi-plus MCP）
 
+> 新 Agent 优先看 `skill/xiaoi-agent`：8770 是 App 侧动作面，支持 device.info / app.open /
+> alarm / notification / media / confirm / notify / ask，小爱不运行也能用。
+> 本 skill 主要覆盖 8771（小爱进程内）的对话与运维工具。
+
 xiaoi-plus 是手机上的 LSPosed 模块，把「超级小爱」包装成一个本机/局域网 MCP 服务。
 外部 Agent 不需要改手机代码，只要用 Bearer token 调 `POST /mcp`。
 
