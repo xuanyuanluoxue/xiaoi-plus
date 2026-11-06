@@ -104,15 +104,15 @@ public final class TestMain {
         }
         try {
             failed += UsageCounterTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL UsageCounterTest 套件异常: " + t);
+        }
         try {
             failed += LanTest.run();
         } catch (Throwable t) {
             failed++;
             System.out.println("  FAIL LanTest 套件异常: " + t);
-        }
-        } catch (Throwable t) {
-            failed++;
-            System.out.println("  FAIL UsageCounterTest 套件异常: " + t);
         }
         try {
             failed += ErrorCatalogTest.run();
