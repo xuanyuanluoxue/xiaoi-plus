@@ -374,12 +374,9 @@ public final class AndroidExecutor implements ActionExecutor {
                     "不支持的 command：" + command);
         }
 
-        if (!isMusicActive(am)) {
-            return failure("media.control", AgentError.Code.NOT_AVAILABLE,
-                    "当前没有活跃的媒体会话");
-        }
-
+        boolean active = isMusicActive(am);
         try {
+            // 不再用 isMusicActive 阻断：暂停状态下派发 play 正是恢复播放的路径。
             am.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
             am.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, keyCode));
         } catch (SecurityException t) {
@@ -394,8 +391,10 @@ public final class AndroidExecutor implements ActionExecutor {
         Map<String, Object> result = Json.obj();
         result.put("command", command);
         result.put("volume", volumePercent(am));
+        result.put("musicActive", active);
         List<String> warnings = new ArrayList<String>();
-        warnings.add("媒体键已派发；实际响应取决于当前前台 MediaSession");
+        warnings.add("媒体键已派发；实际响应取决于当前前台 MediaSession"
+                + (active ? "" : "（当前未检测到活跃播放）"));
         return new ActionResult(true, "media.control", NAME, result, warnings, null, 0, "", null);
     }
 
