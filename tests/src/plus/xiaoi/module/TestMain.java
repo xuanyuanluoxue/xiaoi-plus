@@ -55,6 +55,18 @@ public final class TestMain {
             System.out.println("  FAIL ConfigStoreTest 套件异常: " + t);
         }
         try {
+            failed += BridgePolicyTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL BridgePolicyTest 套件异常: " + t);
+        }
+        try {
+            failed += LeaderElectionTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL LeaderElectionTest 套件异常: " + t);
+        }
+        try {
             failed += BridgePusherTest.run();
         } catch (Throwable t) {
             failed++;

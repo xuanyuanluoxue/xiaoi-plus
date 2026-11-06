@@ -102,6 +102,18 @@ public final class BridgeControlClient {
         });
     }
 
+    /**
+     * 主动拉一次配置（生命周期每 10s 巡检调用）。
+     *
+     * 这是一条兜底同步：App 保存后即使忘了发 reload，MCP 关闭/重新开启
+     * 也能在没有 HTTP 监听的情况下通过控制面生效。未连接时静默跳过，
+     * 由既有退避逻辑负责重连。
+     */
+    public static void refresh() {
+        if (!sStarted || sFatal || sRemote == null) return;
+        runAsync(PULL);
+    }
+
     // ------------------------------------------------------------- 绑定与重连
 
     private static final ServiceConnection CONNECTION = new ServiceConnection() {
@@ -336,7 +348,8 @@ public final class BridgeControlClient {
         try {
             AppConfig ac = ConfigCodec.fromJson(json);
             Config c = Config.create(ac.baseUrl(), ac.apiKey(), ac.model(), ac.marker,
-                    ac.mcpEnabled, ac.mcpToken, ac.markerTemplate, ac.enabled, ac.mcpLan);
+                    ac.mcpEnabled, ac.mcpToken, ac.markerTemplate, ac.enabled, ac.mcpLan,
+                    ac.rev);
             Hook.applyConfig(c);
             Bridge.updateAccess(c.lan(), c.bridge());
             sAppliedHash = hash;

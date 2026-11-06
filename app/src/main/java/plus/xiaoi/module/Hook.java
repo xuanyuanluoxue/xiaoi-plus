@@ -49,6 +49,9 @@ public class Hook implements IXposedHookLoadPackage {
             } else {
                 Logs.i("已启用 model=" + sConfig.model());
             }
+            // WP3：每个小爱进程都参与控制面 + leader 选举（不依赖「主进程」命名）。
+            // 是否监听端口由 BridgePolicy 决定；非 leader 仍然只 hook / 拉配置。
+            Bridge.onProcessStart(sConfig, lp.classLoader);
 
             hookConfigObject(lp.classLoader);
             hookProviderId(lp.classLoader);

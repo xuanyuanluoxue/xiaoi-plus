@@ -1,8 +1,28 @@
 # 更新日志
 
-## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化
+## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期
 
-> **重构进行中，未发布**。旧 HTTP 推送仍是主路径（WP3 才切换），配置事实源已移到私有目录。
+> **重构进行中，未发布**。旧 HTTP 推送仍保留（WP4 删除），数据面已切到 leader 单监听。
+
+- 新增 `core/BridgePolicy`（纯 JVM）：`shouldListen` / `bindHost` / `tokenStrongEnoughForLan`
+  （32 hex 仅预留，WP4 才启用；本包 LAN 行为不变）
+- 新增 `bridge/LeaderElection`：小爱各进程共享 `files/xiaoi_bridge.lock`，
+  `RandomAccessFile + FileChannel.tryLock()` 选出全机唯一 leader；进程死亡由内核释放锁，
+  其他进程每 10s 重试接管；同 JVM `OverlappingFileLockException` 安全降级
+- 新增 `bridge/BridgeLifecycle`：幂等 `start/apply/stop`；MCP 关闭或 token 为空时
+  `stopServer` + 释放 leader 锁，并且不再绑定 8771~8775；配置变化统一走 `apply()`，
+  删除 `Bridge.rebindIfNeeded` 双路径
+- `Bridge.install` 不再无条件 `startServer`：先起控制面，再由生命周期决定 leader；
+  `Bridge.stopServer()` 关闭 server、清会话、`sStarted=false`、`sPort=0`、`sBoundLan=false`
+- 非 leader 进程的 `Bridge.port()` 恒为 0；只有 leader 上报真实端口
+- 所有小爱进程都参与控制面与 leader 选举（`Hook` 加载即启动），不依赖「主进程」命名；
+  无 facade 的进程（`:core`）先等 30s，让带 facade/CLI 的进程优先当 leader
+- 生命周期每 10s 主动 `pullConfig` 兜底：MCP 关闭期间 App 重新开启也能生效（无需重启小爱）
+- 关闭判定按 `cfg_rev` 取新：控制面配置 rev 高时以控制面为准；rev 相同以 target prefs 为准，
+  避免 leader 释放锁后其他进程用陈旧内存状态误接管
+- 新增纯 JVM `BridgePolicyTest` / `LeaderElectionTest`（含跨进程 kill 后接管验证）
+
+### WP1 控制面
 
 - 新增 `control/BridgeControlService`（App 进程 bound Service，显式 ComponentName，
   无 intent-filter）：小爱进程通过 Binder 拉取 `config.json`、注册 callback、
@@ -19,6 +39,7 @@
 - `config.json` 不存在时 `pullConfig` 返回错误，不用默认骨架覆盖 beta.4 运行态配置
 - `control_plane` 模块 prefs 开关（默认开）；关闭后行为与 beta.4 一致
 - 旧 `BridgePusher` / `/config` 未删除、未切换，`ConfigCodec` schema 未改
+- WP3 补充：控制面下发携带 `cfg_rev`；每个进程每 10s 主动 pull 一次作为兜底
 
 ### WP2 配置单一事实源
 

@@ -137,7 +137,7 @@ else
 fi
 echo "$LOG" | grep -q 'provider 标识 hook 完成' \
     && pass "provider 标识 hook 完成" || fail "未见「provider 标识 hook 完成」"
-echo "$LOG" | grep -q '能力桥已监听 127.0.0.1:' \
+echo "$LOG" | grep -qE '能力桥已监听 (127\.0\.0\.1|0\.0\.0\.0):' \
     && pass "能力桥已监听" || fail "未见「能力桥已监听」"
 
 # ---------------------------------------------------------------- 2) 端口发现 + forward
