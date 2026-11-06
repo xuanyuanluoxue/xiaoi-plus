@@ -30,6 +30,8 @@ logs/
 *.apk
 *.sha256
 *.idsig
+# 例外：发布门禁固定签名指纹（证书公钥指纹，不是产物校验和）
+!scripts/expected-signer.sha256
 kpass.txt
 *.p12
 *.pfx

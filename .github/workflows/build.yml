@@ -62,6 +62,11 @@ jobs:
           chmod +x tests/run.sh
           ./tests/run.sh
 
+      - name: Consistency check
+        run: |
+          chmod +x scripts/check-consistency.sh
+          ./scripts/check-consistency.sh
+
       - name: Build
         run: |
           chmod +x build.sh scripts/*.sh
@@ -98,6 +103,17 @@ jobs:
             bash scripts/ci-sign.sh build/xiaoi-plus-aligned.apk build/xiaoi-plus.apk
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
+      - name: Verify APK signature
+        run: |
+          chmod +x scripts/verify-apk.sh
+          if [ "${{ steps.sign.outputs.signed }}" = "true" ]; then
+            # 正式密钥：必须命中 scripts/expected-signer.sha256，否则 tag 也不发 Release
+            ./scripts/verify-apk.sh build/xiaoi-plus.apk
+          else
+            echo "::warning::未使用正式签名密钥，只校验已签名/包名/versionCode，跳过固定指纹比对；该产物不能发布。"
+            ./scripts/verify-apk.sh build/xiaoi-plus.apk --allow-any-signer
+          fi
+
       - name: Package artifact
         run: |
           V="${{ steps.version.outputs.name }}"
@@ -119,8 +135,14 @@ jobs:
             dist/release-notes-*.md
           if-no-files-found: error
 
+      - name: Skip GitHub Release (unsigned build)
+        if: startsWith(github.ref, 'refs/tags/v') && steps.sign.outputs.signed != 'true'
+        run: |
+          echo "::warning::tag $GITHUB_REF_NAME 构建未使用正式签名密钥，已跳过 GitHub Release；artifact 仅供测试。"
+          echo "::notice::恢复 secrets.KEYSTORE_* 后重新推送 tag 才会创建 Release。"
+
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && steps.sign.outputs.signed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           body_path: dist/release-notes-${{ steps.version.outputs.name }}.md
