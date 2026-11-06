@@ -60,7 +60,7 @@ public final class AgentMcpTest {
 
         Map<String, Object> listed = mcp.toolsList();
         List<Object> tools = (List<Object>) listed.get("tools");
-        T.eq("tools/list 工具数", 4, tools.size());
+        T.eq("tools/list 工具数", 6, tools.size());
         T.eq("tools[0] 名称", "xiaoai_capabilities",
                 ((Map<?, ?>) tools.get(0)).get("name"));
         T.eq("tools[1] 名称", "xiaoai_action",
@@ -69,6 +69,10 @@ public final class AgentMcpTest {
                 ((Map<?, ?>) tools.get(2)).get("name"));
         T.eq("tools[3] 名称", "xiaoai_audit",
                 ((Map<?, ?>) tools.get(3)).get("name"));
+        T.eq("tools[4] 名称", "xiaoai_notify",
+                ((Map<?, ?>) tools.get(4)).get("name"));
+        T.eq("tools[5] 名称", "xiaoai_ask",
+                ((Map<?, ?>) tools.get(5)).get("name"));
 
         Map<?, ?> capsSchema = (Map<?, ?>) ((Map<?, ?>) tools.get(0)).get("inputSchema");
         T.eq("capabilities schema type", "object", capsSchema.get("type"));

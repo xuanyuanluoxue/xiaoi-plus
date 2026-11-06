@@ -27,6 +27,9 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ConfirmationManager.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/IdempotencyStore.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AuditLog.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/NotifyHost.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AskHost.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/BridgeAskHost.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/FallbackExecutor.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/RootCommands.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentMcp.java" \

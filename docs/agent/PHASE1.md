@@ -9,11 +9,42 @@
 
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1148） |
+| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1296） |
 | WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a/WP1.2b 已完成**：服务/8770/5 个动作/root 兜底） |
-| WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M（**WP1.3a 已完成**：确认/幂等/审计；notify/ask/LAN/记忆未做） |
+| WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M（**WP1.3a/WP1.3b 已完成**：确认/幂等/审计、notify/ask；LAN/记忆/job 未做） |
 
 WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验。
+
+### WP1.3b 完成记录（2026-11-06）
+
+- 新增纯 JVM `NotifyHost` / `AskHost` 接口与结果类型；`AgentMcp` 增加
+  `xiaoai_notify` / `xiaoai_ask`（工具数 4 → 6），旧构造保持兼容。
+- `xiaoai_notify`：channel `island`（默认）/`notification`；text 1~2000 字符；
+  island 正文按 60 字符截断（右侧 22 字由 8771 的 `Island.shortModel` 再截断），
+  结果 `truncated` 如实标记；island 失败/小爱不在自动降级普通通知，返回实际
+  `channel` 与 `fallback`；两条都失败 → `NOT_AVAILABLE`。只做提醒，不能批准危险动作。
+- `xiaoai_ask`：text 1~8000 字符，context string/object ≤8KB（按 UTF-8 字节），
+  timeout 默认 120s、上限 180s（超出钳制）；成功返回
+  `{text, sessionId, via:"xiaoi"}`；小爱不在 → `XIAOI_OFFLINE`，
+  会话归属/忙碌 → `CONFLICT`，超时 → `TIMEOUT`，其他 → `INTERNAL`。
+- 新增 `AndroidNotifyHost`：8771 MCP `xiaoai_island` 优先，失败降级 Android 通知
+  （复用 `agent_action` 渠道；权限缺失/通知关闭如实失败）；不打印 token，
+  不回传异常正文。
+- 新增纯 JVM `BridgeAskHost`：`session.open` 拿顶层 sessionId →
+  `agent.submit`；带 sessionId 时跳过开会话；`/cli?cmd=` 严格 URL 编码，
+  超过 8771 单行上限（约 8KB）在本地返回 `INVALID_ARGUMENT`，不伪装成离线。
+- `AgentService` 注入两个宿主；8770/8771/鉴权/前台服务行为未改。
+  context 只前置到本次 `agent.submit` 文本，手机端不持久化、不当指令。
+- 纯 JVM 新增 `AgentNotifyAskTest` 145 条断言（含本地 HttpServer 验证 `/cli`
+  编码、多轮复用、SESSION_BUSY、503、超时）；`AgentMcpTest` 63 → 65；
+  总断言 1148 → 1296。
+- `./tests/run.sh`、`SDK=... ./build.sh`、`scripts/check-consistency.sh` 全绿。
+- 真机未验证（本轮 `adb devices` 无设备）：island 实际显示/6 秒消失、
+  小爱不在时通知降级、多轮 sessionId、锁屏/勿扰行为；恢复设备后用
+  “回复 OK”这类无害 prompt 补测。超级岛的标题由 8771 固定拼成
+  “第三方模型 <text>”，提醒文案会出现该前缀（既有 8771 行为，本轮不改）。
+- 未做（留给后续）：LAN、记忆读写、持久化、`xiaoai_job_status`、
+  notify 限频（PLAN 建议每 10 秒 1 次）、用普通通知做危险动作批准。
 
 ### WP1.3a 完成记录（2026-11-06）
 
@@ -95,7 +126,8 @@ WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Age
 - 新增 `plus.xiaoi.module.agent`：ActionDescriptor / ActionRequest / ActionResult /
   ActionRegistry / AgentError / Actions / AgentValues。
 - 5 个动作描述已注册；`requiredCapability` 作为执行器准入条件（root 动作不能用 android 顶替）。
-- 单测 132 条；WP1.1 完成时 796，WP1.2a 后 851，WP1.3a 后 1148；`build.sh`、`check-consistency.sh` 通过。
+- 单测 132 条；WP1.1 完成时 796，WP1.2a 后 851，WP1.3a 后 1148，WP1.3b 后 1296；
+  `build.sh`、`check-consistency.sh` 通过。
 - 未实现 Android/Root 执行器、8770 服务、confirm 签发/幂等/审计；属于 WP1.2/1.3。
 
 ## 2. WP1.1：纯 JVM 契约层
@@ -200,11 +232,11 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 ## 3. WP1.2：App 前台服务与动作
 
 > 状态：**进行中**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
-> 已完成；WP1.3a（confirm/幂等/审计）已完成；notify/ask/LAN/记忆未做。
+> 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；LAN/记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
-> `AgentActionExecutorsTest.java`
+> `AgentActionExecutorsTest.java`、`AgentSecurityTest.java`、`AgentNotifyAskTest.java`
 > 验证：单测、`build.sh`、`check-consistency.sh`、真机 8770/鉴权/device.info 已通过；
-> WP1.2b 的真机动作验证待设备恢复（见上）。
+> WP1.2b/WP1.3b 的真机动作验证待设备恢复（见上）。
 
 ### 目标
 
@@ -243,8 +275,8 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 
 ## 4. WP1.3：Agent 体验
 
-> 状态：**WP1.3a 已完成**（确认 token / 幂等 / 审计，2026-11-06）；
-> `xiaoai_notify`、`xiaoai_ask`、LAN、`xiaoai_job_status`、记忆读写未做。
+> 状态：**WP1.3a / WP1.3b 已完成**（确认 token / 幂等 / 审计、notify/ask，2026-11-06）；
+> LAN、`xiaoai_job_status`、记忆读写、持久化未做。
 
 - `xiaoai_confirm` + confirm token（绑定 clientId/action/参数 hash，一次性，60s）。
 - `xiaoai_action` 的 `idempotencyKey`（24h）。
