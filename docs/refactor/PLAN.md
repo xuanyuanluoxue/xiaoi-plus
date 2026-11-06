@@ -1,6 +1,6 @@
 # 0.12.0 核心重构计划（已冻结）
 
-> 状态：**WP1/WP2 已完成并合并；下一步 WP3**
+> 状态：**WP1/WP2/WP3 已完成并合并；下一步 WP4**
 > 基线：`0.11.0-beta.4`（versionCode 15）
 > 目标：`0.12.0-beta.1` → `0.12.0`
 > 日期：2026-11-06
@@ -151,7 +151,7 @@ override 面都不可控；Service 只有一个 Binder 方法面。
 |---|---|---|---|
 | WP1 | 控制面 Service + UID + pull/register/report | 已完成 | L |
 | WP2 | 配置单一事实源 + 私有文件 + rev + 迁移 | 已完成 | L |
-| WP3 | 生命周期 + leader 选举 + 关闭即停 | WP1 | M |
+| WP3 | 生命周期 + leader 选举 + 关闭即停 | 已完成 | M |
 | WP4 | 数据面加固 + `/config` 410 + MCP 写权限 | WP3 | M |
 | WP5 | ConfigActivity 机械拆分（无行为变化） | 无 | M |
 | WP6 | 状态模型 + 主页/配置页/日志页 | WP1/WP2/WP5 | L |
