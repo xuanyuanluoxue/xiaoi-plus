@@ -5,6 +5,11 @@
     android:versionName="0.12.0-beta.1">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- minSdk / targetSdk 都显式钉在 26：保留 127.0.0.1 明文 HTTP 与旧版窗口行为。
          升级 targetSdk 会引入 edge-to-edge 等行为变更，必须单独评估。 -->
@@ -43,6 +48,28 @@
             android:name=".control.BridgeControlService"
             android:exported="true"
             android:enabled="true" />
+
+        <!-- WP1.2a：App 进程内的 Agent 动作面（127.0.0.1:8770）。
+             exported=false：只允许本 App 启动，外部只能走 HTTP + Bearer。 -->
+        <service
+            android:name=".agent.AgentService"
+            android:exported="false"
+            android:enabled="true"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="本机 Agent 动作面（loopback 8770），用于设备信息与后续动作" />
+        </service>
+
+        <!-- 开机自启：是否监听由 AgentService 按 mcpEnabled + token 判断。 -->
+        <receiver
+            android:name=".agent.AgentBootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name=".ShareProvider"
