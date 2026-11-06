@@ -19,7 +19,7 @@ skill/
 
 用途：让外部 Agent 通过 `8770` 调用手机能力。
 
-- 端点：`http://127.0.0.1:8770/mcp`（先 `adb forward tcp:8770 tcp:8770`）
+- 端点：`http://127.0.0.1:8770/mcp`（`adb forward`）或 App 开启 LAN 后的 `http://<IP>:8770/mcp`
 - 能力：`device.info`、`app.open`、`alarm.set`、`notification.send`、`media.control`
 - Agent 工具：`xiaoai_capabilities`、`xiaoai_action`、`xiaoai_confirm`、
   `xiaoai_audit`、`xiaoai_notify`、`xiaoai_ask`
