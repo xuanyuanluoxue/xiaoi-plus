@@ -81,6 +81,22 @@ public final class ActionRequest {
         return name != null && args.containsKey(name) && args.get(name) != null;
     }
 
+    /** 复制请求并替换 confirmToken；供确认通过后执行 pending 请求。 */
+    public ActionRequest withConfirmToken(String value) {
+        return builder(action)
+                .args(args)
+                .context(context)
+                .sessionId(sessionId)
+                .idempotencyKey(idempotencyKey)
+                .dryRun(dryRun)
+                .async(async)
+                .timeoutMs(timeoutMs)
+                .clientId(clientId)
+                .confirmToken(value)
+                .requestId(requestId)
+                .build();
+    }
+
     public Object arg(String name) {
         return name == null ? null : args.get(name);
     }

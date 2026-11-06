@@ -23,6 +23,10 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionDescriptor.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/Actions.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionRegistry.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/CanonicalArgs.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ConfirmationManager.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/IdempotencyStore.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AuditLog.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/FallbackExecutor.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/RootCommands.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentMcp.java" \
