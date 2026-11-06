@@ -53,6 +53,8 @@ public final class ConfigCodec {
             Map<?, ?> mcp = (Map<?, ?>) mcpV;
             c.mcpEnabled = Json.optBoolean(mcp, "enabled", false);
             c.mcpLan = Json.optBoolean(mcp, "lan", false);
+            // 旧文件没有 agentLan：按 false（8770 仅本机）处理，不升 schema。
+            c.agentLan = Json.optBoolean(mcp, "agentLan", false);
             c.mcpToken = Json.optString(mcp, "token", "");
         }
 
@@ -183,6 +185,7 @@ public final class ConfigCodec {
         Map<String, Object> mcp = Json.obj();
         mcp.put("enabled", c.mcpEnabled);
         mcp.put("lan", c.mcpLan);
+        mcp.put("agentLan", c.agentLan);
         mcp.put("token", c.mcpToken == null ? "" : c.mcpToken);
         o.put("mcp", mcp);
 
@@ -221,6 +224,9 @@ public final class ConfigCodec {
         String token = c.mcpToken == null ? "" : c.mcpToken.trim();
         if (c.mcpEnabled && c.mcpLan && token.length() == 0) {
             return "局域网访问必须设置 MCP 令牌（留空会让同一 Wi-Fi 下的设备直接控制小爱）";
+        }
+        if (c.mcpEnabled && c.agentLan && token.length() == 0) {
+            return "Agent 动作面开放局域网必须设置 MCP 令牌（留空会让同一 Wi-Fi 下的设备执行设备动作）";
         }
         if (!c.enabled) return null;
         AppConfig.Provider p = c.activeProvider();

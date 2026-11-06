@@ -15,6 +15,7 @@ import plus.xiaoi.module.BridgeClient;
 import plus.xiaoi.module.Lan;
 import plus.xiaoi.module.Mcp;
 import plus.xiaoi.module.R;
+import plus.xiaoi.module.agent.AgentLanPolicy;
 import plus.xiaoi.module.core.BridgePolicy;
 
 /**
@@ -33,9 +34,12 @@ public final class McpSection {
 
     private final Context ctx;
     private final Host host;
-    private final View rowToken, rowMcpLan, boxMcpJson;
+    private final View rowToken, rowMcpLan, rowAgentLan, boxMcpJson;
     private final TextView tvMcpUrl, tvMcpJson;
     private final EditText etToken;
+
+    /** 8770 Agent 动作面（与 8771 数据面独立开关，但共用同一个 token）。 */
+    private static final int AGENT_PORT = 8770;
 
     /** 实际桥端口（控制面未上报时保留 8771 提示值）；用于复制连接信息与 Skill。 */
     private volatile int bridgePort = Bridge.PORT_START;
@@ -46,6 +50,7 @@ public final class McpSection {
         this.host = host;
         rowToken = root.findViewById(R.id.row_token);
         rowMcpLan = root.findViewById(R.id.row_mcp_lan);
+        rowAgentLan = root.findViewById(R.id.row_agent_lan);
         boxMcpJson = root.findViewById(R.id.box_mcp_json);
         tvMcpUrl = (TextView) root.findViewById(R.id.tv_mcp_url);
         tvMcpJson = (TextView) root.findViewById(R.id.tv_mcp_json);
@@ -69,6 +74,7 @@ public final class McpSection {
         boolean on = cfg.mcpEnabled;
         if (rowToken != null) rowToken.setVisibility(on ? View.VISIBLE : View.GONE);
         if (rowMcpLan != null) rowMcpLan.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (rowAgentLan != null) rowAgentLan.setVisibility(on ? View.VISIBLE : View.GONE);
         if (boxMcpJson != null) boxMcpJson.setVisibility(on ? View.VISIBLE : View.GONE);
         if (tvMcpUrl != null) {
             tvMcpUrl.setVisibility(on ? View.VISIBLE : View.GONE);
@@ -113,18 +119,62 @@ public final class McpSection {
         return cfg.mcpLan && BridgePolicy.tokenStrongEnoughForLan(cfg.mcpToken);
     }
 
+    // ------------------------------------------------------------- 8770 Agent
+
+    /** 8770 实际是否开放局域网（弱 token 自动回退）。 */
+    private static boolean agentLanEffective(AppConfig cfg) {
+        return AgentLanPolicy.lanEffective(cfg.agentLan, cfg.mcpToken);
+    }
+
+    private static String agentLocalUrl() {
+        return "http://127.0.0.1:" + AGENT_PORT + "/mcp";
+    }
+
+    /** 8770 复制/展示用地址：只有实际开放局域网且拿到 IP 时才用局域网地址。 */
+    private String agentUrl() {
+        AppConfig cfg = host.config();
+        if (agentLanEffective(cfg)) {
+            String lan = Lan.mcpUrl(AGENT_PORT, true);
+            if (!lan.contains("127.0.0.1")) return lan;
+        }
+        return agentLocalUrl();
+    }
+
+    /** 8770 地址提示：明确区分「配置请求 LAN」与「实际绑定」。 */
+    private String agentUrlHint() {
+        AppConfig cfg = host.config();
+        boolean requested = cfg.agentLan;
+        boolean effective = agentLanEffective(cfg);
+        if (requested && !effective) {
+            return "Agent: 令牌不足 32 位，当前实际仅本机\n"
+                    + "Agent 本机: " + agentLocalUrl() + "（需 adb forward）";
+        }
+        if (effective) {
+            String lan = Lan.mcpUrl(AGENT_PORT, true);
+            if (lan.contains("127.0.0.1")) {
+                return "Agent: 未检测到局域网 IPv4（连上 Wi-Fi 后重进本页）\n"
+                        + "Agent 本机: " + agentLocalUrl() + "（需 adb forward）";
+            }
+            return "Agent: " + lan + "\nAgent 本机: " + agentLocalUrl() + "（需 adb forward）";
+        }
+        return "Agent: " + agentLocalUrl() + "（仅本机，需 adb forward）";
+    }
+
     /** 展示用：局域网模式同时给出局域网与本机地址；没连 Wi-Fi 时明确提示。 */
     private String mcpUrlHint() {
         AppConfig cfg = host.config();
-        if (!cfg.mcpLan) return localMcpUrl();
-        if (!BridgePolicy.tokenStrongEnoughForLan(cfg.mcpToken)) {
-            return "令牌不足 32 位，当前实际仅本机\n" + localMcpUrl();
+        String base;
+        if (!cfg.mcpLan) {
+            base = localMcpUrl();
+        } else if (!BridgePolicy.tokenStrongEnoughForLan(cfg.mcpToken)) {
+            base = "令牌不足 32 位，当前实际仅本机\n" + localMcpUrl();
+        } else {
+            String lan = Lan.mcpUrl(bridgePort, true);
+            base = lan.contains("127.0.0.1")
+                    ? "未检测到局域网 IPv4（连上 Wi-Fi 后重进本页）\n" + localMcpUrl()
+                    : lan + "\n" + localMcpUrl() + "（本机）";
         }
-        String lan = Lan.mcpUrl(bridgePort, true);
-        if (lan.contains("127.0.0.1")) {
-            return "未检测到局域网 IPv4（连上 Wi-Fi 后重进本页）\n" + localMcpUrl();
-        }
-        return lan + "\n" + localMcpUrl() + "（本机）";
+        return base + "\n" + agentUrlHint();
     }
 
     /**
@@ -148,6 +198,8 @@ public final class McpSection {
         sb.append("  \"model\":     \"").append(model).append("\",\n");
         sb.append("  \"enabled\":   ").append(enabled).append(",\n");
         sb.append("  \"lan\":       ").append(cfg.mcpLan ? "true" : "false").append(",\n");
+        sb.append("  \"agentLan\":  ").append(cfg.agentLan ? "true" : "false").append(",\n");
+        sb.append("  \"agentEndpoint\": \"").append(agentUrl()).append("\",\n");
         sb.append("  \"tools\":     \"").append(Mcp.toolNames(" · ")).append("\",\n");
         sb.append("  \"bind\":      \"").append(lanEffective
                 ? "0.0.0.0（同一局域网可访问，必须带 Bearer token）"
@@ -166,22 +218,38 @@ public final class McpSection {
         String lanUrl = Lan.mcpUrl(bridgePort, true);
         boolean hasLanIp = !lanUrl.contains("127.0.0.1");
         String url = lanOn && hasLanIp ? lanUrl : local;
+
+        String agentUrl = agentUrl();
+        boolean agentHasLanIp = agentLanEffective(cfg) && !agentUrl.equals(agentLocalUrl());
+
         StringBuilder txt = new StringBuilder();
-        txt.append("URL : ").append(url).append('\n');
+        txt.append("8771 MCP  : ").append(url).append('\n');
+        txt.append("8770 Agent: ").append(agentUrl).append('\n');
+        txt.append("前置: ");
         if (lanOn && hasLanIp) {
-            txt.append("本机: ").append(local).append('\n');
-            txt.append("前置: 手机与电脑在同一 Wi-Fi，无需 adb forward\n");
+            txt.append("8771 与电脑在同一 Wi-Fi，无需 adb forward");
         } else {
-            txt.append("前置: adb forward tcp:").append(bridgePort)
-                    .append(" tcp:").append(bridgePort).append('\n');
+            txt.append("adb forward tcp:").append(bridgePort)
+                    .append(" tcp:").append(bridgePort);
         }
-        txt.append("Auth: Bearer ").append(token)
-                .append("\n\n客户端片段：\n{\"mcpServers\":{\"xiaoi-plus\":{\"url\":\"")
+        txt.append("；");
+        if (agentHasLanIp) {
+            txt.append("8770 与电脑在同一 Wi-Fi，无需 adb forward");
+        } else {
+            txt.append("adb forward tcp:").append(AGENT_PORT)
+                    .append(" tcp:").append(AGENT_PORT);
+        }
+        txt.append('\n');
+        txt.append("Auth: Bearer ").append(token).append('\n');
+        txt.append("Agent 工具：capabilities / action / confirm / audit / notify / ask\n\n");
+        txt.append("客户端片段：\n{\"mcpServers\":{\"xiaoi-plus\":{\"url\":\"")
                 .append(url).append("\",\"headers\":{\"Authorization\":\"Bearer ")
+                .append(token).append("\"}},\"xiaoi-agent\":{\"url\":\"")
+                .append(agentUrl).append("\",\"headers\":{\"Authorization\":\"Bearer ")
                 .append(token).append("\"}}}}");
         ClipboardManager cm = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
         cm.setPrimaryClip(ClipData.newPlainText("xiaoi mcp", txt.toString()));
-        host.toast("已复制 MCP 连接信息");
+        host.toast("已复制 MCP 连接信息（8771 + 8770）");
     }
 
     public void copySkill() {
@@ -193,12 +261,24 @@ public final class McpSection {
         String pre = lanOn && !url.equals(local)
                 ? "前置：手机与电脑在同一 Wi-Fi，无需 adb forward\n"
                 : "前置：adb forward tcp:" + bridgePort + " tcp:" + bridgePort + "\n";
+
+        boolean agentLanOn = agentLanEffective(cfg);
+        String agentUrl = agentUrl();
+        String agentPre = agentLanOn && !agentUrl.equals(agentLocalUrl())
+                ? "前置：手机与电脑在同一 Wi-Fi，无需 adb forward\n"
+                : "前置：adb forward tcp:" + AGENT_PORT + " tcp:" + AGENT_PORT + "\n";
+
         String skill = "# 小爱同学plus MCP\n\n"
+                + "## 8771 数据面（小爱）\n\n"
                 + pre
                 + "端点：" + url + "（streamable-http，Bearer token）\n\n"
-                + "工具：\n" + Mcp.toolListText();
+                + "工具：\n" + Mcp.toolListText()
+                + "\n## 8770 Agent 动作面\n\n"
+                + agentPre
+                + "端点：" + agentUrl + "（streamable-http，Bearer token）\n\n"
+                + "Agent 工具：capabilities / action / confirm / audit / notify / ask\n";
         ClipboardManager cm = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
         cm.setPrimaryClip(ClipData.newPlainText("xiaoi skill", skill));
-        host.toast("已复制 Skill 文本");
+        host.toast("已复制 Skill 文本（8771 + 8770）");
     }
 }

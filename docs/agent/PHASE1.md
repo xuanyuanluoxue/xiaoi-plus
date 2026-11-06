@@ -9,11 +9,45 @@
 
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1296） |
+| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1328） |
 | WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a/WP1.2b 已完成**：服务/8770/5 个动作/root 兜底） |
-| WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M（**WP1.3a/WP1.3b 已完成**：确认/幂等/审计、notify/ask；LAN/记忆/job 未做） |
+| WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M（**WP1.3a/WP1.3b 已完成**：确认/幂等/审计、notify/ask；记忆/job 未做） |
+| WP1.4 | 8770 独立 LAN 开关（默认关、弱令牌回退、UI 如实显示、复制含 8770） | WP1.2 | M（**已完成**：2026-11-06） |
 
-WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验。
+WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验；WP1.4 补 8770 的局域网开关。
+
+### WP1.4 完成记录（2026-11-06）
+
+- 配置新增 `mcp.agentLan`（默认 false，不升 schema）：`AppConfig.agentLan` 与
+  `ConfigCodec` 读写；旧文件缺字段按 false。`mcp.lan`（8771）语义不变。
+- `ConfigCodec.validate`：`mcpEnabled && agentLan && token 为空` 明确拒绝
+  （“Agent 动作面开放局域网必须设置 MCP 令牌…”）；暂停模型不影响该规则。
+- 新增纯 JVM `AgentLanPolicy`：`lanEffective` / `bindHost` / `fallbackReason`。
+  只有「显式请求 + 32 位十六进制 token」才绑 `0.0.0.0`，其余一律 `127.0.0.1`；
+  8770 与 8771 复用同一个 `mcpToken` 和 `BridgePolicy.tokenStrongEnoughForLan`。
+- `AgentHttpServer`：保留 `(token,mcp,registry)`（等价 lan=false），新增带 `lan` 的构造；
+  `start()` 按策略绑定并记录实际地址；新增 `isLan()` / `bindHost()`；
+  `/health` 返回 `ok agent=true port=8770 bind=127.0.0.1` 或 `bind=0.0.0.0`。
+  弱 token + lan=true 时实际回退 loopback，`lastError` 记录“需要 32 位十六进制令牌，已回退”，
+  不打印 token；鉴权、工具与线程模型未改。
+- `AgentService`：把 `agentLan` 传给 8770；LAN 状态或有效绑定变化时重绑；
+  通知按实际结果分为「仅本机」「局域网」「仅本机：局域网需要 32 位令牌」三种，
+  弱令牌回退同时写日志。
+- UI：新增 `row_agent_lan` / `sw_agent_lan`（`mcpEnabled` 时显示）；打开先弹风险确认，
+  token 空/弱时走「生成并开启/取消」（复用 `newToken()`），与 8771 开关确认逻辑独立；
+  关闭即时改配置并提示保存。地址提示新增 Agent 行并区分期望/实际绑定；
+  JSON 速览新增 `agentLan` 与 `agentEndpoint`；复制连接信息与 Skill 同时包含
+  8771/8770 地址、前置条件（同一 Wi-Fi 或 adb forward）与 8770 工具
+  capabilities / action / confirm / audit / notify / ask。
+- 纯 JVM 新增 `AgentLanPolicyTest` 22 条断言；`ConfigCodecTest` 77 → 87（+10）；
+  总断言 1296 → 1328。
+- `./tests/run.sh`、`SDK=... ./build.sh`、`scripts/check-consistency.sh` 全绿。
+- 本机 JVM 探针验证：强 token + lan=true → `bind=0.0.0.0`、`/health` 200；
+  弱 token → `127.0.0.1` 且 `lastError` 说明回退；lan=false → loopback。
+- **真机未验证**（本轮 `adb devices` 无设备）：`ss -ltn` 的 `0.0.0.0:8770`、
+  电脑经手机 IP 访问 `/health` 与 `/mcp` capabilities、关闭开关保存后回到 loopback、
+  HyperOS 后台/通知文案。设备恢复后补测。
+- 未做：8770 独立 token/scope、LAN 限流、记忆读写、`xiaoai_job_status`；不改 8771。
 
 ### WP1.3b 完成记录（2026-11-06）
 
@@ -126,7 +160,7 @@ WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Age
 - 新增 `plus.xiaoi.module.agent`：ActionDescriptor / ActionRequest / ActionResult /
   ActionRegistry / AgentError / Actions / AgentValues。
 - 5 个动作描述已注册；`requiredCapability` 作为执行器准入条件（root 动作不能用 android 顶替）。
-- 单测 132 条；断言演进：WP1.1 796 → WP1.2a 851 → WP1.2b 969 → WP1.3a 1148 → WP1.3b 1296；
+- 单测 132 条；断言演进：WP1.1 796 → WP1.2a 851 → WP1.2b 969 → WP1.3a 1148 → WP1.3b 1296 → WP1.4 1328；
   `build.sh`、`check-consistency.sh` 通过。
 - 未实现 Android/Root 执行器、8770 服务、confirm 签发/幂等/审计；属于 WP1.2/1.3。
 
@@ -232,7 +266,8 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 ## 3. WP1.2：App 前台服务与动作
 
 > 状态：**进行中**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
-> 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；LAN/记忆/job 未做。
+> 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；WP1.4（8770 独立 LAN）已完成；
+> 记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
 > `AgentActionExecutorsTest.java`、`AgentSecurityTest.java`、`AgentNotifyAskTest.java`
 > 验证：单测、`build.sh`、`check-consistency.sh`、真机 8770/鉴权/device.info 已通过；
@@ -276,7 +311,8 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 ## 4. WP1.3：Agent 体验
 
 > 状态：**WP1.3a / WP1.3b 已完成**（确认 token / 幂等 / 审计、notify/ask，2026-11-06）；
-> LAN、`xiaoai_job_status`、记忆读写、持久化未做。
+> WP1.4 已完成 8770 独立局域网开关（默认关、弱 token 回退、UI/复制含 8770）；
+> `xiaoai_job_status`、记忆读写、持久化未做。
 
 - `xiaoai_confirm` + confirm token（绑定 clientId/action/参数 hash，一次性，60s）。
 - `xiaoai_action` 的 `idempotencyKey`（24h）。

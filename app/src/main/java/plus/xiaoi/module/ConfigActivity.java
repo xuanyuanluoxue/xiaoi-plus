@@ -75,7 +75,7 @@ public class ConfigActivity extends BaseActivity {
         public void run() { checkModelNow(false); }
     };
 
-    private Switch swEnabled, swMcp, swPrefix, swMcpLan;
+    private Switch swEnabled, swMcp, swPrefix, swMcpLan, swAgentLan;
     private View rowPrefixTpl, tvPrefixHelp, tvDirty;
     private TextView fab;
     private LinearLayout boxProviderChips, boxModelChips;
@@ -116,6 +116,7 @@ public class ConfigActivity extends BaseActivity {
         swEnabled = (Switch) find(R.id.sw_enabled);
         swMcp = (Switch) find(R.id.sw_mcp);
         swMcpLan = (Switch) find(R.id.sw_mcp_lan);
+        swAgentLan = (Switch) find(R.id.sw_agent_lan);
         swPrefix = (Switch) find(R.id.sw_prefix);
         rowPrefixTpl = find(R.id.row_prefix_tpl);
         tvPrefixHelp = find(R.id.tv_prefix_help);
@@ -251,6 +252,12 @@ public class ConfigActivity extends BaseActivity {
             public void onCheckedChanged(android.widget.CompoundButton v, boolean on) {
                 if (rendering) return;
                 onLanToggled(on);
+            }
+        });
+        swAgentLan.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(android.widget.CompoundButton v, boolean on) {
+                if (rendering) return;
+                onAgentLanToggled(on);
             }
         });
         swPrefix.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -437,6 +444,75 @@ public class ConfigActivity extends BaseActivity {
         rendering = false;
     }
 
+    /**
+     * 8770 Agent 动作面局域网开关：与 8771 的分开确认，不复用开关状态。
+     *
+     * <p>8770 能执行设备动作，风险比只读/对话工具更高；因此打开时先说明风险。
+     * token 为空或不足 32 hex 时明确给出「生成并开启」路径，取消则不改变配置。</p>
+     */
+    private void onAgentLanToggled(boolean on) {
+        if (!on) {
+            cfg.agentLan = false;
+            applyMcpState();
+            markDirty();
+            toast("已修改，保存后关闭 Agent 局域网");
+            return;
+        }
+        // 确认前开关保持关闭；取消即不改变配置。
+        setAgentLanChecked(false);
+        String token = cfg.mcpToken == null ? "" : cfg.mcpToken.trim();
+        boolean weak = !BridgePolicy.tokenStrongEnoughForLan(token);
+        String risk = "同一 Wi-Fi 下的设备凭令牌可执行打开应用、发通知、调音量等设备动作。\n"
+                + "公共 Wi-Fi / 公司网络建议关闭。\n"
+                + "必须使用 32 位十六进制令牌；弱令牌会自动回退仅本机。";
+        if (weak) {
+            String why = token.length() == 0 ? "当前没有令牌" : "当前令牌不足 32 位";
+            dialogs.dialogBuilder()
+                    .setTitle("令牌不足 32 位？")
+                    .setMessage(risk + "\n\n" + why + "，局域网无法生效；是否生成新令牌并开启？\n"
+                            + "生成后旧 MCP 客户端会立即 401。")
+                    .setPositiveButton("生成并开启", new android.content.DialogInterface.OnClickListener() {
+                        public void onClick(android.content.DialogInterface d, int which) {
+                            enableAgentLan(true);
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+        dialogs.dialogBuilder()
+                .setTitle("允许 Agent 局域网访问？")
+                .setMessage(risk)
+                .setPositiveButton("开启", new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface d, int which) {
+                        enableAgentLan(false);
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /** 用户确认后真正打开 8770 局域网；generate=true 时同时生成 32 hex 令牌。 */
+    private void enableAgentLan(boolean generate) {
+        if (generate) {
+            cfg.mcpToken = newToken();
+            rendering = true;
+            mcpSection.setToken(cfg.mcpToken);
+            rendering = false;
+        }
+        cfg.agentLan = true;
+        setAgentLanChecked(true);
+        applyMcpState();
+        markDirty();
+        toast(generate ? "已生成令牌并开启 Agent 局域网，保存后生效" : "已修改，保存后生效");
+    }
+
+    private void setAgentLanChecked(boolean checked) {
+        rendering = true;
+        swAgentLan.setChecked(checked);
+        rendering = false;
+    }
+
     private void setModelCheckText(String text, int colorRes) {
         if (tvModelCheck == null) return;
         tvModelCheck.setText(text);
@@ -453,6 +529,7 @@ public class ConfigActivity extends BaseActivity {
             swEnabled.setChecked(cfg.enabled);
             swMcp.setChecked(cfg.mcpEnabled);
             swMcpLan.setChecked(cfg.mcpLan);
+            swAgentLan.setChecked(cfg.agentLan);
             swPrefix.setChecked(cfg.markerTemplate.trim().length() > 0);
             AppConfig.Provider p = provider();
             AppConfig.ModelItem m = cfg.activeModel();

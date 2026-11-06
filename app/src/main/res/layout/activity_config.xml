@@ -542,6 +542,35 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/row_agent_lan"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowTitle"
+                            android:text="Agent 动作面允许局域网访问" />
+
+                        <TextView
+                            style="@style/Widget.XiaoiPlus.RowDesc"
+                            android:text="8770 可执行打开应用/通知/音量等动作；仅在可信 Wi-Fi 开启" />
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/sw_agent_lan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/row_token"
                     android:layout_width="match_parent"
                     android:layout_height="64dp"

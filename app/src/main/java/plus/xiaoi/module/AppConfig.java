@@ -62,6 +62,12 @@ public final class AppConfig {
     public boolean mcpEnabled;
     /** true = 能力桥监听 0.0.0.0，同一局域网可用 Bearer token 直连；默认 false 仅本机。 */
     public boolean mcpLan;
+    /**
+     * true = 8770 Agent 动作面也监听 0.0.0.0；默认 false 仅本机。
+     * 与 {@link #mcpLan}（8771）相互独立，令牌仍共用 {@link #mcpToken}；
+     * 弱令牌即使打开也只回退 loopback（见 AgentLanPolicy）。
+     */
+    public boolean agentLan;
     public String mcpToken = "";
     public String activeProviderId = "";
     public String activeModelId = "";

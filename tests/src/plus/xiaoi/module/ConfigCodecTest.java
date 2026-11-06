@@ -11,7 +11,7 @@ public final class ConfigCodecTest {
     private static final String CANONICAL =
             "{\"version\":3,\"rev\":1,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
             + "\"activeProviderId\":\"crazyai\",\"activeModelId\":\"your-model\","
-            + "\"mcp\":{\"enabled\":true,\"lan\":false,\"token\":\"tok-123\"},"
+            + "\"mcp\":{\"enabled\":true,\"lan\":false,\"agentLan\":false,\"token\":\"tok-123\"},"
             + "\"providers\":[{\"id\":\"crazyai\",\"name\":\"CrashMail\","
             + "\"baseUrl\":\"https://api.example.com/v1\",\"apiKey\":\"sk-abc\","
             + "\"models\":[{\"id\":\"your-model\",\"name\":\"GLM\"},"
@@ -35,6 +35,7 @@ public final class ConfigCodecTest {
         eq("activeModelId", "your-model", c.activeModelId);
         eq("mcpEnabled", true, c.mcpEnabled);
         eq("mcpLan 默认 false", false, c.mcpLan);
+        eq("agentLan 默认 false", false, c.agentLan);
         eq("mcpToken", "tok-123", c.mcpToken);
         eq("providers 数", 1, c.providers.size());
         eq("provider name", "CrashMail", c.providers.get(0).name);
@@ -108,12 +109,37 @@ public final class ConfigCodecTest {
         eq("lan 解析", true, lanOk.mcpLan);
         eq("暂停但局域网有 token 合法", null, ConfigCodec.validate(lanOk));
         String lanOut = ConfigCodec.toJson(lanOk);
-        ok("lan 写回", lanOut.contains("\"mcp\":{\"enabled\":true,\"lan\":true,\"token\":\"tok\"}"));
+        ok("lan 写回", lanOut.contains("\"mcp\":{\"enabled\":true,\"lan\":true,\"agentLan\":false,\"token\":\"tok\"}"));
         AppConfig lanNoToken = ConfigCodec.fromJson(
                 "{\"enabled\":false,\"mcp\":{\"enabled\":true,\"lan\":true,\"token\":\"\"}}");
         eq("局域网无 token 被拒",
                 "局域网访问必须设置 MCP 令牌（留空会让同一 Wi-Fi 下的设备直接控制小爱）",
                 ConfigCodec.validate(lanNoToken));
+
+        // 8770 Agent 局域网：旧 JSON 缺字段按 false；round-trip；空 token 明确被拒
+        AppConfig agentDefault = ConfigCodec.fromJson(
+                "{\"enabled\":false,\"mcp\":{\"enabled\":true,\"lan\":false,\"token\":\"tok\"}}");
+        eq("旧 JSON 缺 agentLan 按 false", false, agentDefault.agentLan);
+        ok("旧 JSON 写回 agentLan=false",
+                ConfigCodec.toJson(agentDefault).contains("\"agentLan\":false"));
+        AppConfig agentOn = ConfigCodec.fromJson(
+                "{\"enabled\":false,\"mcp\":{\"enabled\":true,\"lan\":false,\"agentLan\":true,"
+                + "\"token\":\"0123456789abcdef0123456789abcdef\"}}");
+        eq("agentLan 解析", true, agentOn.agentLan);
+        eq("agentLan 不影响 mcpLan", false, agentOn.mcpLan);
+        ok("agentLan round-trip", ConfigCodec.toJson(agentOn)
+                .contains("\"agentLan\":true"));
+        eq("agentLan round-trip 再次解析", true,
+                ConfigCodec.fromJson(ConfigCodec.toJson(agentOn)).agentLan);
+        eq("agentLan 有 token 合法", null, ConfigCodec.validate(agentOn));
+        AppConfig agentNoToken = ConfigCodec.fromJson(
+                "{\"enabled\":false,\"mcp\":{\"enabled\":true,\"agentLan\":true,\"token\":\"\"}}");
+        eq("Agent 局域网无 token 被拒",
+                "Agent 动作面开放局域网必须设置 MCP 令牌（留空会让同一 Wi-Fi 下的设备执行设备动作）",
+                ConfigCodec.validate(agentNoToken));
+        AppConfig agentDisabled = ConfigCodec.fromJson(
+                "{\"enabled\":false,\"mcp\":{\"enabled\":false,\"agentLan\":true,\"token\":\"\"}}");
+        eq("MCP 关闭时 agentLan 不触发校验", null, ConfigCodec.validate(agentDisabled));
 
         // ------------------------------------------------------------ 默认值（升级不丢配置）
         AppConfig d = ConfigCodec.defaults("https://old/v1", "old-model", "sk-old", true, true, "tok");
