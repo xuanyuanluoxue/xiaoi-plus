@@ -403,3 +403,16 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 - `media.control play/pause`：当前无活跃 MediaSession；Android 路径返回
   NOT_AVAILABLE，root 兜底从 App 执行 `su` 失败（提示没有可用 su）。
 - 开机后无线 ADB 未自动恢复，UI/root 相关测试需要重新开无线调试或 USB。
+
+### 2026-11-06 补充（有线 ADB）
+
+- `media.control pause → play` 真机验证：暂停后 `AudioPlaybackConfiguration` 变 paused，
+  再 play 变 started；已移除过严的 `isMusicActive` 拦截，返回 `musicActive` 与 warning。
+- `alarm.set`：HyperOS 在后台启动时钟时抛 `SecurityException`，返回 `PERMISSION_DENIED`，
+  实际未创建闹钟；已确认不会伪报 `scheduled=true`。要用闹钟需要前台/root/后续改用
+  `AlarmManager`，当前不保证可用。
+- root 兜底：App 在 KernelSU 中未获 root 授权时，`ProcessBuilder("su")` 返回
+  `EACCES`，`/system/bin/su` 在 App 命名空间不可见；返回
+  `PERMISSION_DENIED`，提示去 KernelSU/Magisk 授权或改用 Shizuku。
+  这是权限边界，不是命令注入问题。
+- 有线 ADB 已重新连接；开机自启、LAN、5 个动作主路径均已真机验证。
