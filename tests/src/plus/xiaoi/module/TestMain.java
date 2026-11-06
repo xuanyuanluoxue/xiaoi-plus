@@ -138,6 +138,12 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL AgentMcpTest 套件异常: " + t);
         }
+        try {
+            failed += AgentSecurityTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AgentSecurityTest 套件异常: " + t);
+        }
         System.out.println();
         if (failed == 0) {
             System.out.println("==> 全部通过");

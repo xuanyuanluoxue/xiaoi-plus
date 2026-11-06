@@ -45,6 +45,12 @@ public final class AgentService extends Service {
     private volatile AgentHttpServer server;
     private volatile String runningToken = "";
 
+    // WP1.3：确认/幂等/审计都是内存状态，随服务进程存活；服务重启后丢失。
+    // 持久化（确认/幂等落 App 私有库、审计轮转）留给后续工作包。
+    private final ConfirmationManager confirmations = new ConfirmationManager();
+    private final IdempotencyStore idempotency = new IdempotencyStore();
+    private final AuditLog audit = new AuditLog();
+
     // ------------------------------------------------------------- 静态入口
 
     /**
@@ -189,7 +195,7 @@ public final class AgentService extends Service {
         registry.register(Actions.mediaControl(), androidOrRoot);
 
         AgentHttpServer next = new AgentHttpServer(token,
-                new AgentMcp(versionName()), registry);
+                new AgentMcp(versionName(), confirmations, idempotency, audit), registry);
         String err = next.start();
         if (err.length() > 0) {
             Logs.e("AgentService: " + err);

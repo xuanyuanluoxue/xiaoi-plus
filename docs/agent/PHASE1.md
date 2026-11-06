@@ -11,9 +11,32 @@
 |---|---|---|---|
 | WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 969） |
 | WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a/WP1.2b 已完成**：服务/8770/5 个动作/root 兜底） |
-| WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M |
+| WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M（**WP1.3a 已完成**：确认/幂等/审计；notify/ask/LAN/记忆未做） |
 
 WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验。
+
+### WP1.3a 完成记录（2026-11-06）
+
+- 新增纯 JVM `ConfirmationManager`：risk=confirm 的请求签发一次性 token
+  （24 字节 SecureRandom hex），绑定 clientId（空串归一化 `default`）、action、
+  canonical args hash、签发/过期时间；TTL 60 秒；`consume` / `deny` / `takeApproved`
+  都原子、一次性；过期清理 + 256 条 pending 上限。
+- 新增纯 JVM `IdempotencyStore`：未命中/命中/冲突三态；默认 24 小时、500 条 LRU；
+  成功与失败终态都缓存；参数顺序不影响 hash；token/confirmToken/apiKey 不参与 hash。
+- 新增纯 JVM `AuditLog`：1000 条环形缓冲，记录 time/clientId/action/executor/risk/
+  argNames/argHash/ok/errorCode/elapsedMs/requestId/event（action/confirm/deny/replay）；
+  `recent(limit)` 最新在前，limit 1~200 默认 50；不记录参数值、context、token、apiKey。
+- 新增 `CanonicalArgs`：键排序、递归、数组保序的 canonical hash（SHA-256）。
+- `AgentMcp` 增加 `xiaoai_confirm` / `xiaoai_audit`，工具数 2 → 4；
+  `xiaoai_action` 接入 DANGER 拒绝、CONFIRM 签发/消费、幂等 check/put、审计。
+  `NEEDS_CONFIRMATION` 仍返回原信封，新增 `confirmToken` / `expiresInMs` / `summary`
+  （只有 action/risk/argNames）。
+- `AgentService` 创建并注入三个内存组件；不改 8770 端口/鉴权/前台服务行为。
+  服务重启后确认/幂等/审计状态丢失（持久化留后续）。
+- 纯 JVM 新增 `AgentSecurityTest` 171 条断言；`AgentMcpTest` 63 条；总断言 969 → 1148。
+- `./tests/run.sh`、`SDK=... ./build.sh`、`scripts/check-consistency.sh` 全绿。
+- 未做（留给后续）：`xiaoai_notify`、`xiaoai_ask` 代理、LAN、`xiaoai_job_status`、
+  记忆读写、确认/幂等/审计持久化、真机端到端确认流程。
 
 ### WP1.2b 完成记录（2026-11-06）
 
@@ -177,7 +200,7 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 ## 3. WP1.2：App 前台服务与动作
 
 > 状态：**进行中**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
-> 已完成；WP1.3 能力（confirm/幂等/审计/notify）未做。
+> 已完成；WP1.3a（confirm/幂等/审计）已完成；notify/ask/LAN/记忆未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
 > `AgentActionExecutorsTest.java`
 > 验证：单测、`build.sh`、`check-consistency.sh`、真机 8770/鉴权/device.info 已通过；
@@ -219,6 +242,9 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 - 8770 错 token 401；LAN 关闭时非 loopback 拒绝。
 
 ## 4. WP1.3：Agent 体验
+
+> 状态：**WP1.3a 已完成**（确认 token / 幂等 / 审计，2026-11-06）；
+> `xiaoai_notify`、`xiaoai_ask`、LAN、`xiaoai_job_status`、记忆读写未做。
 
 - `xiaoai_confirm` + confirm token（绑定 clientId/action/参数 hash，一次性，60s）。
 - `xiaoai_action` 的 `idempotencyKey`（24h）。

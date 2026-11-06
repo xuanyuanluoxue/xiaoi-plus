@@ -60,11 +60,15 @@ public final class AgentMcpTest {
 
         Map<String, Object> listed = mcp.toolsList();
         List<Object> tools = (List<Object>) listed.get("tools");
-        T.eq("tools/list 工具数", 2, tools.size());
+        T.eq("tools/list 工具数", 4, tools.size());
         T.eq("tools[0] 名称", "xiaoai_capabilities",
                 ((Map<?, ?>) tools.get(0)).get("name"));
         T.eq("tools[1] 名称", "xiaoai_action",
                 ((Map<?, ?>) tools.get(1)).get("name"));
+        T.eq("tools[2] 名称", "xiaoai_confirm",
+                ((Map<?, ?>) tools.get(2)).get("name"));
+        T.eq("tools[3] 名称", "xiaoai_audit",
+                ((Map<?, ?>) tools.get(3)).get("name"));
 
         Map<?, ?> capsSchema = (Map<?, ?>) ((Map<?, ?>) tools.get(0)).get("inputSchema");
         T.eq("capabilities schema type", "object", capsSchema.get("type"));
@@ -87,6 +91,21 @@ public final class AgentMcpTest {
                 ((List<?>) actionSchema.get("required")).contains("action"));
         T.eq("xiaoai_action 不允许额外顶层字段", Boolean.FALSE,
                 actionSchema.get("additionalProperties"));
+
+        Map<?, ?> confirmSchema = (Map<?, ?>) ((Map<?, ?>) tools.get(2)).get("inputSchema");
+        Map<?, ?> confirmProps = (Map<?, ?>) confirmSchema.get("properties");
+        T.ok("xiaoai_confirm 含 confirmToken", confirmProps.containsKey("confirmToken"));
+        T.ok("xiaoai_confirm 含 approve", confirmProps.containsKey("approve"));
+        T.ok("xiaoai_confirm 必填 confirmToken",
+                ((List<?>) confirmSchema.get("required")).contains("confirmToken"));
+        T.ok("xiaoai_confirm 必填 approve",
+                ((List<?>) confirmSchema.get("required")).contains("approve"));
+
+        Map<?, ?> auditSchema = (Map<?, ?>) ((Map<?, ?>) tools.get(3)).get("inputSchema");
+        T.ok("xiaoai_audit 含 limit",
+                ((Map<?, ?>) auditSchema.get("properties")).containsKey("limit"));
+        T.eq("xiaoai_audit limit 无必填", 0,
+                ((List<?>) auditSchema.get("required")).size());
     }
 
     // ------------------------------------------------------------- capabilities
