@@ -475,12 +475,8 @@ public final class BridgeControlClient {
         String cached = sVersionName;
         if (cached.length() > 0) return cached;
         try {
-            Context c = sApp;
-            if (c != null) {
-                String v = c.getPackageManager()
-                        .getPackageInfo(c.getPackageName(), 0).versionName;
-                if (v != null) sVersionName = v;
-            }
+            String v = Bridge.versionName();
+            if (v != null && v.length() > 0) sVersionName = v;
         } catch (Throwable ignored) {
         }
         return sVersionName;

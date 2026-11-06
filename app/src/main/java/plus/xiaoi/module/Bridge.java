@@ -778,7 +778,7 @@ public final class Bridge {
         }
     }
 
-    private static String versionName() {
+    public static String versionName() {
         try {
             Context ctx = appContext();
             if (ctx != null) {

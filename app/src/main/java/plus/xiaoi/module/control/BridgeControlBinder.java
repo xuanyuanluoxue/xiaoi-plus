@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.RemoteException;
 
-import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.core.ControlKeys;
 
 /**

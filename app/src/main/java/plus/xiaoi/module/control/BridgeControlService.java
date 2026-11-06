@@ -21,7 +21,6 @@ import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.ConfigCodec;
 import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.Hash;
-import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.core.ControlKeys;
 
 /**
@@ -279,9 +278,6 @@ public final class BridgeControlService extends Service {
             android.util.Log.i(TAG, msg);
         } catch (Throwable ignored) {
         }
-        // App 进程里 Logs 的 logcat/落盘分支会因缺少 XposedBridge 静默失败，
-        // 但内存环形缓冲仍可用，双写可让将来的日志页看到控制面事件。
-        Logs.i(msg);
     }
 
     private static String clean(String s, int max) {
