@@ -32,6 +32,22 @@
 同一个“驱动小爱”的能力。裸端点 `/config` 和 `/island` 始终只允许 loopback；
 MCP 的 `xiaoai_switch_model` / `xiaoai_island` 工具在局域网下仍可用，但必须带 token。
 
+## 控制面（0.12.0 WP1，增量）
+
+设置 App 暴露一个**显式 ComponentName 的 bound Service**（`plus.xiaoi.module.control.BridgeControlService`，
+无 intent-filter，`exported=true`）。小爱各进程在 `Bridge.install` 后通过 Binder 绑定它：
+
+- 每个 transaction 首行 `Binder.getCallingUid()`，只允许 UID 名下挂 `com.miui.voiceassist`
+  的调用（`PackageManager.getPackagesForUid`）；其他 UID 抛 `SecurityException`。
+- `C2S_PULL_CONFIG` 在 App 的 HandlerThread 上读 `config.json`，返回 JSON + SHA-256。
+- `C2S_REGISTER` 保存 callback `Messenger`、pid、进程名、端口、0.11 `legacyJson`。
+- `C2S_REPORT_STATE` 保存 model/enabled/port/version/pid/process；`C2S_APPEND_LOGS` 只进内存环形缓冲。
+- App → 小爱侧预留 `reload` / `showIsland` / `clearSafeMode` / `flushLogs`。
+
+WP1 是**增量**：旧 `BridgePusher` 与 `POST /config` 原样保留，控制面只负责拉配置/状态；
+绑定失败按 2s→5s→10s→20s→30s 退避重试，不影响小爱主流程。模块 prefs 的
+`control_plane=false` 可整体关闭控制面，回到 beta.4 行为。
+
 ## 为什么不用改包
 
 小爱是 priv-app，能力建立在平台签名上。重打包会失去所有 signature 权限，

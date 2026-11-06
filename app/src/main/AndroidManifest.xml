@@ -36,6 +36,14 @@
         <activity android:name=".LogsActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
         <activity android:name=".AboutActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
 
+        <!-- WP1 控制面：显式 ComponentName + exported，供 com.miui.voiceassist
+             通过 Binder 拉配置/注册回调。无 intent-filter；安全边界在每个
+             transaction 首行的 UID 校验（见 BridgeControlBinder）。 -->
+        <service
+            android:name=".control.BridgeControlService"
+            android:exported="true"
+            android:enabled="true" />
+
         <provider
             android:name=".ShareProvider"
             android:authorities="plus.xiaoi.module.files"

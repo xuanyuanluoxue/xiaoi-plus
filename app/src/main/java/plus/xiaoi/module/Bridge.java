@@ -22,6 +22,7 @@ import java.util.concurrent.ThreadFactory;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
+import plus.xiaoi.module.bridge.BridgeControlClient;
 
 /**
  * 本地能力桥（可选）：默认只绑 127.0.0.1，开启「局域网访问」且 token 非空时
@@ -149,6 +150,9 @@ public final class Bridge {
                 log("能力桥已监听 " + bindHost() + ":" + sPort
                         + (sBoundLan ? "（局域网模式，需要 Bearer token）" : ""));
             }
+            // WP1：控制面是增量通道，只负责拉配置/状态；旧推送路径保持原样，
+            // 控制面失败不影响这里已经启动的能力桥。
+            startControlPlane();
         } catch (Throwable t) {
             log("能力桥启动失败（已忽略）: " + t);
         }
@@ -157,6 +161,36 @@ public final class Bridge {
     /** 实际监听端口；0 表示未启动。 */
     public static int port() {
         return sPort;
+    }
+
+    /**
+     * WP1 控制面接线：只启动一次；任何异常只写日志。
+     * feature flag（模块 prefs: control_plane，默认 true）关闭时完全不绑定服务，
+     * 行为与 beta.4 的旧推送路径一致。
+     */
+    private static void startControlPlane() {
+        try {
+            if (!controlPlaneEnabled()) {
+                info("控制面已通过 feature flag 关闭");
+                return;
+            }
+            BridgeControlClient.start(appContext());
+            BridgeControlClient.onBridgeStarted();
+        } catch (Throwable t) {
+            log("控制面启动失败（已忽略）: " + t);
+        }
+    }
+
+    /** 模块 prefs 开关；读不到时默认开启（控制面本身是增量能力）。 */
+    private static boolean controlPlaneEnabled() {
+        try {
+            de.robv.android.xposed.XSharedPreferences p =
+                    new de.robv.android.xposed.XSharedPreferences("plus.xiaoi.module", Prefs.NAME);
+            p.reload();
+            return p.getBoolean(Prefs.KEY_CONTROL_PLANE, true);
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     /** 配置热更新后同步内存 token（空 token 等于重新打开首次配置窗口，仅 loopback）。 */
@@ -315,7 +349,7 @@ public final class Bridge {
         }
     }
 
-    private static Context appContext() {
+    public static Context appContext() {
         try {
             Class<?> at = Class.forName("android.app.ActivityThread");
             Object app = at.getMethod("currentApplication").invoke(null);

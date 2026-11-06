@@ -1,5 +1,25 @@
 # 更新日志
 
+## 0.12.0-beta.1（开发中）— WP1 控制面
+
+> **重构进行中，未发布**。本包只新增增量通道，旧 HTTP 推送仍是主路径。
+
+- 新增 `control/BridgeControlService`（App 进程 bound Service，显式 ComponentName，
+  无 intent-filter）：小爱进程通过 Binder 拉取 `config.json`、注册 callback、
+  上报运行时状态与日志
+- 每个 transaction 首行用 `Binder.getCallingUid()` + `getPackagesForUid` 校验，
+  只允许 `com.miui.voiceassist`；其他 UID 抛 `SecurityException` 并记拒绝日志
+- 配置读取放到 HandlerThread；同一 JSON（SHA-256 相同）只 `Hook.applyConfig` 一次
+- 新增 `bridge/BridgeControlClient`：bind 失败/服务死亡按 2s→5s→10s→20s→30s 退避重试，
+  不崩溃、不刷日志；拿不到 Context 时后台重试
+- `core/ControlKeys`、`control/UidGuard`、`control/BridgeRegistry`、
+  `control/ControlLogRing` 均为纯 JVM，新增对应单测
+- App 侧控制面日志走 logcat tag `xiaoi-control`（App 进程没有 XposedBridge，
+  不能复用会静默失败的 `Logs`）
+- `config.json` 不存在时 `pullConfig` 返回错误，不用默认骨架覆盖 beta.4 运行态配置
+- `control_plane` 模块 prefs 开关（默认开）；关闭后行为与 beta.4 一致
+- 旧 `BridgePusher` / `/config` 未删除、未切换，`ConfigCodec` schema 未改
+
 ## 0.11.0-beta.4 — 2026-11-05
 
 > **测试版修复**：局域网/本机都能稳定轮换 MCP 令牌，不再出现「改了令牌推不进去、桥仍认旧令牌」。
