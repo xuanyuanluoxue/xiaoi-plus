@@ -126,7 +126,7 @@ WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Age
 - 新增 `plus.xiaoi.module.agent`：ActionDescriptor / ActionRequest / ActionResult /
   ActionRegistry / AgentError / Actions / AgentValues。
 - 5 个动作描述已注册；`requiredCapability` 作为执行器准入条件（root 动作不能用 android 顶替）。
-- 单测 132 条；WP1.1 完成时 796，WP1.2a 后 851，WP1.3a 后 1148，WP1.3b 后 1296；
+- 单测 132 条；断言演进：WP1.1 796 → WP1.2a 851 → WP1.2b 969 → WP1.3a 1148 → WP1.3b 1296；
   `build.sh`、`check-consistency.sh` 通过。
 - 未实现 Android/Root 执行器、8770 服务、confirm 签发/幂等/审计；属于 WP1.2/1.3。
 
