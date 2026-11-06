@@ -10,10 +10,23 @@
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
 | WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**，796 断言） |
-| WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L |
+| WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a 已完成**：服务/8770/device.info） |
 | WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M |
 
 WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验。
+
+### WP1.2a 完成记录
+
+- 新增 `AgentMcp`（纯 JVM JSON-RPC 路由：initialize / ping / tools/list / tools/call，
+  工具 `xiaoai_capabilities` / `xiaoai_action`）。
+- 新增 `AgentHttpServer`：只绑 `127.0.0.1:8770`，`POST /mcp`（Bearer）、`GET /health`；
+  accept 单线程 + 请求有界池（2/4/16），通知回 202。
+- 新增 `AgentService`（前台服务，渠道 `agent_service`）+ `AgentBootReceiver`（BOOT_COMPLETED）。
+  开关复用 `mcpEnabled` + `mcpToken`，不新增设置页字段。
+- 新增 `AndroidExecutor`，只实现 `device.info`（型号/厂商/Android/SDK/电量/充电/网络/uptime，
+  支持 `fields` 过滤）；其余 4 个动作在能力表显示不可用。
+- 纯 JVM `AgentMcpTest` 55 条断言；总断言 851。
+- 未做：其余 4 个动作、confirm/幂等/审计/notify、LAN、xiaoai_ask 代理（WP1.2b/1.3）。
 
 ### WP1.1 完成记录
 
@@ -123,6 +136,10 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 - `./tests/run.sh`、`build.sh`、`check-consistency.sh` 全绿。
 
 ## 3. WP1.2：App 前台服务与动作
+
+> 状态：**进行中**；WP1.2a（服务 + 8770 + `device.info`）已完成，其余动作与 WP1.3 能力未做。
+> 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`
+> 验证：单测、`build.sh`、`check-consistency.sh`、真机 8770/鉴权/device.info 已通过。
 
 ### 目标
 

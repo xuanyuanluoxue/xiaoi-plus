@@ -8,6 +8,7 @@ import android.widget.TextView;
 
 import java.net.URL;
 
+import plus.xiaoi.module.agent.AgentService;
 import plus.xiaoi.module.control.BridgeControlService;
 import plus.xiaoi.module.core.BridgeStatus;
 import plus.xiaoi.module.core.ErrorCatalog;
@@ -66,6 +67,8 @@ public class HomeActivity extends BaseActivity {
         hideChevron(R.id.row_version);
 
         ConfigSync.start(this);
+        // WP1.2a：打开 App 时按 mcpEnabled + token 恢复 8770（不阻塞主线程）。
+        AgentService.startIfEnabled(this);
         refresh();
         loadLastError();
     }

@@ -16,6 +16,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import plus.xiaoi.module.agent.AgentService;
 import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.BridgePolicy;
 import plus.xiaoi.module.core.BridgeStatus;
@@ -723,6 +724,8 @@ public class ConfigActivity extends BaseActivity {
             repo.saveQuiet(cfg);
             ConfigSync.markApplied(this); // 自己写的文件不再触发「外部变更」
             cfg = repo.load();            // 读回归一化后的文件（trim / 悬空 active 修正）
+            // WP1.2a：MCP 开关/token 变化后按新配置启动或停止 8770。
+            AgentService.startIfEnabled(this);
             render();
             markClean();
             hideConflict();

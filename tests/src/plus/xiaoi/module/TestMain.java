@@ -126,6 +126,12 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL AgentActionRegistryTest 套件异常: " + t);
         }
+        try {
+            failed += AgentMcpTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AgentMcpTest 套件异常: " + t);
+        }
         System.out.println();
         if (failed == 0) {
             System.out.println("==> 全部通过");
