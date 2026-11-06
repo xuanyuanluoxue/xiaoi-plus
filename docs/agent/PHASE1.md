@@ -366,3 +366,40 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 - 不做任意 shell/CLI 透传。
 - 不改 8771 现有工具行为（只加代理）。
 - 不在 WP1 做小爱记忆写入（Phase 5，实验）。
+
+## 7. 真机结果（2026-11-06）
+
+设备：`192.168.0.118:5555`（M332BF / Android 17 / KernelSU Next / 小爱 8.2.65.4714）
+构建：`0.12.0-beta.1` + WP1.5（versionCode 16，正式签名）
+
+已通过：
+
+- 安装覆盖成功；8770 启动，`bind=127.0.0.1`。
+- 配置页开启 `agentLan`（32 hex token）→ `ss` 可见 `*:8770`，
+  `bind=0.0.0.0`；电脑 LAN 直接访问 `/health` 200、`/mcp` capabilities 成功。
+- `device.info`：model/battery/network 正常。
+- `app.open com.android.settings`：`launched=true`，前台为 Settings。
+- `notification.send`：
+  - 无 token → `NEEDS_CONFIRMATION` + 48 字符 token；
+  - `xiaoai_confirm(approve=true)` → 执行一次，通知出现；
+  - `approve=false` → `CONFIRMATION_DENIED`，不执行；
+  - 已拒绝 token 再批准 → `CONFIRMATION_DENIED`。
+- 幂等：
+  - 同 `idempotencyKey` 重试 CONFIRM 动作，直接返回缓存，不再弹确认；
+  - 服务 `force-stop` 重启后同 key 仍返回首次 `notificationId`；
+  - `files/agent_idempotency.json` 生成（370B）。
+- 确认 token 不持久化：服务重启后旧 token → `CONFIRMATION_DENIED`。
+- `media.control volume`：25% → 系统档位 38/150，50% → 75/150，回读正确。
+- `xiaoai_notify`：island 返回 `ok=true channel=island`；普通通知可发。
+- `xiaoai_ask`：返回干净文本 `[model=...] OK` + 36 字符 sessionId；
+  带 sessionId 复用成功。
+- 开机自启：重启后无线 ADB 未恢复，但 `192.168.0.118:8770/health`
+  返回 `bind=0.0.0.0`；重启后 `device.info`、`app.open`、`notify`、`ask` 均成功。
+
+未通过 / 需修：
+
+- `alarm.set`：HyperOS 先弹安全中心确认页，实际未创建闹钟；
+  已把返回改为 `requested=true, scheduled=false` + warning，不伪造成功。
+- `media.control play/pause`：当前无活跃 MediaSession；Android 路径返回
+  NOT_AVAILABLE，root 兜底从 App 执行 `su` 失败（提示没有可用 su）。
+- 开机后无线 ADB 未自动恢复，UI/root 相关测试需要重新开无线调试或 USB。
