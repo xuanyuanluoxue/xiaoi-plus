@@ -5,7 +5,7 @@
 > 通过（正式签名通过、未签名被拒、临时密钥因指纹不符被拒）。
 > 真机契约 45/45 仍是 beta.4 基线，**0.12 的 P0 矩阵待主 Agent 补跑**。
 >
-> **WP1~WP8 已完成，真机 P0 矩阵已通过**；剩余：`v0.12.0-beta.1` tag/Release 与 CI 结果确认。
+> **WP1~WP8 已完成，真机 P0 矩阵已通过，`v0.12.0-beta.1` 已发布**（prerelease）。
 > [docs/refactor/PLAN.md](docs/refactor/PLAN.md)；工作包与子 Agent 指令见
 > [docs/refactor/WORKPACKAGES.md](docs/refactor/WORKPACKAGES.md)。
 > 发布门禁：未签名/错签名产物不能进入 Release；无正式密钥的 tag 只上传 artifact，不建 Release。
@@ -183,8 +183,8 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 2. 输出前缀单点注入（Frida 定位后；修好再恢复配置页卡片）
 3. （可选）`/v1/models` 模型发现——独立规划，不与本轮混做
 4. WP8 发布门禁已完成（`verify-apk.sh`、`expected-signer.sha256`、CI 签名闸门、版本/文档）；
-   真机 P0 矩阵已通过，`v0.12.0-beta.1` 已打好 tag 并推送。tag 构建含 `-` 自动 prerelease；
-   无正式密钥的 tag 构建只上传 artifact，不建 Release。
+   真机 P0 矩阵已通过，`v0.12.0-beta.1` 已打 tag 并发布为 prerelease；
+   CI 用正式密钥签名，Release 资产通过固定指纹校验。无正式密钥的 tag 构建只上传 artifact，不建 Release。
    后续 0.12.0 正式版需先处理第 6 节第 11 条的 MCP 关闭状态口径，并补跑 leader 接管、弱 token、
    配置损坏恢复等 WP3/WP7 回归。
 
