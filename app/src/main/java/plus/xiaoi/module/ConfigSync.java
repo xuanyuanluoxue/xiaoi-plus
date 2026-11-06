@@ -14,14 +14,16 @@ import java.io.File;
  * config.json 即事实（v0.8.2）：监听文件改动并自动应用到小爱。
  *
  * 数据流：
- *   config.json（Android/data/plus.xiaoi.module/files/，免 root 可编辑）
+ *   config.json（App 私有目录 getFilesDir()/config.json）
  *     → FileObserver 监听（本进程活着时）
- *     → validate → 写模块 prefs 镜像 → POST /config（合并语义）
+ *     → validate → 写模块 prefs 镜像（带 cfg_rev） → POST /config（旧推送，WP3 才切换）
  *     → 小爱进程 hooks 800ms 热读生效
  *
  * 只在 App 进程内监听：进程被杀后改文件，下次启动时由 {@link #applyIfChanged}
  * 比对内容哈希后补应用。运行时变更（MCP switch_model 等）不自动写回文件——
  * 由 UI 提供「从运行中小爱导入」，文件永远优先、永不被静默覆盖。
+ *
+ * WP2：启动时不再自动从运行时导入，也不会把默认骨架写盘；文件不存在时保持未初始化。
  */
 public final class ConfigSync {
 
@@ -76,6 +78,12 @@ public final class ConfigSync {
                 public void onEvent(int event, String path) {
                     if (path == null) return;
                     if (!"config.json".equals(path)) return;
+                    // 只认写入类事件。私有目录在 ext4 上，读文件也会触发
+                    // OPEN/ACCESS/CLOSE_NOWRITE；若照单全收会「读 → 事件 → 再读」死循环。
+                    if ((event & (FileObserver.CLOSE_WRITE | FileObserver.MODIFY
+                            | FileObserver.CREATE | FileObserver.DELETE
+                            | FileObserver.MOVED_FROM | FileObserver.MOVED_TO
+                            | FileObserver.ATTRIB)) == 0) return;
                     // 原子写是 tmp → rename，MOVED_TO / CLOSE_WRITE 都收；合并去抖
                     sHandler.removeCallbacksAndMessages(null);
                     sHandler.postDelayed(new Runnable() {
@@ -90,15 +98,19 @@ public final class ConfigSync {
         } catch (Throwable t) {
             Log.w(TAG, "监听启动失败: " + t);
         }
-        // 启动引导：首次/升级时从运行中小爱导入真实配置生成 config.json，
-        // 绝不用默认骨架覆盖运行时（这是旧版「保存冲掉配置」的同类地雷）。
+        // 启动引导：先让 ConfigRepository 做一次性迁移（beta.4 外部 config.json → 私有目录）。
+        // WP2 起**不再**自动从运行中小爱导入并写文件：默认骨架（rev=0）绝不落盘，
+        // 避免在用户确认前用骨架覆盖真实配置。手动导入仍在「配置 → 从运行中小爱导入」。
         AppExecutors.io(new Runnable() {
             public void run() {
-                final boolean imported = bootstrapIfNeeded(app);
-                final boolean retry = !imported && isPending(app);
+                try {
+                    ConfigRepository.get(app).load();
+                } catch (Throwable t) {
+                    Log.w(TAG, "启动加载/迁移失败（已忽略）: " + t.getClass().getSimpleName());
+                }
+                final boolean retry = isPending(app);
                 sHandler.postDelayed(new Runnable() {
                     public void run() {
-                        if (imported) return;
                         if (retry) {
                             // 上次推送全失败（小爱当时没运行）：文件可能已应用过，强制重推一次
                             applyIfChanged(app, true, true);
@@ -133,6 +145,15 @@ public final class ConfigSync {
             if (!force && hash.equals(sLastAppliedHash)) return;
 
             AppConfig c = repo.load();
+            // 损坏：保留原文件 + 只读态，绝不把骨架/默认值推给运行时。
+            if (repo.isReadOnly()) {
+                Log.w(TAG, "config.json 处于只读态（损坏），本次不应用: " + repo.loadError());
+                return;
+            }
+            if (c == null || c.skeleton) {
+                Log.i(TAG, "config.json 未初始化（骨架），本次不应用");
+                return;
+            }
             String err = repo.validate(c);
             if (err != null) {
                 Log.i(TAG, "config.json 校验未通过，未应用: " + err);
@@ -203,28 +224,6 @@ public final class ConfigSync {
             ctx.getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE).edit()
                     .putBoolean(KEY_SYNC_PENDING, pending).apply();
         } catch (Throwable ignored) {
-        }
-    }
-
-    /**
-     * 首次/升级引导：config.json 不存在，或仍是「默认骨架」时，从运行中小爱导入。
-     * 判定骨架 = 无密钥且未启用（真实配置必然有密钥；暂停也有密钥）。
-     * @return true = 发生了导入（调用方不再按文件推送）
-     */
-    private static boolean bootstrapIfNeeded(Context ctx) {
-        try {
-            ConfigRepository repo = ConfigRepository.get(ctx);
-            File f = repo.configFile();
-            AppConfig c = f.exists() ? repo.load() : null;
-            boolean skeleton = c == null || c.apiKeyOfActive().length() == 0;
-            if (!skeleton) return false;
-            boolean ok = importFromRuntimeQuiet(ctx);
-            if (ok) markApplied(ctx);
-            Log.i(TAG, ok ? "已从运行时引导导入 config.json" : "引导导入失败（桥不可达），保留现有文件");
-            return ok;
-        } catch (Throwable t) {
-            Log.w(TAG, "引导检查失败: " + t);
-            return false;
         }
     }
 

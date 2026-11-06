@@ -7,4 +7,6 @@ public class XSharedPreferences {
     public String getString(String key, String defValue) { return defValue; }
     public boolean getBoolean(String key, boolean defValue) { return defValue; }
     public int getInt(String key, int defValue) { return defValue; }
+    public long getLong(String key, long defValue) { return defValue; }
+    public boolean contains(String key) { return false; }
 }

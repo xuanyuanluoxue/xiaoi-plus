@@ -78,11 +78,14 @@ adb install -r xiaoi-plus-<version>.apk
 
 ### 配置文件即事实
 
-配置以文件为准：`Android/data/plus.xiaoi.module/files/config.json`（免 root）。
-`adb pull/push` 可直接读写；手机文件管理器在 Android 13+ 上通常看不到 `Android/data`，
-请用支持该目录的管理器（或 adb）。改完 **1~2 秒自动生效**（App 进程活着时）；
-进程被杀则下次打开 App 时应用。运行时变更（MCP `switch_model` 等）不会自动写回文件，
-配置页有「从运行中小爱导入」可一键回流——文件永远优先。
+配置以文件为准：`/data/data/plus.xiaoi.module/files/config.json`（App 私有目录，其他应用与
+adb 普通用户无法直接读写，密钥不再落在 `Android/data`）。
+需要查看/迁移配置时请用 App 内的「分享（已脱敏）」或「完整备份」；旧版放在
+`Android/data/plus.xiaoi.module/files/config.json` 的配置会在升级后首次打开 App 时自动迁移，
+成功后删除旧文件（若私有目录已有配置，旧文件归档为 `config.json.legacy.<ts>`，不会覆盖）。
+文件改完在 App 进程活着时 **1~2 秒自动生效**；进程被杀则下次打开 App 时应用。
+运行时变更（MCP `switch_model` 等）不会自动写回文件，配置页有「从运行中小爱导入」可一键回流——
+文件永远优先。若文件损坏，App 会保留原文件并生成 `config.json.corrupt.<ts>`，此时保存会被阻止。
 
 带 `enabled` 显式开关：暂停只关重定向、不清配置；无密钥的配置不会被推送。
 桥与模型重定向互不影响：不勾桥，重定向照常工作。

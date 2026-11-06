@@ -20,6 +20,8 @@ public final class Config {
     public static final String KEY_BRIDGE = "bridge";
     public static final String KEY_MCP_LAN = "mcp_lan";
     public static final String KEY_TOKEN = "tok" + "en";
+    /** 配置版本（降级缓存；事实源是私有 config.json 的 rev）。 */
+    public static final String KEY_CFG_REV = "cfg_rev";
 
     private final String baseUrl;
     private final String apiKey;
@@ -33,6 +35,8 @@ public final class Config {
     /** true = 能力桥监听 0.0.0.0（局域网可访问）；仍需非空 token。 */
     private final boolean lan;
     private final String token;
+    /** 配置版本（仅缓存/诊断；解析失败按 0）。 */
+    private final long cfgRev;
 
     /** 供能力桥热更新使用；所有字段自动归一化为非 null。 */
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
@@ -42,23 +46,34 @@ public final class Config {
 
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
                                 boolean bridge, String token, String markerTemplate) {
-        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, true, false);
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, true, false, 0L);
     }
 
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
                                 boolean bridge, String token, String markerTemplate,
                                 boolean enabled) {
-        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, false);
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, false, 0L);
     }
 
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
                                 boolean bridge, String token, String markerTemplate,
                                 boolean enabled, boolean lan) {
-        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan);
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, 0L);
+    }
+
+    public static Config create(String baseUrl, String apiKey, String model, boolean marker,
+                                boolean bridge, String token, String markerTemplate,
+                                boolean enabled, boolean lan, long cfgRev) {
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, cfgRev);
     }
 
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
                    String token, String markerTemplate, boolean enabled, boolean lan) {
+        this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, 0L);
+    }
+
+    private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
+                   String token, String markerTemplate, boolean enabled, boolean lan, long cfgRev) {
         this.baseUrl = baseUrl == null ? "" : baseUrl;
         this.apiKey = apiKey == null ? "" : apiKey;
         this.model = model == null ? "" : model;
@@ -68,6 +83,7 @@ public final class Config {
         this.markerTemplate = markerTemplate == null ? "" : markerTemplate;
         this.enabled = enabled;
         this.lan = lan;
+        this.cfgRev = cfgRev < 0 ? 0L : cfgRev;
     }
 
     /** 跨进程热读缓存：prefs 文件 mtime 变了就重解析，最多 800ms 跟上。 */
@@ -121,16 +137,18 @@ public final class Config {
                 p.getString(KEY_MODEL, ""), p.getBoolean(KEY_MARKER, true),
                 p.getBoolean(KEY_BRIDGE, false), p.getString(KEY_TOKEN, ""),
                 p.getString(KEY_MARKER_TPL, ""), parseFlag(p.getString(KEY_ENABLED, "1")),
-                p.getBoolean(KEY_MCP_LAN, false));
+                p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L));
     }
 
     public static Config forTarget() {
         // 1) 首选：小爱自己的 prefs（root 写入 / 模块自写）
+        //    所有键都从文件解析（含 marker/bridge/cfg_rev），不再硬编码 true/true。
         String[] t = parsePrefs("/data/data/com.miui.voiceassist/shared_prefs/" + PREFS + ".xml");
         if (t != null) {
             android.util.Log.i("xiaoi+", "配置来源：小爱 prefs");
-            return new Config(t[0], t[1], t[2], true, true, t[3], t[4], parseFlag(t[5]),
-                    "1".equals(t[6]));
+            return new Config(t[0], t[1], t[2],
+                    flag(t[7], true), flag(t[8], false), t[3], t[4], parseFlag(t[5]),
+                    flag(t[6], false), parseLong(t[9]));
         }
         // 2) 次选：模块自己的 prefs（XSharedPreferences，可能被 SELinux 拦）
         try {
@@ -138,20 +156,28 @@ public final class Config {
             p.reload();
             String b = p.getString(KEY_BASE_URL, "");
             String m = p.getString(KEY_MODEL, "");
-            if (b != null && b.length() > 0 && m != null && m.length() > 0) {
+            // MCP-only（无 base/model）也要能读到 token/lan/bridge：不再要求 b/m 非空。
+            boolean any = p.contains(KEY_BASE_URL) || p.contains(KEY_MODEL)
+                    || p.contains(KEY_TOKEN) || p.contains(KEY_BRIDGE)
+                    || p.contains(KEY_ENABLED);
+            if (any) {
                 android.util.Log.i("xiaoi+", "配置来源：XSharedPreferences");
                 return new Config(b, p.getString(KEY_API_KEY, ""), m,
                         p.getBoolean(KEY_MARKER, true), p.getBoolean(KEY_BRIDGE, false),
                         p.getString(KEY_TOKEN, ""), p.getString(KEY_MARKER_TPL, ""),
                         parseFlag(p.getString(KEY_ENABLED, "1")),
-                        p.getBoolean(KEY_MCP_LAN, false));
+                        p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L));
             }
         } catch (Throwable ignored) {}
         android.util.Log.w("xiaoi+", "没有可用配置");
-        return new Config("", "", "", true, false, "", "", false, false);
+        return new Config("", "", "", true, false, "", "", false, false, 0L);
     }
 
-    /** 解析 prefs XML，失败返回 null */
+    /**
+     * 解析小爱 prefs XML，失败/没有任何配置键返回 null。
+     * 返回 10 个槽位：base, apiKey, model, token, markerTpl, enabled,
+     * lan, marker, bridge, cfgRev。缺失键用空串表示，由调用方补默认值。
+     */
     private static String[] parsePrefs(String path) {
         java.io.FileInputStream in = null;
         try {
@@ -161,12 +187,15 @@ public final class Config {
             byte[] buf = new byte[(int) f.length()];
             int n = in.read(buf);
             String xml = new String(buf, 0, Math.max(n, 0), "UTF-8");
-            String b = pick(xml, KEY_BASE_URL);
-            String m = pick(xml, KEY_MODEL);
-            if (b.length() == 0 || m.length() == 0) return null;
-            return new String[]{b, pick(xml, KEY_API_KEY), m, pick(xml, KEY_TOKEN),
+            boolean any = hasKey(xml, KEY_BASE_URL) || hasKey(xml, KEY_MODEL)
+                    || hasKey(xml, KEY_TOKEN) || hasKey(xml, KEY_BRIDGE)
+                    || hasKey(xml, KEY_ENABLED);
+            if (!any) return null;
+            return new String[]{pick(xml, KEY_BASE_URL), pick(xml, KEY_API_KEY),
+                    pick(xml, KEY_MODEL), pick(xml, KEY_TOKEN),
                     pick(xml, KEY_MARKER_TPL), pick(xml, KEY_ENABLED),
-                    pickBoolean(xml, KEY_MCP_LAN)};
+                    pickBoolean(xml, KEY_MCP_LAN), pickBoolean(xml, KEY_MARKER),
+                    pickBoolean(xml, KEY_BRIDGE), pickLong(xml, KEY_CFG_REV)};
         } catch (Throwable t) {
             android.util.Log.w("xiaoi+", "解析 prefs 失败: " + t);
             return null;
@@ -175,11 +204,38 @@ public final class Config {
         }
     }
 
-    /** prefs XML 里的布尔值；缺失/无法识别按 false。 */
+    /** prefs XML 里的布尔值；缺失返回空串（交由默认值决定），兼容旧文件。 */
     private static String pickBoolean(String xml, String key) {
         java.util.regex.Matcher m = java.util.regex.Pattern.compile(
                 "<boolean name=\"" + key + "\" value=\"(true|false)\"").matcher(xml);
-        return m.find() && "true".equals(m.group(1)) ? "1" : "0";
+        return m.find() ? ("true".equals(m.group(1)) ? "1" : "0") : "";
+    }
+
+    /** prefs XML 里的 long（Android 写 cfg_rev 用 <long>）；缺失返回空串。 */
+    private static String pickLong(String xml, String key) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "<long name=\"" + key + "\" value=\"(-?[0-9]+)\"").matcher(xml);
+        if (m.find()) return m.group(1);
+        // 兼容手工写入/旧实现把 rev 存成字符串的情况
+        return pick(xml, key);
+    }
+
+    /** 是否存在该键（任意 XML 类型），用于兼容缺失键。 */
+    private static boolean hasKey(String xml, String key) {
+        return java.util.regex.Pattern.compile(
+                "<(string|boolean|int|long|float|set) name=\"" + key + "\"").matcher(xml).find();
+    }
+
+    /** 解析缓存里的开关：空 = 用默认值；"0"/"false" = 关。 */
+    private static boolean flag(String v, boolean def) {
+        if (v == null || v.length() == 0) return def;
+        return !("0".equals(v) || "false".equalsIgnoreCase(v));
+    }
+
+    /** 解析失败按 0。 */
+    private static long parseLong(String v) {
+        if (v == null || v.length() == 0) return 0L;
+        try { return Long.parseLong(v.trim()); } catch (Throwable t) { return 0L; }
     }
 
 
@@ -209,6 +265,9 @@ public final class Config {
 
     /** 能力桥的 Bearer token；为空表示拒绝所有桥请求 */
     public String token() { return token; }
+
+    /** 配置版本（降级缓存值；解析失败为 0）。 */
+    public long cfgRev() { return cfgRev; }
 
     /** 生效 = 显式开启 且 model/baseUrl 齐全；false 时保留配置但暂停重定向。 */
     public boolean enabled() {

@@ -13,7 +13,7 @@ import java.util.Map;
  *   migrate    读取并保留 schema 版本；未知顶层字段原样写回（前向兼容）
  *   validate   暂停（enabled=false）视为合法；检测「密钥误填成 MCP token」
  *
- * 约束：序列化顺序固定为 version/enabled/marker/markerTemplate/
+ * 约束：序列化顺序固定为 version/rev/enabled/marker/markerTemplate/
  * activeProviderId/activeModelId/mcp/providers，紧凑输出，保证 round-trip 稳定。
  *
  * 主题（themeMode）不在这里：它是 App 本地 UI 偏好，只存 prefs（见 ThemeManager）。
@@ -37,6 +37,10 @@ public final class ConfigCodec {
         AppConfig c = new AppConfig();
         long ver = Json.optLong(o, "version", (long) AppConfig.VERSION);
         c.version = ver <= 0 ? AppConfig.VERSION : (int) ver;
+        // 旧 schema 自动升级到当前版本；更高版本原样保留（避免把 v4 静默降级成 v3）。
+        if (c.version < AppConfig.VERSION) c.version = AppConfig.VERSION;
+        // rev：v2 及更早的文件没有该字段，读取后归一为 1（文件已存在 = 已初始化）。
+        c.rev = Json.has(o, "rev") ? Json.optLong(o, "rev", 1L) : 1L;
 
         c.enabled = Json.optBoolean(o, "enabled", false);
         c.marker = Json.optBoolean(o, "marker", true);
@@ -85,7 +89,7 @@ public final class ConfigCodec {
     }
 
     private static boolean isKnownKey(String k) {
-        return "version".equals(k) || "enabled".equals(k) || "marker".equals(k)
+        return "version".equals(k) || "rev".equals(k) || "enabled".equals(k) || "marker".equals(k)
                 || "markerTemplate".equals(k)
                 || "activeProviderId".equals(k) || "activeModelId".equals(k)
                 || "mcp".equals(k) || "providers".equals(k);
@@ -106,6 +110,7 @@ public final class ConfigCodec {
      */
     public static AppConfig normalize(AppConfig c) {
         if (c == null) return new AppConfig();
+        if (c.rev < 0) c.rev = 0;
         c.activeProviderId = trim(c.activeProviderId);
         c.activeModelId = trim(c.activeModelId);
         c.mcpToken = trim(c.mcpToken);
@@ -168,6 +173,7 @@ public final class ConfigCodec {
     public static String toJson(AppConfig c) {
         Map<String, Object> o = Json.obj();
         o.put("version", (long) (c.version > 0 ? c.version : AppConfig.VERSION));
+        o.put("rev", c.rev < 0 ? 0L : c.rev);
         o.put("enabled", c.enabled);
         o.put("marker", c.marker);
         o.put("markerTemplate", c.markerTemplate == null ? "" : c.markerTemplate);

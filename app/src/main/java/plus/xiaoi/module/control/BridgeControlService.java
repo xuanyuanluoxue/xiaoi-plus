@@ -139,6 +139,15 @@ public final class BridgeControlService extends Service {
                         return;
                     }
                     AppConfig c = repo.load();
+                    // 损坏/骨架绝不通过控制面下发：否则会用默认配置覆盖小爱运行时。
+                    if (repo.isReadOnly()) {
+                        out.error = "config is read-only";
+                        return;
+                    }
+                    if (c == null || c.skeleton) {
+                        out.error = "config not initialized";
+                        return;
+                    }
                     String json = ConfigCodec.toJson(c);
                     out.json = json;
                     out.hash = Hash.sha256Hex(json);

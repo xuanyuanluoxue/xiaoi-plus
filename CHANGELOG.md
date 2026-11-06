@@ -1,8 +1,8 @@
 # 更新日志
 
-## 0.12.0-beta.1（开发中）— WP1 控制面
+## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化
 
-> **重构进行中，未发布**。本包只新增增量通道，旧 HTTP 推送仍是主路径。
+> **重构进行中，未发布**。旧 HTTP 推送仍是主路径（WP3 才切换），配置事实源已移到私有目录。
 
 - 新增 `control/BridgeControlService`（App 进程 bound Service，显式 ComponentName，
   无 intent-filter）：小爱进程通过 Binder 拉取 `config.json`、注册 callback、
@@ -19,6 +19,23 @@
 - `config.json` 不存在时 `pullConfig` 返回错误，不用默认骨架覆盖 beta.4 运行态配置
 - `control_plane` 模块 prefs 开关（默认开）；关闭后行为与 beta.4 一致
 - 旧 `BridgePusher` / `/config` 未删除、未切换，`ConfigCodec` schema 未改
+
+### WP2 配置单一事实源
+
+- `config.json` 移到 App 私有目录 `getFilesDir()/config.json`；不再写 `Android/data`，
+  其他应用/adb 无法直接读写密钥
+- schema 升到 v3，新增 `rev`；每次 App 保存 `rev` 自增，target/module prefs 只写
+  legacy 兼容键 + `cfg_rev`（降级缓存，不再作为事实源）
+- 原子写改为 tmp + fsync + rename，**不先删除目标**；写失败保留旧文件
+- 解析失败：保留原文件、写 `config.json.corrupt.<ts>`、进入只读态；保存被阻止并提示
+  “配置文件损坏，已保留原文件；请先恢复/重置”，绝不静默覆盖
+- beta.4 外部 `config.json` 首次加载一次性迁移到私有目录；私有文件已存在时旧文件
+  归档为 `config.json.legacy.<ts>`，不覆盖
+- 首次安装/无文件时只返回内存骨架（`skeleton=true`、`rev=0`），不再自动从运行时导入并写盘；
+  手动“从运行中小爱导入”保留
+- `Config.forTarget()` 不再把 `marker/bridge` 硬编码为 true；target prefs 缺失键按默认值处理
+- 分享仍只写 external `exports/`；`file_paths.xml` 不再暴露整个私有/外部 files 目录
+- 新增纯 JVM `core/ConfigStore` + `ConfigStoreTest`；`ConfigCodecTest` 覆盖 v3/rev/v2 迁移
 
 ## 0.11.0-beta.4 — 2026-11-05
 
