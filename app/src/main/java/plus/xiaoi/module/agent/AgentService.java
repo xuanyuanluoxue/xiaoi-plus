@@ -40,7 +40,10 @@ public final class AgentService extends Service {
 
     private static final String CHANNEL_NAME = "Agent 能力";
     private static final int NOTIF_ID = 0x4147454e; // "AGEN"
-    private static final String TEXT_RUNNING = "8770 运行中 · 点击打开";
+    private static final String TEXT_RUNNING_LOCAL = "8770 运行中（仅本机）· 点击打开";
+    private static final String TEXT_RUNNING_LAN = "8770 运行中（局域网）· 点击打开";
+    private static final String TEXT_RUNNING_FALLBACK =
+            "8770 运行中（仅本机：局域网需要 32 位令牌）· 点击打开";
     private static final String TEXT_FAILED = "8770 启动失败 · 点击打开";
 
     private final AtomicBoolean bootstrapping = new AtomicBoolean(false);
@@ -112,7 +115,7 @@ public final class AgentService extends Service {
         super.onCreate();
         try {
             ensureChannel();
-            startForeground(NOTIF_ID, buildNotification(TEXT_RUNNING));
+            startForeground(NOTIF_ID, buildNotification(TEXT_RUNNING_LOCAL));
         } catch (Throwable t) {
             Logs.e("AgentService startForeground 失败: " + t.getClass().getSimpleName());
         }
@@ -172,8 +175,10 @@ public final class AgentService extends Service {
         }
 
         AgentHttpServer current = server;
-        if (current != null && current.isRunning() && token.equals(runningToken)) {
-            updateNotification(TEXT_RUNNING);
+        boolean lanEffective = AgentLanPolicy.lanEffective(c.agentLan, token);
+        if (current != null && current.isRunning() && token.equals(runningToken)
+                && current.isLan() == lanEffective) {
+            updateNotification(runningText(c.agentLan, current));
             return;
         }
         if (current != null) {
@@ -199,7 +204,7 @@ public final class AgentService extends Service {
         AgentHttpServer next = new AgentHttpServer(token,
                 new AgentMcp(versionName(), confirmations, idempotency, audit,
                         new AndroidNotifyHost(this, token),
-                        new BridgeAskHost(token)), registry);
+                        new BridgeAskHost(token)), registry, c.agentLan);
         String err = next.start();
         if (err.length() > 0) {
             Logs.e("AgentService: " + err);
@@ -208,8 +213,20 @@ public final class AgentService extends Service {
         }
         server = next;
         runningToken = token;
-        Logs.i("AgentService: 8770 已启动");
-        updateNotification(TEXT_RUNNING);
+        Logs.i("AgentService: 8770 已启动（" + (next.isLan() ? "局域网 " : "仅本机 ")
+                + next.bindHost() + "）");
+        // 请求了局域网但令牌不足：绑定已回退 loopback，日志/通知如实说明，不打印令牌。
+        if (next.lastError().length() > 0) {
+            Logs.i("AgentService: " + next.lastError());
+        }
+        updateNotification(runningText(c.agentLan, next));
+    }
+
+    private static String runningText(boolean requestedLan, AgentHttpServer s) {
+        if (s.isLan()) return TEXT_RUNNING_LAN;
+        // 请求过 LAN 但弱令牌回退：明确告诉用户当前实际仍是仅本机。
+        if (requestedLan) return TEXT_RUNNING_FALLBACK;
+        return TEXT_RUNNING_LOCAL;
     }
 
     // ------------------------------------------------------------- 通知

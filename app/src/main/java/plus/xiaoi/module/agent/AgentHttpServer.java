@@ -18,9 +18,11 @@ import plus.xiaoi.module.Http;
 /**
  * App 进程内的 Agent HTTP 端点（纯 JVM）。
  *
- * <p>WP1.2a 只绑 {@code 127.0.0.1:8770}，不做 LAN。路由只有两个：
- * {@code POST /mcp}（Bearer + JSON-RPC）和 {@code GET /health}。所有请求都要求
- * Bearer token；token 来自 App 配置的 {@code mcpToken}，与 8771 共用同一个值。</p>
+ * <p>默认只绑 {@code 127.0.0.1:8770}；只有配置显式打开 {@code agentLan} 且
+ * token 为 32 位十六进制时才绑 {@code 0.0.0.0}（见 {@link AgentLanPolicy}），
+ * 弱 token 自动回退 loopback。路由只有两个：{@code POST /mcp}（Bearer + JSON-RPC）
+ * 和 {@code GET /health}。所有请求都要求 Bearer token；token 来自 App 配置的
+ * {@code mcpToken}，与 8771 共用同一个值。</p>
  *
  * <p>线程模型：一个 accept 线程 + 有界请求池（core 2 / max 4 / queue 16）。
  * 队列满时直接 503，不无限排队；stop() 关闭 server socket 与线程池，幂等。</p>
@@ -39,17 +41,26 @@ public final class AgentHttpServer {
     private final String token;
     private final AgentMcp mcp;
     private final ActionRegistry registry;
+    /** 配置请求的局域网开关；实际是否监听 0.0.0.0 由 AgentLanPolicy 决定。 */
+    private final boolean lan;
 
     private volatile boolean running;
     private volatile String lastError = "";
+    private volatile String boundHost = AgentLanPolicy.LOOPBACK;
     private ServerSocket server;
     private ExecutorService acceptExecutor;
     private ThreadPoolExecutor requestPool;
 
+    /** 等价 {@code lan=false}：保持 WP1.2a 构造方式，8770 仅本机。 */
     public AgentHttpServer(String token, AgentMcp mcp, ActionRegistry registry) {
+        this(token, mcp, registry, false);
+    }
+
+    public AgentHttpServer(String token, AgentMcp mcp, ActionRegistry registry, boolean lan) {
         this.token = token == null ? "" : token.trim();
         this.mcp = mcp;
         this.registry = registry;
+        this.lan = lan;
     }
 
     public int port() {
@@ -60,7 +71,20 @@ public final class AgentHttpServer {
         return running;
     }
 
-    /** 最近一次绑定/accept 失败原因；空串 = 正常。 */
+    /** 实际是否监听 0.0.0.0（弱令牌回退时为 false）。 */
+    public boolean isLan() {
+        return running && AgentLanPolicy.ANY.equals(boundHost);
+    }
+
+    /** 最近一次启动实际绑定的地址；未启动时为 {@code 127.0.0.1}。 */
+    public String bindHost() {
+        return boundHost;
+    }
+
+    /**
+     * 最近一次启动的错误，或「请求 LAN 但令牌不足、已回退」的说明；空串 = 正常。
+     * 运行时（{@link #isRunning()} 为 true）出现非空内容只代表回退，不代表启动失败。
+     */
     public String lastError() {
         return lastError;
     }
@@ -82,14 +106,18 @@ public final class AgentHttpServer {
         }
 
         ServerSocket ss = null;
+        String host = AgentLanPolicy.bindHost(lan, token);
+        String fallback = AgentLanPolicy.fallbackReason(lan, token);
         try {
             ss = new ServerSocket();
             ss.setReuseAddress(true);
-            ss.bind(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
+            ss.bind(new InetSocketAddress(InetAddress.getByName(host), PORT));
             ss.setSoTimeout(0);
             server = ss;
+            boundHost = host;
             running = true;
-            lastError = "";
+            // 回退说明放在 lastError（running=true 时不是失败），方便通知/日志如实展示。
+            lastError = fallback;
             acceptExecutor = Executors.newSingleThreadExecutor(
                     factory("xiaoi-agent-accept"));
             requestPool = new ThreadPoolExecutor(REQUEST_CORE, REQUEST_MAX,
@@ -105,12 +133,13 @@ public final class AgentHttpServer {
             });
             return "";
         } catch (Throwable t) {
-            lastError = "绑定 " + HOST + ":" + PORT + " 失败："
+            lastError = "绑定 " + host + ":" + PORT + " 失败："
                     + t.getClass().getSimpleName()
                     + (t.getMessage() == null ? "" : "（" + t.getMessage() + "）");
             closeQuietly(ss);
             server = null;
             running = false;
+            boundHost = AgentLanPolicy.LOOPBACK;
             shutdownAccept();
             shutdownRequests();
             return lastError;
@@ -200,7 +229,7 @@ public final class AgentHttpServer {
                 }
                 Http.respond(socket.getOutputStream(), 200,
                         "text/plain; charset=utf-8",
-                        "ok agent=true port=" + PORT);
+                        "ok agent=true port=" + PORT + " bind=" + boundHost);
                 return;
             }
 
