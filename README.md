@@ -6,15 +6,16 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](../../releases)。
 >
-> 📦 当前测试版：**v0.11.0-beta.4** ·
-> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.11.0-beta.4)
+> 📦 当前测试版：**v0.12.0-beta.1** ·
+> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.12.0-beta.1)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
 >
-> ✅ beta.4 已在真机（HyperOS + LSPosed）验证：局域网 MCP 直连、Bearer 鉴权、
-> 远程 `/mcp` 工具调用、令牌轮换、关闭开关立即回到仅本机；四页 UI/图标、深浅主题照常。
-> ⚠️ 输出前缀暂隐藏；官方模型调用量尚未在真机触发；完整 45 项契约需本机设备脚本。
+> ✅ 0.12.0-beta.1 的 CI 门禁已覆盖 JVM 单测（664 断言）、工程一致性与
+> APK 签名指纹（未签名/错签名不能进入 Release）。
+> ⚠️ 真机 P0 矩阵（控制面拒绝第三方、关闭即停、LAN 弱 token、远程写拒绝、
+> beta.4 升级不丢配置、降级警告）仍需发布前补跑；输出前缀暂隐藏，完整 45 项契约需本机设备脚本。
 
 ## 它做什么
 
@@ -239,7 +240,8 @@ XIAOI_TOKEN=<token> scripts/contract-test.sh   # 真机契约（可选，详见�
 scripts/check-all.sh           # 本地全量门禁：单测 + 认知检查 + 真机契约
 ```
 
-正式发版不要手敲上面这行，用脚本——它会检查工作区、归档到 `dist/`、算 sha256 并生成 Release Notes 草稿：
+正式发版不要手敲上面这行，用脚本——它会检查工作区、构建、强制校验签名/包名/versionCode/固定指纹、
+归档到 `dist/`、算 sha256 并生成 Release Notes 草稿：
 
 ```bash
 scripts/release.sh

@@ -1,12 +1,15 @@
 # 交接说明（2026-11-06）
 
-> 状态：**可交接**。版本 0.11.0-beta.4（versionCode 15），工程化收敛 P0~P3b 完成。
-> JVM 单测 664 断言全绿；真机契约 45/45 为 beta.4 基线，WP4 的 `/config` 410 待重跑。
+> 状态：**WP8 门禁已完成，待真机矩阵与发布**。版本 `0.12.0-beta.1`（versionCode 16）。
+> JVM 单测 664 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验与 `--self-test`
+> 通过（正式签名通过、未签名被拒、临时密钥因指纹不符被拒）。
+> 真机契约 45/45 仍是 beta.4 基线，**0.12 的 P0 矩阵待主 Agent 补跑**。
 >
-> **WP1~WP7 已完成并合并；下一步 WP8（发布门禁 + 真机矩阵 + `0.12.0-beta.1`）**。
+> **WP1~WP8 已完成**；剩余：真机 P0 矩阵 + `v0.12.0-beta.1` tag/Release。
 > [docs/refactor/PLAN.md](docs/refactor/PLAN.md)；工作包与子 Agent 指令见
 > [docs/refactor/WORKPACKAGES.md](docs/refactor/WORKPACKAGES.md)。
-> 重构完成前，beta.4 继续作为测试版，不升级为正式版。
+> 发布门禁：未签名/错签名产物不能进入 Release；无正式密钥的 tag 只上传 artifact，不建 Release。
+> 真机矩阵通过前不升级为 0.12.0 正式版。
 
 ## 1. 这是什么
 
@@ -21,7 +24,7 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 | 手机 | 小米 HyperOS 设备（机型与系统版本因环境而异） |
 | 连接 | USB adb 或无线 adb（IP 与串号属于本机环境，换成你自己的） |
 | 小爱 | 8.2.65.4714（版本白名单精确匹配，不在名单自动 no-op） |
-| 模块 | 0.11.0-beta.4（测试版），LSPosed 已启用，作用域只勾「超级小爱」 |
+| 模块 | 0.12.0-beta.1（测试版），LSPosed 已启用，作用域只勾「超级小爱」 |
 | 当前模型 | 任意 OpenAI 兼容端点与模型（BYOK） |
 | MCP token | 存在 `config.json` 的 `mcp.token`，同时在 `~/.config/xiaoi/token`（本机，不进仓库） |
 
@@ -44,6 +47,8 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 ```bash
 ./tests/run.sh                     # JVM 单测（664 断言，无需设备）
 ./scripts/check-all.sh             # 单测 + aoci check + 真机契约
+./scripts/verify-apk.sh build/xiaoi-plus.apk            # 已签名/包名/versionCode/固定指纹
+./scripts/verify-apk.sh --self-test build/xiaoi-plus.apk # 门禁自测（含负向用例）
 XIAOI_TOKEN=$(cat ~/.config/xiaoi/token) ./scripts/contract-test.sh --check  # 契约 45 项
 ./scripts/ime.sh on|off|type "文本" # adb 输入法（中文/符号），用完 off
 ```
@@ -122,6 +127,18 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 
 详见 `CHANGELOG.md` 0.11.0-beta.2 与 `docs/design-system.md`。
 
+**0.12.0-beta.1（WP1~WP7 核心重构 + WP8 门禁）**：
+
+- 控制面 bound Service + UID 白名单；配置私有化（v3/rev/损坏保护）；
+  生命周期 leader 选举 + 关闭即停；数据面 `/config` 410、LAN 32 hex、远程写拒绝
+- 状态四维分离（配置/端点/已应用/运行时），暂停可编辑，日志走控制面
+- WP7 UX 安全确认、错误目录、导入导出覆盖确认
+- WP8：`scripts/verify-apk.sh` + `scripts/expected-signer.sha256`；`release.sh` 归档前强制校验；
+  CI 一致性 + 签名闸门；tag 仅 `signed=true` 才建 Release；修复 `TestMain` 嵌套 try
+- 版本 `0.12.0-beta.1`（versionCode 16）；单测 664 断言；真机 P0 矩阵待主 Agent 补跑
+
+详见 `CHANGELOG.md` 0.12.0-beta.1 与 `docs/release.md`。
+
 ## 6. 已知限制（诚实清单）
 
 1. **输出前缀（markerTemplate）已从 UI 隐藏**：hook `sm.b$c/d` 已跑通，
@@ -158,9 +175,11 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
    白名单 + 危险动作二次确认 + `POST /action`；开工前跑第 6 节待实测清单（变更性命令需授权）
 2. 输出前缀单点注入（Frida 定位后；修好再恢复配置页卡片）
 3. （可选）`/v1/models` 模型发现——独立规划，不与本轮混做
-4. 收尾 P3c/P4（见 §6 第 10 条），然后发稳定版（例如 0.11.0 正式版）：
-   `git tag v0.11.0 && git push origin v0.11.0`
-   （beta.1~beta.3 已发布为 prerelease；正式版需去掉版本号里的 `-`）
+4. WP8 发布门禁已完成（`verify-apk.sh`、`expected-signer.sha256`、CI 签名闸门、版本/文档）。
+   下一步：主 Agent 跑真机 P0 矩阵（控制面拒绝第三方、关闭即停、LAN 弱 token、远程写拒绝、
+   beta.4 升级不丢配置、降级警告），结果补进本节与 Release Notes；
+   全绿后打 tag：`git tag -a v0.12.0-beta.1 -m v0.12.0-beta.1 && git push origin v0.12.0-beta.1`
+   （含 `-` 自动 prerelease；无正式密钥的 tag 构建不会建 Release）
 
 ## 8. 回滚
 

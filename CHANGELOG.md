@@ -1,8 +1,27 @@
 # 更新日志
 
-## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固 + WP5 配置页拆分 + WP6 状态模型 + WP7 UX 安全
+## 0.12.0-beta.1 — 2026-11-06 — WP1~WP7 核心重构 + 发布门禁
 
-> **重构进行中，未发布**。WP4 已删除旧 HTTP 推送与 `POST /config`，数据面只服务外部 MCP/CLI。
+> **首个 0.12 测试版（versionCode 16）**。这是破坏性重构后的回归版本：
+> 配置移入 App 私有目录、控制面改为 bound Service、数据面删除 HTTP 推送与 `POST /config`。
+>
+> 交流群：QQ **1121057362**（问题反馈 / 版本适配 / 使用交流）
+
+### 本版重点 / 破坏性变更 / 升级方式
+
+- **重点**：控制面改为 App 内 bound Service（UID 白名单），配置以私有 `config.json` 为唯一事实源，
+  状态按 D1 配置 / D2 端点 / D3 已应用 / D4 运行时四维展示，不再伪造“已确认”。
+- **破坏性**：`POST /config` 返回 `410 Gone`，App 不再向 8771~8775 推送配置；
+  旧脚本/自动化必须改在手机 App 保存配置。
+- **破坏性**：`config.json` 从 `Android/data/...` 移到 `/data/data/plus.xiaoi.module/files/`；
+  首次打开新版本会读取旧配置，确认后迁移，baseUrl/model/key/token 不丢。
+- **安全**：LAN 只接受 32 hex（128 bit）token；远程 MCP 只能改 `model`/`marker` 和已有服务商选择，
+  不能写 `baseUrl`/`apiKey`/`bridge`/`lan`；短 token 自动回退仅本机。
+- **升级方式**：直接覆盖安装即可（同包名同签名，versionCode 15 → 16）；
+  升级后先打开一次 App 确认旧配置迁移结果，再到配置页检查 MCP 开关与端点。
+- **降级警告**：降回 0.11 会重新开启 MCP 且读不到私有配置文件；降级前请先在 App 内关闭 MCP、
+  清空 token，并保留完整备份。
+
 
 - 新增 `core/BridgePolicy`（纯 JVM）：`shouldListen` / `bindHost` / `tokenStrongEnoughForLan`
   （32 hex 仅预留，WP4 才启用；本包 LAN 行为不变）
@@ -143,6 +162,26 @@
 - 主页只读信息行与关于页许可证/致谢隐藏不可点的行尾箭头；完整备份导出提示用完删除
 - 新增 `ErrorCatalogTest`；`ConfigStoreTest` 增加 list/moveCorruptAside/restoreFrom；
   单测 664 断言全绿，`./build.sh` 与 `./scripts/check-consistency.sh` 通过
+
+### WP8 发布门禁
+
+- 新增 `scripts/verify-apk.sh`：校验 APK 已签名、包名 `plus.xiaoi.module`、
+  versionCode 与 manifest 一致、签名证书 SHA-256 命中固定指纹；失败 exit 1
+- 新增 `scripts/expected-signer.sha256`：固定正式签名证书指纹
+  （`d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b`，
+  0.11.0-beta.4 ~ 0.12.0 同一证书；只是指纹，不含私钥/口令）
+- `scripts/verify-apk.sh --self-test`：不依赖设备验证门禁本身——正式签名 APK 通过、
+  未签名 APK 被拒、临时密钥签名因指纹不符被拒，临时文件自动清理
+- `scripts/release.sh` 构建后、归档前强制校验；未签名/错签名直接退出，不生成 `dist/` 与 notes；
+  `--allow-new-key` 只跳过指纹比对，仍校验已签名 + 包名 + versionCode
+- CI：单测后新增 `scripts/check-consistency.sh`；签名后新增 APK 校验。
+  `signed=true` 必须命中固定指纹；`signed=false` 只做基础校验并打 `::warning::`
+- CI：tag 构建仅在 `signed=true` 时创建 GitHub Release；无正式密钥的 tag 仍上传 artifact，
+  但跳过 Release 并输出 warning/notice
+- 修复 `TestMain` 中 `UsageCounterTest` / `LanTest` 的嵌套 try/catch，
+  任一测试套件异常都会计数并继续执行后续套件
+- 本版为 beta：需要真机 P0 矩阵（控制面拒绝第三方、关闭即停、LAN 弱 token、远程写拒绝、
+  beta.4 升级不丢配置、降级警告）通过后才考虑 0.12.0 正式版
 
 ## 0.11.0-beta.4 — 2026-11-05
 
