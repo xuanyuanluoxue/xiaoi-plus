@@ -31,15 +31,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import plus.xiaoi.module.core.BridgeEndpoint;
+
 /**
- * 配置页（P3 重排）：状态条 + 模型 chips + 管理列表 + 真实推送结果 + 冲突条。
+ * 配置页（P3 重排）：状态条 + 模型 chips + 管理列表 + 保存/生效提示 + 冲突条。
  *
  * 状态条的单一事实来源（§4.2 的 P3 口径）：
  *   未配置 / 已暂停 / 待校验 / 校验中 / 可用 / 密钥无效 / 模型不存在 / 端点不可达
  * 浏览器外只有这里能说「配置是否有效」；模型卡里的「模型状态」只显示上一次校验的原始结果。
  *
- * 「是否已推到小爱」由 {@link BridgePusher.Result} 决定（保存/重试都走
- * {@link ConfigRepository#pushSync}），不再无条件 toast「已保存并推送」。
+ * WP4 起保存只写文件/prefs 并调用 {@link BridgeEndpoint#requestReload()}：
+ * 保存成功显示「已保存，等待小爱应用」，不再有假推送结果或「令牌不一致」。
+ * 真正的「已应用」状态留给 WP6 的四维状态模型。
  *
  * 约定：
  * - render() 期间的 setText/setChecked 不触发监听器（rendering 守卫）
@@ -69,9 +72,8 @@ public class ConfigActivity extends BaseActivity {
     private AppStatus statusState = AppStatus.ENABLED;
     private String statusDetail = "";
 
-    /** 本次会话里最后一次推送结果（null = 还没推过）。 */
-    private BridgePusher.Result lastPush;
-    private String lastPushError;
+    /** 本次会话是否已保存、等待小爱应用（WP6 会替换为真实四维状态）。 */
+    private boolean savedWaiting;
 
     /** 暂停（enabled=false）时是否允许继续编辑密钥：仅首次配置（key 为空）时放行。 */
     private boolean keyEditableWhenPaused;
@@ -95,8 +97,8 @@ public class ConfigActivity extends BaseActivity {
     private final List<View> chipViews = new ArrayList<View>();
 
     private AlertDialog manageDlg;
-    /** 实际桥端口（默认 8771，探测到后更新）；用于复制连接信息与 Skill。 */
-    private volatile int bridgePort = BridgeClient.PORT_START;
+    /** 实际桥端口（控制面未上报时保留 8771 提示值）；用于复制连接信息与 Skill。 */
+    private volatile int bridgePort = Bridge.PORT_START;
     private long lastPortProbeAt;
     /** 重建（切主题/旋转）时从 Bundle 恢复的未保存草稿；恢复后必须保持脏标记。 */
     private boolean restoreDraft;
@@ -1087,28 +1089,13 @@ public class ConfigActivity extends BaseActivity {
         tvStatusDesc.setText(detail);
     }
 
-    /** 本次会话/上次启动的推送状态：能确定才给出结论，否则显示「未知 · 点按检测」。 */
+    /** WP4：只显示「已保存，等待小爱应用」或中立提示；真实应用状态留 WP6。 */
     private void renderPush() {
         if (tvPushState == null) return;
-        if (lastPush == null) {
-            if (lastPushError != null) {
-                setPush("未同步 · " + shortText(lastPushError) + "（点按重试）", R.color.error, true);
-            } else if (ConfigSync.isPending(this)) {
-                setPush("未同步 · 小爱未收到（点按重试）", R.color.warning, true);
-            } else {
-                setPush("推送状态未知 · 点按推送", R.color.text_hint, true);
-            }
-            return;
-        }
-        if (lastPush.total == 0) {
-            setPush("未同步 · " + failureReason(lastPush) + "（点按重试）", R.color.warning, true);
-        } else if (lastPush.pushed == lastPush.total) {
-            setPush("已推送 · " + lastPush.pushed + " 个进程", R.color.success, false);
-        } else if (lastPush.pushed == 0) {
-            setPush("未同步 · " + failureReason(lastPush) + "（点按重试）", R.color.error, true);
+        if (savedWaiting) {
+            setPush("已保存，等待小爱应用", R.color.warning, true);
         } else {
-            setPush("部分推送 " + lastPush.pushed + "/" + lastPush.total
-                    + "（点按重试）", R.color.warning, true);
+            setPush("保存后自动通知小爱应用", R.color.text_hint, true);
         }
     }
 
@@ -1125,43 +1112,13 @@ public class ConfigActivity extends BaseActivity {
         }
     }
 
-    private String firstError(BridgePusher.Result r) {
-        if (r == null || r.errors.isEmpty()) return "原因未知";
-        return r.errors.get(0);
-    }
-
-    /**
-     * 把 {@link BridgePusher.Result#errors} 翻成人话：优先识别两种最常见的失败，
-     * 其它情况保留原始行（含端口），避免只显示「失败」而没有下一句。
-     */
-    private String failureReason(BridgePusher.Result r) {
-        if (r == null || r.errors.isEmpty()) return "原因未知";
-        for (String e : r.errors) {
-            if (e.contains("health 401") || e.contains("health 403")) {
-                return "MCP 令牌与桥不一致（检查令牌是否被改过）";
-            }
-        }
-        for (String e : r.errors) {
-            if (e.contains("连接失败") || e.contains("timed out")) {
-                return "小爱未运行或 MCP 未开启";
-            }
-        }
-        return shortText(firstError(r));
-    }
-
-    private String shortText(String s) {
-        if (s == null || s.length() == 0) return "原因未知";
-        String t = s.replace('\n', ' ');
-        return t.length() > 48 ? t.substring(0, 48) + "…" : t;
-    }
-
     // ------------------------------------------------------------- 运行时冲突
 
     /**
      * 只读核对「小爱运行时」与「已保存的文件」是否一致（§5.5 / DRIFT）。
      *
      * 不一致时显示第二条黄色提示条：它不是文件冲突，所以不复用 banner_conflict，
-     * 避免「点按载入文件」把用户正在编辑的内容丢掉。这里只提供「以文件为准重新推送」，
+     * 避免「点按载入文件」把用户正在编辑的内容丢掉。这里只提供「以文件为准通知重载」，
      * 「以运行时为准」的入口仍在「配置编辑 → 从运行中小爱导入」。
      */
     private void checkRuntimeDrift() {
@@ -1210,7 +1167,7 @@ public class ConfigActivity extends BaseActivity {
         }
         if (tvRuntimeTitle != null) tvRuntimeTitle.setText(title);
         if (tvRuntimeDesc != null) {
-            tvRuntimeDesc.setText("点按以文件为准重新推送；或以「配置编辑 → 从运行中小爱导入」采用运行时");
+            tvRuntimeDesc.setText("点按通知小爱重新加载文件；或用「配置编辑 → 从运行中小爱导入」采用运行时");
         }
         bannerRuntime.setVisibility(View.VISIBLE);
     }
@@ -1219,7 +1176,7 @@ public class ConfigActivity extends BaseActivity {
         if (bannerRuntime != null) bannerRuntime.setVisibility(View.GONE);
     }
 
-    // ------------------------------------------------------------- 保存与推送
+    // ------------------------------------------------------------- 保存与生效
 
     private void save() {
         collect();
@@ -1238,7 +1195,7 @@ public class ConfigActivity extends BaseActivity {
             return;
         }
         try {
-            // saveQuiet = 写文件 + 写 prefs（不丢弃结果）；推送由本页拿真实 Result 展示。
+            // saveQuiet = 写文件 + 写 prefs + 请求控制面 reload；本页只显示「等待应用」。
             repo.saveQuiet(cfg);
             ConfigSync.markApplied(this); // 自己写的文件不再触发「外部变更」
             cfg = repo.load();            // 读回归一化后的文件（trim / 悬空 active 修正）
@@ -1246,65 +1203,34 @@ public class ConfigActivity extends BaseActivity {
             markClean();
             hideConflict();
             hideRuntimeConflict();
-            pushNow(cfg, true);
+            savedWaiting = true;
+            renderPush();
+            toast("已保存，等待小爱应用");
+            // 端口可能因局域网/token 变化而重绑：强制重新取一次控制面端口。
+            lastPortProbeAt = 0;
+            refreshBridgePort();
+            // 核对运行时模型/开关：不一致时出黄色冲突条（只读，不写文件）。
+            ui.postDelayed(new Runnable() {
+                public void run() { checkRuntimeDrift(); }
+            }, 1200);
             checkModelNow(true);
         } catch (Throwable t) {
             toast("保存失败：" + t.getMessage());
         }
     }
 
+    /** 「点按重新通知」：只走控制面 reload，不再向任何端口发 Bearer。 */
     private void retryPush() {
         hideRuntimeConflict();
-        AppConfig c;
-        try {
-            c = ConfigRepository.get(this).load(); // 以文件为准（不推未保存的输入）
-        } catch (Throwable t) {
-            c = cfg;
-        }
-        pushNow(c, false);
-    }
-
-    /** 后台推送一次，把 {@link BridgePusher.Result} 原样转成状态条 + toast。 */
-    private void pushNow(final AppConfig c, final boolean fromSave) {
-        setPush("正在推送到小爱…", R.color.text_hint, false);
-        AppExecutors.io(new Runnable() {
-            public void run() {
-                BridgePusher.Result res = null;
-                String ex = null;
-                try {
-                    res = ConfigRepository.get(ConfigActivity.this).pushSync(c);
-                } catch (Throwable t) {
-                    ex = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
-                }
-                final BridgePusher.Result fr = res;
-                final String fex = ex;
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        if (isFinishing()) return;
-                        lastPush = fr;
-                        lastPushError = fex;
-                        renderPush();
-                        toast(pushToast(fr, fex, fromSave));
-                        // 局域网开关可能导致桥重绑到相邻端口：强制重新探一次，URL 立即指向真实端口。
-                        lastPortProbeAt = 0;
-                        refreshBridgePort();
-                        // 推送后核对运行时模型/开关：不一致时出黄色冲突条（只读，不写文件）。
-                        ui.postDelayed(new Runnable() {
-                            public void run() { checkRuntimeDrift(); }
-                        }, 1200);
-                    }
-                });
-            }
-        });
-    }
-
-    private String pushToast(BridgePusher.Result r, String ex, boolean fromSave) {
-        String prefix = fromSave ? "已保存，" : "";
-        if (r == null) return prefix + "推送失败（" + shortText(ex) + "）";
-        if (r.total == 0) return prefix + "推送失败（" + failureReason(r) + "）";
-        if (r.pushed == r.total) return "已推送 · " + r.pushed + " 个进程";
-        if (r.pushed == 0) return prefix + "推送失败（" + failureReason(r) + "）";
-        return prefix + "已推送 " + r.pushed + "/" + r.total + " · 其余进程稍后从 prefs 生效";
+        boolean sent = BridgeEndpoint.requestReload();
+        savedWaiting = true;
+        renderPush();
+        toast(sent ? "已通知小爱应用，等待生效" : "小爱未连接，将在下一次轮询时应用");
+        lastPortProbeAt = 0;
+        refreshBridgePort();
+        ui.postDelayed(new Runnable() {
+            public void run() { checkRuntimeDrift(); }
+        }, 1200);
     }
 
     // ------------------------------------------------------------- 模型校验

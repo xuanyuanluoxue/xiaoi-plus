@@ -16,19 +16,22 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import plus.xiaoi.module.bridge.BridgeControlClient;
 import plus.xiaoi.module.bridge.BridgeLifecycle;
 import plus.xiaoi.module.core.BridgePolicy;
+import plus.xiaoi.module.core.RateLimiter;
 
 /**
- * 本地能力桥（可选）：默认只绑 127.0.0.1，开启「局域网访问」且 token 非空时
- * 改为监听 0.0.0.0，让同一 Wi-Fi 下的电脑/手机用 Bearer token 直连。
+ * 本地能力桥（可选）：默认只绑 127.0.0.1，开启「局域网访问」且 token 强到
+ * 32 hex 时改为监听 0.0.0.0，让同一 Wi-Fi 下的电脑/手机用 Bearer token 直连。
  * 端口从 8771 起依次尝试 8771~8775，但**只有 leader 进程**会绑定：
  * 由 {@link BridgeLifecycle} 通过 {@code files/xiaoi_bridge.lock} 选出全机唯一进程，
  * 其他进程只 hook / 拉配置，{@link #port()} 返回 0。
@@ -38,10 +41,12 @@ import plus.xiaoi.module.core.BridgePolicy;
  * 本类只保留 Android 侧接线：Xposed hook、CLI binder 反射、
  * prefs 写入、socket 生命周期与鉴权策略。
  *
- * 除 {@code POST /config}（仅 loopback，且当前进程尚未配置 token 时允许免鉴权）与
- * {@code POST /island}（仅 loopback，无副作用）外，所有请求必须带
- * {@code Authorization: Bearer <token>}；token 为空时一律 401。
- * 局域网模式不会放宽这两条 loopback 限制：改配置和弹岛只能在本机发起。
+ * WP4 起数据面只服务外部 MCP/CLI：
+ * - {@code POST /config} 固定 410 Gone，不解析 body、不写 prefs；
+ * - 除 {@code POST /island}（仅 loopback，无副作用）外，所有请求必须带
+ *   {@code Authorization: Bearer <token>}；token 为空时一律 401；
+ * - {@code /health} 只接受 Bearer，不再接受模块 prefs 里的旧 token；
+ * - 有界线程池 + 每源 IP 限流（/health、/island）。
  *
  * 全部网络/反射操作 fail-soft：异常只写日志，绝不影响模型重定向与标记注入。
  */
@@ -76,7 +81,9 @@ public final class Bridge {
     private static volatile ServerSocket sServer;
     private static volatile Object sFacade;
     private static volatile Object sCli;
-    private static volatile ExecutorService sPool;
+    private static volatile ThreadPoolExecutor sPool;
+    /** /health、/island 每源 IP 限流；/mcp 有 Bearer，不参与。 */
+    private static final RateLimiter LOW_TRUST_RATE = new RateLimiter(30, 10_000L);
 
     /** 工具执行的 Android 侧后端；Mcp 层通过它访问一切非纯逻辑能力。 */
     private static final Mcp.Host HOST = new Mcp.Host() {
@@ -105,12 +112,16 @@ public final class Bridge {
 
         @Override
         public boolean writeConfig(Mcp.Snapshot n) {
-            Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker, n.bridge, n.token,
-                    n.markerTemplate, n.enabled, n.lan, Config.current().cfgRev());
+            // 远程 MCP 只能改 model/marker；bridge/lan/token/enabled 一律以当前配置为准，
+            // 防止远程把数据面开关或端点/密钥改掉（WP4 D10）。
+            Config cur = Config.current();
+            Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker,
+                    cur.bridge(), cur.token(), n.markerTemplate, n.enabled, cur.lan(),
+                    cur.cfgRev());
             if (!writeTargetPrefs(c)) return false;
             Config.setCurrent(c);
             Hook.applyConfig(c);
-            updateAccess(n.lan, n.bridge);
+            updateAccess(cur.lan(), cur.bridge());
             return true;
         }
 
@@ -200,6 +211,15 @@ public final class Bridge {
     }
 
     /**
+     * 本进程是否已绑定小爱 CLI。WP4 起 leader 资格 = facade 或 CLI 至少有一个：
+     * 两者都没有的进程（典型是只加载了 hook 的 :core）不再接管数据面，
+     * 避免「端口能连、工具全不可用」。
+     */
+    public static boolean hasCli() {
+        return sCli != null;
+    }
+
+    /**
      * 数据面所需的最小 hook/CLI 绑定：hook 每个进程只装一次；
      * CLI 绑定允许重试（Hook 早期 Context 可能还没就绪）。
      */
@@ -234,6 +254,16 @@ public final class Bridge {
     /** 当前配置是否允许本进程监听数据面（纯策略，见 {@link BridgePolicy}）。 */
     public static boolean shouldListen() {
         return BridgePolicy.shouldListen(sBridge, sToken);
+    }
+
+    /** 当前配置下是否应绑 0.0.0.0（LAN 且 token 为 32 hex）。 */
+    public static boolean bindsLan() {
+        return "0.0.0.0".equals(BridgePolicy.bindHost(sLan, sBridge, sToken));
+    }
+
+    /** 当前 socket 是否真的绑在 0.0.0.0（弱 token 回退 loopback 时为 false）。 */
+    public static boolean isBoundLan() {
+        return sBoundLan;
     }
 
     /**
@@ -448,7 +478,7 @@ public final class Bridge {
      * 可重复调用；不释放 leader 锁（锁由 {@link BridgeLifecycle} 管理）。
      */
     public static void stopServer() {
-        ExecutorService pool;
+        ThreadPoolExecutor pool;
         boolean wasRunning;
         synchronized (LOCK) {
             wasRunning = sStarted;
@@ -482,6 +512,10 @@ public final class Bridge {
             if (sStarted) return true;
             final String host = BridgePolicy.bindHost(sLan, sBridge, sToken);
             final boolean lan = "0.0.0.0".equals(host);
+            if (sLan && !lan) {
+                // 只说明策略，不输出 token 内容。
+                info("LAN 需要 32 hex token，已回退 loopback");
+            }
             // 先在原端口重绑（token/局域网开关热切换时避免端口乱跳），再扫描其余端口。
             int[] order = new int[PORT_END - PORT_START + 1];
             int n = 0;
@@ -505,17 +539,20 @@ public final class Bridge {
                 try {
                     final ServerSocket bound = ss;
                     if (sPool == null) {
-                        // agent.submit 会等 LLM 回复，单次可能几十秒；别让 4 个线程互相饿死。
-                        sPool = Executors.newFixedThreadPool(8, new ThreadFactory() {
-                            private int n;
+                        // 有界：core=4、max=8、queue=32。agent.submit 可能等 LLM 几十秒，
+                        // 但绝不能因为慢连接无限建线程或让 accept 阻塞。
+                        sPool = new ThreadPoolExecutor(4, 8, 30L, TimeUnit.SECONDS,
+                                new LinkedBlockingQueue<Runnable>(32),
+                                new ThreadFactory() {
+                                    private int n;
 
-                            @Override
-                            public Thread newThread(Runnable r) {
-                                Thread t = new Thread(r, "xiaoi-bridge-" + (n++));
-                                t.setDaemon(true);
-                                return t;
-                            }
-                        });
+                                    @Override
+                                    public Thread newThread(Runnable r) {
+                                        Thread t = new Thread(r, "xiaoi-bridge-" + (n++));
+                                        t.setDaemon(true);
+                                        return t;
+                                    }
+                                });
                     }
                     // 先发布状态再启动 accept：stopServer 立刻 close 也能让 accept 退出。
                     sServer = ss;
@@ -569,12 +606,25 @@ public final class Bridge {
             }
             try {
                 final Socket fs = s;
-                sPool.execute(new Runnable() {
+                ThreadPoolExecutor pool = sPool;
+                if (pool == null) {
+                    closeQuietly(fs);
+                    continue;
+                }
+                pool.execute(new Runnable() {
                     @Override
                     public void run() {
                         handle(fs);
                     }
                 });
+            } catch (RejectedExecutionException rex) {
+                // 队列满：立即回 503 并断开，不阻塞 accept。
+                try {
+                    Http.respond(s.getOutputStream(), 503,
+                            "text/plain; charset=utf-8", "busy");
+                } catch (Throwable ignored) {
+                }
+                closeQuietly(s);
             } catch (Throwable t) {
                 closeQuietly(s);
             }
@@ -593,6 +643,14 @@ public final class Bridge {
                 return;
             }
 
+            // 低信任端点限流：每源 IP 每 10s 最多 30 次；/mcp 有 Bearer，不参与。
+            if ("/health".equals(req.path) || "/island".equals(req.path)) {
+                if (!LOW_TRUST_RATE.allow(req.path + "|" + peerKey(s))) {
+                    respondText(s, 429, "too many requests");
+                    return;
+                }
+            }
+
             // MCP：标准 JSON-RPC over HTTP，只接受 POST（GET 返回 405）。
             if ("/mcp".equals(req.path)) {
                 handleMcp(s, req);
@@ -603,7 +661,7 @@ public final class Bridge {
                 handleIsland(s, req);
                 return;
             }
-            // 配置推送：唯一允许免 token POST 的端点，鉴权规则单独处理。
+            // WP4：配置只由手机 App 写；旧 HTTP 推送固定 410，不读 body、不写 prefs。
             if ("/config".equals(req.path)) {
                 handleConfig(s, req);
                 return;
@@ -612,11 +670,9 @@ public final class Bridge {
                 respondText(s, 405, "only GET");
                 return;
             }
-            // /health 是推送前的「认端口」探针：信任集合必须与 /config 对齐，
-            // 否则 token 轮换时用新 token 探测不到仍持旧 token 的桥 → 配置永远推不进去
-            // （健康探测失败即不认领，推送直接跳过）。内存 token 未就绪时以模块 prefs 为准备。
+            // /health 只接受 Bearer；不再回退模块 prefs 的旧 token。
             if ("/health".equals(req.path)) {
-                if (!healthAuthorized(req.headers)) {
+                if (!authorized(req.headers)) {
                     respondText(s, 401, "unauthorized");
                     return;
                 }
@@ -660,6 +716,12 @@ public final class Bridge {
                 return;
             }
             respondText(s, 404, "not found: " + req.path);
+        } catch (java.io.IOException ioe) {
+            // 超长行/header 超限：拒绝请求，不把它当内部错误。
+            try {
+                respondText(s, 431, "request header too large");
+            } catch (Throwable ignored) {
+            }
         } catch (Throwable t) {
             log("请求处理失败（已忽略）: " + t);
             try {
@@ -731,60 +793,23 @@ public final class Bridge {
         }
     }
 
-    /** POST /config：只接受 loopback，写入小爱自己的 prefs 并热重装 hook。 */
+    /**
+     * POST /config：WP4 起固定 410 Gone。
+     *
+     * 不读取/解析 body、不鉴权、不写 prefs、不热更新；GET 等其他方法仍是 405。
+     * 旧 App/脚本会失败，这是有意的破坏性变更：配置只允许在手机 App 内修改。
+     */
     private static void handleConfig(Socket s, Http.Req req) {
-        try {
-            if (!"POST".equals(req.method)) {
+        if (!"POST".equals(req.method)) {
+            try {
                 respondText(s, 405, "only POST");
-                return;
-            }
-            if (!isLoopback(s)) {
-                respondText(s, 403, "loopback only");
-                return;
-            }
-            if (!configAuthorized(req.headers)) {
-                respondText(s, 401, "unauthorized");
-                return;
-            }
-
-            if (req.body.length() == 0) {
-                respondText(s, 400, "empty body");
-                return;
-            }
-            Object v = Json.read(req.body);
-            if (!(v instanceof Map)) throw new Json.Exception("not a json object");
-            Map<?, ?> o = (Map<?, ?>) v;
-            // v0.8：缺失字段保持小爱侧当前生效值（token 轮换无需重发整份配置）；
-            // 显式出现的字段按全量替换语义处理，与 v1/v2 设置页行为一致。
-            Mcp.Snapshot merged = Mcp.mergeConfig(o, HOST.config());
-            Config c = Config.create(merged.baseUrl, merged.apiKey, merged.model,
-                    merged.marker, merged.bridge, merged.token, merged.markerTemplate,
-                    merged.enabled, merged.lan, Config.current().cfgRev());
-
-            if (!writeTargetPrefs(c)) {
-                respondText(s, 503, "target context unavailable");
-                return;
-            }
-
-            Config.setCurrent(c);
-            try {
-                Hook.applyConfig(c);
-            } catch (Throwable t) {
-                log("applyConfig 失败（已忽略）: " + t);
-            }
-            updateAccess(c.lan(), c.bridge());
-
-            Map<String, Object> r = Json.obj();
-            r.put("ok", true);
-            r.put("port", sPort);
-            respondJson(s, 200, Json.write(r));
-            log("配置已推送：model=" + c.model() + " bridge=" + c.bridge());
-        } catch (Throwable t) {
-            log("配置推送失败（已忽略）: " + t);
-            try {
-                respondText(s, 400, "bad config: " + t.getMessage());
             } catch (Throwable ignored) {
             }
+            return;
+        }
+        try {
+            respondText(s, 410, "gone: /config 已停用，请在小爱同学+ App 内修改配置");
+        } catch (Throwable ignored) {
         }
     }
 
@@ -800,54 +825,15 @@ public final class Bridge {
         }
     }
 
-    /**
-     * /health 鉴权：内存 token ∪ 模块 prefs 当前 token；两者都没有时仍然 401
-     * （与 contract-test 的「无 token → 401」判据保持一致）。
-     *
-     * 为什么要放宽到 prefs：设置页改 token 时先写 prefs 再推送，此刻内存里还是旧 token。
-     * 若 /health 只认内存 token，新 token 的健康探测会 401 → 不能被认领 → 永不下发新 token。
-     */
-    private static boolean healthAuthorized(Map<String, String> headers) {
+    /** 限流 key：来源地址；拿不到时用固定串（等价全局限流，仍是有界的）。 */
+    private static String peerKey(Socket s) {
         try {
-            String mem = sToken == null ? "" : sToken.trim();
-            String prefs = modulePrefsToken();
-            String primary = mem.length() > 0 ? mem : prefs;
-            if (primary.length() == 0) return false;
-            return Http.bearerMatchesAny(headers, primary, prefs);
+            InetAddress a = s.getInetAddress();
+            if (a == null) return "unknown";
+            String h = a.getHostAddress();
+            return h == null ? "unknown" : h;
         } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    /**
-     * /config 鉴权：已配置 token 时必须带 Bearer；尚未配置时允许本机首次推送
-     * （该窗口持续到本进程写入第一个 token 为止）。
-     *
-     * v0.8 修复 token 轮换死锁（两半）：
-     * 1) 鉴权放宽为「内存 token」或「模块 prefs 当前 token」匹配其一——设置页重存一次即自愈；
-     * 2) 缺失字段保持当前值（见 {@link Mcp#mergeConfig}）——换 token 不必重发整份配置，
-     *    也就不会把小爱侧正在生效的模型配置冲掉。
-     */
-    private static boolean configAuthorized(Map<String, String> headers) {
-        try {
-            String token = sToken;
-            if (token == null || token.length() == 0) return true;
-            return Http.bearerMatchesAny(headers, token, modulePrefsToken());
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    /** 模块 prefs 里当前保存的桥 token（设置页的事实源）；读不到返回空串。 */
-    private static String modulePrefsToken() {
-        try {
-            de.robv.android.xposed.XSharedPreferences p =
-                    new de.robv.android.xposed.XSharedPreferences("plus.xiaoi.module", Config.PREFS);
-            p.reload();
-            String t = p.getString(Config.KEY_TOKEN, "");
-            return t == null ? "" : t.trim();
-        } catch (Throwable t) {
-            return "";
+            return "unknown";
         }
     }
 

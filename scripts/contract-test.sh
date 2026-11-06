@@ -199,6 +199,11 @@ if [ -n "$PORT" ]; then
     http_get "/stats?days=1"
     [ "$STATUS" = "401" ] && pass "GET /stats 无 token → 401" || fail "GET /stats 无 token → 期望 401，实际 $STATUS"
 
+    # WP4：/config 固定 410，即使没有 token 也不解析 body / 不写 prefs
+    http_post /config 'not json at all'
+    [ "$STATUS" = "410" ] && pass "POST /config 无 token → 410 Gone" \
+        || fail "POST /config 无 token → 期望 410，实际 $STATUS"
+
     # ------------------------------------------------------------ 4) token 门内
     if [ -n "${XIAOI_TOKEN:-}" ]; then
         echo "==> 鉴权请求（token 已提供）"
@@ -297,11 +302,17 @@ if [ -n "$PORT" ]; then
         [ "$STATUS" = "404" ] && pass "未知路径 → 404" || fail "未知路径 → 期望 404，实际 $STATUS"
         save_or_check unknown_path
 
-        # /config 鉴权探针：空体得到 400（而非 401）即证明 token 被接受，且不会写入任何配置
-        http_post /config '' "${A_HDR[@]}"
-        [ "$STATUS" = "400" ] && pass "POST /config token 被接受（空体 → 400）" \
-            || fail "POST /config → 期望 400（token 被拒为 401），实际 $STATUS"
+        # WP4 破坏性变更：旧 App/脚本的 POST /config 一律 410 Gone；
+        # body 不进入解析、不写 prefs。GET /config 仍是 405。
+        # 注：WP4 基线未在真机 --save-baseline 重跑，config_auth_probe.* 按新协议手工更新。
+        http_post /config '{"model":"contract-should-not-apply"}' "${A_HDR[@]}"
+        [ "$STATUS" = "410" ] && pass "POST /config → 410 Gone（不再接收配置）" \
+            || fail "POST /config → 期望 410，实际 $STATUS"
         save_or_check config_auth_probe
+
+        http_get /config "${A_HDR[@]}"
+        [ "$STATUS" = "405" ] && pass "GET /config → 405" \
+            || fail "GET /config → 期望 405，实际 $STATUS"
 
         http_post /island '{}' "${A_HDR[@]}"
         [ "$STATUS" = "200" ] && jq -e 'has("ok") and has("text")' "$TMP/body" >/dev/null \

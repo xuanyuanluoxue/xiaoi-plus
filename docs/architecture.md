@@ -22,15 +22,16 @@
 2. **版本白名单**：未验证版本直接 no-op，避免升级后 bootloop
 3. **最小侵入**：只改请求参数与提示词，不动 UI、不拦截用户操作
 4. **默认不暴露**：桥默认只绑 loopback，token 为空一律 401；
-   局域网必须显式打开开关且 token 非空
+   局域网必须显式打开开关且 token 为 32 hex（128 bit）
 
 ## MCP 端点的位置
 
 `POST /mcp` 由能力桥进程内的同一个 HTTP server 提供，不新增 hook、不扩大作用域。
 它只是把已有的 `/cli`（CliDispatcher 透传）按 MCP 的 `tools/call` 语义包装了一层，
 因此权限边界与 `/cli` 完全一致：同一 Bearer token、同样的本机/局域网准入规则、
-同一个“驱动小爱”的能力。裸端点 `/config` 和 `/island` 始终只允许 loopback；
-MCP 的 `xiaoai_switch_model` / `xiaoai_island` 工具在局域网下仍可用，但必须带 token。
+同一个“驱动小爱”的能力。裸端点 `/island` 始终只允许 loopback；`POST /config` 自 WP4 起
+固定 `410 Gone`，数据面不再接收配置。MCP 的 `xiaoai_island` 工具在局域网下仍可用（需 token）；
+`xiaoai_switch_model` 只允许 model/marker，端点、密钥、bridge/lan 只能在手机 App 设置。
 
 ## 控制面（0.12.0 WP1，增量）
 
@@ -44,9 +45,9 @@ MCP 的 `xiaoai_switch_model` / `xiaoai_island` 工具在局域网下仍可用�
 - `C2S_REPORT_STATE` 保存 model/enabled/port/version/pid/process；`C2S_APPEND_LOGS` 只进内存环形缓冲。
 - App → 小爱侧预留 `reload` / `showIsland` / `clearSafeMode` / `flushLogs`。
 
-WP1 是**增量**：旧 `BridgePusher` 与 `POST /config` 原样保留，控制面只负责拉配置/状态；
-绑定失败按 2s→5s→10s→20s→30s 退避重试，不影响小爱主流程。模块 prefs 的
-`control_plane=false` 可整体关闭控制面，回到 beta.4 行为。
+WP4 起删除旧 `BridgePusher` 与 `POST /config`：App 保存后只写文件/prefs，并通过
+`BridgeEndpoint.requestReload()` 通知控制面广播 reload；绑定失败按 2s→5s→10s→20s→30s
+退避重试，不影响小爱主流程。模块 prefs 的 `control_plane=false` 可整体关闭控制面（不推荐）。
 
 ## 配置事实源（0.12.0 WP2）
 
@@ -54,7 +55,7 @@ WP1 是**增量**：旧 `BridgePusher` 与 `POST /config` 原样保留，控制�
 App 是唯一写者：保存时 `rev` 自增，写入走 tmp + fsync + rename（不先删目标）。
 target prefs 与模块 prefs 只保留 legacy 兼容键 + `cfg_rev`，作为降级缓存，不再反向覆盖文件。
 解析失败时保留原文件、生成 `config.json.corrupt.<ts>`、进入只读态（保存被阻止），不会静默回默认。
-beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录。旧 HTTP 推送仍保留（WP4 删除）。
+beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录。旧 HTTP 推送已在 WP4 删除。
 
 ## 数据面生命周期（0.12.0 WP3）
 
@@ -68,12 +69,18 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
   同一 JVM 内的第二个实例会收到 `OverlappingFileLockException`，安全视为「未获得」。
 - `core/BridgePolicy.shouldListen = mcp.enabled && token 非空`；不满足时 leader 关闭
   server、清会话、释放锁，其他进程不会启动监听。
+- WP4：`bindHost` 只在 LAN 且 token 为 32 hex 时返回 `0.0.0.0`；弱 token 静默回退 loopback。
+  leader 资格收紧为 `hasFacade() || hasCli()`；两者都没有的进程不接管数据面。
 - `Bridge.install` 只保留 WP1 控制面接线，然后交给 `BridgeLifecycle.start/apply`；
   配置热更新统一走 `apply()`，不再有 `rebindIfNeeded` 第二条绑定路径。
 - 没有 facade 的进程（典型是 `:core`）会先等 30s，让带 facade/CLI 的进程优先成为 leader；
   宽限期后仍可接管，保证 leader 死亡后不依赖进程名。
-- 生命周期每 10s 主动 `pullConfig` 一次：即使 MCP 已关闭、HTTP 推送不可达，
+- 生命周期每 10s 主动 `pullConfig` 一次：即使控制面 reload 丢失，
   App 重新开启也能通过控制面在 10s 内恢复监听。
+- WP4：App 不再扫描端口。leader 的 port 经控制面 register/reportState 写入
+  `core/BridgeEndpoint`，`BridgeClient.discover()` 只读该值；`/config` 固定 410。
+- HTTP 有界：单行 8192、header 128 行、请求体 64KB；线程池 core=4/max=8/queue=32；
+  `/health`、`/island` 每源 IP 30 次/10s（429）。
 - target prefs 里 `cfg_rev` 相同的情况下以 target prefs 的 `bridge` 为准，
   避免 leader 释放锁后其他进程用陈旧的内存状态误接管。
 

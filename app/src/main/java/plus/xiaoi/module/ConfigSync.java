@@ -16,9 +16,10 @@ import java.io.File;
  * 数据流：
  *   config.json（App 私有目录 getFilesDir()/config.json）
  *     → FileObserver 监听（本进程活着时）
- *     → validate → 写模块 prefs 镜像（带 cfg_rev） → POST /config（旧推送，WP3 才切换）
- *     → 小爱进程 hooks 800ms 热读生效
+ *     → validate → 写模块 prefs 镜像（带 cfg_rev） → BridgeEndpoint.requestReload()
+ *     → 小爱进程经控制面重新 pull，hooks 800ms 内热读生效
  *
+ * WP4 起不再有 HTTP 推送 / pending 重试：控制面不在线时由小爱每 10s 主动 pull 兜底。
  * 只在 App 进程内监听：进程被杀后改文件，下次启动时由 {@link #applyIfChanged}
  * 比对内容哈希后补应用。运行时变更（MCP switch_model 等）不自动写回文件——
  * 由 UI 提供「从运行中小爱导入」，文件永远优先、永不被静默覆盖。
@@ -37,9 +38,6 @@ public final class ConfigSync {
             new java.util.concurrent.CopyOnWriteArrayList<Runnable>();
     private static String sLastAppliedHash;
     private static volatile boolean sStarted;
-
-    /** 推送失败待重试标记（模块 prefs；下次 start() 强制重推一次）。 */
-    static final String KEY_SYNC_PENDING = "sync_pending";
 
     private ConfigSync() {}
 
@@ -108,15 +106,9 @@ public final class ConfigSync {
                 } catch (Throwable t) {
                     Log.w(TAG, "启动加载/迁移失败（已忽略）: " + t.getClass().getSimpleName());
                 }
-                final boolean retry = isPending(app);
                 sHandler.postDelayed(new Runnable() {
                     public void run() {
-                        if (retry) {
-                            // 上次推送全失败（小爱当时没运行）：文件可能已应用过，强制重推一次
-                            applyIfChanged(app, true, true);
-                        } else {
-                            applyIfChanged(app, true);
-                        }
+                        applyIfChanged(app, true);
                     }
                 }, 150);
             }
@@ -126,23 +118,16 @@ public final class ConfigSync {
     /**
      * 内容哈希与上次应用不同才应用，避免 save() 自己写文件触发回环。
      *
-     * @param push 是否推送到小爱（true=改动后应用；false=启动时仅对齐本地镜像）
+     * @param apply true=改动后应用并请求小爱 reload；false=启动时仅对齐本地镜像
      */
-    private static void applyIfChanged(Context ctx, boolean push) {
-        applyIfChanged(ctx, push, false);
-    }
-
-    /**
-     * @param force true = 忽略哈希去重（pending 重试用；上次推送失败但文件已应用过）
-     */
-    private static void applyIfChanged(Context ctx, boolean push, boolean force) {
+    private static void applyIfChanged(Context ctx, boolean apply) {
         try {
             ConfigRepository repo = ConfigRepository.get(ctx);
             File f = repo.configFile();
             if (!f.exists()) return;
             String hash = hashOf(f);
             if (hash == null || hash.length() == 0) return;
-            if (!force && hash.equals(sLastAppliedHash)) return;
+            if (hash.equals(sLastAppliedHash)) return;
 
             AppConfig c = repo.load();
             // 损坏：保留原文件 + 只读态，绝不把骨架/默认值推给运行时。
@@ -160,13 +145,11 @@ public final class ConfigSync {
                 return;
             }
             sLastAppliedHash = hash;
-            if (push) {
-                // 无密钥不再整份跳过（R3）：推送载荷由 BridgePusher.payloadFor 按字段分组，
-                // 模型组受保护、mcp / 前缀照常生效。
+            if (apply) {
+                // applyToTarget 写 prefs 后请求控制面 reload；不再发 HTTP。
                 repo.applyToTarget(c);
                 Log.i(TAG, "config.json 变更已应用: model=" + c.model() + " enabled=" + c.enabled
-                        + " hasKey=" + (c.apiKeyOfActive().length() > 0)
-                        + (force ? " (pending 重试)" : ""));
+                        + " hasKey=" + (c.apiKeyOfActive().length() > 0));
                 notifyChanged();
             } else {
                 repo.applyLocal(c);
@@ -205,27 +188,7 @@ public final class ConfigSync {
         applyIfChanged(ctx.getApplicationContext(), true);
     }
 
-    // ------------------------------------------------------------- pending 标记
-
-    /** 上一次推送是否全失败（待下次启动重试）。 */
-    static boolean isPending(Context ctx) {
-        try {
-            return ctx.getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE)
-                    .getBoolean(KEY_SYNC_PENDING, false);
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    /** 记录/清除 pending（推送结束由 ConfigRepository 调用）。 */
-    static void markPending(Context ctx, boolean pending) {
-        if (ctx == null) return;
-        try {
-            ctx.getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE).edit()
-                    .putBoolean(KEY_SYNC_PENDING, pending).apply();
-        } catch (Throwable ignored) {
-        }
-    }
+    // ------------------------------------------------------------- 应用标记
 
     /** 内部写入成功后回填哈希，防止自触发。 */
     static void markApplied(Context ctx) {

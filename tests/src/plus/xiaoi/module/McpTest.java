@@ -94,7 +94,7 @@ public final class McpTest {
                         + "\"serverInfo\":{\"name\":\"xiaoi-plus\",\"version\":\"9.9.9\"},"
                         + "\"instructions\":\"小爱同学（手机端）能力桥：xiaoai_submit 让小爱执行一句话任务，"
                         + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，xiaoai_stats 看三方/官方模型调用量。"
-                        + "所有调用都发生在手机本机回环地址上。\"}}",
+                        + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。\"}}",
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", h));
 
         eq("ping", "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}",
@@ -153,7 +153,7 @@ public final class McpTest {
         Map<?, ?> sw = (Map<?, ?>) tools.get(5);
         Map<?, ?> swSchema = (Map<?, ?>) sw.get("inputSchema");
         eq("switch required", "[model]", ((List<?>) swSchema.get("required")).toString());
-        eq("switch props", "[model, baseUrl, apiKey, marker, bridge]",
+        eq("switch props", "[model, marker]",
                 ((Map<?, ?>) swSchema.get("properties")).keySet().toString());
 
         Map<?, ?> lg = (Map<?, ?>) tools.get(6);
@@ -269,21 +269,43 @@ public final class McpTest {
         eq("switch_model same values changed=false", Boolean.FALSE,
                 ((Map<?, ?>) Json.read(swText)).get("changed"));
 
-        call(h, 10, "xiaoai_switch_model", "{\"model\":\"m2\",\"baseUrl\":\"https://x/\",\"apiKey\":\"k2\",\"marker\":false,\"bridge\":false}");
-        eq("switch_model full override base", "https://x/", h.written.baseUrl);
-        eq("switch_model full override key", "k2", h.written.apiKey);
-        eq("switch_model full override marker", false, h.written.marker);
-        eq("switch_model full override bridge", false, h.written.bridge);
+        // WP4 D10：baseUrl/apiKey/bridge/lan 一律拒绝，且不写配置
+        h.written = null;
+        eq("switch_model rejects baseUrl",
+                "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
+                        + "\"text\":\"端点和密钥只能在手机 App 设置；xiaoai_switch_model 只接受 model / marker（baseUrl 已拒绝）\"}],\"isError\":true}}",
+                call(h, 10, "xiaoai_switch_model",
+                        "{\"model\":\"m2\",\"baseUrl\":\"https://x/\",\"apiKey\":\"k2\",\"marker\":false,\"bridge\":false}"));
+        ok("switch_model 拒绝后未写配置", h.written == null);
 
-        eq("switch_model missing model",
+        String[] banned = {"apiKey", "bridge", "lan", "token", "enabled", "markerTemplate"};
+        for (String key : banned) {
+            h.written = null;
+            String rejOut = call(h, 10, "xiaoai_switch_model",
+                    "{\"model\":\"m2\",\"" + key + "\":\"x\"}");
+            ok("switch_model 拒绝 " + key, textOf(rejOut).contains("isError")
+                    || rejOut.contains("\"isError\":true"));
+            ok("switch_model " + key + " 未写配置", h.written == null);
+        }
+
+        // marker 是允许的
+        h.written = null;
+        call(h, 10, "xiaoai_switch_model", "{\"model\":\"m2\",\"marker\":false}");
+        ok("switch_model 允许 marker", h.written != null && !h.written.marker);
+        eq("switch_model 保留 baseUrl", "https://api.deepseek.com/v1", h.written.baseUrl);
+        eq("switch_model 保留 apiKey", "sk-test", h.written.apiKey);
+        eq("switch_model 保留 token", "tok-1", h.written.token);
+        eq("switch_model 保留 bridge", true, h.written.bridge);
+
+        eq("switch_model no model",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: model\"}],\"isError\":true}}",
-                call(h, 10, "xiaoai_switch_model", "{\"baseUrl\":\"https://x/\"}"));
+                call(h, 10, "xiaoai_switch_model", "{\"marker\":false}"));
 
         h.cfgBase = "";
         eq("switch_model no endpoint",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
-                        + "\"text\":\"missing argument: baseUrl（当前没有可用端点）\"}],\"isError\":true}}",
+                        + "\"text\":\"missing argument: baseUrl（当前没有可用端点，请在手机 App 设置）\"}],\"isError\":true}}",
                 call(h, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
         h.cfgBase = "https://api.deepseek.com/v1";
 
@@ -311,55 +333,13 @@ public final class McpTest {
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":22,\"method\":\"tools/call\","
                         + "\"params\":{\"name\":\"xiaoai_submit\",\"arguments\":\"x\"}}", h));
 
-        // ------------------------------------------------------------ mergeConfig（/config 缺失字段保持当前值）
-        Mcp.Snapshot cur = new Mcp.Snapshot("https://api.x/v1", "sk-1", "m-1", true, true, "tok-old");
-
-        Mcp.Snapshot m = Mcp.mergeConfig((Map<?, ?>) Json.read("{}"), cur);
-        eq("merge empty body keeps all", "https://api.x/v1", m.baseUrl);
-        eq("merge empty body keeps key", "sk-1", m.apiKey);
-        eq("merge empty body keeps model", "m-1", m.model);
-        eq("merge empty body keeps marker", true, m.marker);
-        eq("merge empty body keeps bridge", true, m.bridge);
-        eq("merge empty body keeps lan", false, m.lan);
-        eq("merge empty body keeps token", "tok-old", m.token);
-
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"token\":\"tok-new\"}"), cur);
-        eq("merge token only changes token", "tok-new", m.token);
-        eq("merge token only keeps model", "m-1", m.model);
-        eq("merge token only keeps baseUrl", "https://api.x/v1", m.baseUrl);
-        eq("merge token only keeps apiKey", "sk-1", m.apiKey);
-        eq("merge token only keeps template", "", m.markerTemplate);
-
-        Mcp.Snapshot curT = new Mcp.Snapshot("https://api.x/v1", "sk-1", "m-1", true, true, "tok", "[模型: {model}]");
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"markerTemplate\":\"[{model}]\"}"), curT);
-        eq("merge template replace", "[{model}]", m.markerTemplate);
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{}"), curT);
-        eq("merge template keep", "[模型: {model}]", m.markerTemplate);
-
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"baseUrl\":\"\"}"), cur);
-        eq("merge explicit empty clears", "", m.baseUrl);
-        eq("merge explicit empty keeps rest", "m-1", m.model);
-
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"marker\":false}"), cur);
-        eq("merge explicit false flips", false, m.marker);
-        eq("merge explicit false keeps bridge", true, m.bridge);
-
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"lan\":true}"), cur);
-        eq("merge lan flips", true, m.lan);
-        eq("merge lan keeps model", "m-1", m.model);
-
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read("{\"token\":null}"), cur);
-        eq("merge explicit null clears token", "", m.token);
-
-        m = Mcp.mergeConfig((Map<?, ?>) Json.read(
-                "{\"baseUrl\":\"https://b/\",\"apiKey\":\"k2\",\"model\":\"m2\","
-                        + "\"marker\":false,\"bridge\":false,\"token\":\"t2\"}"), cur);
-        eq("merge full replace base", "https://b/", m.baseUrl);
-        eq("merge full replace key", "k2", m.apiKey);
-        eq("merge full replace model", "m2", m.model);
-        eq("merge full replace marker", false, m.marker);
-        eq("merge full replace bridge", false, m.bridge);
-        eq("merge full replace token", "t2", m.token);
+        // ------------------------------------------------------------ 参数白名单
+        ok("rejectedSwitchArg null", Mcp.rejectedSwitchArg(null) == null);
+        ok("rejectedSwitchArg model/marker",
+                Mcp.rejectedSwitchArg((Map<?, ?>) Json.read("{\"model\":\"m\",\"marker\":true}")) == null);
+        ok("rejectedSwitchArg baseUrl",
+                Mcp.rejectedSwitchArg((Map<?, ?>) Json.read("{\"baseUrl\":\"x\"}"))
+                        .contains("端点和密钥只能在手机 App 设置"));
 
         return T.report("McpTest");
     }

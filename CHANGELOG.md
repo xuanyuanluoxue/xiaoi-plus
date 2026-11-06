@@ -1,8 +1,8 @@
 # 更新日志
 
-## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期
+## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固
 
-> **重构进行中，未发布**。旧 HTTP 推送仍保留（WP4 删除），数据面已切到 leader 单监听。
+> **重构进行中，未发布**。WP4 已删除旧 HTTP 推送与 `POST /config`，数据面只服务外部 MCP/CLI。
 
 - 新增 `core/BridgePolicy`（纯 JVM）：`shouldListen` / `bindHost` / `tokenStrongEnoughForLan`
   （32 hex 仅预留，WP4 才启用；本包 LAN 行为不变）
@@ -38,7 +38,7 @@
   不能复用会静默失败的 `Logs`）
 - `config.json` 不存在时 `pullConfig` 返回错误，不用默认骨架覆盖 beta.4 运行态配置
 - `control_plane` 模块 prefs 开关（默认开）；关闭后行为与 beta.4 一致
-- 旧 `BridgePusher` / `/config` 未删除、未切换，`ConfigCodec` schema 未改
+- WP1 阶段旧 `BridgePusher` / `/config` 未删除；WP4 已移除（见下文）
 - WP3 补充：控制面下发携带 `cfg_rev`；每个进程每 10s 主动 pull 一次作为兜底
 
 ### WP2 配置单一事实源
@@ -57,6 +57,31 @@
 - `Config.forTarget()` 不再把 `marker/bridge` 硬编码为 true；target prefs 缺失键按默认值处理
 - 分享仍只写 external `exports/`；`file_paths.xml` 不再暴露整个私有/外部 files 目录
 - 新增纯 JVM `core/ConfigStore` + `ConfigStoreTest`；`ConfigCodecTest` 覆盖 v3/rev/v2 迁移
+
+### WP4 数据面加固（破坏性）
+
+- **`POST /config` 改为 `410 Gone`**：不读取/解析 body、不写 prefs、不热更新；GET 仍 405。
+  旧 App/脚本/自动化必须改用手机 App 保存配置。
+- 删除 `BridgePusher`、`BridgePusherTest` 与 `BridgeClient` 的 8771~8775 端口扫描：
+  App 不再向未认领端口发送 Bearer。leader 端口经控制面登记到纯 JVM `core/BridgeEndpoint`，
+  `BridgeClient.discover()` 只读该值（0 = 无 leader）。
+- 新增 `core/RateLimiter`：`/health`、`/island` 按来源 IP 30 次/10s，超限 429；
+  `/mcp` 有 Bearer，不做全局限流。
+- `Http` 有界读取：单行上限 8192 字符、header 最多 128 行；超限抛 IOException，不无限读。
+  数据面线程池改为有界 `ThreadPoolExecutor`（core=4/max=8/queue=32），队列满回 503。
+- `BridgePolicy.bindHost` 收紧：LAN 仅当 token 为 32 位 hex 才绑 `0.0.0.0`；
+  短 token/非 hex 静默回退 loopback（MCP 本机仍可用），日志提示「LAN 需要 32 hex token」。
+- `xiaoai_switch_model` 只接受 `model`/`marker`；远程传 `baseUrl`/`apiKey`/`bridge`/`lan`
+  返回 `isError=true`，文案明确“端点和密钥只能在手机 App 设置”。工具 schema 同步删除这些参数。
+- `Bridge.HOST.writeConfig` 强制沿用当前 lan/bridge/token，不接受远程改数据面开关。
+- leader 资格 = `hasFacade() || hasCli()`：没有 facade/CLI 的进程（如 `:core`）不再接管，
+  避免“端口能连但工具不可用”；有 CLI 无 facade 的进程仍可接管。
+- App 侧：保存后显示「已保存，等待小爱应用」并通过控制面 reload；删除
+  `pushSync/pushAsync/pending`、`lastPush` 与“令牌不一致”等假推送状态。
+- `/health` 只接受 Bearer，不再回退模块 prefs 的旧 token；`/health`、`/island` 加 429 限流。
+- 契约基线：`config_auth_probe` 期望 410，`mcp_tools_list` 删除 switch_model 的写参数。
+- 文档/Release Notes：`/config` 410、LAN 强 token、远程写拒绝均为破坏性变更；
+  降级到 0.11 前请先关闭 MCP/清空 token。
 
 ## 0.11.0-beta.4 — 2026-11-05
 

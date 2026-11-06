@@ -31,10 +31,11 @@ public final class BridgeRegistryTest {
         T.ok("reportState 补建记录", core != null);
         T.ok("状态已保存", core.hasState && "deepseek".equals(core.model) && core.hasKey);
 
-        // reportState 的 port=0 不能把已注册的 leader 端口清掉
+        // WP4：reportState 的 port 是权威值，0 表示该进程已停止监听 → 清 leader
         r.reportState("com.miui.voiceassist", 101, "deepseek", true, true, "1", 0, 4L);
-        T.eq("状态上报不清端口", 8771,
+        T.eq("状态上报 port=0 清端口", 0,
                 r.get("com.miui.voiceassist").port);
+        T.ok("port=0 后没有 leader", r.leader() == null);
 
         // 两个 leader 时取最近更新的
         r.reportState("com.miui.voiceassist:core", 202, "m2", true, true, "1", 8772, 5L);

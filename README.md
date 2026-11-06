@@ -23,8 +23,8 @@
 | 模型重定向 | 把主对话请求指到你自己的 OpenAI 兼容端点（BYOK） | ✅ 已验证 |
 | 模型标识 | 请求头 `X-Model-Provider-Id: xiaoi-plus`，不往提示词里塞文本 | ✅ 已验证 |
 | 图片理解 | 让第三方模型正常收到截图/图片（hook `getSupportsVision`），不再被换成占位文本 | ✅ 已验证 |
-| 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/config`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1`；全机只由 leader 进程监听一个端口 | 🧪 实验性，默认关闭 |
-| 局域网 MCP | 显式打开「允许局域网访问」且有非空 token 时监听 `0.0.0.0`，同一 Wi-Fi 的电脑可直接连；关闭开关立即回到仅本机 | 🧪 实验性，默认关闭 |
+| 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1`；全机只由 leader 进程监听一个端口；`POST /config` 已停用（410） | 🧪 实验性，默认关闭 |
+| 局域网 MCP | 显式打开「允许局域网访问」且 token 为 32 位 hex 时才监听 `0.0.0.0`，同一 Wi-Fi 的电脑可直接连；短/弱 token 自动回退 loopback；关闭开关立即回到仅本机 | 🧪 实验性，默认关闭 |
 | MCP 端点 | `POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），MCP 客户端可直接接入 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |
 
@@ -53,13 +53,15 @@ adb install -r xiaoi-plus-<version>.apk
 2. 点「作用域」，**只勾选「超级小爱」**（`com.miui.voiceassist`）。
    不要勾系统框架、不要勾其他应用——多勾没有好处，只会扩大影响面。
 3. 打开「小爱同学plus」应用（就是模块自己的设置页），填写配置并保存
-4. 保存后设置页会尝试把配置推送给正在运行的小爱；若提示未运行，手动重启小爱：
+4. 保存后配置写入 App 私有 `config.json`，并通过控制面通知正在运行的小爱重新加载；
+   小爱未运行时下次启动会自动拉取。若页面一直未生效，可强制停止小爱再打开：
 
    ```bash
    adb shell am force-stop com.miui.voiceassist
    ```
 
-> 配置推送成功会热更新，无需重启；推送失败时退回「启动时读一次配置」的旧行为。
+> 保存成功只代表文件已写入；页面显示「已保存，等待小爱应用」。真正的运行时状态在
+> 小爱下一次拉取配置后生效（通常 1~10 秒），不再有 HTTP 推送失败/重试。
 
 ### 设置页字段
 
@@ -70,8 +72,8 @@ adb install -r xiaoi-plus-<version>.apk
 | API Key | 服务商给的 key；跟服务商走，明文存在模块私有目录 | `sk-...` |
 | 启用第三方模型 | 暂停只关重定向，不清配置 | 开 |
 | 开启本地能力桥 | 实验性，默认关；默认监听 `127.0.0.1:8771~8775` | 开 |
-| 允许局域网访问 | 需配合非空 Token；开启后监听 `0.0.0.0`，同一 Wi-Fi 的设备可直连 `/mcp`。关闭后立即回到仅本机 | 关 |
-| 能力桥 Token | 调用方必须带 `Authorization: Bearer <token>`；**留空则拒绝所有请求，且局域网开关不会生效** | 一段长随机串 |
+| 允许局域网访问 | 需配合 **32 位十六进制** Token；满足时监听 `0.0.0.0`，同一 Wi-Fi 的设备可直连 `/mcp`。短 token/非 hex token 自动回退仅本机 | 关 |
+| 能力桥 Token | 调用方必须带 `Authorization: Bearer <token>`；**留空则拒绝所有请求**。局域网要求 32 hex（128 bit） | 一段长随机串 |
 
 服务商、模型 ID、API Key 三者齐全才会启用；暂停（enabled=false）不会清空这些字段。
 模型标识 `X-Model-Provider-Id` 随启用自动发送，不再提供单独开关。
@@ -87,8 +89,9 @@ adb 普通用户无法直接读写，密钥不再落在 `Android/data`）。
 运行时变更（MCP `switch_model` 等）不会自动写回文件，配置页有「从运行中小爱导入」可一键回流——
 文件永远优先。若文件损坏，App 会保留原文件并生成 `config.json.corrupt.<ts>`，此时保存会被阻止。
 
-带 `enabled` 显式开关：暂停只关重定向、不清配置；无密钥的配置不会被推送。
+带 `enabled` 显式开关：暂停只关重定向、不清配置；无密钥的配置不会用于模型请求。
 桥与模型重定向互不影响：不勾桥，重定向照常工作。
+MCP 关闭后数据面立刻停止监听；重启小爱也不会恢复，除非在 App 里重新打开。
 
 ## 验证是否生效
 
@@ -128,15 +131,17 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://127.0.0.1:8771~87
 # ok facade=true
 ```
 
-打开「允许局域网访问」并设置 Token 后，监听地址变为 `0.0.0.0`，同一 Wi-Fi 的电脑可直接：
+打开「允许局域网访问」并设置 **32 位十六进制** Token 后，监听地址变为 `0.0.0.0`，
+同一 Wi-Fi 的电脑可直接：
 
 ```bash
 curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/health
 # ok facade=true
 ```
 
-手机 IP 与端口会在设置页 MCP 卡片里直接显示。没有 token 或 token 不对会返回
-`401 unauthorized`；关闭局域网开关后，非回环请求会立即被拒绝。桥的边界与风险见
+手机 IP 与端口会在设置页 MCP 卡片里直接显示（端口来自控制面，不再扫描）。没有 token
+或 token 不对会返回 `401 unauthorized`；短 token/非 hex token 只会绑 loopback。
+关闭局域网开关后，非回环请求会立即被拒绝。桥的边界与风险见
 [docs/security.md](docs/security.md#3-本地能力桥实验性默认关闭)。
 
 ### MCP 端点（可选，随桥开启）
@@ -145,8 +150,9 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 
 - 协议版本 `2025-03-26`，支持 `initialize`、`notifications/initialized`、`ping`、`tools/list`、`tools/call`
 - 鉴权与 `/cli` 相同：`Authorization: Bearer <token>`；`GET /mcp` 返回 `405`
-- 默认只监听 loopback；打开「允许局域网访问」后同一 Wi-Fi 可直连，`/config` 与 `/island`
-  仍只接受本机请求
+- 默认只监听 loopback；打开「允许局域网访问」且 token 为 32 hex 后同一 Wi-Fi 可直连，
+  `/island` 仍只接受本机请求
+- `POST /config` 已停用：固定返回 `410 Gone`（不解析 body、不写配置）；配置只能在小爱同学+ App 修改
 
 | 工具 | 参数 | 作用 |
 |---|---|---|
@@ -154,7 +160,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 | `xiaoai_submit` | `text`（必填）、`sessionId`（可选） | 让小爱执行一句话任务并返回回复；不传 sessionId 自动 `session.open` |
 | `xiaoai_cli` | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
 | `xiaoai_config` | 无 | 读当前生效配置：model / baseUrl / marker / bridge / lan / 密钥是否已设 |
-| `xiaoai_switch_model` | `model`（必填）、`baseUrl`/`apiKey`/`marker`/`bridge`（可选） | 热切换模型，写 prefs 后 1 秒内全进程生效，**不用重启小爱、不用开设置页** |
+| `xiaoai_switch_model` | `model`（必填）、`marker`（可选） | 热切换已有端点的模型；**拒绝** `baseUrl`/`apiKey`/`bridge`/`lan`（端点和密钥只能在手机 App 设置） |
 | `xiaoai_logs` | `limit`（默认 80）、`since`（可选） | 读运行日志：最近 300 条环形缓冲，同时落盘 `files/xiaoi_plus.log`（滚动 256KB） |
 | `xiaoai_island` | `text`（可选）、`force`（默认 true） | 手动发一次超级岛提示，用于验证岛通路；自动路径在首次走第三方模型时弹一次 |
 | `xiaoai_stats` | `days`（默认 7，1~90） | 调用量统计：按天返回三方 / 官方模型的调用次数，主对话与子调用分开 |
@@ -184,9 +190,9 @@ adb forward tcp:8771 tcp:8771
 ```
 
 > 局域网模式只开放 `/health`、`/logs`、`/stats`、`/cli`、`/mcp`；
-> `/config`（裸配置推送）和 `/island`（免 token 弹提示）始终只允许本机。
-> 注意：`/mcp` 里的 `xiaoai_switch_model`、`xiaoai_island` 工具在局域网下仍可用，
-> 它们和其余 MCP 工具一样受 Bearer token 保护。
+> `/island`（免 token 弹提示）始终只允许本机；`/config` 已停用（410）。
+> 注意：`/mcp` 里的 `xiaoai_island` 工具在局域网下仍可用，和其余 MCP 工具一样受
+> Bearer token 保护；`xiaoai_switch_model` 只能改模型/前缀，不能改端点、密钥或开关。
 > 公共 Wi-Fi / 公司网络建议用 adb 隧道或关闭局域网开关。
 
 ### 全程用 MCP 运维（推荐）
@@ -195,15 +201,16 @@ adb forward tcp:8771 tcp:8771
 
 | 想做什么 | 用哪个工具 |
 |---|---|
-| 换模型 / 换端点 | `xiaoai_switch_model`（只传 `model` 就复用现有端点与 key） |
+| 换模型 | `xiaoai_switch_model`（只传 `model` 就复用现有端点与 key） |
+| 换端点 / 密钥 / 开关 | 只能在手机「小爱同学+」App 内修改（远程 MCP 拒绝） |
 | 看当前在跑什么 | `xiaoai_config` |
 | 排障 | `xiaoai_logs`（按 `since` 增量拉） |
 | 看用量 | `xiaoai_stats`（或 `GET /stats?days=7`） |
 | 让小爱干活 | `xiaoai_submit` |
 | 确认活着 | `xiaoai_status` |
 
-配置写入小爱的 prefs 后，各进程按 mtime 每 800ms 重读一次，所以切换是热的——
-这也修掉了 v0.3.0 里「`/config` 只热更新桥所在进程」的问题。
+配置写入小爱的 prefs 后，各进程按 mtime 每 800ms 重读一次，所以模型切换是热的。
+App 保存配置则通过控制面通知小爱重新拉取（不再有 `/config` HTTP 推送）。
 
 只有**首次启用**需要在 LSPosed 里勾一次作用域；之后全部可远程完成。
 

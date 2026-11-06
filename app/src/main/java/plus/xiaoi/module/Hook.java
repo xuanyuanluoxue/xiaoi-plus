@@ -19,7 +19,7 @@ public class Hook implements IXposedHookLoadPackage {
     private static final String[] SUPPORTED_VERSIONS = {"8.2.65.4714"};
 
     private static volatile Config sConfig;
-    /** 供 /config 热更新时重新安装 hook 使用。 */
+    /** 供配置热更新（控制面 reload / MCP switch_model）重新安装 hook 使用。 */
     private static volatile ClassLoader sCl;
     private static volatile boolean sConfigHooked;
     private static volatile boolean sResponsesHooked;
@@ -45,7 +45,7 @@ public class Hook implements IXposedHookLoadPackage {
             sCl = lp.classLoader;
             sConfig = Config.current();
             if (!sConfig.enabled()) {
-                Logs.i("配置为空，仅启动能力桥等待 /config 推送");
+                Logs.i("配置为空，仅启动能力桥等待控制面配置");
             } else {
                 Logs.i("已启用 model=" + sConfig.model());
             }
@@ -67,7 +67,7 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
     /**
-     * 由能力桥在 POST /config 后调用：替换内存配置并幂等重装 hook。
+     * 由控制面 reload / MCP xiaoai_switch_model 调用：替换内存配置并幂等重装 hook。
      * 任何异常只记日志，不影响小爱主流程。
      */
     public static void applyConfig(Config c) {

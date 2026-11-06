@@ -44,23 +44,27 @@ App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/co
 设计目标：让本机或**可信局域网**里的脚本调用小爱，而不是把能力暴露到公网。
 
 - **默认只绑 loopback**：监听 `127.0.0.1:8771~8775`，局域网和公网都连不上。
-- **局域网模式（0.11.0-beta.3 起，显式开启）**：设置页打开「允许局域网访问」且
-  Token 非空时，改为监听 `0.0.0.0:8771~8775`，同一 Wi-Fi 的电脑可直连。
-  Token 为空时即使开关打开也只绑 loopback；关闭开关会立即重绑回 loopback。
+- **局域网模式（0.12.0 起更强）**：设置页打开「允许局域网访问」且 Token 是
+  **32 位十六进制（128 bit）**时，才监听 `0.0.0.0:8771~8775`，同一 Wi-Fi 的电脑可直连。
+  短 token / 非 hex token 不阻断本机 MCP，但只绑 loopback（不会把弱 token 暴露到局域网）。
 - **Bearer token 鉴权**：每个请求必须带 `Authorization: Bearer <token>`，token 在设置页填写；
-  **留空 = 拒绝所有请求（401）**，不存在「默认无鉴权」的窗口。
-- **裸端点写配置/弹提示只限本机**：`POST /config` 与 `POST /island` 在局域网模式下仍返回 403，
-  只有手机上的 App / adb 隧道能调用。注意 `/mcp` 的 `xiaoai_switch_model`（写 prefs）与
-  `xiaoai_island`（弹提示）工具在局域网下仍可用，它们和其他 MCP 工具一样必须带 token；
-  远端因此能在授权后切模型或弹一次岛，但不能用裸 `/config` 覆盖整份配置。
+  **留空 = 拒绝所有请求（401）**，不存在「默认无鉴权」的窗口。`/health` 也只接受 Bearer。
+- **配置只能由 App 写**：`POST /config` 自 0.12.0 起固定返回 `410 Gone`，不解析 body、
+  不写 prefs；`/island` 仍只接受 loopback。MCP 的 `xiaoai_switch_model` 只允许
+  `model`/`marker`，远程传入 `baseUrl`/`apiKey`/`bridge`/`lan` 会得到 `isError=true`，
+  不能把 apiKey 导向攻击者端点，也不能远程打开数据面。
+- **限流与有界读取**：`/health`、`/island` 按来源 IP 30 次/10s（超限 429）；
+  单行 header 上限 8192 字符、header 最多 128 行；请求线程池 core=4/max=8/queue=32，
+  队列满直接 503，不阻塞 accept。
 - **日志边界**：运行日志只含 hook 成败、模型名、端口与调用摘要，**不含 apiKey / token / 对话正文**；内存保留 300 条，并滚动落盘到小爱私有目录 `files/xiaoi_plus.log`（256KB，保留 `.1`），卸载即随应用数据删除。
-- **端点很少**：`GET /health`（自检）、`GET /logs`（日志）、`GET /cli`（转发一条 CLI 命令）、`POST /mcp`（标准 MCP，JSON-RPC）、`POST /island`（触发一次岛提示，仅本机）、`POST /config`（仅本机推送配置；v0.8 起**缺失字段保持当前值**，换 token 只需推 `{"token":"..."}`，鉴权接受内存或模块 prefs 任一 token）。`/mcp` 与 `/cli` 等价，是同一 token 下的同一能力，不额外扩大权限面。
+- **端点很少**：`GET /health`（自检）、`GET /logs`（日志）、`GET /cli`（转发一条 CLI 命令）、`POST /mcp`（标准 MCP，JSON-RPC）、`POST /island`（触发一次岛提示，仅本机）。`POST /config` 已停用（410）。`/mcp` 与 `/cli` 等价，是同一 token 下的同一能力，不额外扩大权限面。
 - **默认关闭**：设置页「MCP 接口」与「允许局域网访问」默认都不勾选。
 - **失败即停**：桥启动失败只写日志，不影响模型重定向与标记。
 - 关闭开关 → 保存 → 立即重绑；重启小爱后端口不再监听。
 
 **注意**：loopback 对手机上的**所有应用**可见；局域网模式下同一 Wi-Fi 的**所有设备**都能尝试连接。
 Token 是唯一的门禁，请用设置页「生成」产出的 128 位随机串，不要复用别的服务密码。
+局域网模式要求 32 位十六进制 token；短 token 只允许本机访问。
 公共 Wi-Fi、公司网络、宿舍共享网络建议保持局域网关闭，改用 adb 隧道。
 发现异常时用 `adb shell ss -ltn | grep 8771~8775` 确认监听地址与进程。
 
@@ -125,7 +129,7 @@ adb uninstall plus.xiaoi.module
 
 1. 不新增任何网络上报、统计、远程开关
 2. 不把 key 写进日志、异常信息、Toast
-3. 桥默认只能绑 `127.0.0.1`；局域网模式必须显式开关 + 非空 token，
-   且 `/config`、`/island` 永远只接受 loopback
+3. 桥默认只能绑 `127.0.0.1`；局域网模式必须显式开关 + 32 hex token，
+   且 `/island` 永远只接受 loopback，`/config` 固定 410
 4. 新增 hook 必须 try/catch，异常不得抛回小爱
 5. 不改 `AndroidManifest.xml` 的权限，除非在 PR 里说明理由
