@@ -25,6 +25,10 @@ public class AboutActivity extends BaseActivity {
 
         set(R.id.tv_build, "构建于 2026-11-03 · GPL-3.0");
 
+        // 许可证/致谢只是展示信息，没有可跳转目标：隐藏行尾箭头，避免死交互暗示。
+        hideChevron(R.id.row_license);
+        hideChevron(R.id.row_thanks);
+
         click(R.id.row_github, new Runnable() { public void run() { open(REPO); } });
         click(R.id.row_update, new Runnable() { public void run() { open(REPO + "/releases"); } });
         click(R.id.row_author, new Runnable() {
@@ -61,5 +65,19 @@ public class AboutActivity extends BaseActivity {
     private void click(int id, final Runnable r) {
         View v = find(id);
         if (v != null) v.setOnClickListener(new View.OnClickListener() { public void onClick(View x) { r.run(); } });
+    }
+
+    /** 隐藏行尾箭头（最后一个 ImageView）：没有点击目标的展示行不再暗示可点击。 */
+    private void hideChevron(int rowId) {
+        View v = find(rowId);
+        if (!(v instanceof android.view.ViewGroup)) return;
+        android.view.ViewGroup g = (android.view.ViewGroup) v;
+        for (int i = g.getChildCount() - 1; i >= 0; i--) {
+            View child = g.getChildAt(i);
+            if (child instanceof android.widget.ImageView) {
+                child.setVisibility(View.GONE);
+                return;
+            }
+        }
     }
 }

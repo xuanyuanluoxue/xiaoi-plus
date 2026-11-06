@@ -57,6 +57,58 @@ public final class ConfigStoreTest {
             T.eq("第二份 corrupt 内容", "{oops2}", readText(b2));
             T.ok("相同损坏内容复用同一份备份", store.backupCorrupt("{oops}").equals(b1));
 
+            // ------------------------------------------------------ list（只列指定前缀、时间倒序）
+            File listDir = new File(base, "list");
+            ConfigStore ls = new ConfigStore(listDir);
+            ls.writeAtomic("{\"rev\":1}");
+            File legacyOld = new File(listDir, "config.json.legacy.100");
+            writeText(legacyOld, "{\"old\":1}");
+            File legacyNew = new File(listDir, "config.json.legacy.200");
+            writeText(legacyNew, "{\"new\":2}");
+            legacyOld.setLastModified(1_000L);
+            legacyNew.setLastModified(2_000L);
+            writeText(new File(listDir, "config.json.corrupt.300"), "{bad}");
+            java.util.List<File> legs = ls.list(ConfigStore.LEGACY_PREFIX);
+            T.eq("list 只返回 legacy 前缀", 2, legs.size());
+            T.ok("list 最新备份在前", legs.get(0).getName().endsWith(".200"));
+            T.ok("list 不列 .corrupt", !legs.get(0).getName().contains(".corrupt."));
+            T.eq("list(\"\") 返回全部普通文件", 4, ls.list("").size());
+
+            // ------------------------------------------------------ moveCorruptAside
+            File moveDir = new File(base, "move");
+            ConfigStore ms = new ConfigStore(moveDir);
+            ms.writeAtomic("{bad}");
+            File moved = ms.moveCorruptAside();
+            T.ok("move 后事实源不存在", !ms.file().exists());
+            T.ok("move 生成 .corrupt 备份", moved.getName().startsWith("config.json.corrupt."));
+            T.eq("move 保留损坏原文", "{bad}", readText(moved));
+            T.eq("无原文件时 move 返回 null", null, ms.moveCorruptAside());
+            // 同一份损坏内容再次出现：复用旧备份，只删原文件
+            ms.writeAtomic("{bad}");
+            File moved2 = ms.moveCorruptAside();
+            T.ok("相同损坏内容复用备份", moved2.equals(moved));
+            T.eq("重复 move 不产生第二份备份", 1,
+                    ms.list("config.json.corrupt.").size());
+
+            // ------------------------------------------------------ restoreFrom
+            File restoreDir = new File(base, "restore");
+            ConfigStore rs = new ConfigStore(restoreDir);
+            rs.writeAtomic("{\"rev\":1}");
+            File backup = new File(restoreDir, "config.json.legacy.42");
+            writeText(backup, "{\"rev\":4}");
+            rs.restoreFrom(backup);
+            T.eq("restore 写回事实源", "{\"rev\":4}", rs.read());
+            boolean outsideRejected = false;
+            File outside = new File(base, "outside.json");
+            writeText(outside, "{\"evil\":1}");
+            try {
+                rs.restoreFrom(outside);
+            } catch (IOException e) {
+                outsideRejected = true;
+            }
+            T.ok("restore 拒绝目录外文件", outsideRejected);
+            T.eq("拒绝后事实源不变", "{\"rev\":4}", rs.read());
+
             // ------------------------------------------------------ migrateFrom（私有不存在）
             File external = new File(base, "external-config.json");
             writeText(external, "{\"version\":2,\"rev\":9}");

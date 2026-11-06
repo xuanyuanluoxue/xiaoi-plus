@@ -17,7 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import plus.xiaoi.module.core.BridgeEndpoint;
+import plus.xiaoi.module.core.BridgePolicy;
 import plus.xiaoi.module.core.BridgeStatus;
+import plus.xiaoi.module.core.ErrorCatalog;
 import plus.xiaoi.module.core.StateModel;
 import plus.xiaoi.module.ui.config.AppearanceSection;
 import plus.xiaoi.module.ui.config.ConfigDialogs;
@@ -91,6 +93,9 @@ public class ConfigActivity extends BaseActivity {
     private boolean restoreDraft;
     private static final String STATE_DRAFT = "draft_json";
 
+    /** 损坏恢复对话框只弹一次；取消后保持只读，由保存入口继续阻止写入。 */
+    private boolean corruptionDialogShown;
+
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         setContentView(R.layout.activity_config);
@@ -152,6 +157,7 @@ public class ConfigActivity extends BaseActivity {
             public void hideRuntimeConflict() { ConfigActivity.this.hideRuntimeConflict(); }
             public void checkModelNow() { ConfigActivity.this.checkModelNow(true); }
             public ConfigDialogs dialogs() { return dialogs; }
+            public boolean dirty() { return ConfigActivity.this.dirty; }
         });
         mcpSection = new McpSection(this, root, new McpSection.Host() {
             public AppConfig config() { return cfg; }
@@ -170,6 +176,9 @@ public class ConfigActivity extends BaseActivity {
         if (restoreDraft) markDirty();
         appearanceSection.bind();
         setupNav();
+        ui.post(new Runnable() {
+            public void run() { maybeShowCorruptionDialog(); }
+        });
     }
 
     @Override protected void onResume() {
@@ -240,17 +249,7 @@ public class ConfigActivity extends BaseActivity {
         swMcpLan.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(android.widget.CompoundButton v, boolean on) {
                 if (rendering) return;
-                cfg.mcpLan = on;
-                // 局域网必须带 token；打开开关时自动补一个随机令牌，避免保存被校验拦下。
-                if (on && cfg.mcpToken.trim().length() == 0) {
-                    cfg.mcpToken = newToken();
-                    rendering = true;
-                    mcpSection.setToken(cfg.mcpToken);
-                    rendering = false;
-                    toast("已自动生成令牌（局域网访问必须）");
-                }
-                applyMcpState();
-                markDirty();
+                onLanToggled(on);
             }
         });
         swPrefix.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -269,9 +268,13 @@ public class ConfigActivity extends BaseActivity {
         });
 
         click(R.id.btn_key_eye, new Runnable() { public void run() { toggleKey(); } });
-        click(R.id.btn_gen_token, new Runnable() { public void run() { mcpSection.setToken(newToken()); markDirty(); } });
-        click(R.id.btn_copy_mcp, new Runnable() { public void run() { mcpSection.copyMcp(); } });
-        click(R.id.btn_copy_skill, new Runnable() { public void run() { mcpSection.copySkill(); } });
+        click(R.id.btn_gen_token, new Runnable() { public void run() { confirmRotateToken(); } });
+        click(R.id.btn_copy_mcp, new Runnable() {
+            public void run() { confirmCopyIfDirty(new Runnable() { public void run() { mcpSection.copyMcp(); } }); }
+        });
+        click(R.id.btn_copy_skill, new Runnable() {
+            public void run() { confirmCopyIfDirty(new Runnable() { public void run() { mcpSection.copySkill(); } }); }
+        });
         click(R.id.btn_export, new Runnable() { public void run() { editSection.startMaskedExport(); } });
         click(R.id.btn_backup, new Runnable() { public void run() { editSection.confirmFullExport(); } });
         click(R.id.btn_restore, new Runnable() { public void run() { editSection.startImport(); } });
@@ -322,6 +325,115 @@ public class ConfigActivity extends BaseActivity {
                 markDirty();
             }
         });
+    }
+
+    /** 生成新令牌前确认：旧客户端会立即 401；取消不改变当前令牌。 */
+    private void confirmRotateToken() {
+        ErrorCatalog.Entry e = ErrorCatalog.of(ErrorCatalog.Code.TOKEN_ROTATED);
+        dialogs.dialogBuilder()
+                .setTitle("生成新令牌？")
+                .setMessage("生成新令牌会让旧 MCP 客户端立即 401。\n" + e.action)
+                .setPositiveButton("生成", new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface d, int which) {
+                        cfg.mcpToken = newToken();
+                        rendering = true;
+                        mcpSection.setToken(cfg.mcpToken);
+                        rendering = false;
+                        applyMcpState();
+                        markDirty();
+                        toast("已生成，保存后生效");
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /** 复制前提醒：未保存时复制的是草稿；取消不复制。 */
+    private void confirmCopyIfDirty(final Runnable copy) {
+        if (!dirty) {
+            copy.run();
+            return;
+        }
+        dialogs.dialogBuilder()
+                .setTitle("尚未保存")
+                .setMessage("当前有未保存修改，复制的是草稿；建议先保存。")
+                .setPositiveButton("仍然复制", new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface d, int which) {
+                        copy.run();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /**
+     * 局域网开关：先说明风险再改状态。
+     *
+     * <p>弱令牌不会阻断保存，但 BridgePolicy 会把实际监听退回 loopback；
+     * 因此开启时给用户两条明确选择：生成强令牌并开启，或取消保持仅本机。</p>
+     */
+    private void onLanToggled(boolean on) {
+        if (!on) {
+            cfg.mcpLan = false;
+            applyMcpState();
+            markDirty();
+            toast("已修改，保存后关闭局域网");
+            return;
+        }
+        // 先弹确认；用户确认前开关保持关闭，取消即不改变配置。
+        setLanChecked(false);
+        String token = cfg.mcpToken == null ? "" : cfg.mcpToken.trim();
+        boolean empty = token.length() == 0;
+        boolean weak = !empty && !BridgePolicy.tokenStrongEnoughForLan(token);
+        final String risk = "同一 Wi-Fi 下的设备都能访问 MCP 接口。\n"
+                + "公共 Wi-Fi / 公司网络建议保持关闭。\n"
+                + "局域网必须使用 32 位十六进制令牌；令牌不足 32 位时会自动回退为仅本机。";
+        if (weak) {
+            dialogs.dialogBuilder()
+                    .setTitle("令牌不足 32 位？")
+                    .setMessage("当前令牌不足 32 位，局域网将回退仅本机；是否生成新令牌？\n"
+                            + "生成后旧 MCP 客户端会立即 401。")
+                    .setPositiveButton("生成并开启", new android.content.DialogInterface.OnClickListener() {
+                        public void onClick(android.content.DialogInterface d, int which) {
+                            enableLan(true);
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+        dialogs.dialogBuilder()
+                .setTitle("允许局域网访问？")
+                .setMessage(risk + (empty ? "\n\n当前没有令牌：确认后会自动生成。" : ""))
+                .setPositiveButton(empty ? "生成并开启" : "开启",
+                        new android.content.DialogInterface.OnClickListener() {
+                            public void onClick(android.content.DialogInterface d, int which) {
+                                enableLan(empty);
+                            }
+                        })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /** 用户确认后真正打开局域网；generate=true 时同时生成 32 hex 令牌。 */
+    private void enableLan(boolean generate) {
+        if (generate) {
+            cfg.mcpToken = newToken();
+            rendering = true;
+            mcpSection.setToken(cfg.mcpToken);
+            rendering = false;
+        }
+        cfg.mcpLan = true;
+        setLanChecked(true);
+        applyMcpState();
+        markDirty();
+        toast(generate ? "已生成令牌并开启局域网，保存后生效" : "已修改，保存后生效");
+    }
+
+    private void setLanChecked(boolean checked) {
+        rendering = true;
+        swMcpLan.setChecked(checked);
+        rendering = false;
     }
 
     private void setModelCheckText(String text, int colorRes) {
@@ -595,7 +707,7 @@ public class ConfigActivity extends BaseActivity {
         ConfigRepository repo = ConfigRepository.get(this);
         // WP2：文件损坏时已保留原文件并进入只读态；此处必须阻止写入，等 UI 恢复/重置。
         if (repo.isReadOnly()) {
-            toast("配置文件损坏，已保留原文件；请先恢复/重置");
+            toast(ErrorCatalog.message(ErrorCatalog.Code.CONFIG_CORRUPT));
             return;
         }
         String err = repo.validate(cfg);
@@ -643,6 +755,111 @@ public class ConfigActivity extends BaseActivity {
         ui.postDelayed(new Runnable() {
             public void run() { checkRuntimeDrift(); }
         }, 1200);
+    }
+
+    // ------------------------------------------------------------- 损坏恢复
+
+    /**
+     * 首次发现只读态时弹一次恢复入口；取消后保持只读（保存继续被阻止）。
+     * 不自动删除 {@code .corrupt}/{@code .legacy}，所以必须在文案里说明它们含密钥。
+     */
+    private void maybeShowCorruptionDialog() {
+        if (corruptionDialogShown) return;
+        final ConfigRepository repo = ConfigRepository.get(this);
+        if (!repo.isReadOnly()) return;
+        corruptionDialogShown = true;
+
+        final List<File> backups = repo.legacyBackups();
+        String reason = repo.loadError();
+        if (reason == null || reason.length() == 0) reason = "无法解析 config.json";
+        StringBuilder msg = new StringBuilder();
+        msg.append("原因：").append(reason).append('\n');
+        msg.append("原文件已保留在应用私有目录（含明文密钥，请勿外传），保存已被阻止。\n");
+        if (!backups.isEmpty()) {
+            msg.append("可恢复最近一份旧配置：").append(backups.get(0).getName()).append('\n');
+        }
+        msg.append("取消后页面保持只读，保存不会写入任何内容。");
+
+        android.app.AlertDialog.Builder b = dialogs.dialogBuilder()
+                .setTitle("配置文件损坏")
+                .setMessage(msg.toString())
+                .setNegativeButton("取消", null);
+        if (!backups.isEmpty()) {
+            b.setPositiveButton("恢复旧配置", new android.content.DialogInterface.OnClickListener() {
+                public void onClick(android.content.DialogInterface d, int which) {
+                    restoreLegacy(backups.get(0));
+                }
+            });
+            b.setNeutralButton("重建默认配置", new android.content.DialogInterface.OnClickListener() {
+                public void onClick(android.content.DialogInterface d, int which) {
+                    resetCorruptConfig();
+                }
+            });
+        } else {
+            b.setPositiveButton("重建默认配置", new android.content.DialogInterface.OnClickListener() {
+                public void onClick(android.content.DialogInterface d, int which) {
+                    resetCorruptConfig();
+                }
+            });
+        }
+        b.show();
+    }
+
+    private void restoreLegacy(final File backup) {
+        final ConfigRepository repo = ConfigRepository.get(this);
+        AppExecutors.io(new Runnable() {
+            public void run() {
+                try {
+                    repo.restoreLegacy(backup);
+                    AppExecutors.ui(new Runnable() {
+                        public void run() {
+                            if (isFinishing()) return;
+                            cfg = repo.load();
+                            savedWaiting = true;
+                            render();
+                            toast("已恢复旧配置");
+                        }
+                    });
+                } catch (final Throwable t) {
+                    AppExecutors.ui(new Runnable() {
+                        public void run() {
+                            toast("恢复失败：" + describe(t) + "（原文件未改动）");
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private void resetCorruptConfig() {
+        final ConfigRepository repo = ConfigRepository.get(this);
+        AppExecutors.io(new Runnable() {
+            public void run() {
+                try {
+                    repo.resetToDefaultsAfterCorruption();
+                    AppExecutors.ui(new Runnable() {
+                        public void run() {
+                            if (isFinishing()) return;
+                            cfg = repo.load();
+                            savedWaiting = true;
+                            render();
+                            toast("已重建默认配置（原文件保留为 .corrupt）");
+                        }
+                    });
+                } catch (final Throwable t) {
+                    AppExecutors.ui(new Runnable() {
+                        public void run() {
+                            toast("重建失败：" + describe(t) + "（原文件未改动）");
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private static String describe(Throwable t) {
+        String m = t == null ? "" : t.getMessage();
+        return m == null || m.length() == 0 ? "未知错误" : m;
     }
 
     // ------------------------------------------------------------- 模型校验
@@ -704,6 +921,11 @@ public class ConfigActivity extends BaseActivity {
             render();
             if (announce) toast("已从文件重新载入");
             checkModelNow(false);
+            if (ConfigRepository.get(this).isReadOnly()) {
+                ui.post(new Runnable() {
+                    public void run() { maybeShowCorruptionDialog(); }
+                });
+            }
         } catch (Throwable ignored) {}
     }
 
