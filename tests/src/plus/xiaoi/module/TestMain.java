@@ -67,10 +67,10 @@ public final class TestMain {
             System.out.println("  FAIL LeaderElectionTest 套件异常: " + t);
         }
         try {
-            failed += BridgePusherTest.run();
+            failed += RateLimiterTest.run();
         } catch (Throwable t) {
             failed++;
-            System.out.println("  FAIL BridgePusherTest 套件异常: " + t);
+            System.out.println("  FAIL RateLimiterTest 套件异常: " + t);
         }
         try {
             failed += BridgeClientTest.run();

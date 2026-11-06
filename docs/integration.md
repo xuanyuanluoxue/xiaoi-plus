@@ -43,10 +43,10 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
 
 # 小爱驱动
 
-前置：模块已启用、作用域勾选“超级小爱”、设置页已保存并推送。
+前置：模块已启用、作用域勾选“超级小爱”、在设置 App 内保存配置（`POST /config` 已停用，返回 410）。
 
 步骤：
-1. `POST http://127.0.0.1:8771/config`（仅首次，免 token）或设置页保存
+1. 打开「小爱同学+」App 保存配置；等页面显示「已保存，等待小爱应用」
 2. `GET /health`（带 Bearer token）确认 `ok facade=true`
 3. `GET /cli?cmd=<urlencoded {"id","method":"session.open","params":{}}>` 拿 sessionId
 4. `GET /cli?cmd=<... "method":"agent.submit","params":{"sessionId","text"}>` 执行
@@ -75,8 +75,10 @@ adb forward tcp:8771 tcp:8771
 # Header : Authorization: Bearer <TOKEN>
 ```
 
-局域网模式下 `/config` 与 `/island` 裸端点仍只接受手机本机请求（远端返回 403）；
-但 `/mcp` 的 `xiaoai_switch_model` / `xiaoai_island` 工具在局域网下可用（需 Bearer token）。
+局域网模式要求 32 位十六进制 Token；短 token 会自动回退 loopback。
+`/island` 裸端点仍只接受手机本机请求（远端返回 403）；`/config` 已停用（固定 410）。
+`/mcp` 的 `xiaoai_island` 工具在局域网下可用（需 Bearer token）；
+`xiaoai_switch_model` 只能改 model/marker，端点/密钥/开关必须在小爱同学+ App 修改。
 手机直连时不要在公共 Wi-Fi 上长期开启；不用时把开关关掉即可立即回到 loopback。
 
 手机上可直接 `curl -d @payload.json`（见上一节）。

@@ -6,19 +6,20 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
 
+import plus.xiaoi.module.core.BridgeEndpoint;
+
 /**
  * 访问本机能力桥的唯一客户端（纯 JVM，可桌面单测）。
  *
- * 以前 Home / Logs / ConfigSync 各自写 HttpURLConnection + 8771~8775 循环，
- * 超时、鉴权头、错误处理三份拷贝。这里统一：
- * - 端口发现只认 /health 响应里的 {@code port=}（8770 等冒名服务会被跳过）
- * - 所有请求带同一个 Bearer 头，失败统一返回 null（不抛异常）
- * - 响应体有上限，避免异常服务把 App 内存打满
+ * <p>WP4 起端口来自控制面：leader 在 register/reportState 上报端口，
+ * {@code BridgeControlService} 写入 {@link BridgeEndpoint}，
+ * {@link #discover(String)} 只读该登记值，**不扫描端口、不向任何端口发请求**。
+ * 这样既不会再向 8771~8775 广播 Bearer，也不会把别的服务误认成桥。</p>
+ *
+ * <p>其余请求仍只发往已知的控制面端口，并带同一个 Bearer 头；
+ * 失败统一返回 null（不抛异常），响应体有上限。</p>
  */
 public final class BridgeClient {
-
-    public static final int PORT_START = 8771;
-    public static final int PORT_END = 8775;
 
     private static final int CONNECT_MS = 500;
     private static final int READ_MS = 1500;
@@ -40,20 +41,14 @@ public final class BridgeClient {
 
     private BridgeClient() {}
 
-    /** 扫 8771~8775，返回第一个自证身份的桥端口；找不到返回 0。 */
+    /**
+     * 返回控制面登记的 leader 端口；0 = 没有 leader（小爱未运行 / MCP 关闭）。
+     *
+     * <p>保留 {@code token} 参数只为兼容既有调用方；本方法不再使用它，
+     * 也不发送任何 HTTP 请求。</p>
+     */
     public static int discover(String token) {
-        return discover(token, PORT_START, PORT_END);
-    }
-
-    /** 指定范围（单测用随机端口，避免和本机真实桥/其它服务冲突）。 */
-    static int discover(String token, int start, int end) {
-        String t = token == null ? "" : token.trim();
-        if (t.length() == 0) return 0;
-        for (int port = start; port <= end; port++) {
-            Response r = get(port, "/health", t, CONNECT_MS, READ_MS);
-            if (r != null && r.code == 200 && r.body.contains(" port=")) return port;
-        }
-        return 0;
+        return BridgeEndpoint.port();
     }
 
     public static Response get(int port, String path, String token) {

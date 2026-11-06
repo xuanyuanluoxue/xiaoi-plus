@@ -47,13 +47,15 @@ public final class InstanceRecord {
     }
 
     /**
-     * 叠加运行时状态。pid/port 为 0 时保留注册值（桥可能只在 REGISTER 里带端口）。
+     * 叠加运行时状态。port 是本次上报的权威值：0 表示该进程已停止监听，
+     * 会清掉旧 leader 端口（WP4 端点为 0 时 App 不再访问任何端口）。
+     * pid 为 0 时保留注册值。
      */
     public InstanceRecord withState(String model, boolean enabled, boolean hasKey,
                                     String version, int pid, int port, long now) {
         return new InstanceRecord(this.process,
                 pid > 0 ? pid : this.pid,
-                port > 0 ? port : this.port,
+                port > 0 ? port : 0,
                 this.legacyJson,
                 this.registeredAt,
                 now,

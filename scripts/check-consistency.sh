@@ -59,7 +59,7 @@ else
 fi
 
 HTTP="$(grep -rln 'HttpURLConnection' app/src/main/java 2>/dev/null \
-    | grep -v 'BridgeClient.java' | grep -v 'BridgePusher.java' | grep -v 'ModelValidator.java' || true)"
+    | grep -v 'BridgeClient.java' | grep -v 'ModelValidator.java' || true)"
 if [ -z "$HTTP" ]; then
     pass "HTTP 客户端收敛（桥访问走 BridgeClient，模型探测走 ModelValidator）"
 else

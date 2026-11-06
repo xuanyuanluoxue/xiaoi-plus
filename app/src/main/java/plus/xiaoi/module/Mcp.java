@@ -192,7 +192,7 @@ public final class Mcp {
         r.put("serverInfo", info);
         r.put("instructions", "小爱同学（手机端）能力桥：xiaoai_submit 让小爱执行一句话任务，"
                 + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，xiaoai_stats 看三方/官方模型调用量。"
-                + "所有调用都发生在手机本机回环地址上。");
+                + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。");
         return r;
     }
 
@@ -251,14 +251,11 @@ public final class Mcp {
 
         Map<String, Object> sw = Json.obj();
         sw.put("name", "xiaoai_switch_model");
-        sw.put("description", "热切换模型：只传 model 即可复用现有端点与 key；也可一并改 baseUrl/apiKey。"
-                + "写入 prefs 后全进程 1 秒内生效，无需重启小爱，也无需打开模块设置页。");
+        sw.put("description", "热切换模型：只能改 model / marker；端点、API Key、bridge、lan 只能在手机 App 设置。"
+                + "写入 prefs 后全进程 1 秒内生效，无需重启小爱。");
         Map<String, Object> swProps = Json.obj();
         swProps.put("model", prop("string", "上游 model id，例如 deepseek-chat"));
-        swProps.put("baseUrl", prop("string", "可选；OpenAI 兼容 base URL"));
-        swProps.put("apiKey", prop("string", "可选；不传则保留现有 key"));
         swProps.put("marker", prop("boolean", "可选；回复开头是否带 [model=...]"));
-        swProps.put("bridge", prop("boolean", "可选；是否保留能力桥"));
         Map<String, Object> swSchema = Json.obj();
         swSchema.put("type", "object");
         swSchema.put("properties", swProps);
@@ -417,29 +414,25 @@ public final class Mcp {
             }
             if ("xiaoai_switch_model".equals(name)) {
                 Snapshot cur = host.config();
+                // WP4 D10：远程只能改 model/marker；端点和密钥只能在手机 App 设置。
+                String rejected = rejectedSwitchArg(args);
+                if (rejected != null) return toolText(rejected, true);
                 String model = Json.optString(args, "model", "").trim();
                 if (model.length() == 0) return toolText("missing argument: model", true);
-                String base = Json.has(args, "baseUrl")
-                        ? Json.optString(args, "baseUrl", "").trim() : cur.baseUrl;
-                String key = Json.has(args, "apiKey")
-                        ? Json.optString(args, "apiKey", "") : cur.apiKey;
                 boolean marker = Json.has(args, "marker")
                         ? Json.optBoolean(args, "marker", cur.marker) : cur.marker;
-                String markerTemplate = Json.has(args, "markerTemplate")
-                        ? Json.optString(args, "markerTemplate", "") : cur.markerTemplate;
-                boolean bridgeOn = Json.has(args, "bridge")
-                        ? Json.optBoolean(args, "bridge", cur.bridge) : cur.bridge;
-                if (base.length() == 0) {
-                    return toolText("missing argument: baseUrl（当前没有可用端点）", true);
+                if (cur.baseUrl.length() == 0) {
+                    return toolText("missing argument: baseUrl（当前没有可用端点，请在手机 App 设置）", true);
                 }
-                Snapshot next = new Snapshot(base, key, model, marker, bridgeOn, cur.token, markerTemplate, cur.enabled, cur.lan);
+                Snapshot next = new Snapshot(cur.baseUrl, cur.apiKey, model, marker,
+                        cur.bridge, cur.token, cur.markerTemplate, cur.enabled, cur.lan);
                 if (!host.writeConfig(next)) return toolText("write prefs failed", true);
                 Map<String, Object> r = Json.obj();
                 r.put("ok", true);
                 r.put("model", model);
-                r.put("baseUrl", base);
-                r.put("apiKeySet", key.length() > 0);
-                r.put("changed", !model.equals(cur.model) || !base.equals(cur.baseUrl));
+                r.put("baseUrl", cur.baseUrl);
+                r.put("apiKeySet", cur.apiKey.length() > 0);
+                r.put("changed", !model.equals(cur.model) || marker != cur.marker);
                 return toolText(Json.write(r), false);
             }
             if ("xiaoai_island".equals(name)) {
@@ -474,6 +467,28 @@ public final class Mcp {
         }
     }
 
+    /**
+     * xiaoai_switch_model 的参数白名单：只允许 model / marker。
+     * 端点和密钥类参数给出明确可行动文案；其他未知参数也拒绝，避免静默忽略。
+     *
+     * @return null = 可以继续；否则是 isError 文案
+     */
+    static String rejectedSwitchArg(Map<?, ?> args) {
+        if (args == null) return null;
+        for (Object k : args.keySet()) {
+            String key = k == null ? "" : String.valueOf(k);
+            if ("model".equals(key) || "marker".equals(key)) continue;
+            if ("baseUrl".equals(key) || "apiKey".equals(key) || "bridge".equals(key)
+                    || "lan".equals(key) || "token".equals(key) || "enabled".equals(key)) {
+                return "端点和密钥只能在手机 App 设置；xiaoai_switch_model 只接受 model / marker"
+                        + "（" + key + " 已拒绝）";
+            }
+            return "unsupported argument: " + key
+                    + "（xiaoai_switch_model 只接受 model / marker）";
+        }
+        return null;
+    }
+
     static Map<String, Object> toolText(String text, boolean error) {
         Map<String, Object> part = Json.obj();
         part.put("type", "text");
@@ -484,38 +499,6 @@ public final class Mcp {
         r.put("content", content);
         r.put("isError", error);
         return r;
-    }
-
-    // ------------------------------------------------------------- 配置合并
-
-    /**
-     * POST /config 的合并语义：**缺失的字段保持当前值；出现的字段（含空串/null）替换**。
-     *
-     * v0.8 之前是全量替换——配合「只认内存旧 token」的鉴权，形成 token 轮换死锁：
-     * 设置页推送端只有新 token 和它自己那份（可能为默认值的）配置，重发整份
-     * 会把小爱侧真正生效的配置冲掉。现在换 token 只需推 {"token":"..."}。
-     * v1 设置页与 v2 配置页都全量发送全部字段，对它们行为不变。
-     */
-    public static Snapshot mergeConfig(Map<?, ?> body, Snapshot cur) {
-        String baseUrl = Json.has(body, "baseUrl")
-                ? Json.optString(body, "baseUrl", "") : cur.baseUrl;
-        String apiKey = Json.has(body, "apiKey")
-                ? Json.optString(body, "apiKey", "") : cur.apiKey;
-        String model = Json.has(body, "model")
-                ? Json.optString(body, "model", "") : cur.model;
-        boolean marker = Json.has(body, "marker")
-                ? Json.optBoolean(body, "marker", cur.marker) : cur.marker;
-        String markerTemplate = Json.has(body, "markerTemplate")
-                ? Json.optString(body, "markerTemplate", "") : cur.markerTemplate;
-        boolean bridge = Json.has(body, "bridge")
-                ? Json.optBoolean(body, "bridge", cur.bridge) : cur.bridge;
-        boolean lan = Json.has(body, "lan")
-                ? Json.optBoolean(body, "lan", cur.lan) : cur.lan;
-        String token = Json.has(body, "token")
-                ? Json.optString(body, "token", "") : cur.token;
-        boolean enabled = Json.has(body, "enabled")
-                ? Json.optBoolean(body, "enabled", cur.enabled) : cur.enabled;
-        return new Snapshot(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan);
     }
 
     // ------------------------------------------------------------- 会话辅助

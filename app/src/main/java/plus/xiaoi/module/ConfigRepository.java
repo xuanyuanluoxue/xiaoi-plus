@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.InputStream;
 
+import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.ConfigStore;
 
 /**
@@ -18,19 +19,13 @@ import plus.xiaoi.module.core.ConfigStore;
  * - 旧外部文件（beta.4 的 Android/data/.../config.json）：首次加载时一次性迁移
  * - 生效快照写进模块 prefs（Config.KEY_* + cfg_rev），target prefs 只做降级缓存
  *
- * 本包仍保留旧 HTTP 推送（{@link BridgePusher}）；控制面切换在 WP3。
+ * WP4 起保存/应用配置后只调用 {@link BridgeEndpoint#requestReload()}（控制面在运行才生效），
+ * 不再扫描端口、不再 POST /config、不再维护「上次推送 token / pending 重试」。
  */
 public final class ConfigRepository {
 
     private static final String FILE = ConfigStore.FILE_NAME;
     private static ConfigRepository sInstance;
-    /**
-     * 写入前模块 prefs 里的旧 token。token 轮换时先用它认领桥，再用新 token 推送；
-     * 推成功后桥的内存 token 已切换。只保留最近一次，推完即清。
-     */
-    private volatile String sPreviousToken = "";
-    /** 最近一次推送成功的 token；进程重启后丢失，但正常轮换路径已足够。 */
-    private volatile String sLastPushedToken = "";
 
     private final Context ctx;
     private final ConfigStore store;
@@ -236,35 +231,33 @@ public final class ConfigRepository {
         guardWritable();
         String err = validate(c);
         if (err != null) throw new IllegalStateException(err);
-        capturePreviousToken();
         writeWithRev(c);
         writePrefs(c);
         ConfigSync.markApplied(ctx);
-        pushAsync(c);
+        BridgeEndpoint.requestReload();
     }
 
-    /** 只写文件不推送（导入场景，随后手动/自动应用）。 */
+    /** 只写文件 + 请求 reload（导入场景，随后手动/自动应用）。 */
     public void saveQuiet(AppConfig c) throws Exception {
         guardWritable();
         String err = validate(c);
         if (err != null) throw new IllegalStateException(err);
-        capturePreviousToken();
         writeWithRev(c);
         writePrefs(c);
+        BridgeEndpoint.requestReload();
     }
 
-    /** 只同步本地镜像（启动对齐，不推送，也不改 rev）。 */
+    /** 只同步本地镜像（启动对齐，不触发 reload，也不改 rev）。 */
     public void applyLocal(AppConfig c) {
         if (readOnly) return;
         writePrefs(c);
     }
 
-    /** 写 prefs 并推送到小爱（config.json 变更后的热应用；不改 rev）。 */
+    /** 写 prefs 并请求小爱重新拉配置（config.json 变更后的热应用；不改 rev）。 */
     public void applyToTarget(AppConfig c) {
         if (readOnly) return;
-        capturePreviousToken();
         writePrefs(c);
-        pushAsync(c);
+        BridgeEndpoint.requestReload();
     }
 
     private void guardWritable() {
@@ -303,36 +296,9 @@ public final class ConfigRepository {
         readOnly = false;
     }
 
-    /** 记录写入前模块 prefs 的 token（用于 token 轮换时兼容旧桥）。 */
-    private void capturePreviousToken() {
-        try {
-            sPreviousToken = Config.forApp(ctx).token();
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /** 同步推送一次（供需要结果对象的调用方/UI 使用）；调用方自己保证不在主线程。 */
-    public BridgePusher.Result pushSync(AppConfig c) {
-        String previous = sPreviousToken;
-        String lastPushed = sLastPushedToken;
-        sPreviousToken = "";
-        BridgePusher.Result r = BridgePusher.pushAll(
-                new String[]{c.mcpToken, previous, lastPushed}, BridgePusher.payloadFor(c));
-        if (r.pushed > 0) sLastPushedToken = c.mcpToken == null ? "" : c.mcpToken;
-        boolean pending = r.pushed == 0;
-        ConfigSync.markPending(ctx, pending);
-        if (pending) {
-            android.util.Log.w("xiaoi-sync", "推送失败（下次启动重试）: " + r.summary());
-        } else {
-            android.util.Log.i("xiaoi-sync", "推送完成: " + r.summary());
-        }
-        return r;
-    }
-
     private void writePrefs(AppConfig c) {
         try {
-            // 用 commit 而不是 apply：token 轮换时紧接着要推送，必须保证 prefs 已落盘，
-            // 否则 /health 仍看到旧 token，推新 token 会被 401（v0.8 的轮换死锁）。
+            // 用 commit 而不是 apply：写完紧接着要通知控制面 reload，prefs 必须已落盘。
             boolean ok = ctx.getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE).edit()
                     .putString(Config.KEY_BASE_URL, c.baseUrl())
                     .putString(Config.KEY_API_KEY, c.apiKey())
@@ -349,21 +315,5 @@ public final class ConfigRepository {
         } catch (Throwable t) {
             android.util.Log.w("xiaoi-sync", "prefs 写入失败: " + t);
         }
-    }
-
-    /**
-     * 异步推给小爱进程（设置页保存用）：认端口 + 全端口聚合，失败不阻塞 UI。
-     * 全失败时写 pending 标记，下次 {@link ConfigSync#start} 强制重试一次。
-     */
-    private void pushAsync(final AppConfig c) {
-        AppExecutors.io(new Runnable() {
-            public void run() {
-                try {
-                    pushSync(c);
-                } catch (Throwable t) {
-                    android.util.Log.w("xiaoi-sync", "推送异常（已忽略）: " + t);
-                }
-            }
-        });
     }
 }

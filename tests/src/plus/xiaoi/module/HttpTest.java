@@ -2,6 +2,7 @@ package plus.xiaoi.module;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -48,6 +49,26 @@ public final class HttpTest {
         eq("malformed request line target", "", r.target);
 
         eq("read on closed stream", (Object) null, Http.read(stream("")));
+
+        // ------------------------------------------------------------ 有界读取
+        StringBuilder longLine = new StringBuilder("GET /");
+        for (int i = 0; i < Http.MAX_LINE; i++) longLine.append('a');
+        longLine.append(" HTTP/1.1\r\n\r\n");
+        ok("超长请求行抛 IOException", throwsIo(longLine.toString()));
+
+        StringBuilder many = new StringBuilder("GET /health HTTP/1.1\r\n");
+        for (int i = 0; i <= Http.MAX_HEADER_LINES; i++) {
+            many.append("X-").append(i).append(": v\r\n");
+        }
+        many.append("\r\n");
+        ok("超过 header 行数上限抛 IOException", throwsIo(many.toString()));
+
+        StringBuilder exact = new StringBuilder("GET /health HTTP/1.1\r\n");
+        for (int i = 0; i < Http.MAX_HEADER_LINES; i++) {
+            exact.append("X-").append(i).append(": v\r\n");
+        }
+        exact.append("\r\n");
+        ok("恰好 128 行 header 可解析", Http.read(stream(exact.toString())).path.equals("/health"));
 
         // ------------------------------------------------------------ query 边角
         Map<String, String> q = Http.parseQuery("/logs?limit=5&since=100");
@@ -104,7 +125,9 @@ public final class HttpTest {
                 new String(os.toByteArray(), StandardCharsets.UTF_8));
 
         eq("reason 405", "Method Not Allowed", Http.reason(405));
-        eq("reason 403 falls back", "Internal Server Error", Http.reason(403));
+        eq("reason 403", "Forbidden", Http.reason(403));
+        eq("reason 410", "Gone", Http.reason(410));
+        eq("reason 429", "Too Many Requests", Http.reason(429));
         eq("reason 500", "Internal Server Error", Http.reason(500));
 
         return T.report("HttpTest");
@@ -112,6 +135,17 @@ public final class HttpTest {
 
     private static InputStream stream(String s) {
         return new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static boolean throwsIo(String s) {
+        try {
+            Http.read(stream(s));
+            return false;
+        } catch (IOException expected) {
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     private static Map<String, String> hdr(String k, String v) {

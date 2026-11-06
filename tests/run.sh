@@ -20,7 +20,6 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/ConfigCodec.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Logs.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/ModelValidator.java" \
-    "$ROOT/app/src/main/java/plus/xiaoi/module/BridgePusher.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/UsageCounter.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/ThemeMode.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/AppStatus.java" \
@@ -31,6 +30,8 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ControlKeys.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ConfigStore.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgePolicy.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgeEndpoint.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/RateLimiter.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/bridge/LeaderElection.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/UidGuard.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/InstanceRecord.java" \

@@ -21,6 +21,7 @@ import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.ConfigCodec;
 import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.Hash;
+import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.ControlKeys;
 
 /**
@@ -30,10 +31,11 @@ import plus.xiaoi.module.core.ControlKeys;
  *  - 返回受 UID 保护的 Binder；
  *  - 在 HandlerThread 上读 config.json，避免主线程 IO；
  *  - 保存小爱进程的 callback Messenger / 实例表 / 运行时状态；
- *  - 提供 App → 小爱进程的 reload / showIsland / clearSafeMode / flushLogs（WP1 暂无 UI 调用点）。
+ *  - 把 leader 上报的端口登记到 {@link BridgeEndpoint}（App 不再扫端口）；
+ *  - 提供 App → 小爱进程的 reload / showIsland / clearSafeMode / flushLogs。
  *
- * 本服务是**增量**：不替代旧 BridgePusher / HTTP 推送。控制面异常只在 App 日志留一行，
- * 不影响小爱主流程，也不改变旧推送行为。
+ * WP4 起它是配置变更的唯一通知通道：App 保存后调用
+ * {@link BridgeEndpoint#requestReload()}，由本服务广播 reload；旧 HTTP 推送已删除。
  */
 public final class BridgeControlService extends Service {
 
@@ -63,6 +65,13 @@ public final class BridgeControlService extends Service {
         bgThread = new HandlerThread("xiaoi-control-config");
         bgThread.start();
         bgHandler = new Handler(bgThread.getLooper());
+        // 配置保存后由 ConfigRepository/ConfigSync 调 BridgeEndpoint.requestReload()。
+        BridgeEndpoint.setReloadAction(new Runnable() {
+            @Override
+            public void run() {
+                requestReload();
+            }
+        });
         log("控制面服务已创建");
     }
 
@@ -89,6 +98,9 @@ public final class BridgeControlService extends Service {
         callbacks.clear();
         registry.clear();
         logRing.clear();
+        // 先清端口再清回调：服务销毁后 App 不应再访问旧 leader 端口。
+        BridgeEndpoint.setPort(0);
+        BridgeEndpoint.clearReloadAction();
         log("控制面服务已销毁");
         super.onDestroy();
     }
@@ -183,6 +195,7 @@ public final class BridgeControlService extends Service {
         InstanceRecord r = InstanceRecord.registered(process, pid, port, legacyJson,
                 System.currentTimeMillis());
         registry.register(r);
+        syncEndpoint();
 
         IBinder cb = in.getBinder(ControlKeys.KEY_CALLBACK);
         String key = r.key();
@@ -207,8 +220,15 @@ public final class BridgeControlService extends Service {
         String version = clean(in.getString(ControlKeys.KEY_VERSION, ""), 40);
         InstanceRecord r = registry.reportState(process, pid, model, enabled, hasKey,
                 version, port, System.currentTimeMillis());
+        syncEndpoint();
         log("控制面状态 process=" + process + " model=" + model
                 + " enabled=" + enabled + " hasKey=" + hasKey + " port=" + r.port);
+    }
+
+    /** 把当前 leader 端口同步给 App 进程内的 BridgeClient；没有 leader 时为 0。 */
+    private void syncEndpoint() {
+        InstanceRecord leader = registry.leader();
+        BridgeEndpoint.setPort(leader == null ? 0 : leader.port);
     }
 
     void appendLogs(String text) {

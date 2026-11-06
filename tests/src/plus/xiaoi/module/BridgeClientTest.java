@@ -9,7 +9,9 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** BridgeClient：端口发现、鉴权头、MCP 取文本、失败降级。 */
+import plus.xiaoi.module.core.BridgeEndpoint;
+
+/** BridgeClient：端口来自控制面登记（不扫端口）、鉴权头、MCP 取文本、失败降级。 */
 public final class BridgeClientTest {
 
     private BridgeClientTest() {}
@@ -64,8 +66,26 @@ public final class BridgeClientTest {
             BridgeClient.Response r = BridgeClient.get(port, "/health", "tok-1");
             T.ok("GET 成功", r != null && r.ok());
             T.ok("带 Bearer 头", "Bearer tok-1".equals(auth.get()));
-            T.ok("端口发现命中", BridgeClient.discover("tok-1", port, port) == port);
-            T.ok("无 token 不发现", BridgeClient.discover("", port, port) == 0);
+
+            // discover 只读控制面登记，不发送任何请求；token 参数被忽略。
+            BridgeEndpoint.setPort(port);
+            auth.set(null);
+            path.set(null);
+            T.eq("discover 返回控制面端口", port, BridgeClient.discover("tok-1"));
+            T.ok("discover 不发请求", auth.get() == null && path.get() == null);
+            T.eq("discover 忽略 token 参数", port, BridgeClient.discover(""));
+
+            final int[] reloads = {0};
+            BridgeEndpoint.setReloadAction(new Runnable() {
+                public void run() { reloads[0]++; }
+            });
+            T.ok("requestReload 有回调", BridgeEndpoint.requestReload() && reloads[0] == 1);
+            BridgeEndpoint.clearReloadAction();
+            T.ok("清理后 requestReload 返回 false", !BridgeEndpoint.requestReload());
+
+            BridgeEndpoint.setPort(0);
+            T.eq("无 leader 时端口为 0", 0, BridgeClient.discover("tok-1"));
+            BridgeEndpoint.setPort(port);
 
             String cfg = BridgeClient.runtimeConfig(port, "tok-1");
             T.ok("MCP 取 content[0].text", cfg != null && cfg.contains("\"model\":\"m1\""));
@@ -80,25 +100,15 @@ public final class BridgeClientTest {
             T.ok("非 2xx 保留状态码", bad != null && bad.code == 500);
             T.eq("非 2xx 读 errorStream", "boom", bad.body);
 
-            // 冒名服务：/health 不含 port= 时不能被认领
-            HttpServer fake = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-            fake.createContext("/health", new HttpHandler() {
-                public void handle(HttpExchange e) {
-                    send(e, 200, "ok facade=true");
-                }
-            });
-            fake.start();
-            int fakePort = fake.getAddress().getPort();
-            try {
-                T.eq("无 port= 不认领", 0, BridgeClient.discover("tok-1", fakePort, fakePort));
-            } finally {
-                fake.stop(0);
-            }
+            // 冒名服务不再被 discover 触及：控制面没登记端口时一律 0。
+            BridgeEndpoint.setPort(0);
+            T.eq("无 leader 时不猜端口", 0, BridgeClient.discover("tok-1"));
 
             T.eq("不可达端口返回 null", null, BridgeClient.get(1, "/health", "tok-1"));
             BridgeClient.mcpCall(port, "", "xiaoai_status", "{}");
             T.ok("空 token 不带 Authorization", mcpAuth.get() == null);
         } finally {
+            BridgeEndpoint.setPort(0);
             srv.stop(0);
         }
 

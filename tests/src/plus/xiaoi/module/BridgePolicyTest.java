@@ -2,8 +2,7 @@ package plus.xiaoi.module;
 
 import plus.xiaoi.module.core.BridgePolicy;
 
-/** BridgePolicy 组合穷举：shouldListen / bindHost / LAN token 强度。 */
-public final class BridgePolicyTest {
+/** BridgePolicy 组合穷举：shouldListen / bindHost / LAN token 强度。 */public final class BridgePolicyTest {
 
     private BridgePolicyTest() {}
 
@@ -18,15 +17,23 @@ public final class BridgePolicyTest {
         T.ok("关闭 + token → 不监听", !BridgePolicy.shouldListen(false, "abc"));
         T.ok("关闭 + 空 token → 不监听", !BridgePolicy.shouldListen(false, ""));
 
-        // bindHost：lan && mcp && token 三者同时满足才 0.0.0.0
-        T.eq("lan+开启+token → 0.0.0.0", "0.0.0.0",
+        // bindHost：lan && mcp && token 非空 && 32 hex 才 0.0.0.0
+        T.eq("lan+开启+32hex → 0.0.0.0", "0.0.0.0",
+                BridgePolicy.bindHost(true, true, "0123456789abcdef0123456789abcdef"));
+        T.eq("lan+开启+32hex(前后空白) → 0.0.0.0", "0.0.0.0",
+                BridgePolicy.bindHost(true, true, "  0123456789abcdef0123456789abcdef  "));
+        T.eq("lan+开启+短 token → loopback", "127.0.0.1",
                 BridgePolicy.bindHost(true, true, "abc"));
-        T.eq("lan+开启+token(前后空白) → 0.0.0.0", "0.0.0.0",
-                BridgePolicy.bindHost(true, true, "  abc  "));
+        T.eq("lan+开启+6 位 token → loopback", "127.0.0.1",
+                BridgePolicy.bindHost(true, true, "123456"));
+        T.eq("lan+开启+31 hex → loopback", "127.0.0.1",
+                BridgePolicy.bindHost(true, true, "0123456789abcdef0123456789abcde"));
+        T.eq("lan+开启+非 hex → loopback", "127.0.0.1",
+                BridgePolicy.bindHost(true, true, "0123456789abcdef0123456789abcdeg"));
         T.eq("非 lan → loopback", "127.0.0.1",
-                BridgePolicy.bindHost(false, true, "abc"));
+                BridgePolicy.bindHost(false, true, "0123456789abcdef0123456789abcdef"));
         T.eq("lan 但 MCP 关闭 → loopback", "127.0.0.1",
-                BridgePolicy.bindHost(true, false, "abc"));
+                BridgePolicy.bindHost(true, false, "0123456789abcdef0123456789abcdef"));
         T.eq("lan 但 token 为空 → loopback", "127.0.0.1",
                 BridgePolicy.bindHost(true, true, ""));
         T.eq("lan 但 token 为 null → loopback", "127.0.0.1",

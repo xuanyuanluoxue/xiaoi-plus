@@ -23,6 +23,12 @@ public final class Http {
     /** 请求体上限；Content-Length 缺失或超限时按空体处理。 */
     public static final int MAX_BODY = 64 * 1024;
 
+    /** 单行（请求行/header）字符上限；超过直接抛 IOException，绝不无限读。 */
+    public static final int MAX_LINE = 8192;
+
+    /** header 总行数上限（含末尾空行之前的字段行）。 */
+    public static final int MAX_HEADER_LINES = 128;
+
     /** 一条已解析的 HTTP 请求。 */
     public static final class Req {
         /** 请求动词（原样大写）；请求行不合法时为空串，由调用方按 400 处理。 */
@@ -51,20 +57,24 @@ public final class Http {
 
     /**
      * 从输入流读一条请求；连接直接关闭（没有请求行）返回 null。
-     * 头部行数预算 128，与旧实现一致；请求行不合法时 method/target 为空串。
+     * 单行超过 {@link #MAX_LINE} 或 header 超过 {@link #MAX_HEADER_LINES} 行时抛
+     * IOException（调用方断开连接），请求行不合法时 method/target 为空串。
      */
     public static Req read(InputStream in) throws IOException {
         String reqLine = readLine(in);
         if (reqLine == null) return null;
 
         Map<String, String> headers = new HashMap<String, String>();
-        String line;
-        int budget = 128;
-        while (budget-- > 0 && (line = readLine(in)) != null && line.length() > 0) {
-            int i = line.indexOf(':');
-            if (i > 0) {
-                headers.put(line.substring(0, i).trim().toLowerCase(Locale.US),
-                        line.substring(i + 1).trim());
+        int count = 0;
+        while (true) {
+            String line = readLine(in);
+            if (line == null || line.length() == 0) break;
+            if (count >= MAX_HEADER_LINES) throw new IOException("too many headers");
+            count++;
+            int j = line.indexOf(':');
+            if (j > 0) {
+                headers.put(line.substring(0, j).trim().toLowerCase(Locale.US),
+                        line.substring(j + 1).trim());
             }
         }
 
@@ -100,8 +110,8 @@ public final class Http {
 
     /**
      * Bearer 匹配：Authorization 头须精确等于 "Bearer &lt;token&gt;"（大小写敏感、单空格）。
-     * 比较用 MessageDigest.isEqual 保持常数时间。传入多个 token 时任一匹配即通过——
-     * 这是 v0.8 修复 token 轮换死锁的鉴权放宽点，仅在 /config 上使用多 token。
+     * 比较用 MessageDigest.isEqual 保持常数时间。传入多个 token 时任一匹配即通过；
+     * 生产路径当前只传一个 token。
      */
     public static boolean bearerMatchesAny(Map<String, String> headers, String... tokens) {
         try {
@@ -140,15 +150,19 @@ public final class Http {
         os.flush();
     }
 
-    /** 状态码 → 短语。注意 403 没有专属短语（沿用旧实现，落到 Internal Server Error）。 */
+    /** 状态码 → 短语。 */
     public static String reason(int code) {
         switch (code) {
             case 200: return "OK";
             case 202: return "Accepted";
             case 400: return "Bad Request";
             case 401: return "Unauthorized";
+            case 403: return "Forbidden";
             case 404: return "Not Found";
             case 405: return "Method Not Allowed";
+            case 410: return "Gone";
+            case 429: return "Too Many Requests";
+            case 431: return "Request Header Fields Too Large";
             case 503: return "Service Unavailable";
             default: return "Internal Server Error";
         }
@@ -180,7 +194,10 @@ public final class Http {
         while ((c = in.read()) != -1) {
             any = true;
             if (c == '\n') break;
-            if (c != '\r') sb.append((char) c);
+            if (c != '\r') {
+                sb.append((char) c);
+                if (sb.length() > MAX_LINE) throw new IOException("line too long");
+            }
         }
         return any ? sb.toString() : null;
     }

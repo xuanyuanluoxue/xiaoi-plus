@@ -21,6 +21,7 @@ import plus.xiaoi.module.Logs;
  * 状态机（每 {@link #RETRY_MS} 毫秒跑一次，配置变化时也会立即 {@link #apply()}）：
  * <pre>
  *   shouldListen=false → Bridge.stopServer() + 释放 leader 锁
+ *   没有 facade/CLI     → 不接管数据面（避免端口能连但工具不可用）
  *   shouldListen=true, 非 leader → acquireIfPossible()，失败等下一轮
  *   shouldListen=true, leader   → 确保 server 在监听
  * </pre>
@@ -52,6 +53,7 @@ public final class BridgeLifecycle {
     private static volatile String sLastAcquireError = "";
     private static volatile boolean sLoggedStopped;
     private static volatile boolean sLoggedFacadeWait;
+    private static volatile boolean sLoggedNoCapability;
     private static volatile long sStartedAt;
 
     private BridgeLifecycle() {}
@@ -130,6 +132,20 @@ public final class BridgeLifecycle {
             }
             sLoggedStopped = false;
 
+            // WP4：没有 facade 也没有 CLI 的进程不允许接管数据面，
+            // 否则外部能连上端口但所有工具都不可用。
+            if (!Bridge.hasFacade() && !Bridge.hasCli()) {
+                stopServerAndReleaseLock("本进程没有 facade/CLI");
+                if (!sLoggedNoCapability) {
+                    sLoggedNoCapability = true;
+                    Logs.i("本进程没有 facade/CLI，不接管数据面 pid="
+                            + android.os.Process.myPid()
+                            + " process=" + Bridge.processName());
+                }
+                return;
+            }
+            sLoggedNoCapability = false;
+
             if (!sLeader.isLeader()) {
                 // 没有 facade 的进程先让位，避免 :core 抢在带 CLI/facade 的主进程之前监听。
                 if (!Bridge.hasFacade()
@@ -152,6 +168,15 @@ public final class BridgeLifecycle {
                 sLastAcquireError = "";
                 Logs.i("已获得数据面 leader 锁 pid=" + android.os.Process.myPid()
                         + " process=" + Bridge.processName());
+            }
+
+            // 局域网开关/token 强度变化后需要重新绑定：弱 token 回退 loopback，
+            // 换成 32 hex 后再切回 0.0.0.0（端口保持不变优先）。
+            if (Bridge.isServerRunning() && Bridge.isBoundLan() != Bridge.bindsLan()) {
+                Logs.i("数据面绑定模式变化，重新绑定 pid=" + android.os.Process.myPid()
+                        + " process=" + Bridge.processName());
+                Bridge.stopServer();
+                BridgeControlClient.onBridgeStarted();
             }
 
             if (!Bridge.isServerRunning()) {
