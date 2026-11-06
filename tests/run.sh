@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 桌面单元测试：javac + java，零依赖（无 JUnit / 无 Gradle / 无 android.jar）。
-# 只编译纯 JVM 层（Json / Http / Mcp / Logs）+ Xposed 桩 + 测试源码；
+# 只编译纯 JVM 层（Json / Http / Mcp / Logs / agent 契约）+ Xposed 桩 + 测试源码；
 # 编译能通过本身就证明这几个类没有 android 引用。
 # 真机行为回归见 scripts/contract-test.sh。
 set -euo pipefail
@@ -14,6 +14,15 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/libs/xposed-stub-src/robv/android/xposed/XposedBridge.java" \
     "$ROOT/libs/xposed-stub-src/robv/android/xposed/XC_MethodHook.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Json.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentValues.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionRisk.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentError.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionRequest.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionResult.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionExecutor.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionDescriptor.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/Actions.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionRegistry.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Http.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Mcp.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/AppConfig.java" \
