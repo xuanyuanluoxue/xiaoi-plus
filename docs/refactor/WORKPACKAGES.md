@@ -204,7 +204,7 @@
 
 **验收**
 - 截图/交互与 beta.4 一致
-- 416 断言全绿；`build.sh`/一致性通过
+- 460 断言全绿；`build.sh`/一致性通过
 - 无新增 `getIdentifier`、裸 Thread、Toast、未引用 drawable
 
 **规模**：M
