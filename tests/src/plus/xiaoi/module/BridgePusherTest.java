@@ -142,7 +142,9 @@ public final class BridgePusherTest {
         withKey.activeModelId = "m2";
         withKey.mcpToken = "tok2";
         withKey.mcpLan = true;
+        withKey.rev = 42;
         java.util.Map<?, ?> fullMap = asMap(BridgePusher.payloadFor(withKey));
+        T.ok("rev 不进入旧推送载荷", !fullMap.containsKey("rev"));
         T.eq("有密钥推 apiKey", "sk-secret", String.valueOf(fullMap.get("apiKey")));
         T.eq("有密钥推 baseUrl", "https://api.example.com/v1", String.valueOf(fullMap.get("baseUrl")));
         T.eq("有密钥推 model", "m2", String.valueOf(fullMap.get("model")));

@@ -49,6 +49,12 @@ public final class TestMain {
             System.out.println("  FAIL ConfigCodecTest 套件异常: " + t);
         }
         try {
+            failed += ConfigStoreTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ConfigStoreTest 套件异常: " + t);
+        }
+        try {
             failed += BridgePusherTest.run();
         } catch (Throwable t) {
             failed++;

@@ -3,13 +3,25 @@ package plus.xiaoi.module;
 import java.util.ArrayList;
 import java.util.List;
 
-/** v2 配置：服务商 → 模型 两级；密钥跟服务商走。 */
+/** v3 配置：服务商 → 模型 两级；密钥跟服务商走。 */
 public final class AppConfig {
 
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
 
-    /** 文件里的 schema 版本（读取后原样保留，避免高版本文件被静默降级）。 */
+    /** 文件里的 schema 版本（旧版本在读取时升级；更高版本原样保留，避免静默降级）。 */
     public int version = VERSION;
+
+    /**
+     * 配置版本号。App 每次保存文件前自增；0 = 未初始化/默认骨架（骨架不写文件）。
+     * target/module prefs 里的 cfgRev 只是降级缓存，不作为事实源。
+     */
+    public long rev = 0;
+
+    /**
+     * 仅内存标记：true = 这份配置是默认骨架（文件不存在或迁移前），不是用户的真实配置。
+     * 不参与序列化；桥/同步逻辑必须拒绝用骨架覆盖真实配置。
+     */
+    public boolean skeleton;
 
     /** 未知顶层字段（前向兼容：解析不到的一律原样写回）。 */
     public final java.util.Map<String, Object> extra = new java.util.LinkedHashMap<String, Object>();

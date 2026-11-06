@@ -98,7 +98,7 @@ public final class Bridge {
         @Override
         public boolean writeConfig(Mcp.Snapshot n) {
             Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker, n.bridge, n.token,
-                    n.markerTemplate, n.enabled, n.lan);
+                    n.markerTemplate, n.enabled, n.lan, Config.current().cfgRev());
             if (!writeTargetPrefs(c)) return false;
             sToken = n.token.trim();
             updateAccess(n.lan, n.bridge);
@@ -631,7 +631,7 @@ public final class Bridge {
             Mcp.Snapshot merged = Mcp.mergeConfig(o, HOST.config());
             Config c = Config.create(merged.baseUrl, merged.apiKey, merged.model,
                     merged.marker, merged.bridge, merged.token, merged.markerTemplate,
-                    merged.enabled, merged.lan);
+                    merged.enabled, merged.lan, Config.current().cfgRev());
 
             if (!writeTargetPrefs(c)) {
                 respondText(s, 503, "target context unavailable");
@@ -745,6 +745,7 @@ public final class Bridge {
                     .putString(Config.KEY_TOKEN, c.token())
                     .putString(Config.KEY_MARKER_TPL, c.markerTemplate())
                     .putString(Config.KEY_ENABLED, c.enabledFlag() ? "1" : "0")
+                    .putLong(Config.KEY_CFG_REV, c.cfgRev())
                     .commit();
             return true;
         } catch (Throwable t) {

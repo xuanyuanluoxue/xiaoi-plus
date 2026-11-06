@@ -15,9 +15,13 @@
 | 桥的 token | 同样存在这份 XML 里，用于本机/局域网 HTTP 鉴权，不参与模型请求 |
 | 有没有进日志 | 没有。日志只输出 `model=` 名称和 hook 成败 |
 
-补充（0.8.1 起）：期望配置以 `Android/data/plus.xiaoi.module/files/config.json` 为事实源
-（免 root 可读写，App 内改动 1~2 秒自动应用）。该文件含明文 apiKey——设备借人/送修前
-请先清空密钥或卸载模块；`adb pull` 也能读到它，注意不要把导出的备份留在公共位置。
+补充（0.12.0 起）：配置事实源改为 App 私有目录
+`/data/data/plus.xiaoi.module/files/config.json`（schema v3，带 `rev`），不再写
+`Android/data`；其他应用、`adb shell` 普通用户和 `run-as` 之外的工具都读不到这个文件。
+App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/config.json`
+会在首次打开新版 App 时一次性迁移（成功后删除旧文件，已有私有配置时归档为
+`config.json.legacy.<ts>`）。该文件含明文 apiKey——设备借人/送修前请先清空密钥或卸载模块；
+需要备份请用 App 内的「完整备份」，不要把含密钥的导出文件留在公共位置。
 运行时变更（MCP `switch_model`）只写小爱 prefs，不回写该文件。
 
 实践建议：

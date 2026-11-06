@@ -1,7 +1,7 @@
 # 交接说明（2026-11-05）
 
 > 状态：**可交接**。版本 0.11.0-beta.4（versionCode 15），工程化收敛 P0~P3b 完成。
-> JVM 单测 460 断言全绿，真机契约 45/45 全绿。
+> JVM 单测 508 断言全绿，真机契约 45/45 全绿。
 >
 > **下一步：0.12.0 核心重构**。计划已冻结，见
 > [docs/refactor/PLAN.md](docs/refactor/PLAN.md)；工作包与子 Agent 指令见
@@ -28,19 +28,21 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 ## 3. 配置在哪、怎么改
 
 ```
-/storage/emulated/0/Android/data/plus.xiaoi.module/files/config.json
+/data/data/plus.xiaoi.module/files/config.json   # App 私有目录（WP2 起）
 ```
 
-- `adb pull/push` 可直接改；Android 13+ 文件管理器通常看不到 `Android/data`
+- 不再写 `Android/data`；旧位置的文件会在升级后首次打开 App 时自动迁移
+- 需要查看/迁移时用 App 内「分享（已脱敏）」或「完整备份」；不要用公共目录转发含密钥文件
 - 改完 App 进程活着时 **1~2 秒自动生效**；进程被杀则下次打开 App 应用
-- 关键字段：`enabled`（暂停不清配置）、`activeProviderId/activeModelId`、
-  `providers[].apiKey`、`mcp.enabled/token`、`markerTemplate`
+- 关键字段：`version`（v3）、`rev`（每次保存自增）、`enabled`（暂停不清配置）、
+  `activeProviderId/activeModelId`、`providers[].apiKey`、`mcp.enabled/token`、`markerTemplate`
+- 文件损坏时保留原文件 + `config.json.corrupt.<ts>`，App 进入只读态并阻止保存
 - 运行时变更（MCP `switch_model`）不回写文件；配置页有「从运行中小爱导入」
 
 ## 4. 常用验证命令
 
 ```bash
-./tests/run.sh                     # JVM 单测（460 断言，无需设备）
+./tests/run.sh                     # JVM 单测（508 断言，无需设备）
 ./scripts/check-all.sh             # 单测 + aoci check + 真机契约
 XIAOI_TOKEN=$(cat ~/.config/xiaoi/token) ./scripts/contract-test.sh --check  # 契约 45 项
 ./scripts/ime.sh on|off|type "文本" # adb 输入法（中文/符号），用完 off

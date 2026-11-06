@@ -29,6 +29,7 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/BridgeClient.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Lan.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ControlKeys.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/ConfigStore.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/UidGuard.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/InstanceRecord.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/BridgeRegistry.java" \

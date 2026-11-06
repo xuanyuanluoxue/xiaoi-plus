@@ -9,7 +9,7 @@ public final class ConfigCodecTest {
     private ConfigCodecTest() {}
 
     private static final String CANONICAL =
-            "{\"version\":2,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
+            "{\"version\":3,\"rev\":1,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
             + "\"activeProviderId\":\"crazyai\",\"activeModelId\":\"your-model\","
             + "\"mcp\":{\"enabled\":true,\"lan\":false,\"token\":\"tok-123\"},"
             + "\"providers\":[{\"id\":\"crazyai\",\"name\":\"CrashMail\","
@@ -39,7 +39,9 @@ public final class ConfigCodecTest {
         eq("providers 数", 1, c.providers.size());
         eq("provider name", "CrashMail", c.providers.get(0).name);
         eq("models 数", 2, c.providers.get(0).models.size());
-        eq("version", 2, c.version);
+        eq("version", 3, c.version);
+        eq("rev", 1L, c.rev);
+        ok("正常文件不是骨架", !c.skeleton);
 
         // 旧文件的 themeMode 属于 UI 偏好，已迁到 prefs：读时忽略、写时不再输出
         AppConfig legacy = ConfigCodec.fromJson(
@@ -121,6 +123,7 @@ public final class ConfigCodecTest {
         eq("defaults 补充默认模型", 2, d.providers.get(0).models.size());
         eq("defaults 默认暂停", false, d.enabled);
         eq("defaults mcp", true, d.mcpEnabled);
+        eq("defaults 骨架 rev=0", 0L, d.rev);
 
         AppConfig d2 = ConfigCodec.defaults("", "", "", true, false, "");
         eq("defaults 空端点回退", "https://api.deepseek.com/v1", d2.providers.get(0).baseUrl);
@@ -135,16 +138,42 @@ public final class ConfigCodecTest {
         ok("脱敏 token 可识别", ConfigCodec.containsMaskedSecrets(masked));
         ok("正常配置不误判", !ConfigCodec.containsMaskedSecrets(ConfigCodec.fromJson(CANONICAL)));
 
-        // ------------------------------------------------------------ 版本与未知字段
-        AppConfig v3 = ConfigCodec.fromJson("{\"version\":3,\"customFlag\":true,\"future\":{\"a\":1}}");
+        // ------------------------------------------------------------ 版本、rev 与未知字段
+        AppConfig v3 = ConfigCodec.fromJson(
+                "{\"version\":3,\"rev\":7,\"customFlag\":true,\"future\":{\"a\":1}}");
         eq("高版本保留", 3, v3.version);
+        eq("rev 解析", 7L, v3.rev);
         String out3 = ConfigCodec.toJson(v3);
         ok("高版本写回 3", out3.contains("\"version\":3"));
+        ok("rev 写回", out3.contains("\"rev\":7"));
         ok("未知字段 customFlag 保留", out3.contains("\"customFlag\":true"));
         ok("未知字段 future 保留", out3.contains("\"future\":{\"a\":1}"));
 
+        // v2（无 rev）迁移：schema 升到 3，rev 归一为 1，未知字段仍保留
+        AppConfig v2 = ConfigCodec.fromJson(
+                "{\"version\":2,\"legacyFlag\":\"keep\",\"providers\":[{\"id\":\"p\","
+                + "\"baseUrl\":\"https://a\",\"apiKey\":\"k\",\"models\":[{\"id\":\"m\"}]}]}");
+        eq("v2 升级到 3", 3, v2.version);
+        eq("v2 缺 rev 归一为 1", 1L, v2.rev);
+        String v2Out = ConfigCodec.toJson(v2);
+        ok("v2 写回 version 3", v2Out.contains("\"version\":3,"));
+        ok("v2 写回 rev 1", v2Out.contains("\"rev\":1,"));
+        ok("v2 未知字段保留", v2Out.contains("\"legacyFlag\":\"keep\""));
+
         AppConfig noVer = ConfigCodec.fromJson("{}");
-        eq("缺 version 归一到 2", 2, noVer.version);
+        eq("缺 version 归一到 3", 3, noVer.version);
+        eq("缺 rev 归一为 1", 1L, noVer.rev);
+
+        // 骨架 / 规范化：内存默认 rev=0；负 rev 归零
+        AppConfig skeleton = new AppConfig();
+        eq("骨架 version", 3, skeleton.version);
+        eq("骨架 rev=0", 0L, skeleton.rev);
+        skeleton.skeleton = true;
+        ok("skeleton 仅内存标记", skeleton.skeleton);
+        ok("skeleton 不参与序列化", !ConfigCodec.toJson(skeleton).contains("skeleton"));
+        AppConfig neg = new AppConfig();
+        neg.rev = -5;
+        eq("负 rev 归零", 0L, ConfigCodec.normalize(neg).rev);
 
         // ------------------------------------------------------------ 转义
         AppConfig esc = new AppConfig();

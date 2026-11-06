@@ -48,6 +48,14 @@ WP1 是**增量**：旧 `BridgePusher` 与 `POST /config` 原样保留，控制�
 绑定失败按 2s→5s→10s→20s→30s 退避重试，不影响小爱主流程。模块 prefs 的
 `control_plane=false` 可整体关闭控制面，回到 beta.4 行为。
 
+## 配置事实源（0.12.0 WP2）
+
+`config.json` 的唯一事实源是 App 私有目录 `getFilesDir()/config.json`（schema v3，新增 `rev`）。
+App 是唯一写者：保存时 `rev` 自增，写入走 tmp + fsync + rename（不先删目标）。
+target prefs 与模块 prefs 只保留 legacy 兼容键 + `cfg_rev`，作为降级缓存，不再反向覆盖文件。
+解析失败时保留原文件、生成 `config.json.corrupt.<ts>`、进入只读态（保存被阻止），不会静默回默认。
+beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录。旧 HTTP 推送仍保留（WP3 切换）。
+
 ## 为什么不用改包
 
 小爱是 priv-app，能力建立在平台签名上。重打包会失去所有 signature 权限，

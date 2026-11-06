@@ -1223,7 +1223,13 @@ public class ConfigActivity extends BaseActivity {
 
     private void save() {
         collect();
-        String err = ConfigRepository.get(this).validate(cfg);
+        ConfigRepository repo = ConfigRepository.get(this);
+        // WP2：文件损坏时已保留原文件并进入只读态；此处必须阻止写入，等 UI 恢复/重置。
+        if (repo.isReadOnly()) {
+            toast("配置文件损坏，已保留原文件；请先恢复/重置");
+            return;
+        }
+        String err = repo.validate(cfg);
         if (err != null) {
             statusState = AppStatus.ENABLED;
             statusDetail = err + " · 修正后再保存";
@@ -1232,7 +1238,6 @@ public class ConfigActivity extends BaseActivity {
             return;
         }
         try {
-            ConfigRepository repo = ConfigRepository.get(this);
             // saveQuiet = 写文件 + 写 prefs（不丢弃结果）；推送由本页拿真实 Result 展示。
             repo.saveQuiet(cfg);
             ConfigSync.markApplied(this); // 自己写的文件不再触发「外部变更」
