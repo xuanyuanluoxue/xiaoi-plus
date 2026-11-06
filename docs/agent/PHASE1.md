@@ -428,3 +428,10 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 - 证书 SHA-256：`d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b`
 - 本地校验：下载资产 `sha256sum -c` 通过；`verify-apk.sh` 包名/版本/指纹 PASS
 - 单测：1453 断言；一致性检查通过
+- 真机 smoke（CI 资产覆盖安装）：8770 loopback/LAN 正常，5 个动作 available；
+  `device.info`、`app.open`、`media.control volume`、
+  `notification.send` + confirm + 同 key 幂等、`xiaoai_notify`、`xiaoai_ask`、
+  `xiaoai_audit` 全部通过；日志见
+  `~/xiaoi-plus-dev/artifacts/logs/2026-11-06/release-0.13.0-smoke.md`
+- 说明：CI 资产 SHA-256 与本地构建不同（构建环境差异），包名/versionCode/
+  证书指纹一致，Release 内 `.sha256` 与资产匹配
