@@ -18,3 +18,4 @@
 | [agent/PLAN.md](agent/PLAN.md) | D1 Agent 能力层与记忆系统：8770 动作面、root/Shizuku、记忆读写 |
 | [agent/PHASE0.md](agent/PHASE0.md) | Phase 0 侦察计划（已完成） |
 | [agent/PHASE0-REPORT.md](agent/PHASE0-REPORT.md) | Phase 0 侦察报告：CLI/岛/权限/记忆结论 |
+| [agent/PHASE1.md](agent/PHASE1.md) | Phase 1 工作包：ActionRegistry、App 8770、5 个动作 |

@@ -1,0 +1,169 @@
+# Phase 1 工作包：Action Plane 骨架与第一批动作
+
+> 状态：**进行中**
+> 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
+> 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
+> 日期：2026-11-06
+
+## 1. 范围
+
+| WP | 内容 | 依赖 | 规模 |
+|---|---|---|---|
+| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M |
+| WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L |
+| WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M |
+
+WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验。
+
+## 2. WP1.1：纯 JVM 契约层
+
+### 目标
+
+不依赖 Android，先定义稳定的动作描述、注册表、参数校验、能力清单和错误码。
+后续 Android/root executor 只实现接口，不再改协议。
+
+### 新增
+
+```text
+app/src/main/java/plus/xiaoi/module/agent/
+├── ActionDescriptor.java
+├── ActionRequest.java
+├── ActionResult.java
+├── ActionRegistry.java
+├── ActionExecutor.java
+├── ActionRisk.java
+├── AgentError.java
+└── Capabilities.java       # 生成 xiaoai_capabilities 的 JSON
+```
+
+### ActionDescriptor
+
+字段：
+
+- `name`（如 `app.open`）
+- `version`
+- `description`
+- `inputSchema` / `outputSchema`（JSON 字符串或 Map）
+- `executorPreference`（`android` / `shizuku` / `root`）
+- `requiredCapability`（`none` / `shell` / `root`）
+- `risk`（`safe` / `confirm` / `danger`）
+- `idempotent`
+- `timeoutMs`
+- `examples`
+
+### ActionExecutor
+
+```java
+public interface ActionExecutor {
+    String name();                 // android / shizuku / root
+    boolean available();           // 当前设备/权限是否可用
+    ActionResult execute(ActionRequest req) throws Exception;
+}
+```
+
+WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 WP1.2。
+
+### ActionRegistry
+
+- `register(ActionDescriptor, ActionExecutor)`
+- `find(name)`
+- `list()`
+- `capabilitiesJson(boolean includeUnavailable)`
+- 校验：
+  - 未知动作 → `UNKNOWN_ACTION`
+  - 参数缺失/类型不符 → `INVALID_ARGUMENT`
+  - executor 不可用 → `PERMISSION_DENIED` / `NOT_AVAILABLE`
+  - `dryRun` → 返回计划，不执行
+  - `risk=confirm` → 返回 `NEEDS_CONFIRMATION`（WP1.3 接确认）
+  - 超时/异常 → `TIMEOUT` / `INTERNAL`
+
+### 第一批动作描述
+
+只注册描述，不实现 Android 执行：
+
+- `app.open`：`package` / `intentUri`
+- `device.info`：`fields?`
+- `alarm.set`：`hour`、`minute`、`label?`、`skipUi?`
+- `notification.send`：`title`、`text`、`id?`
+- `media.control`：`command`、`volume?`
+
+### 测试
+
+新增 `AgentActionRegistryTest`：
+
+- 5 个动作都能列出
+- capabilities JSON 含 schema/risk/availability
+- 未知动作、缺参、类型错
+- dryRun 不调用 executor
+- executor 不可用
+- 超时/异常映射
+- 幂等键透传（先只校验字段）
+
+### 约束
+
+- 纯 JVM，不能 import android。
+- 使用现有 `Json` 工具或 `org.json`（测试可用）。
+- 不改现有 MCP 工具/协议。
+- Java 1.8；无第三方依赖。
+- `./tests/run.sh`、`build.sh`、`check-consistency.sh` 全绿。
+
+## 3. WP1.2：App 前台服务与动作
+
+### 目标
+
+App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
+
+- `xiaoai_capabilities`
+- `xiaoai_action`
+- `xiaoai_notify`
+- `xiaoai_confirm`（可先占位）
+
+### 实现
+
+- 前台服务：`ActionService`，`startForeground`，通知渠道 `agent_service`。
+- 开机自启：`BootReceiver` + `RECEIVE_BOOT_COMPLETED`；用户停止后不自动恢复。
+- 权限：`FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_SPECIAL_USE`、`POST_NOTIFICATIONS`。
+- 8770：默认 loopback；token 复用 `mcpToken`；LAN 开关默认关。
+- `AndroidExecutor`：
+  - `app.open`：`getLaunchIntentForPackage` + `FLAG_ACTIVITY_NEW_TASK`
+  - `device.info`：Build/BatteryManager/ConnectivityManager
+  - `alarm.set`：`AlarmClock.ACTION_SET_ALARM`（`skipUi` 兼容性待验证）
+  - `notification.send`：NotificationManager + channel
+  - `media.control`：AudioManager 音量；播放控制走 Shizuku/root 或后续
+- `RootExecutor`：只用于 settings/screenshot/memory（WP1.2 可先留接口）。
+- `xiaoai_notify`：island 优先，通过 8771 `xiaoai_island` 代理；失败降级普通通知。
+- 设置页开关：`agent_plane`（默认关；开启后启动服务）。
+- 单 API key：复用 `mcpToken`；启动时校验非空。
+
+### 验收
+
+- 小爱未运行时 8770 可连，`xiaoai_capabilities` 返回 5 个动作（按权限显示）。
+- 5 个动作在真机成功/失败路径明确。
+- 重启手机后服务自启（已允许自启动）。
+- 用户停止后不自启。
+- 无 root 时动作返回 `PERMISSION_DENIED`。
+- 8770 错 token 401；LAN 关闭时非 loopback 拒绝。
+
+## 4. WP1.3：Agent 体验
+
+- `xiaoai_confirm` + confirm token（绑定 clientId/action/参数 hash，一次性，60s）。
+- `xiaoai_action` 的 `idempotencyKey`（24h）。
+- 审计日志（动作、参数摘要、executor、结果、耗时；不含正文/密钥）。
+- `xiaoai_ask` 代理 8771，返回 `sessionId`；处理 `SESSION_BUSY`。
+- `xiaoai_job_status`（长动作异步）。
+- 结构化错误码统一。
+
+## 5. 测试与发布
+
+- 纯 JVM：WP1.1 单测；WP1.3 确认/幂等/审计。
+- 真机：5 动作、锁屏、无 root、root、Shizuku、小爱未运行、开机自启。
+- 发布：先 `0.13.0-agent.1` beta；`agent_plane` 默认关，开启后验证。
+- 文档/skill：更新 `skill/xiaoi-mcp`、新增 `skill/xiaoi-agent`。
+
+## 6. 明确不做
+
+- 不做 ASR/TTS/唤醒词。
+- 不做支付/账号/风控。
+- 不做任意 shell/CLI 透传。
+- 不改 8771 现有工具行为（只加代理）。
+- 不在 WP1 做小爱记忆写入（Phase 5，实验）。
