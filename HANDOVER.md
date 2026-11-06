@@ -1,7 +1,7 @@
 # 交接说明（2026-11-06）
 
 > 状态：**WP8 门禁已完成，待真机矩阵与发布**。版本 `0.12.0-beta.1`（versionCode 16）。
-> JVM 单测 796 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验与 `--self-test`
+> JVM 单测 851 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验与 `--self-test`
 > 通过（正式签名通过、未签名被拒、临时密钥因指纹不符被拒）。
 > 真机契约 45/45 仍是 beta.4 基线，**0.12 的 P0 矩阵待主 Agent 补跑**。
 >
@@ -45,7 +45,7 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 ## 4. 常用验证命令
 
 ```bash
-./tests/run.sh                     # JVM 单测（796 断言，无需设备）
+./tests/run.sh                     # JVM 单测（851 断言，无需设备）
 ./scripts/check-all.sh             # 单测 + aoci check + 真机契约
 ./scripts/verify-apk.sh build/xiaoi-plus.apk            # 已签名/包名/versionCode/固定指纹
 ./scripts/verify-apk.sh --self-test build/xiaoi-plus.apk # 门禁自测（含负向用例）
@@ -135,7 +135,7 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 - WP7 UX 安全确认、错误目录、导入导出覆盖确认
 - WP8：`scripts/verify-apk.sh` + `scripts/expected-signer.sha256`；`release.sh` 归档前强制校验；
   CI 一致性 + 签名闸门；tag 仅 `signed=true` 才建 Release；修复 `TestMain` 嵌套 try
-- 版本 `0.12.0-beta.1`（versionCode 16）；单测 796 断言
+- 版本 `0.12.0-beta.1`（versionCode 16）；单测 851 断言
 - 真机 P0（2026-11-06，设备 31106e85）：beta.4 → beta.1 覆盖安装成功，config.json 哈希不变；
   `/health` 200/401、`POST /config` 410、MCP initialize 正常、远程写 `baseUrl` 被拒；
   MCP 关闭后 8771~8775 无监听，重启小爱仍关闭；MCP 关闭时日志页仍显示控制面 170 条；

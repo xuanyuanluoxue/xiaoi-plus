@@ -9,7 +9,7 @@
 
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**，796 断言） |
+| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 851） |
 | WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a 已完成**：服务/8770/device.info） |
 | WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M |
 
@@ -33,7 +33,7 @@ WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Age
 - 新增 `plus.xiaoi.module.agent`：ActionDescriptor / ActionRequest / ActionResult /
   ActionRegistry / AgentError / Actions / AgentValues。
 - 5 个动作描述已注册；`requiredCapability` 作为执行器准入条件（root 动作不能用 android 顶替）。
-- 单测 132 条，总断言 796；`build.sh`、`check-consistency.sh` 通过。
+- 单测 132 条；WP1.1 完成时总断言 796，WP1.2a 后 851；`build.sh`、`check-consistency.sh` 通过。
 - 未实现 Android/Root 执行器、8770 服务、confirm 签发/幂等/审计；属于 WP1.2/1.3。
 
 ## 2. WP1.1：纯 JVM 契约层
