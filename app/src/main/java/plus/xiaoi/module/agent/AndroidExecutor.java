@@ -170,8 +170,10 @@ public final class AndroidExecutor implements ActionExecutor {
             return failure("app.open", AgentError.Code.NOT_AVAILABLE,
                     "没有 Activity 可以处理该 intent");
         } catch (SecurityException t) {
-            return failure("app.open", AgentError.Code.PERMISSION_DENIED,
-                    "系统拒绝启动（后台启动限制或权限不足）");
+            // 后台启动限制不是用户能授予的权限；用 NOT_AVAILABLE 让
+            // FallbackExecutor 有机会尝试 root（monkey），而不是直接失败。
+            return failure("app.open", AgentError.Code.NOT_AVAILABLE,
+                    "系统拒绝启动（后台启动限制）；可尝试 root 兜底");
         } catch (Throwable t) {
             return failure("app.open", AgentError.Code.NOT_AVAILABLE,
                     "系统未能接受启动请求");
