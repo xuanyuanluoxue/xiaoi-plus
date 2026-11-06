@@ -17,6 +17,14 @@
 - 新增 drawable 必须被引用，否则一致性门禁失败
 - 版本号只改 `app/src/main/AndroidManifest.xml` 的 `versionName`/`versionCode`
 
+## 测试产物
+
+- 真机截图、测试 APK、配置 fixture、构建/契约日志统一放
+  `~/xiaoi-plus-dev/artifacts/YYYY-MM-DD/`（screenshots/apk/configs/logs/releases/notes）。
+- 临时文件先写 `~/xiaoi-plus-dev/tmp/`，不要落在仓库根、用户 home 根或 `/tmp/opencode` 根。
+- 含 `apiKey` / `mcp.token` 的配置、备份、`.corrupt` 文件必须 `chmod 600`，用完清理。
+- 目录约定与清理脚本见 `~/xiaoi-plus-dev/README.md`、`~/xiaoi-plus-dev/clean.sh`。
+
 ## 文档
 
 改动行为时同步更新 `README.md`、`docs/` 与 `CHANGELOG.md`。
