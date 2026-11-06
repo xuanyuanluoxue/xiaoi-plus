@@ -29,9 +29,9 @@ scripts/check-all.sh --no-device  # 跳过设备契约
 | 层 | 内容 | 失败即中止 |
 |---|---|---|
 | 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/死资源） | ✅ |
-| JVM 单测 | `tests/run.sh`（553 断言） | ✅ |
+| JVM 单测 | `tests/run.sh`（543 断言） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |
-| 真机契约 | `scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ |
+| 真机契约 | `scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ beta.4 基线；WP4 待重跑 |
 
 ## 3. pre-push hook（轻量、每次推送自动跑）
 
