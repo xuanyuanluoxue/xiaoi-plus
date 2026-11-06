@@ -23,12 +23,15 @@ import java.util.concurrent.ThreadFactory;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import plus.xiaoi.module.bridge.BridgeControlClient;
+import plus.xiaoi.module.bridge.BridgeLifecycle;
+import plus.xiaoi.module.core.BridgePolicy;
 
 /**
  * 本地能力桥（可选）：默认只绑 127.0.0.1，开启「局域网访问」且 token 非空时
  * 改为监听 0.0.0.0，让同一 Wi-Fi 下的电脑/手机用 Bearer token 直连。
- * 端口从 8771 起依次尝试 8771~8775（主进程 / :core / :voice_trigger 共存时自动错开），
- * 供本机或局域网脚本调用小爱的 CLI，并接收 {@code POST /config} 推送的配置。
+ * 端口从 8771 起依次尝试 8771~8775，但**只有 leader 进程**会绑定：
+ * 由 {@link BridgeLifecycle} 通过 {@code files/xiaoi_bridge.lock} 选出全机唯一进程，
+ * 其他进程只 hook / 拉配置，{@link #port()} 返回 0。
  *
  * v0.8 起协议逻辑拆到纯 JVM 层：HTTP 线协议在 {@link Http}，
  * MCP/JSON-RPC 与工具表在 {@link Mcp}（含各自的桌面单测）；
@@ -56,6 +59,11 @@ public final class Bridge {
     private static final Object LOCK = new Object();
 
     private static volatile boolean sTried;
+    /** 本进程的数据面 hook 是否已安装（每个进程一次）；CLI 绑定可重试。 */
+    private static volatile boolean sDataPlaneHooks;
+    /** 本进程首次拿到的 ClassLoader，供 CLI 绑定重试使用。 */
+    private static volatile ClassLoader sLoader;
+    private static volatile boolean sCliBinding;
     private static volatile boolean sStarted;
     private static volatile int sPort;
     private static volatile String sToken = "";
@@ -79,7 +87,7 @@ public final class Bridge {
         public boolean cliReady() { return sCli != null; }
 
         @Override
-        public int port() { return sPort; }
+        public int port() { return Bridge.port(); }
 
         @Override
         public String versionName() { return Bridge.versionName(); }
@@ -100,10 +108,9 @@ public final class Bridge {
             Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker, n.bridge, n.token,
                     n.markerTemplate, n.enabled, n.lan, Config.current().cfgRev());
             if (!writeTargetPrefs(c)) return false;
-            sToken = n.token.trim();
-            updateAccess(n.lan, n.bridge);
             Config.setCurrent(c);
             Hook.applyConfig(c);
+            updateAccess(n.lan, n.bridge);
             return true;
         }
 
@@ -125,7 +132,12 @@ public final class Bridge {
 
     private Bridge() {}
 
-    /** 由 Hook 在抓到 OsbotFacadeImpl 实例后调用；服务只启动一次，可重复调用。 */
+    /**
+     * 由 Hook 在抓到 OsbotFacadeImpl 实例后调用；幂等，可重复调用。
+     *
+     * WP3 起这里不再无条件 {@code startServer}：先保留 WP1 控制面（拉配置/上报），
+     * 再由 {@link BridgeLifecycle} 决定本进程是否能成为数据面 leader。
+     */
     public static void install(ClassLoader cl, Object facade) {
         if (cl == null) return;
         sFacade = facade;
@@ -135,32 +147,129 @@ public final class Bridge {
             sTried = true;
         }
         try {
-            sToken = safeToken();
-            sLan = safeLan();
-            sBridge = safeBridge();
-            if (first) {
-                if (sToken.length() == 0) {
-                    log("能力桥已开启但未配置 token，仅允许 loopback 首次 POST /config");
-                }
-                hookSessions(cl);
-                hookServiceBinding(cl);
-                bindCli(cl);
+            ensureDataPlaneHooks(cl);
+            // WP1 控制面先起（拉配置/上报），再由 WP3 生命周期决定是否监听。
+            onProcessStart(null, cl);
+            if (first && sBridge && sToken.length() == 0) {
+                log("MCP 开启但未配置 token，数据面保持关闭（控制面仍可拉取配置）");
             }
-            if (!sStarted && startServer(PORT_START)) {
-                log("能力桥已监听 " + bindHost() + ":" + sPort
-                        + (sBoundLan ? "（局域网模式，需要 Bearer token）" : ""));
-            }
-            // WP1：控制面是增量通道，只负责拉配置/状态；旧推送路径保持原样，
-            // 控制面失败不影响这里已经启动的能力桥。
-            startControlPlane();
         } catch (Throwable t) {
             log("能力桥启动失败（已忽略）: " + t);
         }
     }
 
-    /** 实际监听端口；0 表示未启动。 */
+    /**
+     * 每个小爱进程的 Hook 加载后（以及每次 install 时）调用：
+     * 同步 Bridge 策略字段 → 启动 WP1 控制面 → 启动数据面生命周期。
+     *
+     * 非 leader 进程仍然 hook、仍然拉配置；只有 leader 会监听端口。
+     * Context 可能为空：控制面与生命周期都会在后台重试，不会抛到主流程。
+     */
+    public static void onProcessStart(Config config) {
+        onProcessStart(config, null);
+    }
+
+    public static void onProcessStart(Config config, ClassLoader cl) {
+        try {
+            if (cl != null) ensureDataPlaneHooks(cl);
+            if (config == null) {
+                // install 时以「控制面内存配置 vs target prefs」按 rev 取新，避免把旧值写回。
+                refreshPolicyFromConfig();
+            } else {
+                sToken = BridgePolicy.normalize(config.token());
+                sLan = config.lan();
+                sBridge = config.bridge();
+            }
+            startControlPlane();
+            BridgeLifecycle.start(appContext());
+            log("能力桥进程已就绪 pid=" + android.os.Process.myPid()
+                    + " process=" + processName()
+                    + " mcp=" + sBridge
+                    + " hasToken=" + (sToken.length() > 0)
+                    + " shouldListen=" + BridgePolicy.shouldListen(sBridge, sToken)
+                    + " leader=" + BridgeLifecycle.isLeader()
+                    + " port=" + port());
+        } catch (Throwable t) {
+            log("能力桥进程初始化失败（已忽略）: " + t);
+        }
+    }
+
+    /** 本进程是否已经拿到 OsbotFacadeImpl（leader 优先选有 facade 的进程）。 */
+    public static boolean hasFacade() {
+        return sFacade != null;
+    }
+
+    /**
+     * 数据面所需的最小 hook/CLI 绑定：hook 每个进程只装一次；
+     * CLI 绑定允许重试（Hook 早期 Context 可能还没就绪）。
+     */
+    private static void ensureDataPlaneHooks(ClassLoader cl) {
+        if (cl == null) return;
+        sLoader = cl;
+        synchronized (LOCK) {
+            if (!sDataPlaneHooks) {
+                sDataPlaneHooks = true;
+                hookSessions(cl);
+                hookServiceBinding(cl);
+            }
+        }
+        bindCli(cl);
+    }
+
+    /** 生命周期每 10s 调用：Context 晚就绪时补绑 CLI。 */
+    public static void ensureCliBinding() {
+        ClassLoader cl = sLoader;
+        if (cl != null) bindCli(cl);
+    }
+
+    /**
+     * 实际监听端口；只有 leader 且 server 在运行时才返回非 0。
+     * 非 leader 进程恒为 0（它们从不绑定端口）。
+     */
     public static int port() {
-        return sPort;
+        if (!sStarted) return 0;
+        return BridgeLifecycle.isLeader() ? sPort : 0;
+    }
+
+    /** 当前配置是否允许本进程监听数据面（纯策略，见 {@link BridgePolicy}）。 */
+    public static boolean shouldListen() {
+        return BridgePolicy.shouldListen(sBridge, sToken);
+    }
+
+    /**
+     * 从共享配置刷新策略字段（生命周期每 10s 巡检 + 配置变化后调用）。
+     *
+     * rev 高者优先：控制面拉到的 App 配置 rev 通常高于 target prefs；
+     * rev 相同则采用 target prefs（旧路径最后写入的值），这样 leader 收到
+     * {@code bridge=false} 后，其他进程即使还没收到控制面 reload 也不会误接管。
+     * target prefs 读取去掉 logcat，避免每 10s 刷屏。
+     */
+    public static void refreshPolicyFromConfig() {
+        try {
+            Config mem = Config.current();
+            Config prefs = Config.forTargetQuiet();
+            Config c = prefs.cfgRev() >= mem.cfgRev() ? prefs : mem;
+            sToken = BridgePolicy.normalize(c.token());
+            sLan = c.lan();
+            sBridge = c.bridge();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** server 是否在当前进程运行（仅 leader 可能为 true）。 */
+    public static boolean isServerRunning() {
+        return sStarted;
+    }
+
+    /** 当前进程名（只用于日志/诊断，不参与任何选举逻辑）。 */
+    public static String processName() {
+        try {
+            Class<?> at = Class.forName("android.app.ActivityThread");
+            Object v = at.getMethod("currentProcessName").invoke(null);
+            if (v instanceof String) return (String) v;
+        } catch (Throwable ignored) {
+        }
+        return "";
     }
 
     /**
@@ -193,64 +302,20 @@ public final class Bridge {
         }
     }
 
-    /** 配置热更新后同步内存 token（空 token 等于重新打开首次配置窗口，仅 loopback）。 */
+    /** 配置热更新后同步内存 token，并交给生命周期决定启动/关闭/重绑。 */
     public static void updateToken(String token) {
         try {
-            sToken = token == null ? "" : token.trim();
-            // token 从空变为非空、或反过来，都会改变「能否安全开放局域网」的结论。
-            rebindIfNeeded();
+            sToken = BridgePolicy.normalize(token);
+            BridgeLifecycle.apply();
         } catch (Throwable ignored) {
         }
     }
 
-    /** 配置热更新后同步局域网开关与 MCP 开关；绑定模式变化时原地重启监听。 */
+    /** 配置热更新后同步局域网开关与 MCP 开关，并交给生命周期重算。 */
     public static void updateAccess(boolean lan, boolean bridge) {
         sLan = lan;
         sBridge = bridge;
-        rebindIfNeeded();
-    }
-
-    private static void rebindIfNeeded() {
-        if (!sStarted) return;
-        boolean want = sLan && sBridge && sToken.length() > 0;
-        if (want == sBoundLan) return;
-        synchronized (LOCK) {
-            int preferred = sPort;
-            closeQuietly(sServer);
-            sServer = null;
-            sStarted = false;
-            sPort = 0;
-            startServer(preferred);
-        }
-    }
-
-    private static String bindHost() {
-        return sBoundLan ? "0.0.0.0" : "127.0.0.1";
-    }
-
-    private static String safeToken() {
-        try {
-            String t = Config.forTarget().token();
-            return t == null ? "" : t.trim();
-        } catch (Throwable t) {
-            return "";
-        }
-    }
-
-    private static boolean safeLan() {
-        try {
-            return Config.forTarget().lan();
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    private static boolean safeBridge() {
-        try {
-            return Config.forTarget().bridge();
-        } catch (Throwable t) {
-            return false;
-        }
+        BridgeLifecycle.apply();
     }
 
     // ------------------------------------------------------------- hook 与 CLI 绑定
@@ -319,18 +384,20 @@ public final class Bridge {
 
     /** 主动绑定自家 CLI 服务，确保服务实例被创建（同进程，无 IPC 往返）。 */
     private static void bindCli(final ClassLoader cl) {
-        if (sCli != null) return;
+        if (sCli != null || sCliBinding) return;
         try {
             final Context ctx = appContext();
             if (ctx == null) {
                 log("bindCli: 拿不到 Context");
                 return;
             }
+            sCliBinding = true;
             Intent it = new Intent("com.aios.osbot.action.CLI_COMMAND");
             it.setClassName("com.miui.voiceassist", "com.aios.osbot.external.CliCommandService");
             boolean ok = ctx.bindService(it, new ServiceConnection() {
                 @Override
                 public void onServiceConnected(ComponentName n, IBinder b) {
+                    sCliBinding = false;
                     try {
                         captureBinder(cl, b);
                     } catch (Throwable t) {
@@ -341,10 +408,15 @@ public final class Bridge {
                 @Override
                 public void onServiceDisconnected(ComponentName n) {
                     sCli = null;
+                    sCliBinding = false;
                 }
             }, Context.BIND_AUTO_CREATE);
-            if (!ok) log("bindCli 被拒绝（服务可能不可用）");
+            if (!ok) {
+                sCliBinding = false;
+                log("bindCli 被拒绝（服务可能不可用）");
+            }
         } catch (Throwable t) {
+            sCliBinding = false;
             log("bindCli 失败（已忽略）: " + t);
         }
     }
@@ -361,12 +433,55 @@ public final class Bridge {
 
     // ------------------------------------------------------------- socket 服务
 
+    /**
+     * 由 {@link BridgeLifecycle} 在确认本进程为 leader 后调用。
+     * 再次校验策略，防止任何路径在 MCP 关闭时误开监听。
+     */
+    public static boolean startServerIfLeader() {
+        // 防御性校验：只有持有 leader 锁的进程才允许绑定端口。
+        if (!BridgeLifecycle.isLeader()) return false;
+        return startServer(PORT_START);
+    }
+
+    /**
+     * 彻底关闭数据面：关闭 server、清会话、复位端口/绑定模式、停掉请求线程池。
+     * 可重复调用；不释放 leader 锁（锁由 {@link BridgeLifecycle} 管理）。
+     */
+    public static void stopServer() {
+        ExecutorService pool;
+        boolean wasRunning;
+        synchronized (LOCK) {
+            wasRunning = sStarted;
+            ServerSocket ss = sServer;
+            sServer = null;
+            closeQuietly(ss);
+            sStarted = false;
+            sPort = 0;
+            sBoundLan = false;
+            SHARED_SESSIONS.clear();
+            pool = sPool;
+            sPool = null;
+        }
+        if (pool != null) {
+            try {
+                pool.shutdownNow();
+            } catch (Throwable ignored) {
+            }
+        }
+        if (wasRunning) log("能力桥已停止监听 pid=" + android.os.Process.myPid()
+                + " process=" + processName());
+    }
+
     private static boolean startServer(int preferred) {
         if (sStarted) return true;
+        if (!BridgePolicy.shouldListen(sBridge, sToken)) {
+            info("MCP 关闭或 token 为空，不启动监听");
+            return false;
+        }
         synchronized (LOCK) {
             if (sStarted) return true;
-            final boolean lan = sLan && sBridge && sToken.length() > 0;
-            final String host = lan ? "0.0.0.0" : "127.0.0.1";
+            final String host = BridgePolicy.bindHost(sLan, sBridge, sToken);
+            final boolean lan = "0.0.0.0".equals(host);
             // 先在原端口重绑（token/局域网开关热切换时避免端口乱跳），再扫描其余端口。
             int[] order = new int[PORT_END - PORT_START + 1];
             int n = 0;
@@ -402,6 +517,11 @@ public final class Bridge {
                             }
                         });
                     }
+                    // 先发布状态再启动 accept：stopServer 立刻 close 也能让 accept 退出。
+                    sServer = ss;
+                    sBoundLan = lan;
+                    sPort = port;
+                    sStarted = true;
                     Thread t = new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -410,13 +530,16 @@ public final class Bridge {
                     }, "xiaoi-bridge-accept");
                     t.setDaemon(true);
                     t.start();
-                    sServer = ss;
-                    sBoundLan = lan;
-                    sPort = port;
-                    sStarted = true;
-                    log("实际监听 " + host + ":" + port + (lan ? "（局域网模式）" : ""));
+                    log("能力桥已监听 " + host + ":" + port
+                            + (lan ? "（局域网模式）" : "")
+                            + " pid=" + android.os.Process.myPid()
+                            + " process=" + processName());
                     return true;
                 } catch (Throwable t) {
+                    sServer = null;
+                    sStarted = false;
+                    sPort = 0;
+                    sBoundLan = false;
                     closeQuietly(ss);
                     log("在 " + host + ":" + port + " 启动服务失败（已忽略）: " + t);
                 }
@@ -432,7 +555,12 @@ public final class Bridge {
             try {
                 s = ss.accept();
             } catch (Throwable t) {
-                log("accept 退出: " + t);
+                // stopServer 会 close 掉 socket 让这里抛异常；属于正常关闭，不当错误。
+                if (sServer == ss) {
+                    log("accept 退出: " + t);
+                } else {
+                    info("accept 已停止");
+                }
                 return;
             }
             try {
@@ -638,13 +766,13 @@ public final class Bridge {
                 return;
             }
 
-            sToken = c.token().trim();
-            updateAccess(c.lan(), c.bridge());
+            Config.setCurrent(c);
             try {
                 Hook.applyConfig(c);
             } catch (Throwable t) {
                 log("applyConfig 失败（已忽略）: " + t);
             }
+            updateAccess(c.lan(), c.bridge());
 
             Map<String, Object> r = Json.obj();
             r.put("ok", true);

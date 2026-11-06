@@ -141,11 +141,20 @@ public final class Config {
     }
 
     public static Config forTarget() {
+        return forTarget(true);
+    }
+
+    /** 同 {@link #forTarget()}，但不写 logcat（生命周期每 10s 巡检用，避免刷屏）。 */
+    public static Config forTargetQuiet() {
+        return forTarget(false);
+    }
+
+    private static Config forTarget(boolean log) {
         // 1) 首选：小爱自己的 prefs（root 写入 / 模块自写）
         //    所有键都从文件解析（含 marker/bridge/cfg_rev），不再硬编码 true/true。
         String[] t = parsePrefs("/data/data/com.miui.voiceassist/shared_prefs/" + PREFS + ".xml");
         if (t != null) {
-            android.util.Log.i("xiaoi+", "配置来源：小爱 prefs");
+            if (log) android.util.Log.i("xiaoi+", "配置来源：小爱 prefs");
             return new Config(t[0], t[1], t[2],
                     flag(t[7], true), flag(t[8], false), t[3], t[4], parseFlag(t[5]),
                     flag(t[6], false), parseLong(t[9]));
@@ -161,7 +170,7 @@ public final class Config {
                     || p.contains(KEY_TOKEN) || p.contains(KEY_BRIDGE)
                     || p.contains(KEY_ENABLED);
             if (any) {
-                android.util.Log.i("xiaoi+", "配置来源：XSharedPreferences");
+                if (log) android.util.Log.i("xiaoi+", "配置来源：XSharedPreferences");
                 return new Config(b, p.getString(KEY_API_KEY, ""), m,
                         p.getBoolean(KEY_MARKER, true), p.getBoolean(KEY_BRIDGE, false),
                         p.getString(KEY_TOKEN, ""), p.getString(KEY_MARKER_TPL, ""),
@@ -169,7 +178,7 @@ public final class Config {
                         p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L));
             }
         } catch (Throwable ignored) {}
-        android.util.Log.w("xiaoi+", "没有可用配置");
+        if (log) android.util.Log.w("xiaoi+", "没有可用配置");
         return new Config("", "", "", true, false, "", "", false, false, 0L);
     }
 

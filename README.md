@@ -23,7 +23,7 @@
 | 模型重定向 | 把主对话请求指到你自己的 OpenAI 兼容端点（BYOK） | ✅ 已验证 |
 | 模型标识 | 请求头 `X-Model-Provider-Id: xiaoi-plus`，不往提示词里塞文本 | ✅ 已验证 |
 | 图片理解 | 让第三方模型正常收到截图/图片（hook `getSupportsVision`），不再被换成占位文本 | ✅ 已验证 |
-| 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/config`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1` | 🧪 实验性，默认关闭 |
+| 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/config`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1`；全机只由 leader 进程监听一个端口 | 🧪 实验性，默认关闭 |
 | 局域网 MCP | 显式打开「允许局域网访问」且有非空 token 时监听 `0.0.0.0`，同一 Wi-Fi 的电脑可直接连；关闭开关立即回到仅本机 | 🧪 实验性，默认关闭 |
 | MCP 端点 | `POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），MCP 客户端可直接接入 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |

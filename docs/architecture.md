@@ -54,7 +54,31 @@ WP1 是**增量**：旧 `BridgePusher` 与 `POST /config` 原样保留，控制�
 App 是唯一写者：保存时 `rev` 自增，写入走 tmp + fsync + rename（不先删目标）。
 target prefs 与模块 prefs 只保留 legacy 兼容键 + `cfg_rev`，作为降级缓存，不再反向覆盖文件。
 解析失败时保留原文件、生成 `config.json.corrupt.<ts>`、进入只读态（保存被阻止），不会静默回默认。
-beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录。旧 HTTP 推送仍保留（WP3 切换）。
+beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录。旧 HTTP 推送仍保留（WP4 删除）。
+
+## 数据面生命周期（0.12.0 WP3）
+
+数据面不再由「主进程」启动，也不再每个进程各绑一个端口：
+
+- 小爱各进程共享 `getFilesDir()/xiaoi_bridge.lock`，用 `RandomAccessFile("rw")` +
+  `FileChannel.tryLock()` 选举 **leader**；拿到锁的进程才调用 `Bridge.startServerIfLeader()`，
+  绑定 `8771~8775` 中的一个端口。
+- 非 leader 仍然照常 hook、拉配置、上报状态，只是 `Bridge.port()` 恒为 0。
+- leader 进程死亡时内核释放文件锁；其他进程由 `BridgeLifecycle` 每 10s 重试接管。
+  同一 JVM 内的第二个实例会收到 `OverlappingFileLockException`，安全视为「未获得」。
+- `core/BridgePolicy.shouldListen = mcp.enabled && token 非空`；不满足时 leader 关闭
+  server、清会话、释放锁，其他进程不会启动监听。
+- `Bridge.install` 只保留 WP1 控制面接线，然后交给 `BridgeLifecycle.start/apply`；
+  配置热更新统一走 `apply()`，不再有 `rebindIfNeeded` 第二条绑定路径。
+- 没有 facade 的进程（典型是 `:core`）会先等 30s，让带 facade/CLI 的进程优先成为 leader；
+  宽限期后仍可接管，保证 leader 死亡后不依赖进程名。
+- 生命周期每 10s 主动 `pullConfig` 一次：即使 MCP 已关闭、HTTP 推送不可达，
+  App 重新开启也能通过控制面在 10s 内恢复监听。
+- target prefs 里 `cfg_rev` 相同的情况下以 target prefs 的 `bridge` 为准，
+  避免 leader 释放锁后其他进程用陈旧的内存状态误接管。
+
+锁文件只写 pid/进程名等诊断信息，**不写 token/apiKey**；文件本身永不删除
+（删除被锁文件会导致两个进程各自锁住不同 inode）。
 
 ## 为什么不用改包
 
