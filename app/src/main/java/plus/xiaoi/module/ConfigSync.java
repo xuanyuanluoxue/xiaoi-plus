@@ -269,7 +269,7 @@ public final class ConfigSync {
 
     private static boolean importFromRuntimeQuiet(Context ctx) {
         try {
-            String token = Config.forApp(ctx).token();
+            String token = ConfigRepository.get(ctx).load().mcpToken;
             JSONObject remote = fetchRuntimeConfig(token);
             if (remote == null) return false;
 

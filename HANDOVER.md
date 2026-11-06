@@ -1,7 +1,7 @@
 # 交接说明（2026-11-05）
 
 > 状态：**可交接**。版本 0.11.0-beta.4（versionCode 15），工程化收敛 P0~P3b 完成。
-> JVM 单测 543 断言全绿；真机契约 45/45 为 beta.4 基线，WP4 的 `/config` 410 待重跑。
+> JVM 单测 612 断言全绿；真机契约 45/45 为 beta.4 基线，WP4 的 `/config` 410 待重跑。
 >
 > **下一步：0.12.0 核心重构**。计划已冻结，见
 > [docs/refactor/PLAN.md](docs/refactor/PLAN.md)；工作包与子 Agent 指令见
@@ -42,7 +42,7 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 ## 4. 常用验证命令
 
 ```bash
-./tests/run.sh                     # JVM 单测（543 断言，无需设备）
+./tests/run.sh                     # JVM 单测（612 断言，无需设备）
 ./scripts/check-all.sh             # 单测 + aoci check + 真机契约
 XIAOI_TOKEN=$(cat ~/.config/xiaoi/token) ./scripts/contract-test.sh --check  # 契约 45 项
 ./scripts/ime.sh on|off|type "文本" # adb 输入法（中文/符号），用完 off

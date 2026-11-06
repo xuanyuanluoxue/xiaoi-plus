@@ -18,12 +18,19 @@ public class HomeActivity extends BaseActivity {
     private TextView tvState, tvStateSub, tvVersion, tvThird, tvOfficial, tvError;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
+    /** 调用量探针节流：控制面晚于 onResume 就绪时，靠 ticker 补一次。 */
+    private long lastUsageProbeAt;
 
     /** 每 5s 重绘一次：控制面超过 30s 没上报时要自动退回「未确认」，不能停在已确认。 */
     private final Runnable statusTick = new Runnable() {
         public void run() {
             refresh();
             loadLastError();
+            // 控制面可能晚于 onResume 才连上；此时补一次调用量探针，避免「今日三方」一直为 —。
+            if (BridgeStatus.get().connected
+                    && System.currentTimeMillis() - lastUsageProbeAt > 15_000L) {
+                probe();
+            }
             ui.postDelayed(this, 5000L);
         }
     };
@@ -195,7 +202,9 @@ public class HomeActivity extends BaseActivity {
      * 桥端口来自控制面；没有 token/端口时保持「—」。
      */
     private void probe() {
-        final String token = Config.forApp(this).token();
+        lastUsageProbeAt = System.currentTimeMillis();
+        // 事实源是私有 config.json；module prefs 在外部编辑/迁移后可能滞后。
+        final String token = ConfigRepository.get(this).load().mcpToken;
         AppExecutors.io(new Runnable() {
             public void run() {
                 final int port = BridgeClient.discover(token);
@@ -287,7 +296,7 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void postIsland() {
-        final String token = Config.forApp(this).token();
+        final String token = ConfigRepository.get(this).load().mcpToken;
         AppExecutors.io(new Runnable() {
             public void run() {
                 int port = BridgeClient.discover(token);
