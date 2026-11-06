@@ -1,5 +1,7 @@
 package plus.xiaoi.module.agent;
 
+import android.util.Log;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
@@ -94,9 +96,9 @@ public final class RootExecutor implements ActionExecutor {
         Outcome outcome = runSu(command);
         if (outcome.notStarted) {
             availability = Availability.DENIED;
-            Logs.i("Agent root: su 不可用");
+            Log.e("xiaoi-agent", "root su unavailable");
             return failure(action, AgentError.Code.PERMISSION_DENIED,
-                    "设备没有可用的 su，或不支持 root");
+                    "当前 App 没有 root 授权或 su 不可用；请在 KernelSU/Magisk 中给本 App 授权，或改用 Shizuku");
         }
 
         String output = RootCommands.clip(outcome.output);
@@ -108,12 +110,12 @@ public final class RootExecutor implements ActionExecutor {
                 // 命令真的跑起来过：su 本身可用；只是目标不存在/命令失败。
                 availability = Availability.AVAILABLE;
             }
-            Logs.e("Agent root 执行失败: " + error.code.wire);
+            Log.e("xiaoi-agent", "root failed " + error.code.wire);
             return failure(action, error);
         }
 
         availability = Availability.AVAILABLE;
-        Logs.i("Agent root 执行成功: " + action);
+        Log.i("xiaoi-agent", "root ok " + action);
         return success(action, request, pkg, outcome);
     }
 
@@ -156,6 +158,10 @@ public final class RootExecutor implements ActionExecutor {
                         .redirectErrorStream(true)
                         .start();
             } catch (Throwable t) {
+                // 只记录异常类型，不记录命令/输出；用于诊断 App 是否能执行 su。
+                Log.e("xiaoi-agent", "root start failed " + su + " "
+                        + t.getClass().getSimpleName()
+                        + (t.getMessage() == null ? "" : (" " + t.getMessage())));
                 continue; // 该路径没有 su，试下一个
             }
             return waitFor(process);
