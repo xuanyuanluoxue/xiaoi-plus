@@ -438,6 +438,8 @@ public final class Bridge {
      * 再次校验策略，防止任何路径在 MCP 关闭时误开监听。
      */
     public static boolean startServerIfLeader() {
+        // 防御性校验：只有持有 leader 锁的进程才允许绑定端口。
+        if (!BridgeLifecycle.isLeader()) return false;
         return startServer(PORT_START);
     }
 
