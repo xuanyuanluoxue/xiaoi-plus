@@ -1,6 +1,6 @@
 # Phase 1 工作包：Action Plane 骨架与第一批动作
 
-> 状态：**WP1.1~WP1.4 代码完成，1328 断言；真机矩阵待设备恢复**
+> 状态：**WP1.1~WP1.5 代码完成，1445 断言；真机矩阵待设备恢复**
 > 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
 > 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
 > 日期：2026-11-06
@@ -9,12 +9,40 @@
 
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1328） |
+| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1445） |
 | WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a/WP1.2b 已完成**：服务/8770/5 个动作/root 兜底） |
 | WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M（**WP1.3a/WP1.3b 已完成**：确认/幂等/审计、notify/ask；记忆/job 未做） |
 | WP1.4 | 8770 独立 LAN 开关（默认关、弱令牌回退、UI 如实显示、复制含 8770） | WP1.2 | M（**已完成**：2026-11-06） |
+| WP1.5 | 幂等结果持久化（ActionResult 可逆序列化 + App 私有文件恢复） | WP1.3 | S（**已完成**：2026-11-06） |
 
-WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验；WP1.4 补 8770 的局域网开关。
+WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验；WP1.4 补 8770 的局域网开关；
+WP1.5 只让幂等结果跨服务重启存活，确认 token 与审计仍按安全边界留在内存。
+
+### WP1.5 完成记录（2026-11-06）
+
+- `ActionResult` 新增 `fromJson(Map<?,?>)`，与 `toJson()` 可逆：ok / action / executor /
+  result / warnings / error(code/message/retryable) / elapsedMs / requestId / auditId。
+  结构损坏返回 `null`；未知错误码收敛为 `INTERNAL` 并保留文案，不抛到协议层。
+  result 中 `token` / `confirmToken` / `apiKey` / `password` / `secret` / `context`
+  等敏感键在序列化时递归剔除，不落盘。
+- `IdempotencyStore` 新增 `snapshotJson()` / `restoreJson(String)` /
+  `Persistence` / `setPersistence(...)`。快照格式
+  `{"version":1,"entries":[{key,action,argHash,expiresAt,result}]}`；
+  只导出未过期项，恢复时丢弃过期/坏条目，超过容量保留最新，整份损坏按空缓存启动
+  （`lastRestoreError()` 供日志，不打印文件内容）。
+- 写盘只在内容变化时触发：put / 淘汰 / 过期清理 / 非空 clear；命中 LRU 与纯查询不写；
+  restore 本身不回写。回调抛异常不影响动作结果；并发写入按序号只落最新快照。
+- `AgentService` 在 IO 线程首次创建 store：读取 `files/agent_idempotency.json`
+  （上限 256KB）→ `restoreJson` → `setPersistence`；写盘走 `AppExecutors.io`
+  串行合并 + 临时文件原子 rename。重绑 8770 复用同一 store，不清空。
+- **确认 token 仍只存内存（60 秒、一次性），服务重启即失效是安全设计**；审计仍为
+  内存环形缓冲。token / apiKey 不写日志、不落盘。
+- 纯 JVM 新增 `AgentIdempotencyPersistenceTest` 117 条断言；总断言 1328 → 1445。
+  `./tests/run.sh`、`SDK=... ./build.sh`、`scripts/check-consistency.sh` 全绿。
+- **真机未验证**（本轮 `adb devices` 无设备）：安装后
+  `/data/data/plus.xiaoi.module/files/agent_idempotency.json` 生成、杀进程/服务重启后
+  同 key 返回首次结果、文件损坏时服务正常启动。设备恢复后补测。
+- 未做：审计落盘/轮转、确认 token 持久化（明确不做）、LAN 限流、记忆、job。
 
 ### WP1.4 完成记录（2026-11-06）
 
@@ -160,7 +188,8 @@ WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Age
 - 新增 `plus.xiaoi.module.agent`：ActionDescriptor / ActionRequest / ActionResult /
   ActionRegistry / AgentError / Actions / AgentValues。
 - 5 个动作描述已注册；`requiredCapability` 作为执行器准入条件（root 动作不能用 android 顶替）。
-- 单测 132 条；断言演进：WP1.1 796 → WP1.2a 851 → WP1.2b 969 → WP1.3a 1148 → WP1.3b 1296 → WP1.4 1328；
+- 单测 132 条；断言演进：WP1.1 796 → WP1.2a 851 → WP1.2b 969 → WP1.3a 1148 → WP1.3b 1296
+  → WP1.4 1328 → WP1.5 1445；
   `build.sh`、`check-consistency.sh` 通过。
 - 未实现 Android/Root 执行器、8770 服务、confirm 签发/幂等/审计；属于 WP1.2/1.3。
 
@@ -265,11 +294,12 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 
 ## 3. WP1.2：App 前台服务与动作
 
-> 状态：**WP1.1~WP1.4 代码完成，1328 断言；真机矩阵待设备恢复**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
+> 状态：**WP1.1~WP1.5 代码完成，1445 断言；真机矩阵待设备恢复**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
 > 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；WP1.4（8770 独立 LAN）已完成；
-> 记忆/job 未做。
+> WP1.5（幂等结果持久化）已完成；记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
-> `AgentActionExecutorsTest.java`、`AgentSecurityTest.java`、`AgentNotifyAskTest.java`
+> `AgentActionExecutorsTest.java`、`AgentSecurityTest.java`、`AgentNotifyAskTest.java`、
+> `AgentIdempotencyPersistenceTest.java`
 > 验证：单测、`build.sh`、`check-consistency.sh`、真机 8770/鉴权/device.info 已通过；
 > WP1.2b/WP1.3b 的真机动作验证待设备恢复（见上）。
 
@@ -312,10 +342,11 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 
 > 状态：**WP1.3a / WP1.3b 已完成**（确认 token / 幂等 / 审计、notify/ask，2026-11-06）；
 > WP1.4 已完成 8770 独立局域网开关（默认关、弱 token 回退、UI/复制含 8770）；
-> `xiaoai_job_status`、记忆读写、持久化未做。
+> WP1.5 已完成幂等结果持久化（确认 token/审计仍为内存）；
+> `xiaoai_job_status`、记忆读写、审计落盘未做。
 
 - `xiaoai_confirm` + confirm token（绑定 clientId/action/参数 hash，一次性，60s）。
-- `xiaoai_action` 的 `idempotencyKey`（24h）。
+- `xiaoai_action` 的 `idempotencyKey`（24h；WP1.5 起结果持久化到 App 私有文件，重启可去重）。
 - 审计日志（动作、参数摘要、executor、结果、耗时；不含正文/密钥）。
 - `xiaoai_ask` 代理 8771，返回 `sessionId`；处理 `SESSION_BUSY`。
 - `xiaoai_job_status`（长动作异步）。
@@ -323,7 +354,7 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 
 ## 5. 测试与发布
 
-- 纯 JVM：WP1.1 单测；WP1.3 确认/幂等/审计。
+- 纯 JVM：WP1.1 单测；WP1.3 确认/幂等/审计；WP1.5 ActionResult 序列化与幂等快照恢复。
 - 真机：5 动作、锁屏、无 root、root、Shizuku、小爱未运行、开机自启。
 - 发布：先 `0.13.0-agent.1` beta；`agent_plane` 默认关，开启后验证。
 - 文档/skill：更新 `skill/xiaoi-mcp`、新增 `skill/xiaoi-agent`。

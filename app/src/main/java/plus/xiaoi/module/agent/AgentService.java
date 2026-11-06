@@ -10,6 +10,10 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import plus.xiaoi.module.AppConfig;
@@ -50,11 +54,19 @@ public final class AgentService extends Service {
     private volatile AgentHttpServer server;
     private volatile String runningToken = "";
 
-    // WP1.3：确认/幂等/审计都是内存状态，随服务进程存活；服务重启后丢失。
-    // 持久化（确认/幂等落 App 私有库、审计轮转）留给后续工作包。
+    /** 幂等缓存文件：App 私有目录，不需要 chmod。 */
+    static final String IDEMPOTENCY_FILE = "agent_idempotency.json";
+    /** 读取上限；超过视为损坏并空启动，避免异常大文件拖慢服务。 */
+    static final long IDEMPOTENCY_MAX_BYTES = 256L * 1024L;
+
+    // WP1.5：
+    // - 幂等结果持久化到 files/agent_idempotency.json，服务/进程重启后同 key 仍返回首次结果。
+    // - 确认 token 仍然只在内存（一次性、60 秒）。重启即失效是安全设计，不持久化。
+    // - 审计仍为内存环形缓冲，轮转落盘留给后续工作包。
     private final ConfirmationManager confirmations = new ConfirmationManager();
-    private final IdempotencyStore idempotency = new IdempotencyStore();
     private final AuditLog audit = new AuditLog();
+    /** 在 IO 线程首次创建并恢复；重绑 8770 时复用同一实例，不清空。 */
+    private volatile IdempotencyStore idempotency;
 
     // ------------------------------------------------------------- 静态入口
 
@@ -201,8 +213,10 @@ public final class AgentService extends Service {
         registry.register(Actions.appOpen(), androidOrRoot);
         registry.register(Actions.mediaControl(), androidOrRoot);
 
+        // 启动顺序：读文件 → restoreJson → 再挂持久化回调，避免刚恢复就回写一遍。
+        IdempotencyStore idempotencyStore = idempotencyStore();
         AgentHttpServer next = new AgentHttpServer(token,
-                new AgentMcp(versionName(), confirmations, idempotency, audit,
+                new AgentMcp(versionName(), confirmations, idempotencyStore, audit,
                         new AndroidNotifyHost(this, token),
                         new BridgeAskHost(token)), registry, c.agentLan);
         String err = next.start();
@@ -227,6 +241,151 @@ public final class AgentService extends Service {
         // 请求过 LAN 但弱令牌回退：明确告诉用户当前实际仍是仅本机。
         if (requestedLan) return TEXT_RUNNING_FALLBACK;
         return TEXT_RUNNING_LOCAL;
+    }
+
+    // ------------------------------------------------------------- 幂等持久化
+
+    /**
+     * 首次调用时读取 App 私有文件并恢复；之后重绑端口复用同一实例，不清空缓存。
+     * 由 {@link #startOrStop()} 在 IO 线程调用，不做主线程文件 I/O。
+     */
+    private IdempotencyStore idempotencyStore() {
+        IdempotencyStore current = idempotency;
+        if (current != null) return current;
+
+        File file = idempotencyFile();
+        IdempotencyStore created = new IdempotencyStore();
+        if (file != null && file.isFile()) {
+            String text = readSmallFile(file, IDEMPOTENCY_MAX_BYTES);
+            created.restoreJson(text);
+            if (created.lastRestoreError().length() > 0) {
+                // 不打印文件内容；损坏时按空缓存启动，下一次写入会自动覆盖。
+                Logs.e("AgentService: 幂等缓存恢复失败，按空缓存启动（"
+                        + created.lastRestoreError() + "）");
+            }
+        }
+        if (file != null) created.setPersistence(new FilePersistence(file));
+        idempotency = created;
+        return created;
+    }
+
+    private File idempotencyFile() {
+        try {
+            File dir = getFilesDir();
+            return dir == null ? null : new File(dir, IDEMPOTENCY_FILE);
+        } catch (Throwable t) {
+            Logs.e("AgentService 无法定位私有目录（幂等缓存不落盘）: "
+                    + t.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /** 读小文件；不存在/超限/读失败返回空串（调用方按空缓存处理）。 */
+    private static String readSmallFile(File file, long maxBytes) {
+        if (file == null || !file.isFile()) return "";
+        try {
+            long length = file.length();
+            if (length <= 0) return "";
+            if (length > maxBytes) {
+                Logs.e("AgentService: 幂等缓存超过读取上限，已忽略（不打印内容）");
+                return "";
+            }
+            FileInputStream in = new FileInputStream(file);
+            try {
+                ByteArrayOutputStream out = new ByteArrayOutputStream((int) length);
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    out.write(buf, 0, n);
+                    if (out.size() > maxBytes) {
+                        Logs.e("AgentService: 幂等缓存读取超限，已忽略（不打印内容）");
+                        return "";
+                    }
+                }
+                return new String(out.toByteArray(), "UTF-8");
+            } finally {
+                in.close();
+            }
+        } catch (Throwable t) {
+            Logs.e("AgentService 读取幂等缓存失败（按空缓存启动）: "
+                    + t.getClass().getSimpleName());
+            return "";
+        }
+    }
+
+    /**
+     * 幂等快照落盘：调用线程只入队，实际写文件在 IO 线程串行执行。
+     * 同一时刻只保留最新快照，避免频繁 put 时写盘排队。
+     */
+    private static final class FilePersistence implements IdempotencyStore.Persistence {
+        private final File file;
+        private final Object lock = new Object();
+        private String pending;
+        private boolean scheduled;
+
+        FilePersistence(File file) {
+            this.file = file;
+        }
+
+        @Override
+        public void save(String json) {
+            if (json == null || file == null) return;
+            synchronized (lock) {
+                pending = json;
+                if (scheduled) return;
+                scheduled = true;
+            }
+            AppExecutors.io(new Runnable() {
+                @Override
+                public void run() {
+                    drain();
+                }
+            });
+        }
+
+        private void drain() {
+            while (true) {
+                String json;
+                synchronized (lock) {
+                    json = pending;
+                    pending = null;
+                    if (json == null) {
+                        scheduled = false;
+                        return;
+                    }
+                }
+                writeAtomic(file, json);
+            }
+        }
+
+        private static void writeAtomic(File file, String json) {
+            File tmp = new File(file.getPath() + ".tmp");
+            FileOutputStream out = null;
+            try {
+                out = new FileOutputStream(tmp);
+                out.write(json.getBytes("UTF-8"));
+                out.flush();
+                out.close();
+                out = null;
+                if (!tmp.renameTo(file)) {
+                    // 某些文件系统不允许覆盖式 rename；删旧文件后重试一次。
+                    if (file.exists()) file.delete();
+                    if (!tmp.renameTo(file)) {
+                        Logs.e("AgentService: 幂等缓存写入失败（rename 未成功）");
+                    }
+                }
+            } catch (Throwable t) {
+                // 写盘失败只记日志，不影响动作结果。
+                Logs.e("AgentService 幂等缓存写入失败: " + t.getClass().getSimpleName());
+            } finally {
+                if (out != null) {
+                    try {
+                        out.close();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------- 通知

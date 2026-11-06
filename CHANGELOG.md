@@ -1,5 +1,14 @@
 # 更新日志
 
+## 未发布 — Agent WP1.5：幂等结果持久化
+
+- 幂等缓存写入 App 私有 `files/agent_idempotency.json`：服务/进程重启后同一
+  `idempotencyKey` 仍返回首次结果，不重复执行副作用；24 小时过期，最多 500 条。
+- 快照只含 key / action / 参数 hash / 过期时间 / 结果信封；`token`、`apiKey`、
+  `context` 等敏感键递归剔除。损坏或超限（256KB）时按空缓存启动并记录日志。
+- 确认 token 仍只存内存（一次性、60 秒），**重启失效是安全设计**；审计仍为内存环形缓冲。
+- JVM 单测 1328 → 1445 断言（新增 `AgentIdempotencyPersistenceTest`）。
+
 ## 未发布 — Agent WP1.4：8770 独立局域网开关
 
 - 配置新增 `mcp.agentLan`（默认 false，不升 schema）；`mcp.lan`（8771）语义不变，
