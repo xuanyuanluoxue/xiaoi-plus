@@ -45,9 +45,9 @@ public final class AndroidExecutor implements ActionExecutor {
 
     private static final String NAME = "android";
 
-    /** notification.send 专用渠道：默认重要性，按需创建。 */
-    private static final String CHANNEL_ACTION = "agent_action";
-    private static final String CHANNEL_ACTION_NAME = "Agent 动作";
+    /** notification.send / notify 共用渠道：默认重要性，按需创建。 */
+    static final String CHANNEL_ACTION = "agent_action";
+    static final String CHANNEL_ACTION_NAME = "Agent 动作";
 
     private static final String NOTIFICATION_TAG = "agent_action";
     private static final AtomicInteger NEXT_NOTIFICATION_ID = new AtomicInteger(0x414700);

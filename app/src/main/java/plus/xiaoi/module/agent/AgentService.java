@@ -26,7 +26,9 @@ import plus.xiaoi.module.R;
  * {@code mcpToken} 非空时监听 loopback；否则不监听并 stopSelf。服务本身不执行
  * 动作，动作由 {@link AndroidExecutor} / {@link RootExecutor} 与
  * {@link ActionRegistry} 提供。WP1.2b 注册全部 5 个动作，其中 app.open 与
- * media.control 使用 {@link FallbackExecutor}（android 优先，NOT_AVAILABLE 才回退 root）。</p>
+ * media.control 使用 {@link FallbackExecutor}（android 优先，NOT_AVAILABLE 才回退 root）。
+ * WP1.3b 注入 {@link AndroidNotifyHost}（超级岛优先，失败降级通知）与
+ * {@link BridgeAskHost}（8771 /cli 代理小爱）。</p>
  *
  * <p>所有配置读取都在 {@link AppExecutors#io} 上完成，不在主线程碰文件。
  * 绑定失败只记录日志并保留服务，避免把 App 主进程拖崩。</p>
@@ -195,7 +197,9 @@ public final class AgentService extends Service {
         registry.register(Actions.mediaControl(), androidOrRoot);
 
         AgentHttpServer next = new AgentHttpServer(token,
-                new AgentMcp(versionName(), confirmations, idempotency, audit), registry);
+                new AgentMcp(versionName(), confirmations, idempotency, audit,
+                        new AndroidNotifyHost(this, token),
+                        new BridgeAskHost(token)), registry);
         String err = next.start();
         if (err.length() > 0) {
             Logs.e("AgentService: " + err);
