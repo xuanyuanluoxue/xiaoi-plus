@@ -231,15 +231,17 @@ public final class AndroidExecutor implements ActionExecutor {
         }
 
         Map<String, Object> result = Json.obj();
-        result.put("scheduled", Boolean.TRUE);
-        // 无法确认时钟 App 是否真的跳过了界面：默认如实返回 false。
+        // startActivity 只证明系统接收了请求，不能证明闹钟真的创建；
+        // HyperOS 可能先弹安全中心确认页。不要把“已提交”说成“已创建”。
+        result.put("requested", Boolean.TRUE);
+        result.put("scheduled", Boolean.FALSE);
         result.put("skippedUi", Boolean.FALSE);
 
         List<String> warnings = new ArrayList<String>();
+        warnings.add("已提交系统闹钟请求，但无法确认是否真正创建；请在时钟 App 检查");
         if (skipUi) {
-            warnings.add("已请求 skipUi，但时钟 App 是否跳过界面无法确认；请以系统闹钟列表为准");
+            warnings.add("已请求 skipUi，但时钟 App 是否跳过界面无法确认");
         }
-        warnings.add("闹钟由系统时钟 App 创建；本动作只负责打开/提交请求");
         return new ActionResult(true, "alarm.set", NAME, result, warnings, null, 0, "", null);
     }
 

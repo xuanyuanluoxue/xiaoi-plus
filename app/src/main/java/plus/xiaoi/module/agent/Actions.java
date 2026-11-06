@@ -105,7 +105,8 @@ public final class Actions {
         props.put("skipUi", prop("boolean", "是否尝试跳过系统闹钟界面（兼容性待真机验证）"));
 
         Map<String, Object> out = Json.obj();
-        out.put("scheduled", prop("boolean", "是否已创建/打开闹钟"));
+        out.put("requested", prop("boolean", "是否已向系统提交闹钟请求"));
+        out.put("scheduled", prop("boolean", "是否确认创建；无法确认时为 false"));
         out.put("skippedUi", prop("boolean", "是否跳过了系统界面"));
 
         List<Object> examples = Json.arr();
