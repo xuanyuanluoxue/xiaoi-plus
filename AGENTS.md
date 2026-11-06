@@ -22,6 +22,8 @@
 - 真机截图、测试 APK、配置 fixture、构建/契约日志统一放
   `~/xiaoi-plus-dev/artifacts/YYYY-MM-DD/`（screenshots/apk/configs/logs/releases/notes）。
 - 临时文件先写 `~/xiaoi-plus-dev/tmp/`，不要落在仓库根、用户 home 根或 `/tmp/opencode` 根。
+- 设备端真机产物统一写 `/sdcard/Download/xiaoi-plus-dev/YYYY-MM-DD/{screenshots,ui-dumps,logs}/`，
+  不要写 `/sdcard` 根目录；配置类文件测试后立即 pull 到 PC 并删除。
 - 含 `apiKey` / `mcp.token` 的配置、备份、`.corrupt` 文件必须 `chmod 600`，用完清理。
 - 目录约定与清理脚本见 `~/xiaoi-plus-dev/README.md`、`~/xiaoi-plus-dev/clean.sh`。
 
