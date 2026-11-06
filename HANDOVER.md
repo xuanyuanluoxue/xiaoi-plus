@@ -1,9 +1,13 @@
 # 交接说明（2026-11-06）
 
-> 状态：**`0.13.0-agent.1` 发布候选**（versionCode 17），Agent Action Plane 代码完成。
+> 状态：**`v0.13.0-agent.1` 已发布**（prerelease，versionCode 17），Agent Action Plane 首个测试版。
 > JVM 单测 1453 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验通过。
 > 真机主路径已验证：8770 action plane、5 个动作、confirm/幂等、notify/ask、
 > 8770 LAN、开机自启；已知限制见 `docs/agent/PHASE1.md` 第 7 节。
+>
+> - Release：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
+> - 资产：`xiaoi-plus-0.13.0-agent.1.apk` + `.sha256`；CI 构建，签名指纹
+>   `d7dd34b2…d19b`
 >
 > 0.12 核心重构（WP1~WP8）已完成并发布 `v0.12.0-beta.1`；
 > Agent 能力计划见 [docs/agent/PLAN.md](docs/agent/PLAN.md)，工作包见

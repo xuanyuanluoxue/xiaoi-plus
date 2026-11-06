@@ -1,6 +1,7 @@
 # Phase 1 工作包：Action Plane 骨架与第一批动作
 
-> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机主路径通过；`0.13.0-agent.1` 发布候选**
+> 状态：**WP1.1~WP1.5 完成，1453 断言；真机主路径通过；已发布 `v0.13.0-agent.1`（prerelease）**
+> 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
 > 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
 > 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
 > 日期：2026-11-06
@@ -294,7 +295,7 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 
 ## 3. WP1.2：App 前台服务与动作
 
-> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机主路径通过；`0.13.0-agent.1` 发布候选**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
+> 状态：**WP1.1~WP1.5 完成，1453 断言；真机主路径通过；已发布 `v0.13.0-agent.1`**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
 > 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；WP1.4（8770 独立 LAN）已完成；
 > WP1.5（幂等结果持久化）已完成；记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
@@ -416,3 +417,14 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
   `PERMISSION_DENIED`，提示去 KernelSU/Magisk 授权或改用 Shizuku。
   这是权限边界，不是命令注入问题。
 - 有线 ADB 已重新连接；开机自启、LAN、5 个动作主路径均已真机验证。
+
+## 8. 发布记录
+
+### v0.13.0-agent.1（2026-11-06，prerelease）
+
+- Release：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
+- 资产：`xiaoi-plus-0.13.0-agent.1.apk`、`.apk.sha256`
+- 构建：GitHub Actions（tag 触发），signed=true；versionCode 17
+- 证书 SHA-256：`d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b`
+- 本地校验：下载资产 `sha256sum -c` 通过；`verify-apk.sh` 包名/版本/指纹 PASS
+- 单测：1453 断言；一致性检查通过
