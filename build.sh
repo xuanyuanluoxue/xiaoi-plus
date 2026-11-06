@@ -51,9 +51,19 @@ if [ -z "$KP" ]; then
   exit 0
 fi
 mkdir -p "$ROOT/keystore"
-[ -f "$KS" ] || keytool -genkeypair -keystore "$KS" -storepass "$KP" -keypass "$KP" \
-  -alias xiaoi -keyalg RSA -keysize 2048 -validity 10000 \
-  -dname "CN=XiaoAi Plus, O=OpenSource, C=CN" >/dev/null 2>&1
+if [ ! -f "$KS" ]; then
+  # 有口令却没有 keystore，说明密钥被删/没恢复。静默生成新证书会产出
+  # “已签名但不能覆盖安装正式版”的包，必须显式允许才能继续。
+  if [ "${XIAOI_ALLOW_NEW_KEY:-0}" != "1" ]; then
+    echo "错误：有签名口令，但找不到 $KS" >&2
+    echo "正式发版请先从备份恢复 keystore；仅本地编译验证可设 XIAOI_ALLOW_NEW_KEY=1（会生成新证书，不能覆盖安装正式版）" >&2
+    exit 1
+  fi
+  echo "警告：已生成新的签名证书（XIAOI_ALLOW_NEW_KEY=1）；该 APK 不能覆盖安装正式版" >&2
+  keytool -genkeypair -keystore "$KS" -storepass "$KP" -keypass "$KP" \
+    -alias xiaoi -keyalg RSA -keysize 2048 -validity 10000 \
+    -dname "CN=XiaoAi Plus, O=OpenSource, C=CN" >/dev/null 2>&1
+fi
 printf '%s\n%s\n' "$KP" "$KP" > "$OUT/kpass.txt"
 "$BT/apksigner" sign --ks "$KS" --ks-pass "file:$OUT/kpass.txt" --key-pass "file:$OUT/kpass.txt" \
   --out "$ROOT/build/xiaoi-plus.apk" "$OUT/xiaoi-plus-aligned.apk"

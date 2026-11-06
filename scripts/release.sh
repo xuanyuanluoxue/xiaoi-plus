@@ -59,6 +59,10 @@ fi
 
 # 4) 构建
 echo "==> 构建"
+if [ "$ALLOW_NEW_KEY" -eq 1 ]; then
+  # 显式允许本次构建生成新证书；否则 build.sh 在缺 keystore 时会直接失败。
+  export XIAOI_ALLOW_NEW_KEY=1
+fi
 ./build.sh
 [ -f "$APK" ] || die "构建结束但找不到 $APK"
 

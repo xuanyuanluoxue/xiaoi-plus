@@ -73,6 +73,9 @@ rm /tmp/ks.b64
 这种包**只能测试，不能覆盖安装正式版**，Release Notes 会自动加警告；即使推的是 tag，
 **也不会创建 GitHub Release**（只上传 artifact，并输出跳过 Release 的 warning/notice）。
 本地 `build.sh` 缺少签名口令时只产出**未签名** APK（用于编译验证），不会假装签名成功。
+本地有口令但 `keystore/xiaoi.keystore` 缺失时，`build.sh` 会直接失败，不再静默生成新证书；
+仅本地验证可设 `XIAOI_ALLOW_NEW_KEY=1`（`release.sh --allow-new-key` 会自动设置），
+生成的包不能覆盖安装正式版。
 
 ## 3. 本地一键发版
 
