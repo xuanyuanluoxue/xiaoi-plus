@@ -15,5 +15,12 @@ public final class Prefs {
     /** 主题：0 跟随系统 / 1 浅色 / 2 深色（仅 App 进程使用）。 */
     public static final String KEY_THEME = "theme_mode";
 
+    /**
+     * WP1 控制面开关（模块 prefs，小爱进程用 XSharedPreferences 读取）。
+     * 默认 true；设为 false 时行为与 beta.4 完全一致（只走旧 HTTP 推送）。
+     * 本包没有 UI 写入口，避免在 WP1 切换主路径。
+     */
+    public static final String KEY_CONTROL_PLANE = "control_plane";
+
     private Prefs() {}
 }

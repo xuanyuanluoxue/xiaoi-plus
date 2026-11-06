@@ -19,6 +19,30 @@ public final class TestMain {
         failed += LogsTest.run();
         failed += ModelValidatorTest.run();
         try {
+            failed += ControlKeysTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ControlKeysTest 套件异常: " + t);
+        }
+        try {
+            failed += UidGuardTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL UidGuardTest 套件异常: " + t);
+        }
+        try {
+            failed += BridgeRegistryTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL BridgeRegistryTest 套件异常: " + t);
+        }
+        try {
+            failed += ControlLogRingTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ControlLogRingTest 套件异常: " + t);
+        }
+        try {
             failed += ConfigCodecTest.run();
         } catch (Throwable t) {
             failed++;
