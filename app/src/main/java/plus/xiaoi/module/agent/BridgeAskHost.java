@@ -83,7 +83,7 @@ public final class BridgeAskHost implements AskHost {
         if (failure != null) {
             return AskResult.failure(failure, cliFailureMessage(submit.body));
         }
-        return AskResult.success(submit.body, sid);
+        return AskResult.success(replyText(submit.body), sid);
     }
 
     // ------------------------------------------------------------- 文案拼接
@@ -211,6 +211,30 @@ public final class BridgeAskHost implements AskHost {
     }
 
     // ------------------------------------------------------------- 失败识别
+
+    /**
+     * agent.submit 的正常返回可能是纯文本，也可能是
+     * {@code {"data":{"text":"..."}}} 这类 JSON 包。给 Agent 返回干净文本；
+     * 解析不到 text 时保留原始 body，避免丢信息。
+     */
+    static String replyText(String body) {
+        String raw = body == null ? "" : body.trim();
+        if (raw.length() == 0) return "";
+        try {
+            Object v = Json.read(raw);
+            if (v instanceof Map) {
+                String text = pickString((Map<?, ?>) v, "text");
+                if (text.length() > 0) return text;
+                Object data = ((Map<?, ?>) v).get("data");
+                if (data instanceof Map) {
+                    text = pickString((Map<?, ?>) data, "text");
+                    if (text.length() > 0) return text;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return raw;
+    }
 
     /**
      * agent.submit 的返回可能是纯文本或 JSON。纯文本原样作为回复；

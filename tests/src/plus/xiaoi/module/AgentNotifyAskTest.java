@@ -487,6 +487,10 @@ public final class AgentNotifyAskTest {
                     } catch (InterruptedException ignored) {
                     }
                 }
+                if ("jsonreply".equals(m)) {
+                    send(e, 200, "{\"data\":{\"text\":\"JSON 回复\"}}");
+                    return;
+                }
                 send(e, 200, "好的，OK");
             }
         });
@@ -503,6 +507,13 @@ public final class AgentNotifyAskTest {
             T.eq("bridge ask 再 agent.submit", 1, submits.get());
             T.eq("bridge ask Bearer token", "Bearer tok", auth.get());
 
+            mode.set("jsonreply");
+            AskHost.AskResult jsonReply = host.ask("JSON 回复", "srv-1", null, 5000);
+            T.eq("bridge ask JSON data.text 归一化", "JSON 回复", jsonReply.text);
+            mode.set("ok");
+
+            // 恢复一次普通回复，供下面检查 agent.submit 参数。
+            host.ask("回复 OK", "srv-1", null, 5000);
             Map<?, ?> submitted = json(lastCmd.get());
             T.eq("agent.submit method", "agent.submit", submitted.get("method"));
             Map<?, ?> params = (Map<?, ?>) submitted.get("params");
