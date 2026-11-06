@@ -65,6 +65,8 @@ public final class ControlKeys {
     public static final String KEY_ENABLED = "enabled";
     public static final String KEY_HAS_KEY = "has_key";
     public static final String KEY_VERSION = "version";
+    /** 小爱已加载的配置 rev；App 用它判断 D3「已应用」。 */
+    public static final String KEY_CFG_REV = "cfg_rev";
 
     public static final String KEY_LOGS = "logs";
     public static final String KEY_TEXT = "text";

@@ -7,6 +7,7 @@ import android.widget.TextView;
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppStatus;
 import plus.xiaoi.module.R;
+import plus.xiaoi.module.core.StateModel;
 
 /**
  * 配置页顶部状态条、推送行、文件冲突条与运行时冲突条。
@@ -51,14 +52,34 @@ public final class StatusSection {
         tvStatusDesc.setText(detail);
     }
 
-    /** WP4：只显示「已保存，等待小爱应用」或中立提示；真实应用状态留 WP6。 */
-    public void renderPush(boolean savedWaiting) {
+    /**
+     * D3 的真实状态：已应用 / 等待小爱应用 / 未连接 / 超过 30s 未上报。
+     * 不再出现「推送失败」「令牌不一致」这类旧 HTTP 推送遗留文案。
+     */
+    public void renderPush(StateModel.AppliedState d3, boolean savedWaiting) {
         if (tvPushState == null) return;
-        if (savedWaiting) {
-            setPush("已保存，等待小爱应用", R.color.warning, true);
-        } else {
-            setPush("保存后自动通知小爱应用", R.color.text_hint, true);
+        if (d3 == null) d3 = StateModel.AppliedState.UNKNOWN;
+        switch (d3) {
+            case APPLIED:
+                setPush("已应用 · 小爱已加载当前配置", R.color.success, false);
+                return;
+            case WAITING:
+                setPush("已保存，等待小爱应用", R.color.warning, true);
+                return;
+            case STALE:
+                setPush("小爱超过 30 秒未上报状态 · 点按重新通知", R.color.warning, true);
+                return;
+            case UNKNOWN:
+            default:
+                if (savedWaiting) setPush("已保存，等待小爱连接后应用", R.color.warning, true);
+                else setPush("保存后自动通知小爱应用", R.color.text_hint, true);
         }
+    }
+
+    /** 兼容旧调用点（ConfigActivity 已改用 D3 版本）。 */
+    public void renderPush(boolean savedWaiting) {
+        renderPush(savedWaiting ? StateModel.AppliedState.WAITING
+                : StateModel.AppliedState.UNKNOWN, savedWaiting);
     }
 
     private void setPush(String text, int colorRes, boolean tappable) {

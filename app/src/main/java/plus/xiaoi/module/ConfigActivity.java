@@ -6,20 +6,19 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import org.json.JSONObject;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 import plus.xiaoi.module.core.BridgeEndpoint;
+import plus.xiaoi.module.core.BridgeStatus;
+import plus.xiaoi.module.core.StateModel;
 import plus.xiaoi.module.ui.config.AppearanceSection;
 import plus.xiaoi.module.ui.config.ConfigDialogs;
 import plus.xiaoi.module.ui.config.EditSection;
@@ -40,8 +39,7 @@ import plus.xiaoi.module.ui.config.StatusSection;
  *
  * 约定：
  * - render() 期间的 setText/setChecked 不触发监听器（rendering 守卫）
- * - enabled=false 时模型卡用「子 View 不可点 + 父容器吞掉触摸」屏蔽，
- *   只有「暂停且密钥为空」时保留密钥输入（首次配置必须能填 key）
+ * - 暂停只停重定向/热应用，不锁编辑：服务商、模型、密钥始终可改可保存
  *
  * WP5：页面视图已拆到 {@code ui.config} 的 ConfigDialogs / McpSection / StatusSection /
  * EditSection / ModelEditor / AppearanceSection；本类只保留状态所有权与流程编排。
@@ -66,11 +64,8 @@ public class ConfigActivity extends BaseActivity {
     private AppStatus statusState = AppStatus.ENABLED;
     private String statusDetail = "";
 
-    /** 本次会话是否已保存、等待小爱应用（WP6 会替换为真实四维状态）。 */
+    /** 本次会话是否已保存；D3 的真实状态由控制面快照决定。 */
     private boolean savedWaiting;
-
-    /** 暂停（enabled=false）时是否允许继续编辑密钥：仅首次配置（key 为空）时放行。 */
-    private boolean keyEditableWhenPaused;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final Runnable autoCheckTask = new Runnable() {
@@ -78,9 +73,8 @@ public class ConfigActivity extends BaseActivity {
     };
 
     private Switch swEnabled, swMcp, swPrefix, swMcpLan;
-    private View cardModel, rowPrefixTpl, tvPrefixHelp, tvDirty;
+    private View rowPrefixTpl, tvPrefixHelp, tvDirty;
     private TextView fab;
-    private View rowModelCheck, rowManage;
     private LinearLayout boxProviderChips, boxModelChips;
     private TextView btnEye, tvModelCheck;
     private EditText etApiKey, etPrefixTpl;
@@ -117,7 +111,6 @@ public class ConfigActivity extends BaseActivity {
         swMcp = (Switch) find(R.id.sw_mcp);
         swMcpLan = (Switch) find(R.id.sw_mcp_lan);
         swPrefix = (Switch) find(R.id.sw_prefix);
-        cardModel = find(R.id.card_model_fields);
         rowPrefixTpl = find(R.id.row_prefix_tpl);
         tvPrefixHelp = find(R.id.tv_prefix_help);
         tvModelCheck = (TextView) find(R.id.tv_model_check);
@@ -128,8 +121,6 @@ public class ConfigActivity extends BaseActivity {
         tvDirty = find(R.id.tv_dirty);
         boxProviderChips = (LinearLayout) find(R.id.box_provider_chips);
         boxModelChips = (LinearLayout) find(R.id.box_model_chips);
-        rowModelCheck = find(R.id.row_model_check);
-        rowManage = find(R.id.row_manage);
 
         final View root = findViewById(android.R.id.content);
         dialogs = new ConfigDialogs(this, new ConfigDialogs.Toast() {
@@ -230,13 +221,12 @@ public class ConfigActivity extends BaseActivity {
             public void onCheckedChanged(android.widget.CompoundButton v, boolean on) {
                 if (rendering) return;
                 cfg.enabled = on;
-                keyEditableWhenPaused = !on && cfg.apiKeyOfActive().length() == 0;
                 invalidateCheck();
-                applyEnabledState();
                 applyMcpState(); // JSON 速览里的 enabled 字段要跟着变
                 markDirty();
                 // 打开开关后自动跑一次校验，让状态条不用等用户点按；关闭时不发请求。
                 if (on) scheduleAutoCheck();
+                else toast("已暂停：只停重定向，配置仍可继续编辑");
             }
         });
         swMcp.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -332,15 +322,6 @@ public class ConfigActivity extends BaseActivity {
                 markDirty();
             }
         });
-
-        // 暂停时模型卡整体不可点：非交互子 View 不消费触摸，父容器这里兜底吞掉。
-        if (cardModel != null) {
-            cardModel.setOnTouchListener(new View.OnTouchListener() {
-                public boolean onTouch(View v, MotionEvent e) {
-                    return !cfg.enabled;
-                }
-            });
-        }
     }
 
     private void setModelCheckText(String text, int colorRes) {
@@ -369,7 +350,6 @@ public class ConfigActivity extends BaseActivity {
         } finally {
             rendering = false;
         }
-        keyEditableWhenPaused = !cfg.enabled && cfg.apiKeyOfActive().length() == 0;
         // 删掉一个「非当前」模型等情况会重绘页面，但可用性结论并没有失效：
         // 只有参与校验的 baseUrl/key/model 变了，才退回「待校验」。
         if (!currentCheckKey().equals(lastCheckKey)) {
@@ -377,7 +357,6 @@ public class ConfigActivity extends BaseActivity {
             statusDetail = "";
         }
         renderChips();
-        applyEnabledState();
         applyMcpState();
         applyPrefixState();
         syncStatusFromConfig();
@@ -394,39 +373,6 @@ public class ConfigActivity extends BaseActivity {
         boolean on = swPrefix != null && swPrefix.isChecked();
         if (rowPrefixTpl != null) rowPrefixTpl.setVisibility(on ? View.VISIBLE : View.GONE);
         if (tvPrefixHelp != null) tvPrefixHelp.setVisibility(on ? View.VISIBLE : View.GONE);
-    }
-
-    /**
-     * enabled=false 时的屏蔽：不再只 setEnabled(false)（那拦不住子 View），
-     * 而是把交互子 View 的 clickable/focusable 全关掉，父容器再吞掉剩余触摸。
-     * 例外：首次配置（暂停 + 无密钥）保留密钥输入，否则用户无法完成配置。
-     */
-    private void applyEnabledState() {
-        if (cardModel == null) return;
-        boolean on = cfg.enabled;
-        cardModel.setAlpha(on ? 1f : 0.55f);
-        for (View chip : chipViews) {
-            chip.setClickable(on);
-            chip.setFocusable(on);
-            chip.setAlpha(on ? 1f : 0.6f);
-        }
-        setRowEnabled(rowModelCheck, on);
-        setRowEnabled(rowManage, on);
-        setRowEnabled(btnEye, on);
-        boolean allowKey = on || keyEditableWhenPaused;
-        if (etApiKey != null) {
-            etApiKey.setEnabled(allowKey);
-            etApiKey.setFocusable(allowKey);
-            etApiKey.setFocusableInTouchMode(allowKey);
-            etApiKey.setAlpha(allowKey ? 1f : 0.6f);
-        }
-    }
-
-    private void setRowEnabled(View v, boolean enabled) {
-        if (v == null) return;
-        v.setClickable(enabled);
-        v.setFocusable(enabled);
-        v.setAlpha(enabled ? 1f : 0.6f);
     }
 
     private void refreshBridgePort() {
@@ -488,8 +434,6 @@ public class ConfigActivity extends BaseActivity {
                 else modelEditor.promptAddModel(p);
             }
         }));
-
-        applyChipEnabled();
     }
 
     private TextView chip(String text, boolean selected, final Runnable action) {
@@ -515,15 +459,6 @@ public class ConfigActivity extends BaseActivity {
         dialogs.addHint(box, text);
     }
 
-    private void applyChipEnabled() {
-        boolean on = cfg.enabled;
-        for (View chip : chipViews) {
-            chip.setClickable(on);
-            chip.setFocusable(on);
-            chip.setAlpha(on ? 1f : 0.6f);
-        }
-    }
-
     private void selectProvider(AppConfig.Provider p) {
         if (p == null) return;
         // 点已选中的服务商不应重置当前模型，也不该产生脏标记
@@ -534,12 +469,10 @@ public class ConfigActivity extends BaseActivity {
         rendering = true;
         etApiKey.setText(p.apiKey == null ? "" : p.apiKey);
         rendering = false;
-        keyEditableWhenPaused = !cfg.enabled && cfg.apiKeyOfActive().length() == 0;
         statusState = AppStatus.ENABLED;
         statusDetail = "配置已改，点按重新校验";
         setModelCheckText("配置已改，点按重新校验", R.color.text_hint);
         renderChips();
-        applyEnabledState();
         applyMcpState();
         syncStatusFromConfig();
         markDirty();
@@ -577,6 +510,7 @@ public class ConfigActivity extends BaseActivity {
         StatusResolver.Input in = new StatusResolver.Input();
         in.hasProvider = p != null;
         in.hasModel = m != null && m.id != null && m.id.length() > 0;
+        in.hasBase = p != null && p.baseUrl != null && p.baseUrl.trim().length() > 0;
         in.keySet = cfg.apiKeyOfActive().length() > 0;
         in.enabled = cfg.enabled;
         in.checking = statusState == AppStatus.CHECKING;
@@ -596,9 +530,20 @@ public class ConfigActivity extends BaseActivity {
         statusSection.paint(state, detail);
     }
 
-    /** WP4：只显示「已保存，等待小爱应用」或中立提示；真实应用状态留 WP6。 */
+    /**
+     * D3：保存只依赖文件写入；是否生效只看控制面 leader 上报的 appliedRev。
+     * 桥不在线 = 等待，不显示「推送失败/令牌不一致」。
+     */
     private void renderPush() {
-        statusSection.renderPush(savedWaiting);
+        BridgeStatus.Snapshot s = BridgeStatus.get();
+        StateModel.Input in = new StateModel.Input();
+        in.bridgeConnected = s.connected;
+        in.fileRev = cfg == null ? 0L : cfg.rev;
+        in.appliedRev = s.appliedRev;
+        in.lastReportAt = s.updatedAt;
+        in.now = System.currentTimeMillis();
+        StateModel.AppliedState d3 = StateModel.resolveApplied(in, in.now);
+        statusSection.renderPush(d3, savedWaiting);
     }
 
     // ------------------------------------------------------------- 运行时冲突
@@ -606,9 +551,8 @@ public class ConfigActivity extends BaseActivity {
     /**
      * 只读核对「小爱运行时」与「已保存的文件」是否一致（§5.5 / DRIFT）。
      *
-     * 不一致时显示第二条黄色提示条：它不是文件冲突，所以不复用 banner_conflict，
-     * 避免「点按载入文件」把用户正在编辑的内容丢掉。这里只提供「以文件为准通知重载」，
-     * 「以运行时为准」的入口仍在「配置编辑 → 从运行中小爱导入」。
+     * <p>WP6 起只读控制面 {@link BridgeStatus}：不再依赖 MCP/token/HTTP。
+     * 控制面超过 30s 未上报、或还没加载到当前 rev 时，不生成冲突条（那只是等待，不是冲突）。</p>
      */
     private void checkRuntimeDrift() {
         final AppConfig saved;
@@ -617,31 +561,23 @@ public class ConfigActivity extends BaseActivity {
         } catch (Throwable t) {
             return;
         }
-        String token = saved.mcpToken == null ? "" : saved.mcpToken.trim();
-        if (!saved.mcpEnabled || token.length() == 0 || saved.model().length() == 0) {
+        BridgeStatus.Snapshot s = BridgeStatus.get();
+        long now = System.currentTimeMillis();
+        if (!s.fresh(now) || !s.runtimeKnown || s.appliedRev < saved.rev
+                || !saved.enabled || saved.model().length() == 0) {
             hideRuntimeConflict();
+            renderPush();
             return;
         }
-        AppExecutors.io(new Runnable() {
-            public void run() {
-                final JSONObject rt = ConfigSync.readRuntimeConfig(ConfigActivity.this);
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        if (isFinishing()) return;
-                        if (rt == null) { hideRuntimeConflict(); return; }
-                        String model = rt.optString("model", "");
-                        boolean enabled = rt.optBoolean("enabled", false);
-                        boolean same = enabled == saved.enabled
-                                && (!saved.enabled || model.equals(saved.model()));
-                        if (same) {
-                            hideRuntimeConflict();
-                            return;
-                        }
-                        showRuntimeConflict(saved, model, enabled);
-                    }
-                });
-            }
-        });
+        boolean same = s.enabled == saved.enabled
+                && (!saved.enabled || s.model.equals(saved.model()));
+        if (same) {
+            hideRuntimeConflict();
+            renderPush();
+            return;
+        }
+        showRuntimeConflict(saved, s.model, s.enabled);
+        renderPush();
     }
 
     private void showRuntimeConflict(AppConfig saved, String runtimeModel, boolean runtimeEnabled) {
@@ -788,14 +724,10 @@ public class ConfigActivity extends BaseActivity {
             syncStatusFromConfig();
             return;
         }
-        if (!cfg.enabled) {
-            if (manual) toast("已暂停，打开上方开关后再校验");
-            syncStatusFromConfig();
-            return;
-        }
+        // 暂停不阻止校验：校验只影响 D2，不代表小爱已在用（D4 仍由控制面决定）。
         if (p.apiKey == null || p.apiKey.trim().length() == 0) {
             if (manual) toast("先填写密钥");
-            paintStatus(AppStatus.ENABLED, "密钥为空 · 填写后才能校验可用性");
+            paintStatus(AppStatus.NOT_CONFIGURED, "缺少密钥 · 填写后才能校验端点");
             renderPush();
             return;
         }

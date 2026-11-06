@@ -14,6 +14,7 @@ import android.os.Parcel;
 import android.os.Process;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -70,6 +71,8 @@ public final class BridgeControlClient {
     private static volatile String sAppliedHash = "";
     private static volatile String sProcessName = "";
     private static volatile String sVersionName = "";
+    /** 已成功送到 App 的日志序号；重连/进程重启时归零重发。 */
+    private static volatile long sLogSeq;
 
     private BridgeControlClient() {}
 
@@ -128,6 +131,7 @@ public final class BridgeControlClient {
                 sConnected = true;
                 sBound = true;
                 sAttempt = 0;
+                sLogSeq = 0;
             }
             Logs.i("控制面已连接 pid=" + Process.myPid() + " port=" + Bridge.port());
             runAsync(PULL);
@@ -307,11 +311,13 @@ public final class BridgeControlClient {
                     return;
                 }
                 reportState(b, Config.current());
+                pushLogs(b);
                 return;
             }
             String json = reply.getString(ControlKeys.KEY_CONFIG_JSON, "");
             if (json == null || json.length() == 0) {
                 Logs.i("控制面返回空配置（已忽略）");
+                pushLogs(b);
                 return;
             }
             applyIfChanged(json);
@@ -320,6 +326,7 @@ public final class BridgeControlClient {
                 return;
             }
             reportState(b, Config.current());
+            pushLogs(b);
         } catch (SecurityException e) {
             sFatal = true;
             synchronized (LOCK) {
@@ -370,6 +377,8 @@ public final class BridgeControlClient {
         info.putString(ControlKeys.KEY_PROCESS, processName());
         info.putInt(ControlKeys.KEY_PORT, Bridge.port());
         info.putString(ControlKeys.KEY_LEGACY_JSON, legacyJson());
+        Config current = Config.current();
+        info.putLong(ControlKeys.KEY_CFG_REV, current == null ? 0L : current.cfgRev());
         return transact(b, ControlKeys.C2S_REGISTER, info) != null;
     }
 
@@ -384,8 +393,58 @@ public final class BridgeControlClient {
         st.putBoolean(ControlKeys.KEY_HAS_KEY, c.apiKey().length() > 0);
         st.putInt(ControlKeys.KEY_PORT, Bridge.port());
         st.putString(ControlKeys.KEY_VERSION, versionName());
+        st.putLong(ControlKeys.KEY_CFG_REV, c.cfgRev());
         // 状态回包为空 Bundle；失败不重连（状态不是关键路径）。
         transact(b, ControlKeys.C2S_REPORT_STATE, st);
+    }
+
+    /**
+     * 增量上报日志到控制面（最多 80 行）。
+     *
+     * <p>日志不是关键路径：取增量/解析/发送失败都静默跳过，绝不影响配置拉取或状态上报。
+     * 发送成功才推进 {@link #sLogSeq}，避免丢日志；进程重启导致序号回退时归零重来。</p>
+     */
+    private static void pushLogs(IBinder b) {
+        if (b == null) return;
+        long since = sLogSeq;
+        String dump = Logs.dump(80, since);
+        if (dump == null || dump.length() == 0) return;
+        long remoteLast = since;
+        StringBuilder sb = new StringBuilder();
+        try {
+            Object rootObj = Json.read(dump);
+            if (!(rootObj instanceof Map)) return;
+            Map<?, ?> root = (Map<?, ?>) rootObj;
+            remoteLast = Json.optLong(root, "lastSeq", since);
+            Object linesObj = root.get("lines");
+            if (linesObj instanceof List) {
+                for (Object value : (List<?>) linesObj) {
+                    if (!(value instanceof Map)) continue;
+                    Map<?, ?> line = (Map<?, ?>) value;
+                    String time = Json.optString(line, "t", "");
+                    String level = Json.optString(line, "level", "I");
+                    String msg = Json.optString(line, "msg", "");
+                    if (sb.length() > 0) sb.append('\n');
+                    sb.append(time).append(' ').append(level).append(' ').append(msg);
+                }
+            }
+        } catch (Throwable t) {
+            return;
+        }
+        if (remoteLast < since) {
+            // 小爱进程重启后 seq 从 1 开始：下一轮从 0 重新发送，不用旧上限吞掉新日志。
+            sLogSeq = 0;
+            return;
+        }
+        if (sb.length() == 0) {
+            sLogSeq = remoteLast;
+            return;
+        }
+        Bundle data = new Bundle();
+        data.putString(ControlKeys.KEY_LOGS, sb.toString());
+        if (sendNoReply(b, ControlKeys.C2S_APPEND_LOGS, data)) {
+            sLogSeq = remoteLast;
+        }
     }
 
     // ------------------------------------------------------------- callback
@@ -439,6 +498,29 @@ public final class BridgeControlClient {
             Logs.i("控制面调用失败 code=" + code
                     + "（" + t.getClass().getSimpleName() + "）");
             return null;
+        } finally {
+            data.recycle();
+            reply.recycle();
+        }
+    }
+
+    /**
+     * 只关心是否送达的调用（日志）。失败静默：日志链路不能污染配置/状态链路。
+     */
+    private static boolean sendNoReply(IBinder b, int code, Bundle req) {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        try {
+            data.writeInterfaceToken(ControlKeys.DESCRIPTOR);
+            data.writeBundle(req);
+            if (!b.transact(code, data, reply, 0)) return false;
+            reply.readException();
+            return true;
+        } catch (SecurityException e) {
+            // 日志失败不影响配置/状态链路，也不触发控制面重连/熔断。
+            return false;
+        } catch (Throwable t) {
+            return false;
         } finally {
             data.recycle();
             reply.recycle();

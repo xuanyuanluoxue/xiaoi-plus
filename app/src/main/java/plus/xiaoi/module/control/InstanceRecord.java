@@ -23,10 +23,12 @@ public final class InstanceRecord {
     public final String version;
     /** 是否已收到过 reportState（区分「刚注册」与「已有运行时状态」）。 */
     public final boolean hasState;
+    /** 小爱已加载的配置 rev（D3 的来源）。 */
+    public final long cfgRev;
 
     private InstanceRecord(String process, int pid, int port, String legacyJson,
                            long registeredAt, long updatedAt, String model, boolean enabled,
-                           boolean hasKey, String version, boolean hasState) {
+                           boolean hasKey, String version, boolean hasState, long cfgRev) {
         this.process = process == null ? "" : process;
         this.pid = pid;
         this.port = port;
@@ -38,12 +40,18 @@ public final class InstanceRecord {
         this.hasKey = hasKey;
         this.version = version == null ? "" : version;
         this.hasState = hasState;
+        this.cfgRev = cfgRev < 0 ? 0L : cfgRev;
     }
 
     public static InstanceRecord registered(String process, int pid, int port,
                                             String legacyJson, long now) {
+        return registered(process, pid, port, legacyJson, now, 0L);
+    }
+
+    public static InstanceRecord registered(String process, int pid, int port,
+                                            String legacyJson, long now, long cfgRev) {
         return new InstanceRecord(process, pid, port, legacyJson, now, now,
-                "", false, false, "", false);
+                "", false, false, "", false, cfgRev);
     }
 
     /**
@@ -52,7 +60,8 @@ public final class InstanceRecord {
      * pid 为 0 时保留注册值。
      */
     public InstanceRecord withState(String model, boolean enabled, boolean hasKey,
-                                    String version, int pid, int port, long now) {
+                                    String version, int pid, int port, long now,
+                                    long cfgRev) {
         return new InstanceRecord(this.process,
                 pid > 0 ? pid : this.pid,
                 port > 0 ? port : 0,
@@ -63,7 +72,8 @@ public final class InstanceRecord {
                 enabled,
                 hasKey,
                 version,
-                true);
+                true,
+                cfgRev);
     }
 
     /** registry 的键：优先进程名，缺失时用 pid。 */
