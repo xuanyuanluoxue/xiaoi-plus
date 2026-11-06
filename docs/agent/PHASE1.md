@@ -9,13 +9,19 @@
 
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M |
+| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**） |
 | WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L |
 | WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M |
 
 WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验。
 
 ## 2. WP1.1：纯 JVM 契约层
+
+> 状态：**已完成**（2026-11-06）
+> 代码：`app/src/main/java/plus/xiaoi/module/agent/`
+> 测试：`tests/src/plus/xiaoi/module/AgentActionRegistryTest.java`（126 断言）
+> 验证：`./tests/run.sh`、`build.sh`、`scripts/check-consistency.sh` 全绿
+> 未做：真实 Android/root 执行、confirm token 校验/签发、幂等存储、审计落库（留给 WP1.2/WP1.3）
 
 ### 目标
 
@@ -29,11 +35,12 @@ app/src/main/java/plus/xiaoi/module/agent/
 ├── ActionDescriptor.java
 ├── ActionRequest.java
 ├── ActionResult.java
-├── ActionRegistry.java
+├── ActionRegistry.java      # 含 capabilitiesJson / 参数校验 / 执行流水线
 ├── ActionExecutor.java
 ├── ActionRisk.java
 ├── AgentError.java
-└── Capabilities.java       # 生成 xiaoai_capabilities 的 JSON
+├── Actions.java             # 5 个内置动作描述
+└── AgentValues.java         # 不可变集合拷贝（包内辅助）
 ```
 
 ### ActionDescriptor
