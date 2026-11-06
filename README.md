@@ -6,13 +6,13 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](../../releases)。
 >
-> 📦 当前测试版：**v0.12.0-beta.1** ·
-> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.12.0-beta.1)
+> 📦 当前测试版：**v0.13.0-agent.1** ·
+> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
 >
-> ✅ 0.12.0-beta.1 的 CI 门禁已覆盖 JVM 单测（1453 断言）、工程一致性与
+> ✅ 0.13.0-agent.1 的 CI 门禁已覆盖 JVM 单测（1453 断言）、工程一致性与
 > APK 签名指纹（未签名/错签名不能进入 Release）。
 > ⚠️ 真机 P0 矩阵（控制面拒绝第三方、关闭即停、LAN 弱 token、远程写拒绝、
 > beta.4 升级不丢配置、降级警告）仍需发布前补跑；输出前缀暂隐藏，完整 45 项契约需本机设备脚本。

@@ -22,6 +22,52 @@
 - JVM 单测 1296 → 1328 断言（新增 `AgentLanPolicyTest` 与 `ConfigCodec` 用例）。
 - 真机 `ss -ltn` / 电脑经手机 IP 访问 8770 待设备可用后补测。
 
+## 0.13.0-agent.1 — 2026-11-06 — Agent Action Plane
+
+> **首个 0.13 测试版**（versionCode 17）。在 0.12 控制面/私有配置/四维状态之上，
+> 增加 App 进程内的 Agent 动作面：不依赖小爱对话进程也能执行设备动作。
+
+### 本版重点
+
+- 新增 App 前台服务 + `127.0.0.1:8770` MCP 动作面；小爱不运行时也可用
+- 第一批动作：`device.info`、`app.open`、`alarm.set`、`notification.send`、`media.control`
+- `xiaoai_confirm`：60 秒一次性确认 token；危险动作不再直接执行
+- `xiaoai_notify`：超级岛提醒，失败降级普通通知（只提醒，不能批准危险动作）
+- `xiaoai_ask`：代理 8771 小爱，返回干净文本 + `sessionId`
+- `idempotencyKey` 24 小时幂等；结果持久化到 `files/agent_idempotency.json`，
+  服务重启后同 key 返回首次结果
+- `xiaoai_audit`：脱敏审计（参数名/哈希/结果/耗时，不含参数值/token/context）
+- 8770 LAN 独立开关 `mcp.agentLan`，默认关闭；只有 32 位十六进制 token 才绑
+  `0.0.0.0`，弱 token 自动回退 loopback
+- 开机自启：重启后 8770 自动恢复（需系统允许自启动/通知）
+- 新增 `skill/xiaoi-agent`：其他 Agent 克隆仓库后可直接按文档接入 8770
+
+### 兼容/升级
+
+- 直接覆盖安装，同包名同签名，versionCode 16 → 17；0.12 配置保留
+- `config.json` 新增 `mcp.agentLan`（缺字段按 false），schema 仍为 v3
+- 8771 的旧 MCP 工具、`/health`、`/logs`、`/stats`、`/cli` 行为不变
+- 8770 与 8771 共用同一个 `mcpToken`；不新增第二套 key
+
+### 已知限制
+
+- root 兜底需要 KernelSU/Magisk 给本 App 授权；未授权时 `su` 被拒绝，
+  `PERMISSION_DENIED`，会提示去授权或改用 Shizuku
+- `alarm.set` 在 HyperOS 后台启动时可能被系统拒绝（`PERMISSION_DENIED`）；
+  `startActivity` 成功也不代表闹钟已创建，返回 `requested=true, scheduled=false`
+- `media.control` 的 play/pause 依赖 MediaSession；无活跃会话时只返回“已派发” warning
+- 确认 token 不持久化（重启失效，安全设计）；审计仍为内存环形缓冲
+- 8770 LAN 使用同一个 token，尚无独立 scope/限流；公共 Wi-Fi 建议关闭
+
+### 升级方式
+
+```bash
+adb install -r xiaoi-plus-0.13.0-agent.1.apk
+```
+
+升级后打开一次 App，确认 MCP 开关与 token；需要 8770 局域网时在配置页单独开启
+「Agent 动作面允许局域网访问」。
+
 ## 0.12.0-beta.1 — 2026-11-06 — WP1~WP7 核心重构 + 发布门禁
 
 > **首个 0.12 测试版（versionCode 16）**。这是破坏性重构后的回归版本：

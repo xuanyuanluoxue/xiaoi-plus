@@ -1,6 +1,6 @@
 # Phase 1 工作包：Action Plane 骨架与第一批动作
 
-> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机矩阵已跑主要项，剩余无线 ADB/root 待恢复**
+> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机主路径通过；`0.13.0-agent.1` 发布候选**
 > 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
 > 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
 > 日期：2026-11-06
@@ -294,7 +294,7 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 
 ## 3. WP1.2：App 前台服务与动作
 
-> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机矩阵已跑主要项，剩余无线 ADB/root 待恢复**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
+> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机主路径通过；`0.13.0-agent.1` 发布候选**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
 > 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；WP1.4（8770 独立 LAN）已完成；
 > WP1.5（幂等结果持久化）已完成；记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、

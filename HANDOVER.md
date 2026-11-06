@@ -1,15 +1,15 @@
 # 交接说明（2026-11-06）
 
-> 状态：**WP8 门禁已完成，待真机矩阵与发布**。版本 `0.12.0-beta.1`（versionCode 16）。
-> JVM 单测 1453 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验与 `--self-test`
-> 通过（正式签名通过、未签名被拒、临时密钥因指纹不符被拒）。
-> 真机契约 45/45 仍是 beta.4 基线，**0.12 的 P0 矩阵待主 Agent 补跑**。
+> 状态：**`0.13.0-agent.1` 发布候选**（versionCode 17），Agent Action Plane 代码完成。
+> JVM 单测 1453 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验通过。
+> 真机主路径已验证：8770 action plane、5 个动作、confirm/幂等、notify/ask、
+> 8770 LAN、开机自启；已知限制见 `docs/agent/PHASE1.md` 第 7 节。
 >
-> **WP1~WP8 已完成，真机 P0 矩阵已通过，`v0.12.0-beta.1` 已发布**（prerelease）。
-> [docs/refactor/PLAN.md](docs/refactor/PLAN.md)；工作包与子 Agent 指令见
-> [docs/refactor/WORKPACKAGES.md](docs/refactor/WORKPACKAGES.md)。
+> 0.12 核心重构（WP1~WP8）已完成并发布 `v0.12.0-beta.1`；
+> Agent 能力计划见 [docs/agent/PLAN.md](docs/agent/PLAN.md)，工作包见
+> [docs/agent/PHASE1.md](docs/agent/PHASE1.md)。
 > 发布门禁：未签名/错签名产物不能进入 Release；无正式密钥的 tag 只上传 artifact，不建 Release。
-> 真机矩阵通过前不升级为 0.12.0 正式版。
+> 0.13 仍是测试版；root/alarm/LAN 安全边界需继续验证后再考虑正式版。
 
 ## 1. 这是什么
 
