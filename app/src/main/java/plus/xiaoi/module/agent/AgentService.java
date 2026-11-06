@@ -22,9 +22,11 @@ import plus.xiaoi.module.R;
 /**
  * App 进程内的 Agent 前台服务。
  *
- * <p>WP1.2a 只负责生命周期与 8770 的挂载：配置 {@code mcpEnabled=true} 且
+ * <p>WP1.2a 负责生命周期与 8770 的挂载：配置 {@code mcpEnabled=true} 且
  * {@code mcpToken} 非空时监听 loopback；否则不监听并 stopSelf。服务本身不执行
- * 动作，动作由 {@link AndroidExecutor} 与 {@link ActionRegistry} 提供。</p>
+ * 动作，动作由 {@link AndroidExecutor} / {@link RootExecutor} 与
+ * {@link ActionRegistry} 提供。WP1.2b 注册全部 5 个动作，其中 app.open 与
+ * media.control 使用 {@link FallbackExecutor}（android 优先，NOT_AVAILABLE 才回退 root）。</p>
  *
  * <p>所有配置读取都在 {@link AppExecutors#io} 上完成，不在主线程碰文件。
  * 绑定失败只记录日志并保留服务，避免把 App 主进程拖崩。</p>
@@ -173,10 +175,18 @@ public final class AgentService extends Service {
         }
 
         ActionRegistry registry = new ActionRegistry();
+        AndroidExecutor android = new AndroidExecutor(this);
+        FallbackExecutor androidOrRoot = new FallbackExecutor(android, new RootExecutor());
         for (ActionDescriptor d : Actions.builtins()) {
             registry.register(d, null);
         }
-        registry.register(Actions.deviceInfo(), new AndroidExecutor(this));
+        // 普通权限能完成的动作只走 android；app.open / media.control 在
+        // android 返回 NOT_AVAILABLE 时才尝试 root（不重复副作用）。
+        registry.register(Actions.deviceInfo(), android);
+        registry.register(Actions.alarmSet(), android);
+        registry.register(Actions.notificationSend(), android);
+        registry.register(Actions.appOpen(), androidOrRoot);
+        registry.register(Actions.mediaControl(), androidOrRoot);
 
         AgentHttpServer next = new AgentHttpServer(token,
                 new AgentMcp(versionName()), registry);
