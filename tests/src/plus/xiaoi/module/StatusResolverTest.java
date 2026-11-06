@@ -26,6 +26,11 @@ public final class StatusResolverTest {
         T.eq("无模型 → 未配置", AppStatus.NOT_CONFIGURED,
                 StatusResolver.resolve(in(true, false, true, true, false,
                         StatusResolver.Probe.UNKNOWN)).status);
+        StatusResolver.Input noBase = in(true, true, true, true, false,
+                StatusResolver.Probe.UNKNOWN);
+        noBase.hasBase = false;
+        T.eq("无接口地址 → 未配置", AppStatus.NOT_CONFIGURED,
+                StatusResolver.resolve(noBase).status);
 
         // 2. 暂停
         T.eq("暂停且无密钥 → 未配置引导", AppStatus.NOT_CONFIGURED,
@@ -35,10 +40,12 @@ public final class StatusResolverTest {
                 StatusResolver.resolve(in(true, true, true, false, false,
                         StatusResolver.Probe.UNKNOWN)).status);
 
-        // 3. 启用但无密钥
-        T.eq("启用无密钥 → 已启用", AppStatus.ENABLED,
+        // 3. 启用但无密钥：缺密钥不能被说成「已启用」
+        T.eq("启用无密钥 → 未配置", AppStatus.NOT_CONFIGURED,
                 StatusResolver.resolve(in(true, true, false, true, false,
                         StatusResolver.Probe.UNKNOWN)).status);
+        T.ok("无密钥提示补密钥", StatusResolver.resolve(in(true, true, false, true, false,
+                StatusResolver.Probe.UNKNOWN)).detail.contains("密钥"));
 
         // 4. 校验中（优先于上次结论）
         T.eq("校验中", AppStatus.CHECKING,

@@ -30,14 +30,16 @@ public final class BridgeRegistry {
 
     public synchronized InstanceRecord reportState(String process, int pid, String model,
                                                    boolean enabled, boolean hasKey,
-                                                   String version, int port, long now) {
+                                                   String version, int port, long now,
+                                                   long cfgRev) {
         String key = InstanceRecord.keyOf(process, pid);
         InstanceRecord old = records.get(key);
         if (old == null) {
             evictIfNeeded(key);
-            old = InstanceRecord.registered(process, pid, port, "", now);
+            old = InstanceRecord.registered(process, pid, port, "", now, cfgRev);
         }
-        InstanceRecord next = old.withState(model, enabled, hasKey, version, pid, port, now);
+        InstanceRecord next = old.withState(model, enabled, hasKey, version, pid, port, now,
+                cfgRev);
         records.put(key, next);
         return next;
     }

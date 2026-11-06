@@ -26,24 +26,26 @@ public final class BridgeRegistryTest {
 
         // 状态先到、register 未到：补建记录
         r.reportState("com.miui.voiceassist:core", 202, "deepseek", true,
-                true, "8.2.65.4714", 0, 3L);
+                true, "8.2.65.4714", 0, 3L, 7L);
         InstanceRecord core = r.get("com.miui.voiceassist:core");
         T.ok("reportState 补建记录", core != null);
         T.ok("状态已保存", core.hasState && "deepseek".equals(core.model) && core.hasKey);
+        T.eq("reportState 保存 cfgRev", 7L, core.cfgRev);
 
         // WP4：reportState 的 port 是权威值，0 表示该进程已停止监听 → 清 leader
-        r.reportState("com.miui.voiceassist", 101, "deepseek", true, true, "1", 0, 4L);
+        r.reportState("com.miui.voiceassist", 101, "deepseek", true, true, "1", 0, 4L, 8L);
         T.eq("状态上报 port=0 清端口", 0,
                 r.get("com.miui.voiceassist").port);
         T.ok("port=0 后没有 leader", r.leader() == null);
 
         // 两个 leader 时取最近更新的
-        r.reportState("com.miui.voiceassist:core", 202, "m2", true, true, "1", 8772, 5L);
+        r.reportState("com.miui.voiceassist:core", 202, "m2", true, true, "1", 8772, 5L, 9L);
         T.eq("leader 取最近更新", 8772, r.leader().port);
 
         // 同一时间戳取端口大的
-        r.reportState("com.miui.voiceassist", 101, "m3", true, true, "1", 8775, 5L);
+        r.reportState("com.miui.voiceassist", 101, "m3", true, true, "1", 8775, 5L, 10L);
         T.eq("同时间戳取大端口", 8775, r.leader().port);
+        T.eq("leader 携带 cfgRev", 10L, r.leader().cfgRev);
 
         // 容量上限：超出后淘汰最旧
         BridgeRegistry cap = new BridgeRegistry();

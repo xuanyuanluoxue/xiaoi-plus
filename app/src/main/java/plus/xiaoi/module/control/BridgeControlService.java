@@ -22,6 +22,7 @@ import plus.xiaoi.module.ConfigCodec;
 import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.Hash;
 import plus.xiaoi.module.core.BridgeEndpoint;
+import plus.xiaoi.module.core.BridgeStatus;
 import plus.xiaoi.module.core.ControlKeys;
 
 /**
@@ -47,7 +48,8 @@ public final class BridgeControlService extends Service {
     private static final int MAX_TEXT_CHARS = 64 * 1024;
 
     private final BridgeRegistry registry = new BridgeRegistry();
-    private final ControlLogRing logRing = new ControlLogRing();
+    /** 静态是为了让未创建 Service 的页面也能安全读取；onDestroy 清空。 */
+    private static final ControlLogRing LOG_RING = new ControlLogRing();
     private final Map<String, Messenger> callbacks = new ConcurrentHashMap<String, Messenger>();
 
     private HandlerThread bgThread;
@@ -97,9 +99,10 @@ public final class BridgeControlService extends Service {
         }
         callbacks.clear();
         registry.clear();
-        logRing.clear();
-        // 先清端口再清回调：服务销毁后 App 不应再访问旧 leader 端口。
+        LOG_RING.clear();
+        // 先清端口/快照再清回调：服务销毁后 App 不应再访问旧 leader 端口或显示旧运行态。
         BridgeEndpoint.setPort(0);
+        BridgeStatus.clear();
         BridgeEndpoint.clearReloadAction();
         log("控制面服务已销毁");
         super.onDestroy();
@@ -192,8 +195,9 @@ public final class BridgeControlService extends Service {
         int pid = in.getInt(ControlKeys.KEY_PID, 0);
         int port = in.getInt(ControlKeys.KEY_PORT, 0);
         String legacyJson = in.getString(ControlKeys.KEY_LEGACY_JSON, "");
+        long cfgRev = in.getLong(ControlKeys.KEY_CFG_REV, 0L);
         InstanceRecord r = InstanceRecord.registered(process, pid, port, legacyJson,
-                System.currentTimeMillis());
+                System.currentTimeMillis(), cfgRev);
         registry.register(r);
         syncEndpoint();
 
@@ -218,23 +222,32 @@ public final class BridgeControlService extends Service {
         boolean enabled = in.getBoolean(ControlKeys.KEY_ENABLED, false);
         boolean hasKey = in.getBoolean(ControlKeys.KEY_HAS_KEY, false);
         String version = clean(in.getString(ControlKeys.KEY_VERSION, ""), 40);
+        long cfgRev = in.getLong(ControlKeys.KEY_CFG_REV, 0L);
         InstanceRecord r = registry.reportState(process, pid, model, enabled, hasKey,
-                version, port, System.currentTimeMillis());
+                version, port, System.currentTimeMillis(), cfgRev);
         syncEndpoint();
         log("控制面状态 process=" + process + " model=" + model
-                + " enabled=" + enabled + " hasKey=" + hasKey + " port=" + r.port);
+                + " enabled=" + enabled + " hasKey=" + hasKey + " port=" + r.port
+                + " rev=" + r.cfgRev);
     }
 
-    /** 把当前 leader 端口同步给 App 进程内的 BridgeClient；没有 leader 时为 0。 */
+    /** 把当前 leader 端口/运行态同步给 App 进程内的 BridgeClient 与页面。 */
     private void syncEndpoint() {
         InstanceRecord leader = registry.leader();
-        BridgeEndpoint.setPort(leader == null ? 0 : leader.port);
+        if (leader == null) {
+            BridgeEndpoint.setPort(0);
+            BridgeStatus.clear();
+            return;
+        }
+        BridgeEndpoint.setPort(leader.port);
+        BridgeStatus.set(leader.port, leader.model, leader.enabled, leader.hasKey,
+                leader.cfgRev, leader.updatedAt, leader.hasState);
     }
 
     void appendLogs(String text) {
         if (text == null || text.length() == 0) return;
         // 有界：单次最多 64K 字符，环形缓冲再按行限制；不落盘、不回显内容。
-        logRing.append(text.length() > MAX_TEXT_CHARS ? text.substring(0, MAX_TEXT_CHARS) : text);
+        LOG_RING.append(text.length() > MAX_TEXT_CHARS ? text.substring(0, MAX_TEXT_CHARS) : text);
     }
 
     // ------------------------------------------------------------- App → 小爱 callback
@@ -263,8 +276,36 @@ public final class BridgeControlService extends Service {
         return registry.snapshot();
     }
 
-    public String logDump() {
-        return logRing.dump();
+    /**
+     * 最近日志文本；服务未创建/已销毁时为空串。
+     * 格式来自 {@code BridgeControlClient.pushLogs}：{@code HH:mm:ss.SSS I msg}。
+     */
+    public static String logDump() {
+        return LOG_RING.dump();
+    }
+
+    /**
+     * 最近一条错误日志的可读摘要；没有错误返回空串。
+     * 只认「时间 + E + 内容」的行，控制面自身的调试行不会被误报成错误。
+     */
+    public static String lastError() {
+        List<String> lines = LOG_RING.lines();
+        for (int i = lines.size() - 1; i >= 0; i--) {
+            String line = lines.get(i);
+            if (line == null || line.length() < 16) continue;
+            if (line.charAt(12) != ' ') continue;
+            String time = line.substring(0, 12);
+            if (!time.matches("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}")) continue;
+            if (line.charAt(13) != 'E') continue;
+            String msg = line.length() > 15 ? line.substring(15) : "";
+            return "最后错误 · " + time + " · " + msg;
+        }
+        return "";
+    }
+
+    /** 清空 App 内存里的日志镜像；不触碰小爱进程的落盘日志。 */
+    public static void clearLogs() {
+        LOG_RING.clear();
     }
 
     private void sendAll(int what, Bundle data) {

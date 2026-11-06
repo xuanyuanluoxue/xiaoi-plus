@@ -31,6 +31,8 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ConfigStore.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgePolicy.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgeEndpoint.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgeStatus.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/StateModel.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/RateLimiter.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/bridge/LeaderElection.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/UidGuard.java" \

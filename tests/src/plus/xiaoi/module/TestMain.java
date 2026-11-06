@@ -85,6 +85,18 @@ public final class TestMain {
             System.out.println("  FAIL StatusResolverTest 套件异常: " + t);
         }
         try {
+            failed += StateModelTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL StateModelTest 套件异常: " + t);
+        }
+        try {
+            failed += BridgeStatusTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL BridgeStatusTest 套件异常: " + t);
+        }
+        try {
             failed += ThemeModeTest.run();
         } catch (Throwable t) {
             failed++;

@@ -1,6 +1,6 @@
 # 更新日志
 
-## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固 + WP5 配置页拆分
+## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固 + WP5 配置页拆分 + WP6 状态模型
 
 > **重构进行中，未发布**。WP4 已删除旧 HTTP 推送与 `POST /config`，数据面只服务外部 MCP/CLI。
 
@@ -99,6 +99,34 @@
   `AppConfig`/`ConfigRepository`/`ConfigCodec`/Bridge/MCP 均未改动
 - 单测 543 断言全绿；`./build.sh` 与 `./scripts/check-consistency.sh` 通过；
   真机对比配置页顶部/MCP/底部/管理/备份与主题切换，布局与文案一致
+
+### WP6 状态模型 + 主页/配置页/日志页
+
+- 新增纯 JVM `core/StateModel`：D1 配置（未配置/暂停/就绪/损坏）、D2 端点
+  （未校验/校验中/可用/密钥无效/模型不存在/端点不可达/未知）、D3 已应用
+  （未连接/等待/已应用/超过 30s 未上报）、D4 运行时（未知/在用/模型不一致/禁用/缺密钥）
+- 只有 D4 `IN_USE` 能显示「已确认」；`ModelValidator` 成功只更新 D2，
+  主页显示「端点可用」，不再调用 `renderStatus(c, true, model)` 伪造运行态
+- 新增纯 JVM `core/BridgeStatus`：保存 leader 最近一次 register/reportState 快照
+  （model/enabled/hasKey/appliedRev/port/updatedAt/runtimeKnown）；超过 30s 未更新
+  自动显示「等待上报/未确认」，服务销毁时清空
+- 控制面协议新增 `KEY_CFG_REV`：`register`/`reportState` 上报已加载 rev；
+  `InstanceRecord`/`BridgeRegistry` 保存 cfgRev，`BridgeStatus` 由 leader 更新
+- `BridgeControlService` 新增静态 `logDump()`/`lastError()`/`clearLogs()`；
+  `onDestroy` 清理内存日志与运行态快照
+- `BridgeControlClient.pushLogs()`：每次 pull 后把 `Logs.dump(80, lastSeq)` 增量
+  经 `C2S_APPEND_LOGS` 送到 App；失败静默，不影响配置/状态链路
+- 日志页改为读控制面内存镜像：不再检查 MCP 开关/token，不再访问 `/logs`；
+  MCP 关闭时仍可查看，空态区分「等待小爱上报」与「筛选无结果」
+- 主页最后错误改为 `BridgeControlService.lastError()`；调用量仍可用 `/stats`，
+  但不再参与 D4/「已确认」
+- 配置页推送行改为 D3：已应用 / 已保存等待应用 / 未连接 / 超 30s；不再出现
+  「推送失败/令牌不一致」；运行时冲突改为读 `BridgeStatus`
+- 暂停允许编辑：删除 chips/管理/密钥的禁用与触摸吞噬；暂停只停重定向，
+  配置可继续修改并保存
+- `StatusResolver` 修正：启用但无密钥返回「未配置」，不再把缺密钥说成「已启用」
+- 新增 `StateModelTest`（四维组合）、`BridgeStatusTest`；`BridgeRegistryTest` 增加 cfgRev；
+  纯 JVM 单测、`./build.sh`、`./scripts/check-consistency.sh` 全部通过
 
 ## 0.11.0-beta.4 — 2026-11-05
 

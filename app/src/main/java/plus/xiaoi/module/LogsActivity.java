@@ -4,18 +4,26 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** 日志页：从桥的 /logs 拉取，动态渲染。 */
+import plus.xiaoi.module.control.BridgeControlService;
+
+/**
+ * 日志页：从控制面的内存镜像读取，不再依赖 MCP 开关或 Bearer token。
+ *
+ * <p>数据链路：小爱进程 {@code Logs} → 控制面 {@code C2S_APPEND_LOGS} →
+ * App 内存 {@code ControlLogRing} → {@code BridgeControlService.logDump()} → 本页。
+ * 控制面还没收到任何上报时明确显示「等待小爱上报日志」，不报错、不引导去开 MCP。</p>
+ */
 public class LogsActivity extends BaseActivity {
 
     private LinearLayout container;
@@ -26,10 +34,11 @@ public class LogsActivity extends BaseActivity {
 
     private final List<JSONObject> all = new ArrayList<JSONObject>();
     private int filter = 0; // 0 全部 / 1 I / 2 E
+    /** 本次读取时控制面完全没有日志（区别于「筛选后为空」）。 */
+    private boolean waiting;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private boolean loading;
-    private boolean errorIsConfig;
     private final Runnable poll = new Runnable() {
         public void run() {
             if (isFinishing() || swFollow == null || !swFollow.isChecked()) return;
@@ -51,14 +60,9 @@ public class LogsActivity extends BaseActivity {
         scroll = (ScrollView) find(R.id.scroll_logs);
 
         click(R.id.btn_filter, new Runnable() { public void run() { cycleFilter(); } });
-        click(R.id.btn_clear, new Runnable() { public void run() { all.clear(); render(); } });
+        click(R.id.btn_clear, new Runnable() { public void run() { clear(); } });
         click(R.id.btn_share_logs, new Runnable() { public void run() { share(); } });
-        tvUnavailable.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                if (errorIsConfig) Nav.go(LogsActivity.this, "config");
-                else load();
-            }
-        });
+        if (tvUnavailable != null) tvUnavailable.setVisibility(View.GONE);
         swFollow.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
                 if (on) { load(); startPolling(); }
@@ -98,31 +102,25 @@ public class LogsActivity extends BaseActivity {
         loading = true;
         AppExecutors.io(new Runnable() {
             public void run() {
-                final Fetch r = fetch();
+                final List<JSONObject> parsed = new ArrayList<JSONObject>();
+                final String dump = BridgeControlService.logDump();
+                boolean empty = dump == null || dump.trim().length() == 0;
+                if (!empty) {
+                    String[] lines = dump.split("\n", -1);
+                    for (String line : lines) {
+                        if (line == null || line.length() == 0) continue;
+                        parsed.add(parseLine(line));
+                    }
+                    if (parsed.isEmpty()) empty = true;
+                }
+                final boolean fEmpty = empty;
                 AppExecutors.ui(new Runnable() {
                     public void run() {
                         loading = false;
                         if (isFinishing()) return;
-                        if (r.error != null) {
-                            errorIsConfig = r.config;
-                            all.clear();
-                            if (tvUnavailable != null) {
-                                tvUnavailable.setText(r.error);
-                                tvUnavailable.setVisibility(View.VISIBLE);
-                            }
-                            render();
-                            return;
-                        }
-                        if (tvUnavailable != null) tvUnavailable.setVisibility(View.GONE);
-                        try {
-                            JSONArray arr = new JSONObject(r.body).optJSONArray("lines");
-                            all.clear();
-                            if (arr != null) for (int i = 0; i < arr.length(); i++) {
-                                JSONObject l = arr.optJSONObject(i);
-                                if (l != null) all.add(l);
-                            }
-                        } catch (Throwable ignored) {
-                        }
+                        all.clear();
+                        all.addAll(parsed);
+                        waiting = fEmpty;
                         render();
                     }
                 });
@@ -130,37 +128,38 @@ public class LogsActivity extends BaseActivity {
         });
     }
 
-    /** 拉取结果：区分配置问题 / 小爱未运行 / 读取失败，避免一律误诊。 */
-    private static final class Fetch {
-        final String body;
-        final String error;
-        final boolean config;
-
-        Fetch(String body, String error, boolean config) {
-            this.body = body;
-            this.error = error;
-            this.config = config;
+    /**
+     * 解析 {@code HH:mm:ss.SSS I msg}。控制面内部调试行没有时间前缀时按普通信息展示，
+     * 不丢弃内容；时间列留空即可。
+     */
+    private static JSONObject parseLine(String line) {
+        String time = "";
+        String level = "I";
+        String msg = line;
+        try {
+            if (line.length() >= 16 && line.charAt(12) == ' ' && line.charAt(14) == ' ') {
+                String t = line.substring(0, 12);
+                if (t.matches("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}")) {
+                    time = t;
+                    level = line.substring(13, 14);
+                    msg = line.substring(15);
+                }
+            }
+            JSONObject o = new JSONObject();
+            o.put("t", time);
+            o.put("level", level);
+            o.put("msg", msg);
+            return o;
+        } catch (Throwable t) {
+            JSONObject o = new JSONObject();
+            try {
+                o.put("t", "");
+                o.put("level", "I");
+                o.put("msg", line);
+            } catch (Throwable ignored) {
+            }
+            return o;
         }
-    }
-
-    private Fetch fetch() {
-        Config c = Config.forApp(this);
-        if (!c.bridge()) {
-            return new Fetch(null, "MCP 接口未开启 · 点按去配置", true);
-        }
-        String token = c.token();
-        if (token == null || token.length() == 0) {
-            return new Fetch(null, "未配置 MCP 令牌 · 点按去配置", true);
-        }
-        int port = BridgeClient.discover(token);
-        if (port <= 0) {
-            return new Fetch(null, "小爱未运行或模块未加载 · 点按重试", false);
-        }
-        String body = BridgeClient.logs(port, token, 300);
-        if (body == null) {
-            return new Fetch(null, "读取日志失败 · 点按重试", false);
-        }
-        return new Fetch(body, null, false);
     }
 
     private void render() {
@@ -175,9 +174,39 @@ public class LogsActivity extends BaseActivity {
             shown++;
         }
         if (tvCount != null) tvCount.setText(shown + " 条");
-        if (tvEmpty != null) tvEmpty.setVisibility(shown == 0 ? View.VISIBLE : View.GONE);
+
+        if (shown == 0) {
+            if (all.isEmpty()) {
+                if (waiting) {
+                    setEmptyText("等待小爱上报日志", "小爱进程连接后这里会自动出现");
+                } else {
+                    setEmptyText("还没有日志", "小爱还没有上报运行日志");
+                }
+            } else {
+                setEmptyText("筛选无结果", "切换筛选条件查看其他日志");
+            }
+            if (tvEmpty != null) tvEmpty.setVisibility(View.VISIBLE);
+        } else if (tvEmpty != null) {
+            tvEmpty.setVisibility(View.GONE);
+        }
         if (swFollow != null && swFollow.isChecked() && scroll != null) {
             scroll.post(new Runnable() { public void run() { scroll.fullScroll(View.FOCUS_DOWN); } });
+        }
+    }
+
+    /**
+     * 空状态的两行文案在共享布局里没有 ID；按固定子 View 顺序更新，
+     * 避免为一句文案改布局（WP6 约束）。
+     */
+    private void setEmptyText(String title, String sub) {
+        if (!(tvEmpty instanceof ViewGroup)) return;
+        ViewGroup box = (ViewGroup) tvEmpty;
+        // 布局顺序固定：0=图标，1=标题，2=副文案。
+        if (box.getChildCount() > 1 && box.getChildAt(1) instanceof TextView) {
+            ((TextView) box.getChildAt(1)).setText(title);
+        }
+        if (box.getChildCount() > 2 && box.getChildAt(2) instanceof TextView) {
+            ((TextView) box.getChildAt(2)).setText(sub);
         }
     }
 
@@ -204,6 +233,15 @@ public class LogsActivity extends BaseActivity {
         r.addView(t); r.addView(l); r.addView(m);
         if ("E".equals(level)) r.setBackgroundColor(color(R.color.error_bg));
         return r;
+    }
+
+    private void clear() {
+        // ControlLogRing 只是 App 内存镜像；清它不会删小爱落盘的日志，也不假装删了历史。
+        BridgeControlService.clearLogs();
+        all.clear();
+        waiting = true;
+        render();
+        showMessage("已清空本机日志缓冲（不删除小爱落盘日志）");
     }
 
     private void share() {

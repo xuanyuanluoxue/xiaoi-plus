@@ -5,9 +5,9 @@ package plus.xiaoi.module;
  * {@link AppStatus} + 一句副文案（纯 JVM，可单测）。
  *
  * 规则顺序固定，页面不再各自写 if/else：
- *   1. 缺服务商或模型 → 未配置
+ *   1. 缺服务商、模型或接口地址 → 未配置
  *   2. 暂停：无密钥 → 未配置（引导补密钥）；有密钥 → 已暂停
- *   3. 启用但无密钥 → 已启用（副文案提示补密钥）
+ *   3. 启用但无密钥 → 未配置（缺密钥不等于已启用）
  *   4. 校验中 → 校验中
  *   5. 探针结果 → 可用 / 密钥无效 / 模型不存在 / 端点不可达
  *   6. 还没校验过 → 已启用（副文案「待校验」）
@@ -19,6 +19,8 @@ public final class StatusResolver {
     public static final class Input {
         public boolean hasProvider;
         public boolean hasModel;
+        /** 默认 true：旧调用点没有这个字段时不改变既有行为。 */
+        public boolean hasBase = true;
         public boolean keySet;
         public boolean enabled;
         public boolean checking;
@@ -39,8 +41,8 @@ public final class StatusResolver {
 
     public static Result resolve(Input in) {
         if (in == null) in = new Input();
-        if (!in.hasProvider || !in.hasModel) {
-            return new Result(AppStatus.NOT_CONFIGURED, "选择服务商与模型后即可启用");
+        if (!in.hasProvider || !in.hasModel || !in.hasBase) {
+            return new Result(AppStatus.NOT_CONFIGURED, "填写接口地址并选择服务商与模型后即可启用");
         }
         if (!in.enabled) {
             if (!in.keySet) {
@@ -49,7 +51,7 @@ public final class StatusResolver {
             return new Result(AppStatus.PAUSED, "配置已保留，打开上方开关即恢复");
         }
         if (!in.keySet) {
-            return new Result(AppStatus.ENABLED, "密钥为空 · 填写后才能校验可用性");
+            return new Result(AppStatus.NOT_CONFIGURED, "缺少密钥 · 填写后才能启用");
         }
         if (in.checking) {
             return new Result(AppStatus.CHECKING, "正在校验端点与模型…");
