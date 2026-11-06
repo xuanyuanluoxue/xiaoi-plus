@@ -60,6 +60,22 @@ xiaoi-plus 现在是一个“小爱能力桥”：App 控制面 + 小爱进程�
 | D9 | Shizuku 只预留接口；第一版 root + Android，不引入 Shizuku 依赖 |
 | D10 | 功能按权限开放：能力表显示所需 Android/root/Shizuku 权限 |
 
+### 3.1 Phase 0 结论（2026-11-06）
+
+详见 `docs/agent/PHASE0-REPORT.md`：
+
+- 小爱 CLI handler 只有 `session.*` / `agent.submit` / `consent.respond` / `auth.*` /
+  `asr.*` / `tts.*` / `schema.commands`；**没有本地设备动作**。
+  `device.*` 是多设备互联 facade，不是打开应用/闹钟/通知。
+  → 5 个动作必须走 Android/root。
+- `agent.submit` 需要 `sessionId` + `text`，session 归属当前 CLI 连接；
+  当前 `xiaoai_submit` 不返回 sessionId → Phase 1 必须返回并管理。
+- 超级岛可用，但 `actions` 为空，只能提醒；右侧大字岛文本约 22 字符。
+- 小爱记忆 DB 是加密/自定义格式，不是明文 SQLite；`MEMORY.md` 是明文 Markdown
+  （约 17KB、63 条、分节），读取需要 root。→ 只读先做 Markdown，不碰 DB。
+- Shizuku 覆盖 shell 命令（settings/input/am/media_session），读不了 `/data/data`；
+  记忆读写只能 root。SELinux Enforcing，root 写文件需修 owner + context。
+
 ## 4. 总体架构
 
 ```text
@@ -263,7 +279,7 @@ Agent 长期记忆不放在手机上；`memory read/mirror` 只是可选的“�
   小爱 `/island` loopback）。小爱未运行时降级为普通通知。
 - `notification`：走 Android `NotificationManager`，需要通知权限。
 - 超级岛**只做提醒**，不承担批准/拒绝；危险动作仍走 `xiaoai_confirm`。
-- 文案限长（建议 60 字），限频（每 10 秒 1 次）；避免刷屏。
+- 右侧大字岛约 22 字符；正文可稍长但建议 ≤60 字；限频（每 10 秒 1 次）；避免刷屏。
 - 锁屏/勿扰模式下是否显示由系统决定，返回值要说明实际渠道。
 
 ### 5.4 幂等与长任务
@@ -534,8 +550,8 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 
 | 阶段 | 内容 | 产出 |
 |---|---|---|
-| Phase 0 | CLI 方法枚举、权限矩阵、超级岛通知、小爱记忆只读可行性 | 侦察报告、动作清单 |
-| Phase 1 | App 前台服务 + 8770 + CapabilityRegistry + context 字段 | 可连接的空 Action Plane |
+| Phase 0 | CLI 方法枚举、权限矩阵、超级岛通知、小爱记忆只读可行性 | **已完成**（PHASE0-REPORT.md） |
+| Phase 1 | App 前台服务 + 8770 + CapabilityRegistry + context 字段 + 返回 sessionId | 可连接的空 Action Plane |
 | Phase 2 | 5 个动作 + AndroidExecutor | 第一批可用动作 |
 | Phase 3 | 确认/幂等/审计/错误码/超级岛提醒 | Agent 可安全调用 |
 | Phase 4 | 小爱记忆只读（可选，root） | `memory_read` |
