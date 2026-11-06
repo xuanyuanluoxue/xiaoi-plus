@@ -15,3 +15,4 @@
 | [feature-candidates.md](feature-candidates.md) | 功能候选与路线图 |
 | [refactor/PLAN.md](refactor/PLAN.md) | 0.12.0 核心重构：目标、架构、工作包、验收 |
 | [refactor/WORKPACKAGES.md](refactor/WORKPACKAGES.md) | 重构工作包与子 Agent 指令 |
+| [agent/PLAN.md](agent/PLAN.md) | D1 Agent 能力层与记忆系统：8770 动作面、root/Shizuku、记忆读写 |
