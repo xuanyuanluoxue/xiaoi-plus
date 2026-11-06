@@ -69,7 +69,7 @@ xiaoi-plus 现在是一个“小爱能力桥”：App 控制面 + 小爱进程�
   `device.*` 是多设备互联 facade，不是打开应用/闹钟/通知。
   → 5 个动作必须走 Android/root。
 - `agent.submit` 需要 `sessionId` + `text`，session 归属当前 CLI 连接；
-  当前 `xiaoai_submit` 不返回 sessionId → Phase 1 必须返回并管理。
+  当前 `xiaoai_submit` 不保证返回 sessionId → Phase 1 必须返回并管理。
 - 超级岛可用，但 `actions` 为空，只能提醒；右侧大字岛文本约 22 字符。
 - 小爱记忆 DB 是加密/自定义格式，不是明文 SQLite；`MEMORY.md` 是明文 Markdown
   （约 17KB、63 条、分节），读取需要 root。→ 只读先做 Markdown，不碰 DB。

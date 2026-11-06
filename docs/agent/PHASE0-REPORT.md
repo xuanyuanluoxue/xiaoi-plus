@@ -12,7 +12,7 @@
    framework；`device.*` 是“多设备互联”facade，不是打开应用/闹钟/通知。
    → Phase 1 的 5 个动作必须走 Android/root，不能指望 CLI。
 2. **`agent.submit` 是连接态会话**：需要 `sessionId` + `text`，session 归属当前 CLI 连接；
-   当前 `xiaoai_submit` 自动开会话但不返回 sessionId。→ Phase 1 必须返回/管理 sessionId。
+   当前 `xiaoai_submit` 自动开会话，但不保证在 MCP 返回中给出 sessionId。→ Phase 1 必须返回/管理 sessionId。
 3. **超级岛可用，但只能提醒**：MCP `xiaoai_island` 可自定义文本，6 秒消失；
    `actions` 为空，不能批准/拒绝。→ 危险动作确认仍走 confirm token。
 4. **小爱记忆 DB 是加密的**：`claw_memory.db` / `claw_memory_index.db` / `memory_data_*.db`
