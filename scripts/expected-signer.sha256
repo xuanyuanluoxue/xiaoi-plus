@@ -1,0 +1,5 @@
+# 0.11.0-beta.4 ~ 0.12.0 正式签名证书（X.509）SHA-256 指纹。
+# 这是证书公钥指纹，不是私钥，也不包含任何口令；私钥在 keystore/ 与 CI secrets，绝不入库。
+# 换签名证书时必须同步更新本文件，并在 CHANGELOG / Release Notes 说明（用户需卸载重装）。
+# scripts/verify-apk.sh 默认读取本文件；也可用 --expect 或 XIAOI_SIGNER_SHA256 覆盖。
+d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b

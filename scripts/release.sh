@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键发版：干净检查 → 构建 → dist/xiaoi-plus-<version>.apk → sha256 → Release Notes 草稿
+# 一键发版：干净检查 → 构建 → 签名/包名/指纹校验 → dist/xiaoi-plus-<version>.apk → sha256 → Release Notes 草稿
 #
 # 用法：
 #   scripts/release.sh                 正式发版
@@ -59,10 +59,25 @@ fi
 
 # 4) 构建
 echo "==> 构建"
+if [ "$ALLOW_NEW_KEY" -eq 1 ]; then
+  # 显式允许本次构建生成新证书；否则 build.sh 在缺 keystore 时会直接失败。
+  export XIAOI_ALLOW_NEW_KEY=1
+fi
 ./build.sh
 [ -f "$APK" ] || die "构建结束但找不到 $APK"
 
-# 5) 归档
+# 5) 发布门禁：签名（固定指纹）/ 包名 / versionCode；失败不归档、不生成 notes
+echo "==> 校验 APK（签名 / 包名 / versionCode / 指纹）"
+if [ "$ALLOW_NEW_KEY" -eq 1 ]; then
+  echo "警告：--allow-new-key 允许临时密钥，跳过固定指纹比对；该产物不能用于正式发布。" >&2
+  scripts/verify-apk.sh "$APK" --allow-any-signer || die "APK 校验失败，不归档"
+  SIGN_NOTE="已签名 + 包名 + versionCode（临时密钥，未比对固定指纹）"
+else
+  scripts/verify-apk.sh "$APK" || die "APK 校验失败（未签名 / 包名或版本不符 / 签名指纹不匹配），不归档"
+  SIGN_NOTE="已签名 + 包名 + versionCode + 证书指纹"
+fi
+
+# 6) 归档
 mkdir -p "$DIST"
 cp -f "$APK" "$OUT"
 ( cd "$DIST" && sha256sum "xiaoi-plus-$VERSION.apk" > "xiaoi-plus-$VERSION.apk.sha256" )
@@ -73,6 +88,7 @@ SHA="$(cut -d' ' -f1 "$DIST/xiaoi-plus-$VERSION.apk.sha256")"
 echo
 echo "==> 完成"
 echo "APK      : $OUT ($(du -h "$OUT" | cut -f1))"
+echo "签名校验 : 通过（$SIGN_NOTE）"
 echo "SHA-256  : $SHA"
 echo "校验文件 : $DIST/xiaoi-plus-$VERSION.apk.sha256"
 echo "Notes    : $DIST/release-notes-$VERSION.md"
@@ -80,5 +96,5 @@ echo
 echo "下一步："
 echo "  git tag -a $TAG -m \"$TAG\""
 echo "  git push origin $TAG"
-echo "  # 推送 tag 后 GitHub Actions 会自动构建并建 Release"
+echo "  # 推送 tag 后 GitHub Actions 会自动构建；只有 signed=true（正式密钥）才建 Release"
 echo "  # 手动发布：gh release create $TAG $OUT --notes-file $DIST/release-notes-$VERSION.md"

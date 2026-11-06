@@ -130,6 +130,15 @@ adb install build/xiaoi-plus.apk
 换机器时放回同一路径，脚本检测到文件存在就会复用。**不要把这个密钥提交进 git**
 （`.gitignore` 已排除 `*.keystore`）。正式发版的密钥管理与流程见 [release.md](release.md)。
 
+发版前用门禁脚本确认产物签名/包名/versionCode/固定指纹（未签名或错签名会 exit 1）：
+
+```bash
+./scripts/verify-apk.sh build/xiaoi-plus.apk
+./scripts/verify-apk.sh --self-test build/xiaoi-plus.apk
+```
+
+`scripts/release.sh` 已内置这一步；指纹不一致时不要改 `scripts/expected-signer.sha256` 凑数。
+
 **装上了但 LSPosed 里看不到模块**
 
 - 确认装的是 `build/xiaoi-plus.apk`（不是 unsigned）

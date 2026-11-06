@@ -9,11 +9,16 @@
 
 1. 装 Android SDK（`scripts/ci-sdk.sh`，带 actions/cache）
 2. **JVM 单测**（`tests/run.sh`，测试红则不构建）
-3. `build.sh` 构建
-4. 无 `KEYSTORE_PASSWORD` 时 `build.sh` 产出未签名 APK；有 `KEYSTORE_BASE64` 时由
+3. `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/死资源）
+4. `build.sh` 构建
+5. 无 `KEYSTORE_PASSWORD` 时 `build.sh` 产出未签名 APK；有 `KEYSTORE_BASE64` 时由
    `scripts/ci-sign.sh` 重新签名，否则警告 + 临时签名
-5. 产物与 Release Notes 上传 artifact；tag 构建自动建 Release；
-   版本号含 `-`（如 `0.11.0-beta.4`）自动标为 prerelease
+6. `scripts/verify-apk.sh` 校验：`signed=true` 必须命中
+   `scripts/expected-signer.sha256`；`signed=false` 只校验已签名 + 包名 + versionCode
+7. 产物与 Release Notes 上传 artifact
+8. **tag 构建只有 `signed=true` 才创建 Release**。无正式密钥的 tag 仍产出 artifact，
+   但跳过 Release 并打 `::warning::`/`::notice::`；
+   版本号含 `-`（如 `0.12.0-beta.1`）自动标为 prerelease
 
 ## 2. 本地全量门禁（`scripts/check-all.sh`）
 
@@ -24,14 +29,24 @@ scripts/check-all.sh              # 单测 + 认知检查 + 真机契约
 scripts/check-all.sh --no-device  # 跳过设备契约
 ```
 
-三层含义：
+门禁含义：
 
 | 层 | 内容 | 失败即中止 |
 |---|---|---|
 | 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/死资源） | ✅ |
 | JVM 单测 | `tests/run.sh`（664 断言） | ✅ |
+| APK 签名门禁 | `scripts/verify-apk.sh`（已签名/包名/versionCode/固定指纹；`--self-test` 覆盖负向用例） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |
-| 真机契约 | `scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ beta.4 基线；WP4 待重跑 |
+| 真机契约 | `scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ beta.4 基线；0.12 P0 矩阵待主 Agent 补跑 |
+
+CI 与本地共用的发布门禁：
+
+| 场景 | 校验 | 结果 |
+|---|---|---|
+| 有正式密钥（`signed=true`） | `verify-apk.sh` 命中 `scripts/expected-signer.sha256` | 可建 Release |
+| 临时密钥 / 无 secrets（`signed=false`） | 只校验已签名 + 包名 + versionCode | 只出 artifact，**不建 Release** |
+| 未签名 / 包名或 versionCode 错 | `verify-apk.sh` exit 1 | job 失败 |
+| 指纹不符 | `verify-apk.sh` exit 1 | job 失败（tag 也不发 Release） |
 
 ## 3. pre-push hook（轻量、每次推送自动跑）
 
