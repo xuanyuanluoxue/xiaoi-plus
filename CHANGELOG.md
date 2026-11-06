@@ -1,6 +1,6 @@
 # 更新日志
 
-## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固
+## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固 + WP5 配置页拆分
 
 > **重构进行中，未发布**。WP4 已删除旧 HTTP 推送与 `POST /config`，数据面只服务外部 MCP/CLI。
 
@@ -82,6 +82,23 @@
 - 契约基线：`config_auth_probe` 期望 410，`mcp_tools_list` 删除 switch_model 的写参数。
 - 文档/Release Notes：`/config` 410、LAN 强 token、远程写拒绝均为破坏性变更；
   降级到 0.11 前请先关闭 MCP/清空 token。
+
+### WP5 配置页机械拆分（无行为变化）
+
+- `ConfigActivity` 从 1616 行降到 914 行，只保留 `cfg`/`dirty`/`rendering`/`statusState`/
+  `savedWaiting`/`ui` 状态、生命周期与 `save()`/`collect()`/`render()`/`checkModelNow()` 编排
+- 新增 `ui/config/ConfigDialogs`：对话框容器、管理行、输入框、错误行等纯 UI 工具
+- 新增 `ui/config/StatusSection`：状态条、推送行、文件冲突条、运行时冲突条
+- 新增 `ui/config/McpSection`：MCP 开关联动视图、令牌、URL/JSON 速览、
+  复制连接信息/Skill、端口探测
+- 新增 `ui/config/EditSection`：从运行中小爱导入、脱敏导出、完整备份、还原、分享；
+  SAF 结果仍由 Activity 的 `onActivityResult` 转发
+- 新增 `ui/config/ModelEditor`：服务商/模型管理列表与添加/重命名/删除对话框
+- 新增 `ui/config/AppearanceSection`：主题 chips
+- 不改 `activity_config.xml`、字符串、资源 ID、点击行为、校验与导入导出逻辑；
+  `AppConfig`/`ConfigRepository`/`ConfigCodec`/Bridge/MCP 均未改动
+- 单测 543 断言全绿；`./build.sh` 与 `./scripts/check-consistency.sh` 通过；
+  真机对比配置页顶部/MCP/底部/管理/备份与主题切换，布局与文案一致
 
 ## 0.11.0-beta.4 — 2026-11-05
 

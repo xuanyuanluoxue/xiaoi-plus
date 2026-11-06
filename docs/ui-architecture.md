@@ -96,7 +96,7 @@ flowchart TB
     end
     subgraph MCPS["MCP 板块"]
         M1["开关"]
-        M2["端口（自动 8771~8775）"]
+        M2["端口（leader 上报；未上报时 8771 提示）"]
         M3["令牌 · 生成"]
         M4["复制连接信息（动态生成）"]
         M5["复制 Skill 文本"]
@@ -116,6 +116,34 @@ flowchart TB
 ```
 
 校验规则：`baseUrl` http(s)、`model` 非空、`apiKey` 非空；不通过则阻止开启并提示。
+
+### 2.1 配置页类结构（0.12.0 WP5，机械拆分）
+
+`ConfigActivity` 只保留状态所有权与流程编排；纯视图/对话框移到 `plus.xiaoi.module.ui.config`，
+不改变任何布局 ID、文案与点击行为。Section 不持有 Activity：构造时传入 root View、宿主
+`AppConfig` 读取接口与必要的 `Runnable`/小接口，状态更新仍回调 Activity。
+
+```mermaid
+flowchart TB
+    A["ConfigActivity（shell）<br/>cfg / dirty / rendering / statusState / savedWaiting / ui Handler<br/>生命周期 · render() · save() · collect() · checkModelNow()"]
+    D["ConfigDialogs<br/>对话框容器 / 管理行 / 输入框 / 错误行"]
+    M["McpSection<br/>开关联动视图 / 令牌 / URL / JSON 速览 / 复制 / 端口探测"]
+    S["StatusSection<br/>状态条 / 推送行 / 文件冲突条 / 运行时冲突条"]
+    E["EditSection<br/>导入 / 脱敏导出 / 完整备份 / 还原 / 分享"]
+    R["ModelEditor<br/>服务商/模型管理列表与编辑对话框"]
+    P["AppearanceSection<br/>主题 chips"]
+
+    A --> D
+    A --> M
+    A --> S
+    A --> E
+    A --> R
+    A --> P
+```
+
+模型 chips 的渲染与“选中服务商/模型”仍留在 `ConfigActivity`（它们同时改 cfg、状态条与自动校验），
+`ModelEditor` 只接管管理/编辑对话框。文件选择器结果仍由 Activity 的 `onActivityResult`
+转发给 `EditSection`。
 
 ## 3. 日志（独立页）
 
