@@ -21,6 +21,7 @@ import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.ConfigSync;
 import plus.xiaoi.module.R;
 import plus.xiaoi.module.ShareProvider;
+import plus.xiaoi.module.core.ErrorCatalog;
 
 /**
  * 配置编辑板块：从运行中小爱导入、脱敏导出、完整备份、从文件还原、分享。
@@ -47,6 +48,7 @@ public final class EditSection {
         void hideRuntimeConflict();
         void checkModelNow();
         ConfigDialogs dialogs();
+        boolean dirty();
     }
 
     private final Context ctx;
@@ -130,14 +132,16 @@ public final class EditSection {
                 OutputStream os = host.resolver().openOutputStream(uri);
                 os.write(exportJson(exportMasked).getBytes("UTF-8"));
                 os.close();
-                host.toast(exportMasked ? "已导出（已脱敏）" : "已导出（含密钥，注意保管）");
+                host.toast(exportMasked
+                        ? "已导出（已脱敏）"
+                        : "已导出（含明文密钥，请用完立即删除）");
             } else if (req == REQ_IMPORT) {
                 InputStream in = host.resolver().openInputStream(uri);
                 AppConfig c = ConfigRepository.parse(in);
                 in.close();
                 // 脱敏文件（密钥被写成 ***）不能用于恢复：直接阻断，避免把 *** 写成有效 key
                 if (ConfigCodec.containsMaskedSecrets(c)) {
-                    host.toast("这是脱敏文件（密钥为 ***），不能用于恢复；请使用「备份（含密钥）」的文件");
+                    host.toast(ErrorCatalog.message(ErrorCatalog.Code.IMPORT_MASKED));
                     return;
                 }
                 // 导入同样走 codec 校验：非法配置不覆盖当前编辑状态
@@ -146,14 +150,72 @@ public final class EditSection {
                     host.toast("导入失败：" + err);
                     return;
                 }
-                host.setConfig(c);
-                host.render();
-                host.markDirty(); // 只载入未写入文件，必须让用户确认保存
-                host.toast("已载入，记得保存");
+                confirmImport(c);
             }
         } catch (Throwable t) {
             host.toast("操作失败：" + t.getMessage());
         }
+    }
+
+    /**
+     * 覆盖前确认：只有用户点「覆盖导入」才替换当前编辑；取消保持原样。
+     * 正文只列非敏感摘要（host/是否设置），不复述 query、apiKey、token。
+     */
+    private void confirmImport(final AppConfig c) {
+        host.dialogs().dialogBuilder()
+                .setTitle("覆盖当前配置？")
+                .setMessage(importSummary(c))
+                .setPositiveButton("覆盖导入", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int which) {
+                        host.setConfig(c);
+                        host.render();
+                        host.markDirty(); // 只载入未写入文件，必须让用户确认保存
+                        host.toast("已载入，记得保存");
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private String importSummary(AppConfig c) {
+        AppConfig.Provider p = c.activeProvider();
+        AppConfig.ModelItem m = c.activeModel();
+        StringBuilder sb = new StringBuilder();
+        sb.append("服务商：").append(c.providers.size()).append(" 个");
+        if (p != null && p.name != null && p.name.trim().length() > 0) {
+            sb.append("（当前 ").append(p.name.trim()).append("）");
+        }
+        sb.append('\n');
+        sb.append("模型：").append(m != null && m.id != null && m.id.length() > 0 ? m.id : "未选择").append('\n');
+        sb.append("端点：").append(hostOf(p == null ? "" : p.baseUrl)).append('\n');
+        sb.append("API Key：").append(p != null && p.apiKey != null && p.apiKey.trim().length() > 0
+                ? "已设置" : "未设置").append('\n');
+        sb.append("MCP Token：").append(c.mcpToken != null && c.mcpToken.trim().length() > 0
+                ? "已设置" : "未设置").append('\n');
+        sb.append("启用：").append(c.enabled ? "开" : "暂停").append('\n');
+        sb.append("版本：v").append(c.version).append(" · rev ").append(c.rev);
+        if (host.dirty()) sb.append("\n\n当前未保存编辑会被覆盖。");
+        return sb.toString();
+    }
+
+    /** 只取端点 host；解析失败时也去掉 query/path/userinfo，绝不把完整 URL/密钥展示出来。 */
+    private static String hostOf(String url) {
+        String v = url == null ? "" : url.trim();
+        if (v.length() == 0) return "未填写";
+        try {
+            String h = new java.net.URL(v).getHost();
+            if (h != null && h.length() > 0) return h;
+        } catch (Throwable ignored) {
+        }
+        int q = v.indexOf('?');
+        if (q >= 0) v = v.substring(0, q);
+        int scheme = v.indexOf("://");
+        if (scheme >= 0) v = v.substring(scheme + 3);
+        int at = v.lastIndexOf('@');
+        if (at >= 0) v = v.substring(at + 1);
+        int slash = v.indexOf('/');
+        if (slash >= 0) v = v.substring(0, slash);
+        return v.length() == 0 ? "未填写" : v;
     }
 
     private String exportJson(boolean mask) throws Exception {

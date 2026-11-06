@@ -15,6 +15,7 @@ import plus.xiaoi.module.BridgeClient;
 import plus.xiaoi.module.Lan;
 import plus.xiaoi.module.Mcp;
 import plus.xiaoi.module.R;
+import plus.xiaoi.module.core.BridgePolicy;
 
 /**
  * MCP 板块：开关联动后的视图、令牌输入、URL/JSON 速览、复制连接信息与 Skill、端口探测。
@@ -107,14 +108,18 @@ public final class McpSection {
         return "http://127.0.0.1:" + bridgePort + "/mcp";
     }
 
-    private String mcpUrl() {
-        return Lan.mcpUrl(bridgePort, host.config().mcpLan);
+    /** 配置里开了局域网，但 token 不足 32 hex 时实际回落 loopback（不改 BridgePolicy）。 */
+    private static boolean lanEffective(AppConfig cfg) {
+        return cfg.mcpLan && BridgePolicy.tokenStrongEnoughForLan(cfg.mcpToken);
     }
 
     /** 展示用：局域网模式同时给出局域网与本机地址；没连 Wi-Fi 时明确提示。 */
     private String mcpUrlHint() {
         AppConfig cfg = host.config();
         if (!cfg.mcpLan) return localMcpUrl();
+        if (!BridgePolicy.tokenStrongEnoughForLan(cfg.mcpToken)) {
+            return "令牌不足 32 位，当前实际仅本机\n" + localMcpUrl();
+        }
         String lan = Lan.mcpUrl(bridgePort, true);
         if (lan.contains("127.0.0.1")) {
             return "未检测到局域网 IPv4（连上 Wi-Fi 后重进本页）\n" + localMcpUrl();
@@ -130,21 +135,25 @@ public final class McpSection {
         AppConfig cfg = host.config();
         int port = bridgePort;
         boolean tokenSet = cfg.mcpToken != null && cfg.mcpToken.trim().length() > 0;
+        boolean lanEffective = lanEffective(cfg);
         String enabled = cfg.enabled ? "true" : "false";
         String model = cfg.model().length() == 0 ? "未配置" : cfg.model();
+        String endpoint = lanEffective ? Lan.mcpUrl(port, true) : localMcpUrl();
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
         sb.append("  \"source\":    \"config.json（期望配置）\",\n");
-        sb.append("  \"endpoint\":  \"").append(mcpUrl()).append("\",\n");
+        sb.append("  \"endpoint\":  \"").append(endpoint).append("\",\n");
         sb.append("  \"auth\":      \"Bearer ").append(tokenSet ? "<已设置>" : "<未设置，接口将拒绝请求>").append("\",\n");
         sb.append("  \"protocol\":  \"JSON-RPC 2.0 (MCP 2025-03-26)\",\n");
         sb.append("  \"model\":     \"").append(model).append("\",\n");
         sb.append("  \"enabled\":   ").append(enabled).append(",\n");
         sb.append("  \"lan\":       ").append(cfg.mcpLan ? "true" : "false").append(",\n");
         sb.append("  \"tools\":     \"").append(Mcp.toolNames(" · ")).append("\",\n");
-        sb.append("  \"bind\":      \"").append(cfg.mcpLan
+        sb.append("  \"bind\":      \"").append(lanEffective
                 ? "0.0.0.0（同一局域网可访问，必须带 Bearer token）"
-                : "127.0.0.1（仅本机可访问）").append("\"\n");
+                : (cfg.mcpLan
+                    ? "127.0.0.1（令牌不足 32 位，当前实际仅本机）"
+                    : "127.0.0.1（仅本机可访问）")).append("\"\n");
         sb.append("}");
         return sb.toString();
     }
@@ -153,7 +162,7 @@ public final class McpSection {
         AppConfig cfg = host.config();
         String token = cfg.mcpToken == null ? "" : cfg.mcpToken;
         String local = localMcpUrl();
-        boolean lanOn = cfg.mcpLan;
+        boolean lanOn = lanEffective(cfg);
         String lanUrl = Lan.mcpUrl(bridgePort, true);
         boolean hasLanIp = !lanUrl.contains("127.0.0.1");
         String url = lanOn && hasLanIp ? lanUrl : local;
@@ -178,7 +187,7 @@ public final class McpSection {
     public void copySkill() {
         AppConfig cfg = host.config();
         String local = localMcpUrl();
-        boolean lanOn = cfg.mcpLan;
+        boolean lanOn = lanEffective(cfg);
         String url = Lan.mcpUrl(bridgePort, true);
         if (!lanOn || url.contains("127.0.0.1")) url = local;
         String pre = lanOn && !url.equals(local)

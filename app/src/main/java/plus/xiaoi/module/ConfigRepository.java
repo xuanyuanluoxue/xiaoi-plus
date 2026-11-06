@@ -6,6 +6,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.List;
 
 import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.ConfigStore;
@@ -138,6 +139,66 @@ public final class ConfigRepository {
     /** 当前内存配置是否是默认骨架（文件不存在 / 损坏后）。 */
     public boolean isSkeleton() {
         return skeletonFlag;
+    }
+
+    /**
+     * 列出私有目录里的旧配置归档 {@code config.json.legacy.<ts>}（时间倒序）。
+     * 不列 {@code .corrupt.<ts>}：那是损坏原文，只能取证，不能当配置恢复。
+     */
+    public List<File> legacyBackups() {
+        return store.list(ConfigStore.LEGACY_PREFIX);
+    }
+
+    /**
+     * 用一份 legacy 备份恢复事实源：解析 → 校验 → 原子写回 → 写 prefs → 清只读。
+     *
+     * <p>任何一步失败都抛异常，且不删除/不截断原文件；调用方保持只读态即可。
+     * rev 会递增，确保桥能识别为一次新配置。</p>
+     */
+    public synchronized AppConfig restoreLegacy(File backup) throws Exception {
+        if (backup == null || !backup.isFile()) {
+            throw new java.io.IOException("备份文件不存在");
+        }
+        String raw = store.read(backup);
+        if (raw == null) throw new java.io.IOException("备份文件为空");
+        AppConfig c = ConfigCodec.fromJson(raw);
+        String err = ConfigCodec.validate(c);
+        if (err != null) throw new IllegalStateException("备份配置无效：" + err);
+
+        // 先原样原子恢复（失败不动目标），再更新 rev 写一次。
+        store.restoreFrom(backup);
+        AppConfig written = ConfigCodec.fromJson(store.read());
+        written.rev = Math.max(Math.max(written.rev, c.rev), 1L) + 1;
+        written.skeleton = false;
+        writeFile(written);
+        writePrefs(written);
+        clearReadOnlyAfterUserReset();
+        skeletonFlag = false;
+        ConfigSync.markApplied(ctx);
+        BridgeEndpoint.requestReload();
+        return written;
+    }
+
+    /**
+     * 损坏后重建默认配置：把当前 config.json 移到 {@code .corrupt.<ts>}（已有同内容
+     * 备份时复用），再写入基于当前 module prefs 的默认骨架（rev=1）。
+     *
+     * <p>原文永远保留；本方法只清只读态，不删除任何 {@code .corrupt}/{@code .legacy}。</p>
+     */
+    public synchronized AppConfig resetToDefaultsAfterCorruption() throws Exception {
+        store.moveCorruptAside();
+        AppConfig c = defaults();
+        c.rev = 1L;
+        c.skeleton = false;
+        String err = ConfigCodec.validate(c);
+        if (err != null) throw new IllegalStateException("默认配置无效：" + err);
+        writeFile(c);
+        writePrefs(c);
+        clearReadOnlyAfterUserReset();
+        skeletonFlag = false;
+        ConfigSync.markApplied(ctx);
+        BridgeEndpoint.requestReload();
+        return c;
     }
 
     /**

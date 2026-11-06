@@ -7,6 +7,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * config.json 的纯 JVM 文件层（无 android 依赖，可桌面单测）。
@@ -26,7 +30,7 @@ public final class ConfigStore {
     public static final String FILE_NAME = "config.json";
     private static final String TMP_NAME = FILE_NAME + ".tmp";
     private static final String CORRUPT_PREFIX = FILE_NAME + ".corrupt.";
-    private static final String LEGACY_PREFIX = FILE_NAME + ".legacy.";
+    public static final String LEGACY_PREFIX = FILE_NAME + ".legacy.";
 
     private final File dir;
 
@@ -50,6 +54,76 @@ public final class ConfigStore {
         File f = file();
         if (!f.isFile()) return null;
         return new String(readBytes(f), "UTF-8");
+    }
+
+    /** 读取指定备份文件（只读；不解析、不校验内容）。 */
+    public String read(File f) throws IOException {
+        if (f == null || !f.isFile()) return null;
+        return new String(readBytes(f), "UTF-8");
+    }
+
+    /**
+     * 列出受管目录中指定前缀的文件，按修改时间倒序（相同时按文件名倒序）。
+     * 只返回普通文件，不递归；前缀为空时返回目录内全部文件。
+     */
+    public List<File> list(String prefix) {
+        List<File> out = new ArrayList<File>();
+        File[] files = dir.listFiles();
+        if (files == null) return out;
+        String p = prefix == null ? "" : prefix;
+        for (File f : files) {
+            if (f == null || !f.isFile()) continue;
+            if (p.length() == 0 || f.getName().startsWith(p)) out.add(f);
+        }
+        Collections.sort(out, new Comparator<File>() {
+            public int compare(File a, File b) {
+                long ta = a.lastModified();
+                long tb = b.lastModified();
+                if (ta != tb) return ta > tb ? -1 : 1;
+                return b.getName().compareTo(a.getName());
+            }
+        });
+        return out;
+    }
+
+    /**
+     * 把损坏的 {@code config.json} 移到 {@code config.json.corrupt.<ts>}。
+     *
+     * <p>相同内容已备份过时复用旧备份，避免为同一份坏文件反复复制密钥。
+     * 只有备份落盘成功后才删除原文件；删除失败会抛 IOException，调用方不得继续
+     * 覆盖原文件。文件不存在时返回 null。</p>
+     *
+     * @return 损坏原文备份；没有原文件时为 null
+     */
+    public File moveCorruptAside() throws IOException {
+        File f = file();
+        if (!f.isFile()) return null;
+        byte[] raw = readBytes(f);
+        File backup = findIdentical(CORRUPT_PREFIX, raw);
+        if (backup == null) {
+            ensureDir();
+            backup = unique(CORRUPT_PREFIX + System.currentTimeMillis());
+            writeBytes(backup, raw);
+        }
+        if (!f.delete() && f.exists()) {
+            throw new IOException("cannot move corrupt config aside");
+        }
+        return backup;
+    }
+
+    /**
+     * 把同目录的备份文件原子复制为 {@code config.json}。
+     * 只接受受管目录内的普通文件；失败时目标文件保持不变。
+     */
+    public void restoreFrom(File backup) throws IOException {
+        if (backup == null || !backup.isFile()) {
+            throw new IOException("backup not found");
+        }
+        File parent = backup.getParentFile();
+        if (parent == null || !parent.getCanonicalFile().equals(dir.getCanonicalFile())) {
+            throw new IOException("backup outside config dir");
+        }
+        writeAtomic(new String(readBytes(backup), "UTF-8"));
     }
 
     /**

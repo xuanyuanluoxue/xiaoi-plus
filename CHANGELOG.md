@@ -1,6 +1,6 @@
 # 更新日志
 
-## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固 + WP5 配置页拆分 + WP6 状态模型
+## 0.12.0-beta.1（开发中）— WP1 控制面 + WP2 配置私有化 + WP3 生命周期 + WP4 数据面加固 + WP5 配置页拆分 + WP6 状态模型 + WP7 UX 安全
 
 > **重构进行中，未发布**。WP4 已删除旧 HTTP 推送与 `POST /config`，数据面只服务外部 MCP/CLI。
 
@@ -127,6 +127,22 @@
 - `StatusResolver` 修正：启用但无密钥返回「未配置」，不再把缺密钥说成「已启用」
 - 新增 `StateModelTest`（四维组合）、`BridgeStatusTest`；`BridgeRegistryTest` 增加 cfgRev；
   纯 JVM 单测、`./build.sh`、`./scripts/check-consistency.sh` 全部通过
+
+### WP7 UX 安全 + 错误目录 + 导入/导出
+
+- 导入/还原改为「覆盖前确认」：先解析/校验/脱敏检查，再展示服务商数、当前服务商、
+  模型、端点 host、Key/Token 是否设置、启用状态、version/rev；取消不改变当前编辑
+- 生成 MCP 令牌前确认旧客户端会立即 401；有未保存修改时复制连接信息/Skill 先提示
+  「复制的是草稿」，取消不复制；生成后提示「保存后生效」
+- 打开局域网先确认公共 Wi-Fi/公司网络风险；空令牌自动生成，弱令牌提示会回退仅本机
+  并让用户选择「生成并开启」；URL/JSON 速览在弱令牌时明确显示实际仅本机
+- 配置损坏首次发现时弹恢复入口：恢复最新 `.legacy` 备份 / 重建默认配置 / 取消；
+  原文件与 `.corrupt` 保留在私有目录，取消后保存继续被阻止
+- 新增纯 JVM `core/ErrorCatalog`（8 类错误 title + action）；主页超级岛按
+  无令牌/MCP 未开/小爱未连/控制面过期/端口不可达区分原因
+- 主页只读信息行与关于页许可证/致谢隐藏不可点的行尾箭头；完整备份导出提示用完删除
+- 新增 `ErrorCatalogTest`；`ConfigStoreTest` 增加 list/moveCorruptAside/restoreFrom；
+  单测 664 断言全绿，`./build.sh` 与 `./scripts/check-consistency.sh` 通过
 
 ## 0.11.0-beta.4 — 2026-11-05
 

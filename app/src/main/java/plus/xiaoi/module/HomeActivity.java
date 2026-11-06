@@ -10,6 +10,7 @@ import java.net.URL;
 
 import plus.xiaoi.module.control.BridgeControlService;
 import plus.xiaoi.module.core.BridgeStatus;
+import plus.xiaoi.module.core.ErrorCatalog;
 import plus.xiaoi.module.core.StateModel;
 
 /** 主页：Hero 状态 + 数字砖 + 快捷动作 + 信息流。 */
@@ -57,6 +58,12 @@ public class HomeActivity extends BaseActivity {
         row(R.id.row_android, null);
         row(R.id.row_root, null);
         row(R.id.row_version, null);
+        // 只读信息行不再显示右箭头：箭头意味着可点击/可跳转，但这几行没有目标页。
+        hideChevron(R.id.row_base);
+        hideChevron(R.id.row_kernel);
+        hideChevron(R.id.row_android);
+        hideChevron(R.id.row_root);
+        hideChevron(R.id.row_version);
 
         ConfigSync.start(this);
         refresh();
@@ -296,13 +303,25 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void postIsland() {
-        final String token = ConfigRepository.get(this).load().mcpToken;
+        final AppConfig c = ConfigRepository.get(this).load();
+        final String token = c.mcpToken == null ? "" : c.mcpToken.trim();
+        BridgeStatus.Snapshot s = BridgeStatus.get();
+        final int port = BridgeClient.discover(token);
+        ErrorCatalog.Code blocked = ErrorCatalog.islandBlocked(
+                token.length() > 0, c.mcpEnabled, s.connected,
+                s.fresh(System.currentTimeMillis()), port);
+        if (blocked != null) {
+            toast(ErrorCatalog.message(blocked));
+            return;
+        }
         AppExecutors.io(new Runnable() {
             public void run() {
-                int port = BridgeClient.discover(token);
                 final boolean ok = port > 0 && BridgeClient.island(port);
                 AppExecutors.ui(new Runnable() {
-                    public void run() { toast(ok ? "已触发超级岛" : "触发失败：小爱未运行"); }
+                    public void run() {
+                        toast(ok ? "已触发超级岛"
+                                : ErrorCatalog.message(ErrorCatalog.Code.PORT_UNREACHABLE));
+                    }
                 });
             }
         });
@@ -325,6 +344,20 @@ public class HomeActivity extends BaseActivity {
         v.setOnClickListener(new View.OnClickListener() {
             public void onClick(View x) { r.run(); }
         });
+    }
+
+    /** 隐藏行尾箭头（最后一个 ImageView）：只读行不再暗示可点击。 */
+    private void hideChevron(int rowId) {
+        View v = find(rowId);
+        if (!(v instanceof android.view.ViewGroup)) return;
+        android.view.ViewGroup g = (android.view.ViewGroup) v;
+        for (int i = g.getChildCount() - 1; i >= 0; i--) {
+            View child = g.getChildAt(i);
+            if (child instanceof android.widget.ImageView) {
+                child.setVisibility(View.GONE);
+                return;
+            }
+        }
     }
 
     @Override protected String currentTab() { return "home"; }
