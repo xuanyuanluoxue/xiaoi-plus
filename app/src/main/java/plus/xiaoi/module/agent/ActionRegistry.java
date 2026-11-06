@@ -72,12 +72,14 @@ public final class ActionRegistry {
             Set<String> seen = new HashSet<String>();
             for (String pref : e.descriptor.executorPreference) {
                 ActionExecutor ex = e.executors.get(pref);
-                if (ex == null || seen.contains(ex.name())) continue;
+                if (ex == null || seen.contains(ex.name())
+                        || !executorAllowed(e.descriptor, ex)) continue;
                 seen.add(ex.name());
                 executors.add(executorJson(ex));
             }
             for (ActionExecutor ex : e.executors.values()) {
-                if (seen.contains(ex.name())) continue;
+                if (seen.contains(ex.name())
+                        || !executorAllowed(e.descriptor, ex)) continue;
                 seen.add(ex.name());
                 executors.add(executorJson(ex));
             }
@@ -249,9 +251,26 @@ public final class ActionRegistry {
 
     private static boolean available(Entry entry) {
         for (ActionExecutor ex : entry.executors.values()) {
-            if (isAvailable(ex)) return true;
+            if (executorAllowed(entry.descriptor, ex) && isAvailable(ex)) return true;
         }
         return false;
+    }
+
+    /**
+     * requiredCapability 是执行器准入条件，不只是展示字段。
+     * root 动作只能由 root 执行器执行；shell 动作允许 shizuku/root；
+     * none 动作不限制执行器。
+     */
+    private static boolean executorAllowed(ActionDescriptor d, ActionExecutor ex) {
+        if (d == null || ex == null) return false;
+        if (!d.needsCapability()) return true;
+        if (ActionDescriptor.CAP_ROOT.equals(d.requiredCapability)) {
+            return "root".equals(ex.name());
+        }
+        if (ActionDescriptor.CAP_SHELL.equals(d.requiredCapability)) {
+            return "shizuku".equals(ex.name()) || "root".equals(ex.name());
+        }
+        return true;
     }
 
     private static boolean isAvailable(ActionExecutor ex) {
@@ -268,12 +287,15 @@ public final class ActionRegistry {
         if (!entry.descriptor.executorPreference.isEmpty()) {
             for (String pref : entry.descriptor.executorPreference) {
                 ActionExecutor ex = entry.executors.get(pref);
-                if (ex != null && isAvailable(ex)) return ex;
+                if (ex != null && executorAllowed(entry.descriptor, ex)
+                        && isAvailable(ex)) {
+                    return ex;
+                }
             }
             return null;
         }
         for (ActionExecutor ex : entry.executors.values()) {
-            if (isAvailable(ex)) return ex;
+            if (executorAllowed(entry.descriptor, ex) && isAvailable(ex)) return ex;
         }
         return null;
     }
@@ -283,11 +305,13 @@ public final class ActionRegistry {
         if (!entry.descriptor.executorPreference.isEmpty()) {
             for (String pref : entry.descriptor.executorPreference) {
                 ActionExecutor ex = entry.executors.get(pref);
-                if (ex != null) return ex;
+                if (executorAllowed(entry.descriptor, ex)) return ex;
             }
             return null;
         }
-        for (ActionExecutor ex : entry.executors.values()) return ex;
+        for (ActionExecutor ex : entry.executors.values()) {
+            if (executorAllowed(entry.descriptor, ex)) return ex;
+        }
         return null;
     }
 

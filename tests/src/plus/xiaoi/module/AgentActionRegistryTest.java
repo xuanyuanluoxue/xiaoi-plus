@@ -277,6 +277,38 @@ public final class AgentActionRegistryTest {
                 ActionRequest.builder("test.empty").build());
         T.eq("无执行器 NOT_AVAILABLE", AgentError.Code.NOT_AVAILABLE,
                 noExecutor.error.code);
+
+        // capability 是准入条件：root 动作不能被 android 执行器顶替
+        FakeExecutor androidOnly = new FakeExecutor("android");
+        ActionRegistry rootMismatch = new ActionRegistry();
+        ActionDescriptor rootOnly = ActionDescriptor.builder("test.root.only")
+                .executorPreference("root", "android")
+                .requiredCapability(ActionDescriptor.CAP_ROOT)
+                .build();
+        rootMismatch.register(rootOnly, androidOnly);
+        ActionResult wrongExec = rootMismatch.execute(
+                ActionRequest.builder("test.root.only").build());
+        T.eq("root 动作不能用 android 执行", AgentError.Code.PERMISSION_DENIED,
+                wrongExec.error.code);
+        T.eq("root 动作 android 未调用", 0, androidOnly.calls);
+        Map<String, Object> rootCap = cap(rootMismatch.capabilitiesJson(true),
+                "test.root.only");
+        T.eq("root 动作 capabilities 不可用", Boolean.FALSE, rootCap.get("available"));
+        T.eq("root 动作不展示 android 执行器", 0,
+                ((List<?>) rootCap.get("executors")).size());
+
+        FakeExecutor shizuku = new FakeExecutor("shizuku");
+        ActionRegistry shellReg = new ActionRegistry();
+        ActionDescriptor shellOnly = ActionDescriptor.builder("test.shell")
+                .executorPreference("android", "shizuku")
+                .requiredCapability(ActionDescriptor.CAP_SHELL)
+                .build();
+        shellReg.register(shellOnly, androidOnly);
+        shellReg.register(shellOnly, shizuku);
+        ActionResult shellOk = shellReg.execute(
+                ActionRequest.builder("test.shell").build());
+        T.eq("shell 动作可用 shizuku", "shizuku", shellOk.executor);
+        T.eq("shell 动作 android 未调用", 0, androidOnly.calls);
     }
 
     // ------------------------------------------------------------- 异常 / 超时
