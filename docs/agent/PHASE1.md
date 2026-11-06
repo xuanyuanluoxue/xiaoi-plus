@@ -1,6 +1,6 @@
 # Phase 1 工作包：Action Plane 骨架与第一批动作
 
-> 状态：**WP1.1~WP1.5 代码完成，1445 断言；真机矩阵待设备恢复**
+> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机矩阵已跑主要项，剩余无线 ADB/root 待恢复**
 > 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
 > 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
 > 日期：2026-11-06
@@ -9,7 +9,7 @@
 
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1445） |
+| WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 1453） |
 | WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a/WP1.2b 已完成**：服务/8770/5 个动作/root 兜底） |
 | WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M（**WP1.3a/WP1.3b 已完成**：确认/幂等/审计、notify/ask；记忆/job 未做） |
 | WP1.4 | 8770 独立 LAN 开关（默认关、弱令牌回退、UI 如实显示、复制含 8770） | WP1.2 | M（**已完成**：2026-11-06） |
@@ -294,7 +294,7 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 
 ## 3. WP1.2：App 前台服务与动作
 
-> 状态：**WP1.1~WP1.5 代码完成，1445 断言；真机矩阵待设备恢复**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
+> 状态：**WP1.1~WP1.5 代码完成，1453 断言；真机矩阵已跑主要项，剩余无线 ADB/root 待恢复**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
 > 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；WP1.4（8770 独立 LAN）已完成；
 > WP1.5（幂等结果持久化）已完成；记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
