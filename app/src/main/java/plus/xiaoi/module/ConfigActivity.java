@@ -1,37 +1,31 @@
 package plus.xiaoi.module;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import plus.xiaoi.module.core.BridgeEndpoint;
+import plus.xiaoi.module.ui.config.AppearanceSection;
+import plus.xiaoi.module.ui.config.ConfigDialogs;
+import plus.xiaoi.module.ui.config.EditSection;
+import plus.xiaoi.module.ui.config.McpSection;
+import plus.xiaoi.module.ui.config.ModelEditor;
+import plus.xiaoi.module.ui.config.StatusSection;
 
 /**
  * 配置页（P3 重排）：状态条 + 模型 chips + 管理列表 + 保存/生效提示 + 冲突条。
@@ -48,11 +42,11 @@ import plus.xiaoi.module.core.BridgeEndpoint;
  * - render() 期间的 setText/setChecked 不触发监听器（rendering 守卫）
  * - enabled=false 时模型卡用「子 View 不可点 + 父容器吞掉触摸」屏蔽，
  *   只有「暂停且密钥为空」时保留密钥输入（首次配置必须能填 key）
+ *
+ * WP5：页面视图已拆到 {@code ui.config} 的 ConfigDialogs / McpSection / StatusSection /
+ * EditSection / ModelEditor / AppearanceSection；本类只保留状态所有权与流程编排。
  */
 public class ConfigActivity extends BaseActivity {
-
-    private static final int REQ_EXPORT = 1001;
-    private static final int REQ_IMPORT = 1002;
 
     // ------------------------------------------------------------- 状态机
 
@@ -84,22 +78,21 @@ public class ConfigActivity extends BaseActivity {
     };
 
     private Switch swEnabled, swMcp, swPrefix, swMcpLan;
-    private View cardModel, rowToken, rowMcpLan, rowPrefixTpl, tvPrefixHelp, boxMcpJson, tvDirty;
+    private View cardModel, rowPrefixTpl, tvPrefixHelp, tvDirty;
     private TextView fab;
-    private View rowModelCheck, rowManage, rowPush, bannerConflict, bannerRuntime;
+    private View rowModelCheck, rowManage;
     private LinearLayout boxProviderChips, boxModelChips;
-    private TextView tvStatusDot, tvStatusTitle, tvStatusDesc, tvPushState, tvPushAction;
-    private TextView tvRuntimeTitle, tvRuntimeDesc;
-    private TextView tvMcpUrl, tvMcpJson, btnEye, tvModelCheck;
-    private EditText etApiKey, etToken, etPrefixTpl;
-    private final TextView[] themeChips = new TextView[3];
-    /** 运行时生成的 chips（服务商/模型），用于统一处理禁用态。 */
+    private TextView btnEye, tvModelCheck;
+    private EditText etApiKey, etPrefixTpl;
     private final List<View> chipViews = new ArrayList<View>();
 
-    private AlertDialog manageDlg;
-    /** 实际桥端口（控制面未上报时保留 8771 提示值）；用于复制连接信息与 Skill。 */
-    private volatile int bridgePort = Bridge.PORT_START;
-    private long lastPortProbeAt;
+    private ConfigDialogs dialogs;
+    private EditSection editSection;
+    private McpSection mcpSection;
+    private ModelEditor modelEditor;
+    private StatusSection statusSection;
+    private AppearanceSection appearanceSection;
+
     /** 重建（切主题/旋转）时从 Bundle 恢复的未保存草稿；恢复后必须保持脏标记。 */
     private boolean restoreDraft;
     private static final String STATE_DRAFT = "draft_json";
@@ -123,44 +116,68 @@ public class ConfigActivity extends BaseActivity {
         swEnabled = (Switch) find(R.id.sw_enabled);
         swMcp = (Switch) find(R.id.sw_mcp);
         swMcpLan = (Switch) find(R.id.sw_mcp_lan);
-        rowMcpLan = find(R.id.row_mcp_lan);
         swPrefix = (Switch) find(R.id.sw_prefix);
         cardModel = find(R.id.card_model_fields);
-        rowToken = find(R.id.row_token);
         rowPrefixTpl = find(R.id.row_prefix_tpl);
         tvPrefixHelp = find(R.id.tv_prefix_help);
-        tvMcpUrl = (TextView) find(R.id.tv_mcp_url);
-        tvMcpJson = (TextView) find(R.id.tv_mcp_json);
-        boxMcpJson = find(R.id.box_mcp_json);
         tvModelCheck = (TextView) find(R.id.tv_model_check);
         etApiKey = (EditText) find(R.id.et_api_key);
-        etToken = (EditText) find(R.id.et_token);
         etPrefixTpl = (EditText) find(R.id.et_prefix_tpl);
         btnEye = (TextView) find(R.id.btn_key_eye);
         fab = (TextView) find(R.id.fab_save);
         tvDirty = find(R.id.tv_dirty);
-        bannerConflict = find(R.id.banner_conflict);
-        bannerRuntime = find(R.id.banner_runtime);
-        tvRuntimeTitle = (TextView) find(R.id.tv_runtime_title);
-        tvRuntimeDesc = (TextView) find(R.id.tv_runtime_desc);
         boxProviderChips = (LinearLayout) find(R.id.box_provider_chips);
         boxModelChips = (LinearLayout) find(R.id.box_model_chips);
         rowModelCheck = find(R.id.row_model_check);
         rowManage = find(R.id.row_manage);
-        rowPush = find(R.id.row_push);
-        tvStatusDot = (TextView) find(R.id.tv_status_dot);
-        tvStatusTitle = (TextView) find(R.id.tv_status_title);
-        tvStatusDesc = (TextView) find(R.id.tv_status_desc);
-        tvPushState = (TextView) find(R.id.tv_push_state);
-        tvPushAction = (TextView) find(R.id.tv_push_action);
-        themeChips[0] = (TextView) find(R.id.chip_theme_0);
-        themeChips[1] = (TextView) find(R.id.chip_theme_1);
-        themeChips[2] = (TextView) find(R.id.chip_theme_2);
+
+        final View root = findViewById(android.R.id.content);
+        dialogs = new ConfigDialogs(this, new ConfigDialogs.Toast() {
+            public void show(String msg) { toast(msg); }
+        });
+        modelEditor = new ModelEditor(this, new ModelEditor.Host() {
+            public AppConfig config() { return cfg; }
+            public void render() { ConfigActivity.this.render(); }
+            public void markDirty() { ConfigActivity.this.markDirty(); }
+            public void toast(String msg) { ConfigActivity.this.toast(msg); }
+            public void collect() { ConfigActivity.this.collect(); }
+            public void selectProvider(AppConfig.Provider p) { ConfigActivity.this.selectProvider(p); }
+            public void selectModel(AppConfig.ModelItem m) { ConfigActivity.this.selectModel(m); }
+            public ConfigDialogs dialogs() { return dialogs; }
+        });
+        editSection = new EditSection(this, new EditSection.Host() {
+            public AppConfig config() { return cfg; }
+            public void setConfig(AppConfig next) { cfg = next; }
+            public void render() { ConfigActivity.this.render(); }
+            public void markDirty() { ConfigActivity.this.markDirty(); }
+            public void toast(String msg) { ConfigActivity.this.toast(msg); }
+            public void startForResult(Intent intent, int request) {
+                startActivityForResult(intent, request);
+            }
+            public void startActivity(Intent intent) { ConfigActivity.this.startActivity(intent); }
+            public android.content.ContentResolver resolver() { return getContentResolver(); }
+            public File externalFilesDir() { return getExternalFilesDir(null); }
+            public boolean alive() { return !isFinishing(); }
+            public void hideRuntimeConflict() { ConfigActivity.this.hideRuntimeConflict(); }
+            public void checkModelNow() { ConfigActivity.this.checkModelNow(true); }
+            public ConfigDialogs dialogs() { return dialogs; }
+        });
+        mcpSection = new McpSection(this, root, new McpSection.Host() {
+            public AppConfig config() { return cfg; }
+            public boolean alive() { return !isFinishing(); }
+            public void toast(String msg) { ConfigActivity.this.toast(msg); }
+        });
+        statusSection = new StatusSection(this, root, new StatusSection.Painter() {
+            public int colorOf(AppStatus state) { return statusColor(state); }
+        });
+        appearanceSection = new AppearanceSection(this, root, new Runnable() {
+            public void run() { recreate(); }
+        });
 
         bindListeners();
         render();
         if (restoreDraft) markDirty();
-        bindThemeChips();
+        appearanceSection.bind();
         setupNav();
     }
 
@@ -182,10 +199,7 @@ public class ConfigActivity extends BaseActivity {
     @Override protected void onDestroy() {
         ui.removeCallbacksAndMessages(null);
         ConfigSync.removeListener(fileListener);
-        if (manageDlg != null) {
-            try { manageDlg.dismiss(); } catch (Throwable ignored) {}
-            manageDlg = null;
-        }
+        if (modelEditor != null) modelEditor.dismissManage();
         super.onDestroy();
     }
 
@@ -241,7 +255,7 @@ public class ConfigActivity extends BaseActivity {
                 if (on && cfg.mcpToken.trim().length() == 0) {
                     cfg.mcpToken = newToken();
                     rendering = true;
-                    etToken.setText(cfg.mcpToken);
+                    mcpSection.setToken(cfg.mcpToken);
                     rendering = false;
                     toast("已自动生成令牌（局域网访问必须）");
                 }
@@ -265,16 +279,16 @@ public class ConfigActivity extends BaseActivity {
         });
 
         click(R.id.btn_key_eye, new Runnable() { public void run() { toggleKey(); } });
-        click(R.id.btn_gen_token, new Runnable() { public void run() { etToken.setText(newToken()); markDirty(); } });
-        click(R.id.btn_copy_mcp, new Runnable() { public void run() { copyMcp(); } });
-        click(R.id.btn_copy_skill, new Runnable() { public void run() { copySkill(); } });
-        click(R.id.btn_export, new Runnable() { public void run() { startMaskedExport(); } });
-        click(R.id.btn_backup, new Runnable() { public void run() { confirmFullExport(); } });
-        click(R.id.btn_restore, new Runnable() { public void run() { startImport(); } });
+        click(R.id.btn_gen_token, new Runnable() { public void run() { mcpSection.setToken(newToken()); markDirty(); } });
+        click(R.id.btn_copy_mcp, new Runnable() { public void run() { mcpSection.copyMcp(); } });
+        click(R.id.btn_copy_skill, new Runnable() { public void run() { mcpSection.copySkill(); } });
+        click(R.id.btn_export, new Runnable() { public void run() { editSection.startMaskedExport(); } });
+        click(R.id.btn_backup, new Runnable() { public void run() { editSection.confirmFullExport(); } });
+        click(R.id.btn_restore, new Runnable() { public void run() { editSection.startImport(); } });
         click(R.id.row_model_check, new Runnable() { public void run() { checkModelNow(true); } });
-        click(R.id.row_manage, new Runnable() { public void run() { openManage(); } });
-        click(R.id.row_import, new Runnable() { public void run() { importFromRuntime(); } });
-        click(R.id.btn_share, new Runnable() { public void run() { share(); } });
+        click(R.id.row_manage, new Runnable() { public void run() { modelEditor.openManage(); } });
+        click(R.id.row_import, new Runnable() { public void run() { editSection.importFromRuntime(); } });
+        click(R.id.btn_share, new Runnable() { public void run() { editSection.share(); } });
         click(R.id.fab_save, new Runnable() { public void run() { save(); } });
 
         click(R.id.card_status, new Runnable() { public void run() { checkModelNow(true); } });
@@ -297,7 +311,7 @@ public class ConfigActivity extends BaseActivity {
                 markDirty();
             }
         };
-        etToken.addTextChangedListener(collectWatcher);
+        mcpSection.tokenView().addTextChangedListener(collectWatcher);
         etApiKey.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             public void onTextChanged(CharSequence s, int a, int b, int c) {}
@@ -329,31 +343,6 @@ public class ConfigActivity extends BaseActivity {
         }
     }
 
-    private void bindThemeChips() {
-        for (int i = 0; i < 3; i++) {
-            final int mode = i;
-            if (themeChips[i] == null) continue;
-            themeChips[i].setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) {
-                    ThemeManager.set(ConfigActivity.this, mode);
-                    recreate();
-                }
-            });
-        }
-        renderThemeChips();
-    }
-
-    private void renderThemeChips() {
-        int cur = ThemeManager.get(this);
-        for (int i = 0; i < 3; i++) {
-            TextView chip = themeChips[i];
-            if (chip == null) continue;
-            boolean on = i == cur;
-            chip.setBackgroundResource(on ? R.drawable.bg_chip_ok : R.drawable.bg_chip);
-            chip.setTextColor(color(on ? R.color.primary : R.color.text_secondary));
-        }
-    }
-
     private void setModelCheckText(String text, int colorRes) {
         if (tvModelCheck == null) return;
         tvModelCheck.setText(text);
@@ -374,7 +363,7 @@ public class ConfigActivity extends BaseActivity {
             AppConfig.Provider p = provider();
             AppConfig.ModelItem m = cfg.activeModel();
             etApiKey.setText(p != null && p.apiKey != null ? p.apiKey : "");
-            etToken.setText(cfg.mcpToken);
+            mcpSection.setToken(cfg.mcpToken);
             etPrefixTpl.setText(cfg.markerTemplate);
             setModelCheckText(m != null ? "未校验 · 点按校验" : "未选择模型", R.color.text_hint);
         } finally {
@@ -440,88 +429,18 @@ public class ConfigActivity extends BaseActivity {
         v.setAlpha(enabled ? 1f : 0.6f);
     }
 
-    private String localMcpUrl() {
-        return "http://127.0.0.1:" + bridgePort + "/mcp";
-    }
-
-    private String mcpUrl() {
-        return Lan.mcpUrl(bridgePort, cfg.mcpLan);
-    }
-
-    /** 展示用：局域网模式同时给出局域网与本机地址；没连 Wi-Fi 时明确提示。 */
-    private String mcpUrlHint() {
-        if (!cfg.mcpLan) return localMcpUrl();
-        String lan = Lan.mcpUrl(bridgePort, true);
-        if (lan.contains("127.0.0.1")) {
-            return "未检测到局域网 IPv4（连上 Wi-Fi 后重进本页）\n" + localMcpUrl();
-        }
-        return lan + "\n" + localMcpUrl() + "（本机）";
-    }
-
-    /** 后台探一次真实桥端口；10 秒节流，失败保留默认 8771。 */
     private void refreshBridgePort() {
-        if (!cfg.mcpEnabled) return;
-        final String token = cfg.mcpToken == null ? "" : cfg.mcpToken.trim();
-        if (token.length() == 0) return;
-        long now = android.os.SystemClock.elapsedRealtime();
-        if (now - lastPortProbeAt < 10_000L) return;
-        lastPortProbeAt = now;
-        AppExecutors.io(new Runnable() {
-            public void run() {
-                int p = BridgeClient.discover(token);
-                if (p <= 0) return;
-                bridgePort = p;
-                AppExecutors.ui(new Runnable() {
-                    public void run() {
-                        if (!isFinishing() && tvMcpUrl != null) tvMcpUrl.setText(mcpUrlHint());
-                    }
-                });
-            }
-        });
+        mcpSection.refreshPort();
     }
 
     private void applyMcpState() {
-        boolean on = cfg.mcpEnabled;
-        if (rowToken != null) rowToken.setVisibility(on ? View.VISIBLE : View.GONE);
-        if (rowMcpLan != null) rowMcpLan.setVisibility(on ? View.VISIBLE : View.GONE);
-        if (boxMcpJson != null) boxMcpJson.setVisibility(on ? View.VISIBLE : View.GONE);
-        if (tvMcpUrl != null) {
-            tvMcpUrl.setVisibility(on ? View.VISIBLE : View.GONE);
-            tvMcpUrl.setText(mcpUrlHint());
-        }
-        if (on && tvMcpJson != null) tvMcpJson.setText(mcpJsonSummary());
-    }
-
-    /**
-     * 终端风格的 MCP 字段速览：让用户一眼看懂每个字段是什么、现在是什么值。
-     * 明确标注这是「config.json 里的期望配置」；token 只显示是否设置，不回显明文。
-     */
-    private String mcpJsonSummary() {
-        int port = bridgePort;
-        boolean tokenSet = cfg.mcpToken != null && cfg.mcpToken.trim().length() > 0;
-        String enabled = cfg.enabled ? "true" : "false";
-        String model = cfg.model().length() == 0 ? "未配置" : cfg.model();
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\n");
-        sb.append("  \"source\":    \"config.json（期望配置）\",\n");
-        sb.append("  \"endpoint\":  \"").append(mcpUrl()).append("\",\n");
-        sb.append("  \"auth\":      \"Bearer ").append(tokenSet ? "<已设置>" : "<未设置，接口将拒绝请求>").append("\",\n");
-        sb.append("  \"protocol\":  \"JSON-RPC 2.0 (MCP 2025-03-26)\",\n");
-        sb.append("  \"model\":     \"").append(model).append("\",\n");
-        sb.append("  \"enabled\":   ").append(enabled).append(",\n");
-        sb.append("  \"lan\":       ").append(cfg.mcpLan ? "true" : "false").append(",\n");
-        sb.append("  \"tools\":     \"").append(Mcp.toolNames(" · ")).append("\",\n");
-        sb.append("  \"bind\":      \"").append(cfg.mcpLan
-                ? "0.0.0.0（同一局域网可访问，必须带 Bearer token）"
-                : "127.0.0.1（仅本机可访问）").append("\"\n");
-        sb.append("}");
-        return sb.toString();
+        mcpSection.render();
     }
 
     private void collect() {
         AppConfig.Provider p = provider();
         if (p != null) p.apiKey = etApiKey.getText().toString().trim();
-        cfg.mcpToken = etToken.getText().toString().trim();
+        cfg.mcpToken = mcpSection.token();
         cfg.markerTemplate = etPrefixTpl.getText().toString().trim();
     }
 
@@ -546,7 +465,7 @@ public class ConfigActivity extends BaseActivity {
             }
         }
         boxProviderChips.addView(chip("＋", false, new Runnable() {
-            public void run() { promptAddProvider(); }
+            public void run() { modelEditor.promptAddProvider(); }
         }));
 
         if (active == null) {
@@ -565,8 +484,8 @@ public class ConfigActivity extends BaseActivity {
         boxModelChips.addView(chip("＋", false, new Runnable() {
             public void run() {
                 AppConfig.Provider p = provider();
-                if (p == null) promptAddProvider();
-                else promptAddModel(p);
+                if (p == null) modelEditor.promptAddProvider();
+                else modelEditor.promptAddModel(p);
             }
         }));
 
@@ -593,12 +512,7 @@ public class ConfigActivity extends BaseActivity {
     }
 
     private void addHint(LinearLayout box, String text) {
-        TextView t = new TextView(this);
-        t.setText(text);
-        t.setTextSize(12);
-        t.setTextColor(color(R.color.text_hint));
-        t.setPadding(0, dp(6), dp(8), dp(6));
-        box.addView(t);
+        dialogs.addHint(box, text);
     }
 
     private void applyChipEnabled() {
@@ -646,409 +560,6 @@ public class ConfigActivity extends BaseActivity {
         scheduleAutoCheck();
     }
 
-    // ------------------------------------------------------------- 管理列表（选择/重命名/删除）
-
-    private AlertDialog.Builder dialogBuilder() {
-        return new AlertDialog.Builder(this, R.style.Theme_XiaoiPlus_Dialog);
-    }
-
-    private boolean isActiveProvider(AppConfig.Provider p) {
-        AppConfig.Provider active = provider();
-        return p != null && active != null && active.id.equals(p.id);
-    }
-
-    private boolean isActiveModel(AppConfig.Provider p, AppConfig.ModelItem m) {
-        if (p == null || m == null) return false;
-        AppConfig.ModelItem active = cfg.activeModel();
-        return isActiveProvider(p) && active != null && active.id.equals(m.id);
-    }
-
-    /** 一个对话框完成：选择 / 重命名 / 删除模型，以及删除服务商（行尾按钮）。 */
-    private void openManage() {
-        dismissManage();
-        LinearLayout box = dialogBox();
-
-        addSection(box, "服务商");
-        final boolean canDeleteProvider = cfg.providers.size() > 1;
-        for (final AppConfig.Provider p : new ArrayList<AppConfig.Provider>(cfg.providers)) {
-            boolean active = isActiveProvider(p);
-            String desc = (p.baseUrl.length() == 0 ? "端点未填写" : p.baseUrl)
-                    + " · " + p.models.size() + " 个模型" + (active ? " · 当前使用" : "");
-            addManageRow(box, p.name, desc,
-                    new Runnable() { public void run() { dismissManage(); selectProvider(p); } },
-                    new Runnable() { public void run() { dismissManage(); promptRenameProvider(p); } },
-                    canDeleteProvider
-                            ? new Runnable() { public void run() { dismissManage(); confirmDeleteProvider(p); } }
-                            : null);
-        }
-        if (!canDeleteProvider) {
-            addHint(box, "至少保留一个服务商；添加第二个后这里会出现删除入口");
-        }
-        addActionRow(box, "＋ 添加服务商", new Runnable() {
-            public void run() { dismissManage(); promptAddProvider(); }
-        });
-
-        AppConfig.Provider cur = provider();
-        addSection(box, "模型" + (cur == null ? "" : " · " + cur.name));
-        if (cur == null) {
-            addHint(box, "先添加服务商");
-        } else if (cur.models.isEmpty()) {
-            addHint(box, "这个服务商还没有模型 · 点＋添加");
-        } else {
-            for (final AppConfig.ModelItem m : new ArrayList<AppConfig.ModelItem>(cur.models)) {
-                boolean active = isActiveModel(cur, m);
-                String desc = (m.id.equals(m.name) ? "" : m.id) + (active ? (m.id.equals(m.name) ? "当前使用" : " · 当前使用") : "");
-                addManageRow(box, m.name, desc,
-                        new Runnable() { public void run() { dismissManage(); selectModel(m); } },
-                        new Runnable() { public void run() { dismissManage(); promptRenameModel(m); } },
-                        new Runnable() { public void run() { dismissManage(); confirmDeleteModel(cur, m); } });
-            }
-        }
-        final AppConfig.Provider addTo = cur;
-        addActionRow(box, "＋ 添加模型", new Runnable() {
-            public void run() {
-                dismissManage();
-                if (addTo == null) promptAddProvider();
-                else promptAddModel(addTo);
-            }
-        });
-
-        ScrollView sv = new ScrollView(this);
-        sv.addView(box);
-        manageDlg = dialogBuilder().setTitle("管理服务商与模型").setView(sv)
-                .setNegativeButton("关闭", null).create();
-        manageDlg.show();
-    }
-
-    private void dismissManage() {
-        if (manageDlg == null) return;
-        try { manageDlg.dismiss(); } catch (Throwable ignored) {}
-        manageDlg = null;
-    }
-
-    private LinearLayout dialogBox() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(4), dp(20), dp(8));
-        return box;
-    }
-
-    private void addSection(LinearLayout box, String title) {
-        TextView t = styled(title, 12, R.color.text_secondary, true);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dp(14);
-        lp.bottomMargin = dp(2);
-        box.addView(t, lp);
-    }
-
-    private void addManageRow(LinearLayout box, String title, String desc,
-                              final Runnable pick, final Runnable rename, final Runnable delete) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(8), 0, dp(8));
-        tapBackground(row);
-
-        LinearLayout textBox = new LinearLayout(this);
-        textBox.setOrientation(LinearLayout.VERTICAL);
-        textBox.setLayoutParams(new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        textBox.addView(styled(title, 14, R.color.text, true));
-        if (desc != null && desc.length() > 0) textBox.addView(styled(desc, 11, R.color.text_hint, false));
-        row.addView(textBox);
-        row.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { pick.run(); }
-        });
-
-        if (rename != null) row.addView(actionText("重命名", R.color.primary, rename));
-        if (delete != null) row.addView(actionText("删除", R.color.error, delete));
-        box.addView(row);
-    }
-
-    private void addActionRow(LinearLayout box, String title, final Runnable action) {
-        TextView t = styled(title, 14, R.color.primary, true);
-        t.setGravity(Gravity.CENTER_VERTICAL);
-        t.setPadding(0, dp(12), 0, dp(12));
-        tapBackground(t);
-        t.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { action.run(); }
-        });
-        box.addView(t, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-    }
-
-    private TextView actionText(String label, int colorRes, final Runnable action) {
-        TextView t = styled(label, 13, colorRes, true);
-        t.setPadding(dp(10), dp(8), dp(4), dp(8));
-        t.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { action.run(); }
-        });
-        return t;
-    }
-
-    private TextView styled(String text, int sizeSp, int colorRes, boolean medium) {
-        TextView t = new TextView(this);
-        t.setText(text);
-        t.setTextSize(sizeSp);
-        t.setTextColor(color(colorRes));
-        if (medium) t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        return t;
-    }
-
-    private EditText input(String hint) {
-        EditText e = new EditText(this);
-        e.setBackgroundResource(R.drawable.bg_input);
-        e.setHint(hint);
-        e.setHintTextColor(color(R.color.text_hint));
-        e.setTextColor(color(R.color.text));
-        e.setTextSize(14);
-        e.setSingleLine(true);
-        e.setPadding(dp(14), 0, dp(14), 0);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(46));
-        lp.topMargin = dp(8);
-        e.setLayoutParams(lp);
-        return e;
-    }
-
-    private TextView errorText() {
-        TextView t = styled("", 12, R.color.error, false);
-        t.setVisibility(View.GONE);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dp(6);
-        t.setLayoutParams(lp);
-        return t;
-    }
-
-    private void showError(TextView t, String msg) {
-        if (t == null) { toast(msg); return; }
-        t.setText(msg);
-        t.setVisibility(View.VISIBLE);
-    }
-
-    // ------------------------------------------------------------- 服务商 / 模型编辑
-
-    private void promptAddProvider() {
-        final EditText name = input("名称，如 GLM");
-        final EditText url = input("https://api.example.com/v1");
-        final TextView err = errorText();
-        LinearLayout box = dialogBox();
-        box.addView(name);
-        box.addView(url);
-        box.addView(err);
-
-        final AlertDialog d = dialogBuilder().setTitle("添加服务商").setView(box)
-                .setPositiveButton("添加", null).setNegativeButton("取消", null).create();
-        d.setOnShowListener(new DialogInterface.OnShowListener() {
-            public void onShow(DialogInterface di) {
-                d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) {
-                        String n = name.getText().toString().trim();
-                        String u = url.getText().toString().trim();
-                        if (n.length() == 0) { showError(err, "服务商名称不能为空"); return; }
-                        if (!(u.startsWith("http://") || u.startsWith("https://"))) {
-                            showError(err, "端点必须是 http(s):// 开头");
-                            return;
-                        }
-                        // 已经有可用模型时不要把当前选择切走（否则只是加一家服务商，
-                        // 正在生效的模型就被清了）；只有在「还没配置好」时才自动选中新的。
-                        boolean hadActive = cfg.activeProvider() != null && cfg.activeModel() != null;
-                        AppConfig.Provider p = new AppConfig.Provider(slug(n), n, u, "");
-                        cfg.providers.add(p);
-                        if (!hadActive) {
-                            cfg.activeProviderId = p.id;
-                            cfg.activeModelId = "";
-                        }
-                        d.dismiss();
-                        render();
-                        markDirty();
-                        toast(hadActive
-                                ? "已添加服务商 " + n + "，点它的 chip 再添加模型"
-                                : "已添加服务商 " + n + "，记得添加模型");
-                    }
-                });
-            }
-        });
-        d.show();
-    }
-
-    private void promptAddModel(final AppConfig.Provider p) {
-        if (p == null) { promptAddProvider(); return; }
-        final EditText id = input("模型 ID，如 your-model");
-        final EditText name = input("显示名（可选，如 GLM 5.3 Flash）");
-        final TextView err = errorText();
-        LinearLayout box = dialogBox();
-        box.addView(id);
-        box.addView(name);
-        box.addView(err);
-
-        final AlertDialog d = dialogBuilder().setTitle("添加模型到 " + p.name).setView(box)
-                .setPositiveButton("添加", null).setNegativeButton("取消", null).create();
-        d.setOnShowListener(new DialogInterface.OnShowListener() {
-            public void onShow(DialogInterface di) {
-                d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) {
-                        String mid = id.getText().toString().trim();
-                        String mname = name.getText().toString().trim();
-                        if (mid.length() == 0) { showError(err, "模型 ID 不能为空"); return; }
-                        for (AppConfig.ModelItem m : p.models) {
-                            if (m.id.equals(mid)) { showError(err, "已存在同名模型"); return; }
-                        }
-                        p.models.add(new AppConfig.ModelItem(mid, mname));
-                        if (cfg.activeModelId.length() == 0
-                                || !cfg.activeProviderId.equals(p.id)) {
-                            cfg.activeProviderId = p.id;
-                            cfg.activeModelId = mid;
-                        }
-                        d.dismiss();
-                        render();
-                        markDirty();
-                    }
-                });
-            }
-        });
-        d.show();
-    }
-
-    private void promptRenameProvider(final AppConfig.Provider p) {
-        final EditText name = input("服务商显示名");
-        name.setText(p.name);
-        final TextView err = errorText();
-        LinearLayout box = dialogBox();
-        box.addView(name);
-        box.addView(err);
-
-        final AlertDialog d = dialogBuilder().setTitle("重命名服务商").setView(box)
-                .setPositiveButton("保存", null).setNegativeButton("取消", null).create();
-        d.setOnShowListener(new DialogInterface.OnShowListener() {
-            public void onShow(DialogInterface di) {
-                d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) {
-                        String n = name.getText().toString().trim();
-                        if (n.length() == 0) { showError(err, "名称不能为空"); return; }
-                        p.name = n; // id 永不变（§3.5）
-                        d.dismiss();
-                        render();
-                        markDirty();
-                    }
-                });
-            }
-        });
-        d.show();
-    }
-
-    private void promptRenameModel(final AppConfig.ModelItem m) {
-        final EditText name = input("模型显示名（ID 不变）");
-        name.setText(m.name == null ? m.id : m.name);
-        final TextView err = errorText();
-        LinearLayout box = dialogBox();
-        box.addView(name);
-        box.addView(styled("请求时使用的 ID 仍是 " + m.id, 11, R.color.text_hint, false));
-        box.addView(err);
-
-        final AlertDialog d = dialogBuilder().setTitle("重命名模型").setView(box)
-                .setPositiveButton("保存", null).setNegativeButton("取消", null).create();
-        d.setOnShowListener(new DialogInterface.OnShowListener() {
-            public void onShow(DialogInterface di) {
-                d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) {
-                        String n = name.getText().toString().trim();
-                        if (n.length() == 0) { showError(err, "名称不能为空"); return; }
-                        m.name = n;
-                        d.dismiss();
-                        render();
-                        markDirty();
-                    }
-                });
-            }
-        });
-        d.show();
-    }
-
-    private void confirmDeleteModel(final AppConfig.Provider p, final AppConfig.ModelItem m) {
-        final boolean active = isActiveModel(p, m);
-        dialogBuilder().setTitle("删除模型")
-                .setMessage("将被删除：" + m.id
-                        + (active ? "\n这是当前使用的模型，删除后自动切到同服务商的下一个" : ""))
-                .setPositiveButton("删除", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface d, int i) {
-                        collect();
-                        int idx = p.models.indexOf(m);
-                        p.models.remove(m);
-                        if (p.models.isEmpty()) {
-                            if (isActiveProvider(p)) cfg.activeModelId = "";
-                        } else if (active || cfg.activeModelId.length() == 0) {
-                            cfg.activeModelId = p.models.get(Math.min(idx, p.models.size() - 1)).id;
-                        }
-                        render();
-                        markDirty();
-                        toast("已删除 " + m.id);
-                    }
-                })
-                .setNegativeButton("取消", null).show();
-    }
-
-    private void confirmDeleteProvider(final AppConfig.Provider p) {
-        if (cfg.providers.size() <= 1) {
-            toast("至少保留一个服务商，无法删除");
-            return;
-        }
-        final boolean activeRef = isActiveProvider(p);
-        dialogBuilder().setTitle("删除服务商")
-                .setMessage("将被删除：" + p.name + "\n该服务商的模型与密钥会一并移除。"
-                        + (activeRef ? "\n这是当前使用的服务商，删除后自动切到剩余第一个" : ""))
-                .setPositiveButton("删除", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface d, int i) {
-                        collect();
-                        boolean wasActive = isActiveProvider(p);
-                        cfg.providers.remove(p);
-                        if (wasActive || cfg.activeProviderId.equals(p.id)) {
-                            AppConfig.Provider first = cfg.providers.get(0);
-                            cfg.activeProviderId = first.id;
-                            cfg.activeModelId = first.models.isEmpty()
-                                    ? "" : first.models.get(0).id;
-                        }
-                        render();
-                        markDirty();
-                        toast("已删除服务商 " + p.name);
-                    }
-                })
-                .setNegativeButton("取消", null).show();
-    }
-
-    /** §3.5：provider id = slug(name)，小写、非字母数字转 -、截断 24、冲突追加 -2/-3。 */
-    private String slug(String name) {
-        StringBuilder sb = new StringBuilder();
-        String lower = name == null ? "" : name.toLowerCase(Locale.ROOT);
-        for (int i = 0; i < lower.length(); i++) {
-            char ch = lower.charAt(i);
-            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) sb.append(ch);
-            else sb.append('-');
-        }
-        String s = sb.toString().replaceAll("-+", "-");
-        while (s.startsWith("-")) s = s.substring(1);
-        while (s.endsWith("-")) s = s.substring(0, s.length() - 1);
-        if (s.length() == 0) s = "provider";
-        if (s.length() > 24) s = s.substring(0, 24);
-        String base = s;
-        int n = 2;
-        while (hasProviderId(s)) {
-            String suffix = "-" + n++;
-            s = (base.length() > 24 - suffix.length()
-                    ? base.substring(0, 24 - suffix.length()) : base) + suffix;
-        }
-        return s;
-    }
-
-    private boolean hasProviderId(String id) {
-        for (AppConfig.Provider p : cfg.providers) {
-            if (p.id.equals(id)) return true;
-        }
-        return false;
-    }
-
     private void toggleKey() {
         boolean visible = btnEye.getText().toString().equals("隐藏");
         etApiKey.setInputType(visible
@@ -1082,34 +593,12 @@ public class ConfigActivity extends BaseActivity {
     private void paintStatus(AppStatus state, String detail) {
         statusState = state;
         statusDetail = detail;
-        if (tvStatusTitle == null) return;
-        tvStatusTitle.setText(state.title());
-        tvStatusTitle.setTextColor(statusColor(state));
-        tvStatusDot.setTextColor(statusColor(state));
-        tvStatusDesc.setText(detail);
+        statusSection.paint(state, detail);
     }
 
     /** WP4：只显示「已保存，等待小爱应用」或中立提示；真实应用状态留 WP6。 */
     private void renderPush() {
-        if (tvPushState == null) return;
-        if (savedWaiting) {
-            setPush("已保存，等待小爱应用", R.color.warning, true);
-        } else {
-            setPush("保存后自动通知小爱应用", R.color.text_hint, true);
-        }
-    }
-
-    private void setPush(String text, int colorRes, boolean tappable) {
-        tvPushState.setText(text);
-        tvPushState.setTextColor(color(colorRes));
-        if (rowPush != null) {
-            rowPush.setClickable(tappable);
-            rowPush.setFocusable(tappable);
-        }
-        if (tvPushAction != null) {
-            tvPushAction.setText(tappable ? "↻" : "✓");
-            tvPushAction.setTextColor(color(colorRes));
-        }
+        statusSection.renderPush(savedWaiting);
     }
 
     // ------------------------------------------------------------- 运行时冲突
@@ -1156,24 +645,11 @@ public class ConfigActivity extends BaseActivity {
     }
 
     private void showRuntimeConflict(AppConfig saved, String runtimeModel, boolean runtimeEnabled) {
-        if (bannerRuntime == null) return;
-        String title;
-        if (runtimeEnabled != saved.enabled) {
-            title = runtimeEnabled
-                    ? "小爱侧已启用，文件里是暂停"
-                    : "小爱侧未启用，文件里是启用";
-        } else {
-            title = "小爱在用 " + runtimeModel + "，与文件里的 " + saved.model() + " 不一致";
-        }
-        if (tvRuntimeTitle != null) tvRuntimeTitle.setText(title);
-        if (tvRuntimeDesc != null) {
-            tvRuntimeDesc.setText("点按通知小爱重新加载文件；或用「配置编辑 → 从运行中小爱导入」采用运行时");
-        }
-        bannerRuntime.setVisibility(View.VISIBLE);
+        statusSection.showRuntimeConflict(saved, runtimeModel, runtimeEnabled);
     }
 
     private void hideRuntimeConflict() {
-        if (bannerRuntime != null) bannerRuntime.setVisibility(View.GONE);
+        statusSection.hideRuntimeConflict();
     }
 
     // ------------------------------------------------------------- 保存与生效
@@ -1207,7 +683,7 @@ public class ConfigActivity extends BaseActivity {
             renderPush();
             toast("已保存，等待小爱应用");
             // 端口可能因局域网/token 变化而重绑：强制重新取一次控制面端口。
-            lastPortProbeAt = 0;
+            mcpSection.resetPortProbeThrottle();
             refreshBridgePort();
             // 核对运行时模型/开关：不一致时出黄色冲突条（只读，不写文件）。
             ui.postDelayed(new Runnable() {
@@ -1226,7 +702,7 @@ public class ConfigActivity extends BaseActivity {
         savedWaiting = true;
         renderPush();
         toast(sent ? "已通知小爱应用，等待生效" : "小爱未连接，将在下一次轮询时应用");
-        lastPortProbeAt = 0;
+        mcpSection.resetPortProbeThrottle();
         refreshBridgePort();
         ui.postDelayed(new Runnable() {
             public void run() { checkRuntimeDrift(); }
@@ -1275,11 +751,11 @@ public class ConfigActivity extends BaseActivity {
     }
 
     private void showConflict() {
-        if (bannerConflict != null) bannerConflict.setVisibility(View.VISIBLE);
+        statusSection.showConflict();
     }
 
     private void hideConflict() {
-        if (bannerConflict != null) bannerConflict.setVisibility(View.GONE);
+        statusSection.hideConflict();
     }
 
     /**
@@ -1389,179 +865,9 @@ public class ConfigActivity extends BaseActivity {
 
     // ------------------------------------------------------------- 导入导出
 
-    /** 从运行中的小爱导入真实生效配置到 config.json（文件优先，手动触发）。 */
-    private void importFromRuntime() {
-        toast("正在读取运行中配置…");
-        AppExecutors.io(new Runnable() {
-            public void run() {
-                final boolean ok = ConfigSync.importFromRuntime(ConfigActivity.this);
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        if (isFinishing()) return;
-                        if (ok) {
-                            cfg = ConfigRepository.get(ConfigActivity.this).load();
-                            render();
-                            hideRuntimeConflict(); // 已按运行时对齐，冲突条不再成立
-                            toast("已导入到 config.json（密钥需确认）");
-                            checkModelNow(true);
-                        } else {
-                            toast("导入失败：小爱未运行或 MCP 未开启");
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    /** 导出（脱敏）：只用于分享/排障，不能用于恢复。 */
-    private boolean exportMasked = true;
-
-    private void startMaskedExport() {
-        exportMasked = true;
-        launchExport();
-    }
-
-    private void confirmFullExport() {
-        dialogBuilder()
-                .setTitle("备份（含密钥）")
-                .setMessage("文件将包含明文 API Key 与 MCP Token，可用于换机/回滚恢复。\n任何拿到文件的人都能使用，请只在可信位置保存。")
-                .setPositiveButton("仍然导出", new android.content.DialogInterface.OnClickListener() {
-                    public void onClick(android.content.DialogInterface d, int which) {
-                        exportMasked = false;
-                        launchExport();
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void launchExport() {
-        try {
-            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            i.setType("application/json");
-            i.putExtra(Intent.EXTRA_TITLE, "xiaoi-plus-config.json");
-            startActivityForResult(i, REQ_EXPORT);
-        } catch (Throwable t) { toast("无法打开文件选择器"); }
-    }
-
-    private void startImport() {
-        try {
-            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            i.setType("*/*");
-            startActivityForResult(i, REQ_IMPORT);
-        } catch (Throwable t) { toast("无法打开文件选择器"); }
-    }
-
     @Override protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (res != RESULT_OK || data == null || data.getData() == null) return;
-        Uri uri = data.getData();
-        try {
-            if (req == REQ_EXPORT) {
-                OutputStream os = getContentResolver().openOutputStream(uri);
-                os.write(exportJson(exportMasked).getBytes("UTF-8"));
-                os.close();
-                toast(exportMasked ? "已导出（已脱敏）" : "已导出（含密钥，注意保管）");
-            } else if (req == REQ_IMPORT) {
-                InputStream in = getContentResolver().openInputStream(uri);
-                AppConfig c = ConfigRepository.parse(in);
-                in.close();
-                // 脱敏文件（密钥被写成 ***）不能用于恢复：直接阻断，避免把 *** 写成有效 key
-                if (ConfigCodec.containsMaskedSecrets(c)) {
-                    toast("这是脱敏文件（密钥为 ***），不能用于恢复；请使用「备份（含密钥）」的文件");
-                    return;
-                }
-                // 导入同样走 codec 校验：非法配置不覆盖当前编辑状态
-                String err = ConfigCodec.validate(c);
-                if (err != null && c.enabled) {
-                    toast("导入失败：" + err);
-                    return;
-                }
-                cfg = c;
-                render();
-                markDirty(); // 只载入未写入文件，必须让用户确认保存
-                toast("已载入，记得保存");
-            }
-        } catch (Throwable t) {
-            toast("操作失败：" + t.getMessage());
-        }
-    }
-
-    private String exportJson(boolean mask) throws Exception {
-        JSONObject o = ConfigRepository.toJson(cfg);
-        if (mask) {
-            JSONArray arr = o.getJSONArray("providers");
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject p = arr.getJSONObject(i);
-                if (p.optString("apiKey").length() > 0) p.put("apiKey", "***");
-            }
-            o.getJSONObject("mcp").put("token", "***");
-        }
-        return o.toString(2);
-    }
-
-    private void share() {
-        try {
-            File dir = new File(getExternalFilesDir(null), "exports");
-            if (!dir.exists()) dir.mkdirs();
-            File f = new File(dir, "xiaoi-plus-config.json");
-            FileOutputStream out = new FileOutputStream(f);
-            // 分享默认脱敏：分享出去的文件可能被转发/留存
-            out.write(exportJson(true).getBytes("UTF-8"));
-            out.close();
-            Uri u = Uri.parse("content://" + ShareProvider.AUTHORITY + "/" + f.getName());
-            Intent i = new Intent(Intent.ACTION_SEND);
-            i.setType("application/json");
-            i.putExtra(Intent.EXTRA_STREAM, u);
-            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(i, "分享配置（已脱敏）"));
-        } catch (Throwable t) { toast("分享失败：" + t.getMessage()); }
-    }
-
-    private void copyMcp() {
-        String token = cfg.mcpToken == null ? "" : cfg.mcpToken;
-        String local = localMcpUrl();
-        boolean lanOn = cfg.mcpLan;
-        String lanUrl = Lan.mcpUrl(bridgePort, true);
-        boolean hasLanIp = !lanUrl.contains("127.0.0.1");
-        String url = lanOn && hasLanIp ? lanUrl : local;
-        StringBuilder txt = new StringBuilder();
-        txt.append("URL : ").append(url).append('\n');
-        if (lanOn && hasLanIp) {
-            txt.append("本机: ").append(local).append('\n');
-            txt.append("前置: 手机与电脑在同一 Wi-Fi，无需 adb forward\n");
-        } else {
-            txt.append("前置: adb forward tcp:").append(bridgePort)
-                    .append(" tcp:").append(bridgePort).append('\n');
-        }
-        txt.append("Auth: Bearer ").append(token)
-                .append("\n\n客户端片段：\n{\"mcpServers\":{\"xiaoi-plus\":{\"url\":\"")
-                .append(url).append("\",\"headers\":{\"Authorization\":\"Bearer ")
-                .append(token).append("\"}}}}");
-        android.content.ClipboardManager cm = (android.content.ClipboardManager)
-                getSystemService(CLIPBOARD_SERVICE);
-        cm.setPrimaryClip(android.content.ClipData.newPlainText("xiaoi mcp", txt.toString()));
-        toast("已复制 MCP 连接信息");
-    }
-
-    private void copySkill() {
-        String local = localMcpUrl();
-        boolean lanOn = cfg.mcpLan;
-        String url = Lan.mcpUrl(bridgePort, true);
-        if (!lanOn || url.contains("127.0.0.1")) url = local;
-        String pre = lanOn && !url.equals(local)
-                ? "前置：手机与电脑在同一 Wi-Fi，无需 adb forward\n"
-                : "前置：adb forward tcp:" + bridgePort + " tcp:" + bridgePort + "\n";
-        String skill = "# 小爱同学plus MCP\n\n"
-                + pre
-                + "端点：" + url + "（streamable-http，Bearer token）\n\n"
-                + "工具：\n" + Mcp.toolListText();
-        android.content.ClipboardManager cm = (android.content.ClipboardManager)
-                getSystemService(CLIPBOARD_SERVICE);
-        cm.setPrimaryClip(android.content.ClipData.newPlainText("xiaoi skill", skill));
-        toast("已复制 Skill 文本");
+        editSection.onActivityResult(req, res, data);
     }
 
     // ------------------------------------------------------------- 基础设施
@@ -1584,14 +890,6 @@ public class ConfigActivity extends BaseActivity {
             fab.setBackgroundResource(R.drawable.bg_button_secondary);
             fab.setTextColor(color(R.color.primary));
             fab.setAlpha(1f);
-        }
-    }
-
-    private void tapBackground(View v) {
-        TypedValue tv = new TypedValue();
-        if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
-                && tv.resourceId != 0) {
-            v.setBackgroundResource(tv.resourceId);
         }
     }
 
