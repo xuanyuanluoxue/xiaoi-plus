@@ -344,6 +344,22 @@ public final class AgentMcp {
         String token = request.confirmToken.trim();
         ActionRequest effective = request;
         if (d.risk == ActionRisk.CONFIRM && token.length() == 0) {
+            // 同一个 idempotencyKey 已经执行过：直接返回首次结果，避免再次弹确认。
+            if (idempotency != null && request.idempotencyKey.trim().length() > 0) {
+                IdempotencyStore.Lookup lookup = idempotency.check(
+                        request.idempotencyKey, request.action, request.args);
+                if (lookup.status == IdempotencyStore.Status.CONFLICT) {
+                    ActionResult conflict = ActionResult.failure(d.name,
+                            AgentError.of(AgentError.Code.CONFLICT,
+                                    "idempotencyKey 已用于不同的动作或参数"));
+                    record(request, d, conflict, AuditLog.EVENT_ACTION, 0);
+                    return new Outcome(conflict);
+                }
+                if (lookup.status == IdempotencyStore.Status.HIT) {
+                    record(request, d, lookup.result, AuditLog.EVENT_REPLAY, 0);
+                    return new Outcome(lookup.result);
+                }
+            }
             // 先让 registry 校验参数与执行器；只有“确实可执行”才签发 token。
             ActionResult probe = registry.execute(request);
             if (probe.error == null

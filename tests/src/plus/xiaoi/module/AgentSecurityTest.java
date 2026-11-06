@@ -434,6 +434,24 @@ public final class AgentSecurityTest {
         T.eq("同 key 不同 args -> CONFLICT", "CONFLICT", conflict.get("code"));
         T.eq("CONFLICT 不执行", 1, rig.device.calls);
 
+        // CONFIRM 动作的幂等命中应在“再次弹确认”之前：同 key 重试直接返回首次结果。
+        int notifyBefore = rig.notify.calls;
+        Map<String, Object> idemConfirmFirst = actionEnvelope(mcp, rig.registry,
+                "notification.send", secrets, null, null, "idem-confirm-1", "ic1");
+        String icToken = Json.optString(idemConfirmFirst, "confirmToken", "");
+        T.ok("CONFIRM 幂等首次发 token", icToken.length() >= 32);
+        Map<String, Object> icApproved = confirm(mcp, rig.registry, icToken, Boolean.TRUE);
+        T.eq("CONFIRM 幂等首次执行", notifyBefore + 1, rig.notify.calls);
+        T.eq("CONFIRM 幂等首次成功", Boolean.TRUE, envelope(icApproved).get("ok"));
+        Map<String, Object> idemConfirmSecond = actionEnvelope(mcp, rig.registry,
+                "notification.send", secrets, null, null, "idem-confirm-1", "ic2");
+        T.eq("CONFIRM 幂等重试直接成功", Boolean.TRUE, idemConfirmSecond.get("ok"));
+        T.ok("CONFIRM 幂等重试不再发 token",
+                !idemConfirmSecond.containsKey("confirmToken"));
+        T.eq("CONFIRM 幂等重试不重复执行", notifyBefore + 1, rig.notify.calls);
+        T.eq("CONFIRM 幂等重试返回首次 requestId", "ic1",
+                idemConfirmSecond.get("requestId"));
+
         // 失败也进入幂等缓存，重试不重复副作用。
         Rig failing = failingRig();
         Map<String, Object> f1 = actionEnvelope(mcp, failing.registry,
