@@ -10,10 +10,49 @@
 | WP | 内容 | 依赖 | 规模 |
 |---|---|---|---|
 | WP1.1 | 纯 JVM ActionRegistry / ActionDescriptor / 错误码 / capabilities | Phase 0 | M（**已完成**；完成时 796，当前 851） |
-| WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a 已完成**：服务/8770/device.info） |
+| WP1.2 | App 前台服务 + 8770 + MCP 路由 + 5 个动作 | WP1.1 | L（**WP1.2a/WP1.2b 已完成**：服务/8770/5 个动作/root 兜底） |
 | WP1.3 | 确认/幂等/审计/notify/sessionId | WP1.2 | M |
 
 WP1.1 先做，保证契约和单测；WP1.2 再接 Android/root；WP1.3 补 Agent 体验。
+
+### WP1.2b 完成记录（2026-11-06）
+
+- `AndroidExecutor` 补齐其余 4 个动作：
+  - `app.open`：`package` 走 `getLaunchIntentForPackage`，`intentUri` 走 `Intent.parseUri`，
+    统一加 `FLAG_ACTIVITY_NEW_TASK`；未安装/无启动入口/无 Activity → `NOT_AVAILABLE`，
+    后台启动限制 → `PERMISSION_DENIED` 或 warnings 说明“无法确认界面是否显示”。
+    输出 `launched` / `package` / `component`（解析不到组件时留空）。
+  - `alarm.set`：`AlarmClock.ACTION_SET_ALARM` + `EXTRA_HOUR/MINUTES/SKIP_UI/MESSAGE`；
+    无时钟 App → `NOT_AVAILABLE`；`skipUi` 无法确认时如实返回 `skippedUi=false` 并 warning。
+  - `notification.send`：渠道 `agent_action`（默认重要性，按需创建）；`POST_NOTIFICATIONS`
+    或系统通知关闭 → `PERMISSION_DENIED`；`id` 相同覆盖同一条通知；输出 `notificationId`。
+  - `media.control`：`volume` 读写 `STREAM_MUSIC`（0~100 映射系统档位）；
+    `play/pause/next/prev` 用 `AudioManager.dispatchMediaKeyEvent`，无活跃媒体会话
+    或系统不允许 → `NOT_AVAILABLE`，不伪造成功。
+- 新增 root 兜底：
+  - `RootCommands`（纯 JVM）：固定命令模板 + 包名白名单 `[A-Za-z0-9._]+`（≤200）、
+    3s 超时、输出 1KB 截断、`TIMEOUT`/`PERMISSION_DENIED`/`NOT_AVAILABLE` 映射。
+  - `RootExecutor`：只用 `su -c` 执行 `monkey -p <pkg> ... 1` 与
+    `cmd media_session dispatch play|pause|next|previous`；su 串行化；授权状态缓存，
+    `available()` 不阻塞主线程、服务启动不弹 su，首次真正执行时才申请。
+  - `FallbackExecutor`（纯 JVM）：`android+root`；**仅** android 返回
+    `NOT_AVAILABLE` 才回退 root；成功/`PERMISSION_DENIED`/`TIMEOUT`/`INTERNAL` 不重试，
+    避免重复副作用。
+- `Actions`：`app.open` 偏好 `android+root/android/root`；`media.control` 偏好
+  `android+root/android/shizuku/root`；4 个动作补 `maxLength`（package/intentUri/
+  title/text/id/label）。
+- `AgentService` 注册全部 5 个动作：device.info/alarm.set/notification.send → android；
+  app.open/media.control → `android+root`。没有执行器的动作在 capabilities 显示
+  `available=false`。
+- 纯 JVM 新增 `AgentActionExecutorsTest` 118 条断言（能力表、Fallback 策略、root 命令
+  构造/包名注入/超时映射、4 个动作参数边界）；总断言 967。
+- `./tests/run.sh`、`SDK=... ./build.sh`、`scripts/check-consistency.sh` 全绿。
+- **真机未验证**：本轮 adb 设备不可达（192.168.0.112:5555 offline，USB 无设备），
+  以下项留待设备恢复后补测：app.open 前台/锁屏/后台限制；alarm.set 真实闹钟
+  （验证后删除）与 `skipUi`；notification.send 权限通过与拒绝；media.control
+  有/无媒体会话、音量读写；8770 `xiaoai_action` 端到端；root 授权/拒绝两条路径。
+- 未做（WP1.3）：confirm token 签发/校验、幂等、审计、`xiaoai_notify`、LAN、
+  Shizuku、alarm/notification 的 root 路径、`xiaoai_ask` 代理。
 
 ### WP1.2a 完成记录
 
@@ -137,9 +176,12 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 
 ## 3. WP1.2：App 前台服务与动作
 
-> 状态：**进行中**；WP1.2a（服务 + 8770 + `device.info`）已完成，其余动作与 WP1.3 能力未做。
-> 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`
-> 验证：单测、`build.sh`、`check-consistency.sh`、真机 8770/鉴权/device.info 已通过。
+> 状态：**进行中**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
+> 已完成；WP1.3 能力（confirm/幂等/审计/notify）未做。
+> 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
+> `AgentActionExecutorsTest.java`
+> 验证：单测、`build.sh`、`check-consistency.sh`、真机 8770/鉴权/device.info 已通过；
+> WP1.2b 的真机动作验证待设备恢复（见上）。
 
 ### 目标
 

@@ -127,6 +127,12 @@ public final class TestMain {
             System.out.println("  FAIL AgentActionRegistryTest 套件异常: " + t);
         }
         try {
+            failed += AgentActionExecutorsTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AgentActionExecutorsTest 套件异常: " + t);
+        }
+        try {
             failed += AgentMcpTest.run();
         } catch (Throwable t) {
             failed++;

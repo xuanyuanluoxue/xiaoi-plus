@@ -33,8 +33,12 @@ public final class Actions {
 
     public static ActionDescriptor appOpen() {
         Map<String, Object> props = Json.obj();
-        props.put("package", prop("string", "要打开的应用包名，例如 com.tencent.mm"));
-        props.put("intentUri", prop("string", "要打开的 intent URI；与 package 二选一"));
+        Map<String, Object> pkg = prop("string", "要打开的应用包名，例如 com.tencent.mm");
+        pkg.put("maxLength", 200);
+        props.put("package", pkg);
+        Map<String, Object> uri = prop("string", "要打开的 intent URI；与 package 二选一");
+        uri.put("maxLength", 2048);
+        props.put("intentUri", uri);
 
         Map<String, Object> schema = objectSchema(props, required());
         List<Object> anyOf = Json.arr();
@@ -56,7 +60,7 @@ public final class Actions {
                         + "受 HyperOS 后台启动限制，锁屏/后台可能失败。")
                 .inputSchema(schema)
                 .outputSchema(objectSchema(out, required()))
-                .executorPreference("android")
+                .executorPreference("android+root", "android", "root")
                 .requiredCapability(ActionDescriptor.CAP_NONE)
                 .risk(ActionRisk.SAFE)
                 .idempotent(true)
@@ -95,7 +99,9 @@ public final class Actions {
         Map<String, Object> props = Json.obj();
         props.put("hour", numberProp("integer", "小时，0~23", 0, 23));
         props.put("minute", numberProp("integer", "分钟，0~59", 0, 59));
-        props.put("label", prop("string", "闹钟标签"));
+        Map<String, Object> label = prop("string", "闹钟标签");
+        label.put("maxLength", 200);
+        props.put("label", label);
         props.put("skipUi", prop("boolean", "是否尝试跳过系统闹钟界面（兼容性待真机验证）"));
 
         Map<String, Object> out = Json.obj();
@@ -123,9 +129,15 @@ public final class Actions {
 
     public static ActionDescriptor notificationSend() {
         Map<String, Object> props = Json.obj();
-        props.put("title", prop("string", "通知标题"));
-        props.put("text", prop("string", "通知正文"));
-        props.put("id", prop("string", "可选的通知 id，用于覆盖同一条通知"));
+        Map<String, Object> title = prop("string", "通知标题");
+        title.put("maxLength", 200);
+        props.put("title", title);
+        Map<String, Object> text = prop("string", "通知正文");
+        text.put("maxLength", 4000);
+        props.put("text", text);
+        Map<String, Object> id = prop("string", "可选的通知 id，用于覆盖同一条通知");
+        id.put("maxLength", 64);
+        props.put("id", id);
 
         Map<String, Object> out = Json.obj();
         out.put("notificationId", prop("string", "实际使用的通知 id"));
@@ -171,7 +183,7 @@ public final class Actions {
                         + "无特权时只有音量稳定可用，播放控制取决于系统 MediaSession。")
                 .inputSchema(objectSchema(props, required("command")))
                 .outputSchema(objectSchema(out, required()))
-                .executorPreference("android", "shizuku", "root")
+                .executorPreference("android+root", "android", "shizuku", "root")
                 .requiredCapability(ActionDescriptor.CAP_NONE)
                 .risk(ActionRisk.SAFE)
                 .idempotent(false)
