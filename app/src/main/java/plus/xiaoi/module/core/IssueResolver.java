@@ -56,6 +56,8 @@ public final class IssueResolver {
         public boolean lanRequested;
 
         public boolean configReadOnly;
+        /** 用户是否开启能力桥/动作面；关闭时不把可选通道当作待处理问题。 */
+        public boolean mcpEnabled;
         /** 权限探针；null 等同全 UNKNOWN。 */
         public PermissionSnapshot permissions;
     }
@@ -136,43 +138,45 @@ public final class IssueResolver {
 
             if (d3 == StateModel.AppliedState.STALE) {
                 add(out, "bridge.stale", "控制面超过 30 秒未上报", "重新通知或重启小爱",
-                        Severity.WARN, "Xiaoai");
+                        Severity.WARN, "Bridge");
             } else if (d3 == StateModel.AppliedState.WAITING) {
                 add(out, "runtime.not_applied", "配置等待小爱应用", "重新通知小爱",
-                        Severity.WARN, "Xiaoai");
+                        Severity.WARN, "Bridge");
             } else if (d4 == StateModel.RuntimeState.UNKNOWN
                     && in.bridge8771 == PortState.RUNNING) {
                 add(out, "bridge.no_report", "等待小爱上报运行态", "稍后刷新或重新通知",
-                        Severity.INFO, "Xiaoai");
+                        Severity.INFO, "Bridge");
             }
         }
 
-        // 4. 令牌与通道
-        if (in.token == TokenStrength.NONE) {
-            add(out, "token.missing", "未设置 MCP 令牌", "生成并保存令牌",
-                    Severity.WARN, "Token");
-        } else if (in.token == TokenStrength.WEAK && in.lanRequested) {
-            add(out, "token.weak_lan", "局域网已回退仅本机", "换用 32 位十六进制令牌",
-                    Severity.WARN, "Token");
-        }
+        // 4. 令牌与通道：只在用户开启 MCP 后提示；关闭是用户选择，不是故障
+        if (in.mcpEnabled) {
+            if (in.token == TokenStrength.NONE) {
+                add(out, "token.missing", "MCP 已开启但未设置令牌", "生成并保存令牌",
+                        Severity.WARN, "Token");
+            } else if (in.token == TokenStrength.WEAK && in.lanRequested) {
+                add(out, "token.weak_lan", "局域网已回退仅本机", "换用 32 位十六进制令牌",
+                        Severity.WARN, "Token");
+            }
 
-        if (in.bridge8771 == PortState.WAITING) {
-            add(out, "xiaoi.waiting", "小爱未运行或未上报", "打开小爱并重新通知",
-                    Severity.INFO, "Xiaoai");
-        } else if (in.bridge8771 == PortState.FAILED) {
-            add(out, "bridge.mcp_failed", "能力桥 8771 启动失败", "查看端口与服务",
-                    Severity.ERROR, "Bridge");
-        } else if (in.bridge8771 == PortState.OFF) {
-            add(out, "bridge.mcp_off", "能力桥未开启", "到接入页开启",
-                    Severity.WARN, "Access");
-        }
+            if (in.bridge8771 == PortState.WAITING) {
+                add(out, "xiaoi.waiting", "小爱未运行或未上报", "打开小爱并重新通知",
+                        Severity.INFO, "Xiaoai");
+            } else if (in.bridge8771 == PortState.FAILED) {
+                add(out, "bridge.mcp_failed", "能力桥 8771 启动失败", "查看端口与服务",
+                        Severity.ERROR, "Bridge");
+            } else if (in.bridge8771 == PortState.OFF) {
+                add(out, "bridge.mcp_off", "能力桥 8771 未启动", "到接入页开启",
+                        Severity.WARN, "Access");
+            }
 
-        if (in.agent8770 == PortState.FAILED) {
-            add(out, "agent.failed", "动作面 8770 启动失败", "查看端口与服务",
-                    Severity.ERROR, "Bridge");
-        } else if (in.agent8770 == PortState.OFF) {
-            add(out, "agent.off", "动作面 8770 未启动", "查看端口与服务",
-                    Severity.WARN, "Bridge");
+            if (in.agent8770 == PortState.FAILED) {
+                add(out, "agent.failed", "动作面 8770 启动失败", "查看端口与服务",
+                        Severity.ERROR, "Bridge");
+            } else if (in.agent8770 == PortState.OFF) {
+                add(out, "agent.off", "动作面 8770 未启动", "查看端口与服务",
+                        Severity.WARN, "Bridge");
+            }
         }
 
         // 5. 权限：行内 warning，不阻塞浏览
@@ -184,7 +188,7 @@ public final class IssueResolver {
             }
             if (p.exactAlarm == PermissionSnapshot.State.DENIED) {
                 add(out, "perm.exact_alarm", "精确闹钟未授权", "去授权",
-                        Severity.WARN, "Diagnostics");
+                        Severity.INFO, "Diagnostics");
             }
             if (p.fullScreenIntent == PermissionSnapshot.State.DENIED) {
                 add(out, "perm.full_screen", "全屏通知未授权", "去授权",

@@ -28,6 +28,7 @@ public final class IssueResolverTest {
         in.token = IssueResolver.TokenStrength.STRONG;
         in.lanRequested = false;
         in.configReadOnly = false;
+        in.mcpEnabled = true;
         in.permissions = PermissionSnapshot.unknown();
         return in;
     }
@@ -134,6 +135,14 @@ public final class IssueResolverTest {
         T.eq("8771 未开启", "bridge.mcp_off",
                 IssueResolver.resolve(bridgeOff).get(0).id);
 
+        // MCP 关闭：可选通道不生成待处理
+        IssueResolver.Input mcpOff = healthy();
+        mcpOff.mcpEnabled = false;
+        mcpOff.token = IssueResolver.TokenStrength.NONE;
+        mcpOff.bridge8771 = IssueResolver.PortState.OFF;
+        mcpOff.agent8770 = IssueResolver.PortState.OFF;
+        T.eq("MCP 关闭不报令牌/通道", 0, IssueResolver.resolve(mcpOff).size());
+
         // 弱令牌：只有开启 LAN 才提示回退
         IssueResolver.Input weakNoLan = healthy();
         weakNoLan.token = IssueResolver.TokenStrength.WEAK;
@@ -191,19 +200,7 @@ public final class IssueResolverTest {
         // 结构不变式：所有 issue 都有 id/title/action/route
         boolean fieldsOk = true;
         boolean routesOk = true;
-        Set<String> knownRoutes = new HashSet<>();
-        knownRoutes.add("Home");
-        knownRoutes.add("Xiaoai");
-        knownRoutes.add("Model");
-        knownRoutes.add("Access");
-        knownRoutes.add("Bridge");
-        knownRoutes.add("Token");
-        knownRoutes.add("Capabilities");
-        knownRoutes.add("Me");
-        knownRoutes.add("ConfigManage");
-        knownRoutes.add("Diagnostics");
-        knownRoutes.add("Logs");
-        knownRoutes.add("Legacy");
+        Set<String> knownRoutes = plus.xiaoi.module.core.CapabilityRegistry.ROUTES;
         for (IssueResolver.Issue i : all) {
             if (i.id.isEmpty() || i.title.isEmpty()
                     || i.actionText.isEmpty() || i.route.isEmpty()) {

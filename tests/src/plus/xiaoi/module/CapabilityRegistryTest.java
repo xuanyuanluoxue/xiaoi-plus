@@ -61,7 +61,7 @@ public final class CapabilityRegistryTest {
 
         Counts c = CapabilityRegistry.counts();
         T.eq("可用 25", 25, c.available);
-        T.eq("需授权/部分 5", 5, c.permission);
+        T.eq("部分可用 5", 5, c.partial);
         T.eq("规划 26", 26, c.planned);
         T.eq("不提供 11", 11, c.unsupported);
         T.eq("四档合计 67", 67, c.total());
@@ -79,8 +79,12 @@ public final class CapabilityRegistryTest {
         // 未探测视图：不把运行时状态写死在 descriptor
         T.eq("A1 默认 AVAILABLE", CapabilityStatus.AVAILABLE,
                 CapabilityRegistry.find("A1").defaultStatus());
-        T.eq("A15 默认 PERMISSION_MISSING", CapabilityStatus.PERMISSION_MISSING,
+        T.eq("A15 默认 LIMITED", CapabilityStatus.LIMITED,
                 CapabilityRegistry.find("A15").defaultStatus());
+        T.eq("B6 默认 LIMITED", CapabilityStatus.LIMITED,
+                CapabilityRegistry.find("B6").defaultStatus());
+        T.eq("B8 默认 LIMITED", CapabilityStatus.LIMITED,
+                CapabilityRegistry.find("B8").defaultStatus());
         T.eq("A8 默认 PLANNED", CapabilityStatus.PLANNED,
                 CapabilityRegistry.find("A8").defaultStatus());
         T.eq("A18 默认 UNSUPPORTED", CapabilityStatus.UNSUPPORTED,
@@ -97,7 +101,8 @@ public final class CapabilityRegistryTest {
         T.eq("默认状态条数", 67, defaults.size());
         StatusCounts sc = CapabilityRegistry.counts(defaults);
         T.eq("状态计数可用", 25, sc.available);
-        T.eq("状态计数需授权", 5, sc.permissionMissing);
+        T.eq("状态计数部分", 5, sc.limited);
+        T.eq("状态计数需授权", 0, sc.permissionMissing);
         T.eq("状态计数规划", 26, sc.planned);
         T.eq("状态计数不提供", 11, sc.unsupported);
         T.eq("状态计数合计", 67, sc.total());
@@ -106,11 +111,13 @@ public final class CapabilityRegistryTest {
         extra.add(CapabilityRegistry.find("A1").withState(CapabilityStatus.AVAILABLE));
         extra.add(CapabilityRegistry.find("A2").withState(CapabilityStatus.DISABLED));
         extra.add(CapabilityRegistry.find("A3").withState(CapabilityStatus.UNAVAILABLE));
+        extra.add(CapabilityRegistry.find("A4").withState(CapabilityStatus.LIMITED));
         extra.add(null);
         StatusCounts ec = CapabilityRegistry.counts(extra);
         T.eq("额外计数 DISABLED", 1, ec.disabled);
         T.eq("额外计数 UNAVAILABLE", 1, ec.unavailable);
-        T.eq("null 状态被忽略", 3, ec.total());
+        T.eq("额外计数 LIMITED", 1, ec.limited);
+        T.eq("null 状态被忽略", 4, ec.total());
         T.eq("null 状态列表安全", 0, CapabilityRegistry.counts(null).total());
 
         // find / 标题 / 暴露面

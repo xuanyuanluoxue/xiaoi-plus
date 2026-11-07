@@ -37,6 +37,7 @@ public final class CapabilityRegistry {
     /** 运行时状态；PLAN §5.2 的枚举，新增只能追加。 */
     public enum CapabilityStatus {
         AVAILABLE,
+        LIMITED,
         PERMISSION_MISSING,
         UNAVAILABLE,
         PLANNED,
@@ -99,7 +100,7 @@ public final class CapabilityRegistry {
                 case IMPLEMENTED:
                     return CapabilityStatus.AVAILABLE;
                 case PARTIAL:
-                    return CapabilityStatus.PERMISSION_MISSING;
+                    return CapabilityStatus.LIMITED;
                 case PLANNED:
                     return CapabilityStatus.PLANNED;
                 case UNSUPPORTED:
@@ -132,37 +133,40 @@ public final class CapabilityRegistry {
         }
     }
 
-    /** 静态源计数：可用 / 需授权（部分）/ 规划 / 不提供。 */
+    /** 静态源计数：可用 / 部分可用 / 规划 / 不提供。 */
     public static final class Counts {
         public final int available;
-        public final int permission;
+        /** 部分实现/实验（Source.PARTIAL），不是“缺权限”。 */
+        public final int partial;
         public final int planned;
         public final int unsupported;
 
-        Counts(int available, int permission, int planned, int unsupported) {
+        Counts(int available, int partial, int planned, int unsupported) {
             this.available = available;
-            this.permission = permission;
+            this.partial = partial;
             this.planned = planned;
             this.unsupported = unsupported;
         }
 
         public int total() {
-            return available + permission + planned + unsupported;
+            return available + partial + planned + unsupported;
         }
     }
 
     /** 运行时状态计数。 */
     public static final class StatusCounts {
         public final int available;
+        public final int limited;
         public final int permissionMissing;
         public final int unavailable;
         public final int planned;
         public final int disabled;
         public final int unsupported;
 
-        StatusCounts(int available, int permissionMissing, int unavailable, int planned,
-                     int disabled, int unsupported) {
+        StatusCounts(int available, int limited, int permissionMissing, int unavailable,
+                     int planned, int disabled, int unsupported) {
             this.available = available;
+            this.limited = limited;
             this.permissionMissing = permissionMissing;
             this.unavailable = unavailable;
             this.planned = planned;
@@ -171,7 +175,7 @@ public final class CapabilityRegistry {
         }
 
         public int total() {
-            return available + permissionMissing + unavailable + planned + disabled + unsupported;
+            return available + limited + permissionMissing + unavailable + planned + disabled + unsupported;
         }
     }
 
@@ -204,7 +208,7 @@ public final class CapabilityRegistry {
 
     public static Counts counts() {
         int available = 0;
-        int permission = 0;
+        int partial = 0;
         int planned = 0;
         int unsupported = 0;
         for (Descriptor d : ALL) {
@@ -213,7 +217,7 @@ public final class CapabilityRegistry {
                     available++;
                     break;
                 case PARTIAL:
-                    permission++;
+                    partial++;
                     break;
                 case PLANNED:
                     planned++;
@@ -224,11 +228,12 @@ public final class CapabilityRegistry {
                     break;
             }
         }
-        return new Counts(available, permission, planned, unsupported);
+        return new Counts(available, partial, planned, unsupported);
     }
 
     public static StatusCounts counts(List<CapabilityState> states) {
         int available = 0;
+        int limited = 0;
         int permission = 0;
         int unavailable = 0;
         int planned = 0;
@@ -240,6 +245,9 @@ public final class CapabilityRegistry {
                 switch (s.status) {
                     case AVAILABLE:
                         available++;
+                        break;
+                    case LIMITED:
+                        limited++;
                         break;
                     case PERMISSION_MISSING:
                         permission++;
@@ -260,7 +268,7 @@ public final class CapabilityRegistry {
                 }
             }
         }
-        return new StatusCounts(available, permission, unavailable, planned, disabled, unsupported);
+        return new StatusCounts(available, limited, permission, unavailable, planned, disabled, unsupported);
     }
 
     /** 全部条目的默认运行时状态（未探测）。 */
