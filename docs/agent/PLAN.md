@@ -1,8 +1,8 @@
 # Agent 能力层与记忆系统计划（D1）
 
-> 状态：**Phase 1 已发布 `v0.13.0-agent.1`（WP1.1~WP1.5，1453 断言，prerelease）**
-> 目标版本：`0.13.0-agent.1`（已发布，beta 验证中）
-> 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
+> 状态：**Phase 1 已发布 `v0.13.0-agent.2`（WP1.1~WP1.5，1478 断言，prerelease）**
+> 目标版本：`0.13.0-agent.2`（已发布，beta 验证中）
+> 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.2>
 > 基线：`0.12.0-beta.1`（versionCode 16）
 > 日期：2026-11-06
 > 关联：`docs/refactor/PLAN.md`（0.12 核心重构）、`skill/xiaoi-mcp/SKILL.md`

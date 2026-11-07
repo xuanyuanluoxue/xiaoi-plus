@@ -1,7 +1,7 @@
 # Phase 1 工作包：Action Plane 骨架与第一批动作
 
-> 状态：**WP1.1~WP1.5 完成，1478 断言；已发布 `v0.13.0-agent.1`，`v0.13.0-agent.2` 为当前候选**
-> 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
+> 状态：**WP1.1~WP1.5 完成，1478 断言；已发布 `v0.13.0-agent.2`（prerelease）**
+> 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.2>
 > 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
 > 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
 > 日期：2026-11-06
@@ -295,7 +295,7 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 
 ## 3. WP1.2：App 前台服务与动作
 
-> 状态：**WP1.1~WP1.5 完成，1478 断言；已发布 `v0.13.0-agent.1`；`v0.13.0-agent.2` 修复 alarm.set**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
+> 状态：**WP1.1~WP1.5 完成，1478 断言；已发布 `v0.13.0-agent.2`（alarm.set 修复）**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
 > 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；WP1.4（8770 独立 LAN）已完成；
 > WP1.5（幂等结果持久化）已完成；记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
@@ -438,3 +438,18 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
   `~/xiaoi-plus-dev/artifacts/logs/2026-11-06/release-0.13.0-smoke.md`
 - 说明：CI 资产 SHA-256 与本地构建不同（构建环境差异），包名/versionCode/
   证书指纹一致，Release 内 `.sha256` 与资产匹配
+
+### v0.13.0-agent.2（2026-11-07，prerelease）
+
+- Release：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.2>
+- 资产：`xiaoi-plus-0.13.0-agent.2.apk`、`.apk.sha256`
+- versionCode 18；CI 构建，证书指纹 `d7dd34b2…d19b`
+- 本地校验：下载资产 `sha256sum -c` 通过；`verify-apk.sh` PASS
+- 单测：1478 断言；一致性检查通过
+- 真机 smoke（CI 资产覆盖安装）：`alarm.set mode=app` 返回
+  `scheduled=true, verified=true, exact=true`，`dumpsys alarm` 精确闹钟
+  `13:29:00.000`；`mode=clock` 返回 `PERMISSION_DENIED`；
+  capabilities 含 `mode` 枚举与 `kind/verified/exact/triggerAt`
+- 本地构建额外验证：到点通知渠道 `agent_alarm`（importance=4、闹钟铃声）与标题出现；
+  `mode=auto` 回退 App 内闹钟并带 warning
+- 日志：`~/xiaoi-plus-dev/artifacts/logs/2026-11-07/alarm-set-agent.2.md`
