@@ -28,8 +28,7 @@ app/src/main/java/plus/xiaoi/module/
 │  ├─ screen/access/               # Access/Bridge/Token/Connect/Capability
 │  ├─ screen/me/                   # Me/Appearance/ConfigManage/Logs/About
 │  └─ util/                        # io{}、格式化、剪贴板
-├─ capability/                     # CapabilityRegistry（Java，可测）
-└─ core/                           # 既有 Java 核心 + 新增 IssueResolver 等
+└─ core/                           # 既有 Java 核心 + IssueResolver/CapabilityRegistry/NavStack/ActivityFeed
 ```
 
 命名规则：

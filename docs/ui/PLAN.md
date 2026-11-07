@@ -240,11 +240,12 @@ CapabilityDescriptor（静态）
   requires[], exposedTo[], deepLink, schemas[], source
 
 CapabilityState（运行时）
-  id, status(AVAILABLE|PERMISSION_MISSING|UNAVAILABLE|PLANNED|DISABLED|UNSUPPORTED),
+  id, status(AVAILABLE|LIMITED|PERMISSION_MISSING|UNAVAILABLE|PLANNED|DISABLED|UNSUPPORTED),
   detail, lastCheckedAt
 ```
 
 - 静态数据只录入 CAPABILITIES 中 ✅/🧪 + 5 个动作 + 14 个工具；📋 用 `PLANNED`；⛔ 用 `UNSUPPORTED`。
+- 🧪 映射为 `LIMITED`（部分可用/实验），不要标成“需授权”；`Counts.partial` 单独计数。
 - 运行时状态由 `RuntimeProbe` 合并，**不要把 status 写死在 descriptor 里**。
 - Registry 用 Java 实现，继续被 `tests/run.sh` 覆盖；不引入 Kotlin-only 逻辑到核心。
 
