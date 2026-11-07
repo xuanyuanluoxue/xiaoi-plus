@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="plus.xiaoi.module"
-    android:versionCode="17"
-    android:versionName="0.13.0-agent.1">
+    android:versionCode="18"
+    android:versionName="0.13.0-agent.2">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- App 内闹钟：API 31+ 精确闹钟；未授权时 agent 会退化为非精确并如实返回 exact=false。 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <!-- minSdk / targetSdk 都显式钉在 26：保留 127.0.0.1 明文 HTTP 与旧版窗口行为。
          升级 targetSdk 会引入 edge-to-edge 等行为变更，必须单独评估。 -->
@@ -70,6 +73,12 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- App 内闹钟：AlarmManager 的 PendingIntent 显式指向本 Receiver，不导出。 -->
+        <receiver
+            android:name=".agent.AgentAlarmReceiver"
+            android:exported="false"
+            android:enabled="true" />
 
         <provider
             android:name=".ShareProvider"

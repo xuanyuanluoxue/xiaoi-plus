@@ -1,9 +1,11 @@
 package plus.xiaoi.module.agent;
 
 import android.Manifest;
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
@@ -24,6 +26,7 @@ import android.view.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import plus.xiaoi.module.Json;
@@ -204,10 +207,34 @@ public final class AndroidExecutor implements ActionExecutor {
         }
         boolean skipUi = request.booleanArg("skipUi", false);
         String label = request.stringArg("label", "");
+        String mode = request.stringArg("mode", "auto");
+        if (!"auto".equals(mode) && !"clock".equals(mode) && !"app".equals(mode)) {
+            return failure("alarm.set", AgentError.Code.INVALID_ARGUMENT,
+                    "mode 必须是 auto/clock/app 之一");
+        }
 
+        boolean clockOnly = "clock".equals(mode);
+        boolean clockFailed = false;
+        if (!"app".equals(mode)) {
+            ClockAttempt clock = tryClockApp((int) hour, (int) minute, label, skipUi);
+            if (clock.ok) {
+                return clock.result;
+            }
+            clockFailed = true;
+            if (clockOnly) {
+                return clock.failure;
+            }
+            // auto：系统拒绝后台打开时钟时，改用 App 内闹钟，并在 warning 里说明。
+        }
+        return setAppAlarm((int) hour, (int) minute, label, clockFailed);
+    }
+
+    /** 系统时钟 App 通道：startActivity 后尽量用 getNextAlarmClock 二次确认。 */
+    private ClockAttempt tryClockApp(int hour, int minute, String label, boolean skipUi) {
+        ClockAttempt attempt = new ClockAttempt();
         Intent intent = new Intent(AlarmClock.ACTION_SET_ALARM);
-        intent.putExtra(AlarmClock.EXTRA_HOUR, (int) hour);
-        intent.putExtra(AlarmClock.EXTRA_MINUTES, (int) minute);
+        intent.putExtra(AlarmClock.EXTRA_HOUR, hour);
+        intent.putExtra(AlarmClock.EXTRA_MINUTES, minute);
         intent.putExtra(AlarmClock.EXTRA_SKIP_UI, skipUi);
         if (label.length() > 0) intent.putExtra(AlarmClock.EXTRA_MESSAGE, label);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -215,34 +242,168 @@ public final class AndroidExecutor implements ActionExecutor {
         try {
             ResolveInfo target = ctx.getPackageManager().resolveActivity(intent, 0);
             if (target == null) {
-                return failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
+                attempt.failure = failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
                         "系统没有可用的时钟应用");
+                return attempt;
             }
             ctx.startActivity(intent);
         } catch (ActivityNotFoundException t) {
-            return failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
+            attempt.failure = failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
                     "系统没有可用的时钟应用");
+            return attempt;
         } catch (SecurityException t) {
-            return failure("alarm.set", AgentError.Code.PERMISSION_DENIED,
-                    "系统拒绝打开闹钟界面");
+            attempt.failure = failure("alarm.set", AgentError.Code.PERMISSION_DENIED,
+                    "系统拒绝后台打开时钟 App；可用 mode=app 改用 App 内闹钟");
+            return attempt;
         } catch (Throwable t) {
-            return failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
-                    "闹钟界面未能打开");
+            attempt.failure = failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
+                    "闹钟界面未能打开；可用 mode=app 改用 App 内闹钟");
+            return attempt;
         }
 
+        TimeZone tz = TimeZone.getDefault();
+        long expected = AlarmTimes.nextTriggerAt(hour, minute,
+                System.currentTimeMillis(), tz, 5000L);
+        boolean verified = verifyClockAlarm(expected, skipUi ? 1500L : 300L, tz);
+
         Map<String, Object> result = Json.obj();
-        // startActivity 只证明系统接收了请求，不能证明闹钟真的创建；
-        // HyperOS 可能先弹安全中心确认页。不要把“已提交”说成“已创建”。
+        // startActivity 只证明系统接收了请求；只有 getNextAlarmClock 对齐才算确认创建。
         result.put("requested", Boolean.TRUE);
-        result.put("scheduled", Boolean.FALSE);
+        result.put("scheduled", verified);
+        result.put("verified", verified);
+        result.put("kind", "clock");
         result.put("skippedUi", Boolean.FALSE);
+        if (verified) result.put("triggerAt", expected);
 
         List<String> warnings = new ArrayList<String>();
-        warnings.add("已提交系统闹钟请求，但无法确认是否真正创建；请在时钟 App 检查");
+        if (verified) {
+            warnings.add("系统下一次闹钟已更新，确认创建");
+        } else {
+            warnings.add("已提交系统时钟请求，但未能确认创建"
+                    + "（HyperOS 可能停在安全中心确认页）；可用 mode=app 改用 App 内闹钟");
+        }
         if (skipUi) {
             warnings.add("已请求 skipUi，但时钟 App 是否跳过界面无法确认");
         }
+        attempt.ok = true;
+        attempt.result = new ActionResult(true, "alarm.set", NAME, result, warnings,
+                null, 0, "", null);
+        return attempt;
+    }
+
+    /** 轮询系统下一次闹钟，确认时钟 App 是否真的接受请求。 */
+    private boolean verifyClockAlarm(long expected, long waitMs, TimeZone tz) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return false;
+        long deadline = SystemClock.uptimeMillis() + Math.max(0L, waitMs);
+        do {
+            try {
+                AlarmManager.AlarmClockInfo info = am.getNextAlarmClock();
+                if (info != null && AlarmTimes.sameMinute(info.getTriggerTime(), expected, tz)) {
+                    return true;
+                }
+            } catch (Throwable ignored) {
+                // 拿不到系统闹钟状态时按“未确认”处理。
+            }
+            if (SystemClock.uptimeMillis() >= deadline) break;
+            SystemClock.sleep(100L);
+        } while (true);
+        return false;
+    }
+
+    /** App 内闹钟：不依赖时钟 App，不需要前台 Activity；到点由 Receiver 提醒。 */
+    private ActionResult setAppAlarm(int hour, int minute, String label, boolean clockFailed) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) {
+            return failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
+                    "系统闹钟服务不可用");
+        }
+
+        int requestCode = 0x41000000 | (hour << 8) | minute;
+        long trigger = AlarmTimes.nextTriggerAt(hour, minute,
+                System.currentTimeMillis(), TimeZone.getDefault(), 5000L);
+        boolean exact = canScheduleExact(am);
+
+        Intent fire = new Intent(ctx, AgentAlarmReceiver.class)
+                .setAction(AgentAlarmReceiver.ACTION_FIRE)
+                .putExtra("label", label)
+                .putExtra("notificationId", 0x414C0000 | (hour << 8) | minute);
+        PendingIntent operation = PendingIntent.getBroadcast(ctx, requestCode, fire,
+                PendingIntent.FLAG_UPDATE_CURRENT
+                        | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+        PendingIntent show = PendingIntent.getActivity(ctx, requestCode,
+                new Intent(ctx, plus.xiaoi.module.HomeActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT
+                        | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+
+        try {
+            if (exact) {
+                // setAlarmClock：精确、免 Doze，并在状态栏显示闹钟图标。
+                am.setAlarmClock(new AlarmManager.AlarmClockInfo(trigger, show), operation);
+            } else {
+                // 没有精确闹钟权限时退化为非精确，不假装精确。
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, operation);
+            }
+        } catch (SecurityException t) {
+            return failure("alarm.set", AgentError.Code.PERMISSION_DENIED,
+                    "系统拒绝设置闹钟；请在系统设置允许本 App 使用精确闹钟");
+        } catch (Throwable t) {
+            return failure("alarm.set", AgentError.Code.NOT_AVAILABLE,
+                    "闹钟注册失败（" + t.getClass().getSimpleName() + "）");
+        }
+
+        boolean verified = false;
+        if (exact) {
+            try {
+                AlarmManager.AlarmClockInfo next = am.getNextAlarmClock();
+                verified = next != null
+                        && AlarmTimes.sameMinute(next.getTriggerTime(), trigger,
+                        TimeZone.getDefault());
+            } catch (Throwable ignored) {
+                // 已被 AlarmManager 接受，只是无法二次确认。
+            }
+        }
+
+        Map<String, Object> result = Json.obj();
+        result.put("requested", Boolean.TRUE);
+        result.put("scheduled", Boolean.TRUE);
+        result.put("verified", verified);
+        result.put("kind", "app");
+        result.put("exact", exact);
+        result.put("triggerAt", trigger);
+        result.put("skippedUi", Boolean.FALSE);
+
+        List<String> warnings = new ArrayList<String>();
+        warnings.add("App 内闹钟到点会发高优先级通知并响闹钟铃声；"
+                + "它不在系统时钟 App 的闹钟列表里");
+        if (clockFailed) {
+            warnings.add("系统时钟 App 无法在后台打开，已改用 App 内闹钟");
+        }
+        if (!exact) {
+            warnings.add("系统未授予精确闹钟权限，已退化为非精确闹钟，触发时间可能延迟");
+        }
+        if (exact && !verified) {
+            warnings.add("AlarmManager 已接受；系统下一次闹钟被其他更早的闹钟占用，"
+                    + "因此未能二次确认");
+        }
         return new ActionResult(true, "alarm.set", NAME, result, warnings, null, 0, "", null);
+    }
+
+    /** API 31+ 才有精确闹钟开关；低于 31 视为可用。 */
+    private static boolean canScheduleExact(AlarmManager am) {
+        if (Build.VERSION.SDK_INT < 31) return true;
+        try {
+            return am.canScheduleExactAlarms();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static final class ClockAttempt {
+        boolean ok;
+        ActionResult result;
+        ActionResult failure;
     }
 
     // ------------------------------------------------------------- notification.send

@@ -1,12 +1,14 @@
-# 交接说明（2026-11-06）
+# 交接说明（2026-11-07）
 
-> 状态：**`v0.13.0-agent.1` 已发布**（prerelease，versionCode 17），Agent Action Plane 首个测试版。
-> JVM 单测 1453 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验通过。
-> 真机主路径已验证：8770 action plane、5 个动作、confirm/幂等、notify/ask、
-> 8770 LAN、开机自启；已知限制见 `docs/agent/PHASE1.md` 第 7 节。
+> 状态：**`v0.13.0-agent.2` 发布候选**（versionCode 18）：修复 `alarm.set` 伪报成功，
+> 新增 `mode=auto/clock/app` 与 App 内 AlarmManager 闹钟。
+> JVM 单测 1478 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验通过。
+> 真机已验证：App 内闹钟精确注册（`exact=true`/`verified=true`）、到点通知与闹钟铃声、
+> `mode=clock` 被系统拒绝、`mode=auto` 正确回退并带 warning。
+> 其余 0.13.0-agent.1 主路径不变；已知限制见 `docs/agent/PHASE1.md` 第 7 节。
 >
-> - Release：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
-> - 资产：`xiaoi-plus-0.13.0-agent.1.apk` + `.sha256`；CI 构建，签名指纹
+> - 上一版 Release：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
+> - 资产命名：`xiaoi-plus-0.13.0-agent.2.apk` + `.sha256`；CI 构建，签名指纹
 >   `d7dd34b2…d19b`
 >
 > 0.12 核心重构（WP1~WP8）已完成并发布 `v0.12.0-beta.1`；

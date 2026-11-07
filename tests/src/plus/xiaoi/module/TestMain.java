@@ -121,6 +121,12 @@ public final class TestMain {
             System.out.println("  FAIL ErrorCatalogTest 套件异常: " + t);
         }
         try {
+            failed += AlarmTimesTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AlarmTimesTest 套件异常: " + t);
+        }
+        try {
             failed += AgentActionRegistryTest.run();
         } catch (Throwable t) {
             failed++;

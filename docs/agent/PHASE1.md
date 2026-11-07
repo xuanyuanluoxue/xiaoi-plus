@@ -1,6 +1,6 @@
 # Phase 1 工作包：Action Plane 骨架与第一批动作
 
-> 状态：**WP1.1~WP1.5 完成，1453 断言；真机主路径通过；已发布 `v0.13.0-agent.1`（prerelease）**
+> 状态：**WP1.1~WP1.5 完成，1478 断言；已发布 `v0.13.0-agent.1`，`v0.13.0-agent.2` 为当前候选**
 > 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
 > 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
 > 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
@@ -295,7 +295,7 @@ WP1.1 只提供接口和 fake executor，用于测试；Android/root 实现在 W
 
 ## 3. WP1.2：App 前台服务与动作
 
-> 状态：**WP1.1~WP1.5 完成，1453 断言；真机主路径通过；已发布 `v0.13.0-agent.1`**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
+> 状态：**WP1.1~WP1.5 完成，1478 断言；已发布 `v0.13.0-agent.1`；`v0.13.0-agent.2` 修复 alarm.set**；WP1.2a（服务 + 8770 + `device.info`）与 WP1.2b（其余 4 个动作 + root 兜底）
 > 已完成；WP1.3a（confirm/幂等/审计）与 WP1.3b（notify/ask）已完成；WP1.4（8770 独立 LAN）已完成；
 > WP1.5（幂等结果持久化）已完成；记忆/job 未做。
 > 代码：`app/src/main/java/plus/xiaoi/module/agent/`；测试：`tests/src/.../AgentMcpTest.java`、
@@ -409,9 +409,12 @@ App 进程内 `ActionService` 监听 `8770`，暴露 MCP：
 
 - `media.control pause → play` 真机验证：暂停后 `AudioPlaybackConfiguration` 变 paused，
   再 play 变 started；已移除过严的 `isMusicActive` 拦截，返回 `musicActive` 与 warning。
-- `alarm.set`：HyperOS 在后台启动时钟时抛 `SecurityException`，返回 `PERMISSION_DENIED`，
-  实际未创建闹钟；已确认不会伪报 `scheduled=true`。要用闹钟需要前台/root/后续改用
-  `AlarmManager`，当前不保证可用。
+- `alarm.set`（0.13.0-agent.2 修复）：新增 `mode=auto/clock/app`。
+  `auto` 先试时钟 App，被后台启动限制拦截时回退 `AlarmManager.setAlarmClock`；
+  App 内闹钟真机验证 `exact=true`、`verified=true`，`dumpsys alarm` 可见精确闹钟，
+  到点由 `AgentAlarmReceiver` 发 `agent_alarm` 高优先级通知并响闹钟铃声。
+  `mode=clock` 在 HyperOS 后台返回 `PERMISSION_DENIED`；`mode=auto` 正确回退且
+  warning 说明。App 内闹钟不在系统时钟 App 的闹钟列表里。
 - root 兜底：App 在 KernelSU 中未获 root 授权时，`ProcessBuilder("su")` 返回
   `EACCES`，`/system/bin/su` 在 App 命名空间不可见；返回
   `PERMISSION_DENIED`，提示去 KernelSU/Magisk 授权或改用 Shizuku。

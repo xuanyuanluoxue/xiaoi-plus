@@ -333,7 +333,7 @@ validate args
 |---|---|---|---|
 | `app.open` | `package` 或 `intentUri` | 是否成功、实际组件 | `getLaunchIntentForPackage` + `FLAG_ACTIVITY_NEW_TASK`；找不到返回 `NOT_AVAILABLE`；锁屏/后台限制可能失败 |
 | `device.info` | `fields?` | 型号、Android、电量、充电、网络、前台应用 | 前台应用需要 root/usage stats；拿不到就省略 |
-| `alarm.set` | `hour`、`minute`、`label?`、`skipUi?` | 是否已打开闹钟界面/已创建 | 先用 `AlarmClock.ACTION_SET_ALARM`；`skipUi` 兼容性需真机验证 |
+| `alarm.set` | `hour`、`minute`、`label?`、`mode?`、`skipUi?` | `scheduled`/`verified`/`kind`/`exact`/`triggerAt` | `auto` 先试时钟 App，失败回退 `AlarmManager.setAlarmClock`（App 内闹钟） |
 | `notification.send` | `title`、`text`、`channel?`、`id?` | notificationId | 需要 `POST_NOTIFICATIONS` |
 | `media.control` | `command: play/pause/next/prev/volume` | 当前状态/音量 | 无 root 优先 `AudioManager`/MediaSession；`cmd media_session` 走 Shizuku/root |
 

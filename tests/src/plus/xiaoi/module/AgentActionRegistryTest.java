@@ -60,6 +60,16 @@ public final class AgentActionRegistryTest {
         T.ok("alarm.set 声明 hour/minute",
                 requiredNames(reg.find("alarm.set").inputSchema).contains("hour")
                         && requiredNames(reg.find("alarm.set").inputSchema).contains("minute"));
+        Map<String, Object> alarmInput = asMap(reg.find("alarm.set").inputSchema.get("properties"));
+        Map<String, Object> alarmMode = asMap(alarmInput.get("mode"));
+        List<?> alarmModeValues = (List<?>) alarmMode.get("enum");
+        T.ok("alarm.set mode enum 含 auto/clock/app",
+                alarmModeValues.contains("auto") && alarmModeValues.contains("clock")
+                        && alarmModeValues.contains("app"));
+        Map<String, Object> alarmOutput = asMap(reg.find("alarm.set").outputSchema.get("properties"));
+        T.ok("alarm.set 输出 kind/exact/triggerAt",
+                alarmOutput.containsKey("kind") && alarmOutput.containsKey("exact")
+                        && alarmOutput.containsKey("triggerAt"));
 
         List<Object> caps = reg.capabilitiesJson(true);
         T.eq("capabilities 含全部 5 个", 5, caps.size());
@@ -134,6 +144,15 @@ public final class AgentActionRegistryTest {
                 .arg("command", "stop").build());
         T.eq("enum 不合法 INVALID_ARGUMENT", AgentError.Code.INVALID_ARGUMENT,
                 badEnum.error.code);
+
+        ActionResult badAlarmMode = reg.execute(ActionRequest.builder("alarm.set")
+                .arg("hour", 7L).arg("minute", 0L).arg("mode", "cron").build());
+        T.eq("alarm mode 不合法 INVALID_ARGUMENT", AgentError.Code.INVALID_ARGUMENT,
+                badAlarmMode.error.code);
+
+        ActionResult appMode = reg.execute(ActionRequest.builder("alarm.set")
+                .arg("hour", 7L).arg("minute", 0L).arg("mode", "app").build());
+        T.eq("alarm mode=app 成功", true, appMode.ok);
 
         List<Object> badFields = Json.arr();
         badFields.add(1L);
@@ -481,6 +500,11 @@ public final class AgentActionRegistryTest {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> castMap(Map<?, ?> m) {
         return (Map<String, Object>) m;
+    }
+
+    private static Map<String, Object> asMap(Object value) {
+        if (!(value instanceof Map)) return Json.obj();
+        return castMap((Map<?, ?>) value);
     }
 
     private static List<String> requiredNames(Map<String, Object> schema) {

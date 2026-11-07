@@ -103,20 +103,31 @@ public final class Actions {
         label.put("maxLength", 200);
         props.put("label", label);
         props.put("skipUi", prop("boolean", "是否尝试跳过系统闹钟界面（兼容性待真机验证）"));
+        Map<String, Object> mode = prop("string",
+                "auto=先尝试系统时钟，失败时用 App 内闹钟；clock=只用系统时钟；app=只用 App 内闹钟");
+        mode.put("enum", list("auto", "clock", "app"));
+        props.put("mode", mode);
 
         Map<String, Object> out = Json.obj();
         out.put("requested", prop("boolean", "是否已向系统提交闹钟请求"));
-        out.put("scheduled", prop("boolean", "是否确认创建；无法确认时为 false"));
+        out.put("scheduled", prop("boolean", "是否已注册成功（AlarmManager 接受或系统闹钟已确认）"));
+        out.put("verified", prop("boolean", "是否通过系统状态二次确认"));
+        out.put("kind", prop("string", "实际使用的通道：clock 或 app"));
+        out.put("exact", prop("boolean", "App 内闹钟是否为精确闹钟"));
+        out.put("triggerAt", prop("integer", "App 内闹钟的触发时间（epoch millis）；clock 无法确认时省略"));
         out.put("skippedUi", prop("boolean", "是否跳过了系统界面"));
 
         List<Object> examples = Json.arr();
         Map<String, Object> ex = example("hour", 7L);
         ex.put("minute", 0L);
         ex.put("label", "起床");
+        ex.put("mode", "auto");
         examples.add(ex);
 
         return ActionDescriptor.builder("alarm.set")
-                .description("设置闹钟。默认打开系统闹钟界面；skipUi 在部分 ROM 上可能无效。")
+                .description("设置闹钟。auto 先尝试系统时钟 App（可能被后台启动限制拦截），"
+                        + "失败时改用 App 内 AlarmManager 闹钟：到点发高优先级通知并响闹钟铃声，"
+                        + "不在系统时钟 App 的闹钟列表里。")
                 .inputSchema(objectSchema(props, required("hour", "minute")))
                 .outputSchema(objectSchema(out, required()))
                 .executorPreference("android")

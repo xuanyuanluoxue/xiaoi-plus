@@ -64,12 +64,31 @@
 ### alarm.set
 
 ```json
-{"action":"alarm.set","args":{"hour":7,"minute":0,"label":"起床","skipUi":true}}
+{"action":"alarm.set","args":{"hour":7,"minute":0,"label":"起床","mode":"auto"}}
 ```
 
-返回：`{"scheduled":true,"skippedUi":false}`
+返回（App 内闹钟）：
 
-风险：`safe`。`skipUi` 在不同时钟 App 上可能无效；以系统闹钟列表为准。
+```json
+{"requested":true,"scheduled":true,"verified":true,"kind":"app","exact":true,"triggerAt":1794028860000}
+```
+
+返回（系统时钟已确认）：
+
+```json
+{"requested":true,"scheduled":true,"verified":true,"kind":"clock","triggerAt":1794028860000}
+```
+
+风险：`safe`。`mode` 决定通道：
+
+- `auto`（默认）：先尝试系统时钟 App；后台启动被拒绝时自动回退 App 内闹钟。
+- `clock`：只用系统时钟 App。HyperOS 后台通常返回 `PERMISSION_DENIED`。
+- `app`：App 内 `AlarmManager` 精确闹钟，到点发高优先级通知并响闹钟铃声，
+  不在系统时钟 App 的闹钟列表里。
+
+`scheduled=false` 表示没有确认创建（例如停在安全中心确认页），**不要**当成成功。
+`exact=false` 表示系统没给精确闹钟权限，触发时间可能延迟。`skipUi` 仍保留给
+时钟 App 路径，兼容性依 ROM 而定。
 
 ### notification.send
 

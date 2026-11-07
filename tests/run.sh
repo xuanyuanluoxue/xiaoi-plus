@@ -15,6 +15,7 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/libs/xposed-stub-src/robv/android/xposed/XC_MethodHook.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Json.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentValues.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AlarmTimes.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionRisk.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentError.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/ActionRequest.java" \

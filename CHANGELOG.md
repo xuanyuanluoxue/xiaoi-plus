@@ -1,5 +1,36 @@
 # 更新日志
 
+## 0.13.0-agent.2 — 2026-11-07 — alarm.set 语义修复
+
+> 修复 0.13.0-agent.1 中 `alarm.set` 在 HyperOS 上“返回成功但闹钟不存在”的问题。
+> versionCode 17 → 18。
+
+### 变化
+
+- `alarm.set` 新增 `mode`：`auto`（默认）/ `clock` / `app`。
+  - `auto`：先尝试系统时钟 App；被后台启动限制拦截时，自动改用 App 内闹钟。
+  - `clock`：只用系统时钟 App，失败如实返回错误。
+  - `app`：用 `AlarmManager.setAlarmClock` 注册精确闹钟，到点由
+    `AgentAlarmReceiver` 发高优先级通知并响闹钟铃声（不在时钟 App 列表里）。
+- 返回值不再只有 `scheduled`，新增 `kind`（clock/app）、`verified`、`exact`、`triggerAt`：
+  - 时钟 App 路径用 `getNextAlarmClock()` 二次确认，确认不到就返回
+    `scheduled=false`，不伪报成功。
+  - App 内闹钟路径区分精确/非精确；没有精确闹钟权限时退化为非精确并明确 warning。
+- 新增 `SCHEDULE_EXACT_ALARM` / `USE_FULL_SCREEN_INTENT` 权限与 `agent_alarm` 通知渠道。
+- 真机验证（M332BF / HyperOS / Android 17）：
+  `mode=app` 返回 `exact=true, verified=true`，`dumpsys alarm` 可见精确闹钟；
+  到点通知渠道 `agent_alarm`（importance=4，闹钟铃声）与标题均出现。
+  `mode=clock` 在后台被系统拒绝（`PERMISSION_DENIED`），`mode=auto` 正确回退并带 warning。
+- JVM 单测 1453 → 1478 断言（新增 `AlarmTimesTest` 与 schema 校验）。
+
+### 兼容/升级
+
+- 直接覆盖安装，同包名同签名，配置保留。
+- `alarm.set` 旧参数（`hour`/`minute`/`label`/`skipUi`）保持可用；旧客户端不传
+  `mode` 时按 `auto` 处理。
+- 时钟 App 路径行为与 0.13.0-agent.1 相同，不再把“已提交”说成“已创建”。
+
+
 ## 未发布 — Agent WP1.5：幂等结果持久化
 
 - 幂等缓存写入 App 私有 `files/agent_idempotency.json`：服务/进程重启后同一

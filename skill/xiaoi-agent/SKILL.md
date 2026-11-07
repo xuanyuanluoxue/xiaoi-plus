@@ -74,7 +74,7 @@ curl --noproxy '*' -s -X POST "$MCP" \
 
 # 闹钟
 {"name":"xiaoai_action","arguments":{
-  "action":"alarm.set","args":{"hour":7,"minute":0,"label":"起床","skipUi":true}}}
+  "action":"alarm.set","args":{"hour":7,"minute":0,"label":"起床","mode":"auto"}}}
 
 # 通知（risk=confirm，需要确认）
 {"name":"xiaoai_action","arguments":{
