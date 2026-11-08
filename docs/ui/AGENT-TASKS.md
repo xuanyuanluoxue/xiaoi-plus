@@ -32,13 +32,21 @@
 | QA-Functional | 65 PASS / 0 FAIL / 2 BLOCKED，报告 `acceptance-p2.md` |
 | QA-Visual | 有条件通过：0 P0 / 5 P1 / 13 P2，报告 `visual-review-p2.md` |
 
-### 运行中（P1 修复）
+### P1 修复与 Wave 3（已完成）
 
-| Agent | 分支 | 范围 |
+| Agent | Commit | 结果 |
 | --- | --- | --- |
-| P2-Fix | `feat/ui-p2-fixes` | 对比度、统一 chip、模型页布局、8771/8770 口径、次级按钮 |
+| P2-Fix | `d6ea907` | 5 条 P1 全修：对比度 5.01:1、统一 chip、模型页布局、8771 口径、次按钮 |
+| 集成补修 | `c59954d` | 诊断页 3 秒重采，Access/Diagnostics 8770 结论一致 |
+| A8 Release | `c0355b0` | R8 8.4→1.6 MiB、0.14.0/19、CI 切 JDK 21/Gradle 9.9 |
+| A9 Docs | `963fa30` | README/CHANGELOG/PLAN/SCREENS/COMPONENTS/RELEASE-0.14 |
 
-> 修复完成后重新跑真机截图与视觉复验，再派 A8/A9。
+### 最终状态
+
+- `main` 已推送；门禁全绿；R8 包真机安装、LSPosed 注入与 8771 已复验。
+- 已知限制：8770 与小米自带服务同端口，存在 EADDRINUSE 抢占；8771 不受影响。
+- 剩余 P2 视觉项（顶栏动作、底栏图标风格、日志域筛选、Connect Sheet 等）转 0.15。
+- 发布：版本 `0.14.0` / code 19 已就绪；打 tag 与 GitHub Release 由发布流程执行。
 
 ## 1. Wave 1：地基（2 个 Agent，可并行）
 
