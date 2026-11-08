@@ -177,10 +177,10 @@ emulator + system-images;android-37.0;aosp_atd;x86_64
 使用了 `uiautomator dump` 作为渲染证据，保存在：
 
 ```text
-~/xiaoi-plus-dev/artifacts/2026-11-07/screenshots/release-home-ui.xml
-~/xiaoi-plus-dev/artifacts/2026-11-07/screenshots/spike-miuix-light-ui.xml
-~/xiaoi-plus-dev/artifacts/2026-11-07/screenshots/spike-miuix-dark-ui.xml
-~/xiaoi-plus-dev/artifacts/2026-11-07/screenshots/spike-miuix-interaction-ui.xml
+~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-07/emu-ui-dumps/release-home-ui.xml
+~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-07/emu-ui-dumps/spike-miuix-light-ui.xml
+~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-07/emu-ui-dumps/spike-miuix-dark-ui.xml
+~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-07/emu-ui-dumps/spike-miuix-interaction-ui.xml
 ```
 
 ---
