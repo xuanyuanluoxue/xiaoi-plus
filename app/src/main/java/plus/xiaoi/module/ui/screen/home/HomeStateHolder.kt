@@ -7,7 +7,9 @@ import androidx.compose.runtime.setValue
 import java.util.concurrent.atomic.AtomicBoolean
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.AppExecutors
+import plus.xiaoi.module.BridgeClient
 import plus.xiaoi.module.ConfigRepository
+import plus.xiaoi.module.Json
 import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
@@ -67,6 +69,9 @@ internal data class HomeUiState(
     val bridgeRows: List<ValueUi> = emptyList(),
     val agentRows: List<ValueUi> = emptyList(),
     val activities: List<ActivityUi> = emptyList(),
+    /** 今日调用量；null 表示未开启 MCP / 无令牌 / 查询失败，不伪造 0。 */
+    val usageThird: Long? = null,
+    val usageOfficial: Long? = null,
 )
 
 /**
@@ -168,6 +173,8 @@ internal class HomeStateHolder(context: Context) {
             else -> "尚未收到启动事实"
         }
 
+        val usage = readUsage(config, bridge)
+
         return HomeUiState(
             loading = false,
             heroTitle = result.heroTitle(),
@@ -220,6 +227,8 @@ internal class HomeStateHolder(context: Context) {
                     },
                 ),
             ),
+            usageThird = usage.first,
+            usageOfficial = usage.second,
             activities = ActivityHub.recent(MAX_ACTIVITY).map { event ->
                 ActivityUi(
                     time = HomeFacts.clock(event.timestamp),
@@ -229,6 +238,21 @@ internal class HomeStateHolder(context: Context) {
                 )
             },
         )
+    }
+
+    /** 今日调用量：只查本机 8771；失败/未配置保持 null，首页显示“未确认”。 */
+    private fun readUsage(config: AppConfig, bridge: BridgeStatus.Snapshot): Pair<Long?, Long?> {
+        if (!config.mcpEnabled) return null to null
+        val token = config.mcpToken.orEmpty().trim()
+        if (token.isEmpty() || bridge.port <= 0) return null to null
+        return try {
+            val body = BridgeClient.stats(bridge.port, token, 1) ?: return null to null
+            val root = Json.read(body) as? Map<*, *> ?: return null to null
+            val today = root["today"] as? Map<*, *> ?: return null to null
+            Json.optLong(today, "third", 0L) to Json.optLong(today, "official", 0L)
+        } catch (t: Throwable) {
+            null to null
+        }
     }
 
     /** 只读校验缓存；配置指纹不匹配/过期时 StatusCache 自己返回 UNKNOWN。 */
