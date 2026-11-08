@@ -1,6 +1,28 @@
 # 更新日志
 
-## 未发布 — UI P2 视觉修复（A8 前）
+## 0.14.0 — 2026-11-08 — Compose + Miuix UI 重写
+
+> versionCode 18 → 19（A8 定版）。设置页从「4 个 Activity + XML」迁到
+> **单 Activity + Compose + Miuix**，4 个 tab、19 条路由；本版只做功能 parity，
+> 不新增提示词、工具注入、技能包、记忆或语音路由。
+> 构建、签名、R8 与真机回归的最终数据见 A8 的 `RELEASE-REPORT`；
+> 若 Manifest 尚未改为 0.14.0，以发布报告为准。
+
+### 本版重点
+
+- **4 tab**：首页 / 小爱 / 接入 / 我的；一级页显示底栏，二级页隐藏底栏并显示返回。
+- **首页**：四维状态 Hero、待处理（最多 3 条）、8771/8770 双域入口、运行概况、最近活动；全页只读，按钮只导航。
+- **小爱**：主开关即时保存；服务商/模型/端点/密钥显式保存；运行态显示 D3/D4、rev 与运行模型；5 个增强能力只读占位。
+- **接入**：8771 控制面与 8770 动作面分开；令牌强度/掩码/轮换；LAN 回退；连接信息；67 条能力 + 5 动作 + 8 + 6 工具只读清单；6 项权限。
+- **我的**：本机信息、主题三档、完整备份/脱敏导出/还原/运行时导入、诊断与日志、关于/开源许可、危险区「停用全部」。
+- **P1 严格 Miuix**：`Scaffold`、`SmallTopAppBar`、`NavigationBar`（容器）、`SnackbarHost`、
+  `Card`、`Button`、`SwitchPreference`、`ArrowPreference`、`BasicComponent`；不再用 Row/Column 模拟。
+- **A3 数据层**：`AgentRuntimeStatus`、`BridgeStatus` 实际 bind/LAN、`PermissionProbe`、
+  `IssueInputFactory`、`ActivityHub`、`CapabilityRegistry`、`NavStack`；均为只读，不改 8770/8771 行为。
+- **主题**：跟随系统/浅色/深色，唯一事实源是 App prefs，不写 `config.json`、不参与导出。
+- **日志/关于**：日志级别筛选、跟随、清空、分享与三种空态；关于含版本/作者/GitHub/许可证/致谢/免责。
+
+### P2 视觉修复（A8 前）
 
 - 对比度：输入/搜索 label 改用 `textSecondary`（2.06:1 → 5.01:1）；浅色
   `success/warning/error` 调深，徽章文字 6.08/6.85/6.54:1；Hero UNKNOWN 标签改
@@ -10,9 +32,36 @@
 - 模型页服务商副标题单行省略、去重复“当前/服务商设置”；模型行动作水平居中。
 - 8771 统一“控制面”；8770 状态由 `ui/status/AgentStatus.kt` 单点判定，
   Access/Bridge/Diagnostics 同源；未知统一“未确认”。
-- `XiaoiButton(SECONDARY)` 改 `chipOkBg/primary`，浅色下可见（7.42:1）。
+- `XiaoiButton(SECONDARY)` 改 `chipOkBg/primary`，浅色下可见（7.42:1，深色 8.32:1）。
 - 低成本 P2：复制/去设置触控 48dp、About 许可证进入 Licenses、Tools 去重复计数、
   全屏通知副标题缩短、配置管理组名改“从运行中的小爱导入”。
+
+### 验收
+
+- P1 功能验收 41 PASS / 0 FAIL；P2 功能验收 65 PASS / 0 FAIL / 2 BLOCKED
+  （弱令牌回退、损坏只读，受“不改用户配置”限制，已给静态证据）。
+- 视觉审核 P2：0 P0、5 P1、13 P2；5 条 P1 与低成本 P2 已修，详见
+  `docs/ui/reports/P2-VISUAL-FIXES.md`。
+- 19 条路由可达；二级页无底栏；`tests/run.sh`、`check-consistency.sh`、
+  `verify-apk.sh` 通过（P2 验收时 versionCode 18、R8 关闭）。
+- 浅色 12 页、深色 8 页、字号 1.3 四页截图；手机未新增 PNG。
+
+### 兼容/升级
+
+- 同包名同签名覆盖安装，`versionCode 18 → 19`；`config.json` v3 与密钥/令牌保留。
+- 主题、导出、分享、诊断、8771/8770 行为与 0.13 一致；`POST /config` 仍固定 410。
+- 旧 `HomeActivity`/`ConfigActivity` 作为 0.14 过渡入口保留（兼容模式可看只读文件信息），
+  **0.15 删除**；新功能以 `MainActivity` 的 4 tab 为准。
+- 降级仍受“私有配置 + 新 UI”限制：降回 0.13 前先做完整备份并关闭 MCP/LAN。
+
+### 已知限制
+
+- R8/shrink、CI 与发布脚本的 0.14 适配在 P3（A8）收尾；设备断开，LSPosed/R8 真机回归
+  以 A8 报告为准。APK 体积目标 ≤6MB，未确认前不作承诺。
+- 日志只有级别筛选，**没有域筛选**；Connect 是整页二级页，不是 BottomSheet。
+- 能力清单/工具/权限只读；审计、确认队列、测试台 0.15 提供。
+- 增强能力（提示词/工具/技能/记忆/语音）仍是只读占位，没有开关或执行入口。
+- 弱令牌回退与配置损坏只读只做了静态证据，发布前建议用备份配置补测。
 
 ## 0.13.0-agent.2 — 2026-11-07 — alarm.set 语义修复
 

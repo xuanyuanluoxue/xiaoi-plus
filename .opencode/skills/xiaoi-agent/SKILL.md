@@ -16,15 +16,15 @@ xiaoi-plus 现在有两层能力：
 
 > 默认只监听 `127.0.0.1`。电脑上先建立隧道：
 > `adb forward tcp:8770 tcp:8770` → `http://127.0.0.1:8770/mcp`。
-> App 配置页可独立开启「Agent 动作面允许局域网访问」；同一 Wi-Fi 直接用
+> 「接入 › 令牌与局域网」可独立开启「Agent 动作面允许局域网访问」；同一 Wi-Fi 直接用
 > `http://<手机IP>:8770/mcp`。必须 32 位十六进制 token，弱 token 会自动回退仅本机。
 
 ## 前置条件
 
 1. 手机安装 xiaoi-plus，LSPosed 启用，作用域勾选「超级小爱」。
-2. App 配置页：MCP 接口开启、令牌已设置、保存。
+2. 「接入 › 令牌与局域网」：MCP 接口开启、令牌已设置、保存（旧版配置页仅为过渡入口）。
 3. 打开一次 App（或开机自启）让 `AgentService` 启动。
-4. token 来源：App「复制连接信息」或 `~/.config/xiaoi/token`。
+4. token 来源：「接入 › 连接信息」的“复制连接信息”，或 `~/.config/xiaoi/token`。
 
 ## 探活
 

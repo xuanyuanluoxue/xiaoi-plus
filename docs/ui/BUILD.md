@@ -6,13 +6,13 @@
 
 ## 1. 环境要求
 
-| 项 | 要求 | 当前环境（2026-11-07） |
+| 项 | 要求 | 当前环境（2026-11-08） |
 | --- | --- | --- |
-| JDK | 21（AGP 9.5 推荐） | 只有 17，需要补 21 |
-| Android SDK | platforms;android-37.0、build-tools;37.0.0、platform-tools | 无 Linux SDK；Windows SDK 有 android-37.0 |
-| Gradle | 9.9.0（wrapper 固定） | 未安装；从 Miuix 仓库拷 wrapper |
-| 网络 | 可访问 Maven Central / Google Maven | 有 HTTP(S) 代理 127.0.0.1:7897 |
-| 设备 | 有线/无线 ADB（P0 注入验证） | 当前 `adb devices` 为空 |
+| JDK | 21（AGP 9.5 要求） | 已装 `java-21-openjdk`，构建时显式 `JAVA_HOME` |
+| Android SDK | platforms;android-37.0、build-tools;37.0.0、platform-tools | Linux SDK 已装；`local.properties` 指向 `~/Android/Sdk` |
+| Gradle | 9.9.0（wrapper 固定） | `gradlew` 可用，distributionUrl 固定 9.9.0 |
+| 网络 | 可访问 Maven Central / Google Maven | `settings.gradle.kts` 配阿里云镜像，官方源兜底 |
+| 设备 | 有线/无线 ADB（注入/截图验证） | 2026-11-08 白天可用（31106e85），晚间断开；真机回归见 A8 |
 
 ### 1.1 安装 JDK 21
 
@@ -110,14 +110,14 @@ keystore/xiaoi.keystore
 | AGP | 9.5.1 |
 | Kotlin | 2.4.21 |
 | Compose Multiplatform | 1.12.2 |
-| Miuix | 0.9.4（`miuix-ui`、`miuix-preference`） |
+| Miuix | 0.9.4（`miuix-ui`、`miuix-preference`、`miuix-icons`） |
 | compileSdk | 37 |
 | minSdk / targetSdk | 26 / 26 |
 | Java/Kotlin target | 11（Compose 1.12 要求） |
 | versionName / versionCode | 0.14.0 / 19（`AndroidManifest.xml` 单一来源） |
 | release R8 | `isMinifyEnabled = true`、`isShrinkResources = true` |
 
-- 不引入 `miuix-blur`、`miuix-icons`、`miuix-nav`、navigation-compose、DI、图片库。
+- 不引入 `miuix-blur`、`miuix-nav`、navigation-compose、DI、图片库；`miuix-icons` 仅用于底栏/空态矢量图标。
 - 依赖版本全部写在 `gradle/libs.versions.toml`；禁止在 `app/build.gradle.kts` 里散落版本号。
 - 提交 `gradle/verification-metadata.xml` 或 lockfile（P3 完成）。
 
@@ -131,8 +131,9 @@ android {
         applicationId = "plus.xiaoi.module"
         minSdk = 26
         targetSdk = 26
-        versionCode = 19
-        versionName = "0.14.0"
+        // 单一来源：AndroidManifest.xml（便于 verify-apk / version.sh 读取）
+        versionCode = manifestAttr("versionCode").toInt()
+        versionName = manifestAttr("versionName")
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -150,7 +151,7 @@ android {
 }
 ```
 
-- `versionCode`/`versionName` 单一来源：Manifest 或 Gradle，二选一；不要两边各写一套。
+- `versionCode`/`versionName` 单一来源：**AndroidManifest.xml**（0.14 起 Gradle 读取）；目标值 `0.14.0` / `19`，由 A8 定版。
 - 签名读取 `KEYSTORE_PATH`/`KEYSTORE_PASS`/`KEY_ALIAS`/`KEY_PASSWORD`，与 `scripts/release.sh` 一致。
 - `android:debuggable` 只在 debug。
 
@@ -194,8 +195,10 @@ debug 保持关闭。规则在 `app/proguard-rules.pro`，原则是**只 keep �
 - 目标：release ≤6MB；debug ≤10MB 只是早期预算，当前 debug 含 Compose tooling，仅本地使用。
 - 资源收缩后 APK 内 `res/` 只剩 35 个条目；`assets/xposed_init` 必须保留。
 - minSdk 26 原生 multidex；AGP 自动处理。
+- 目标：release ≤6MB（A8 已实测 1.6 MiB）；debug ≤10MB 只是本地预算。
 - 体积回归时先看 `app/build/outputs/mapping/release/`（`mapping.txt`、`usage.txt`、
   `resources.txt`）和 `unzip -l` 的条目分布，不要为了体积删功能。
+- 保留 `assets/licenses/**` 与 `assets/xposed_init`；资源收缩不能删这两类资产。
 
 ## 7. 命令
 
@@ -221,7 +224,8 @@ SDK="$HOME/Android/Sdk" ./scripts/verify-apk.sh app/build/outputs/apk/release/ap
 产物：`app/build/outputs/apk/release/app-release.apk`（无正式密钥时为
 `app-release-unsigned.apk`）。R8 报告在 `app/build/outputs/mapping/release/`。
 
-> 过渡期可同时保留 `build.sh`；P3 删除手工构建，README 只保留 Gradle 命令。
+> 0.14 起 README 只保留 Gradle 命令；`build.sh` 仅覆盖 ≤0.13 的纯 Java 构建，0.14 不再使用。
+> CI 已由 A8 切到 JDK 21 + Gradle 9.9；`scripts/release.sh` 按 A8 报告里的流程执行。
 
 ## 8. CI
 
@@ -316,3 +320,49 @@ git branch -d feat/ui-p0
 - UI dump 写 `/data/local/tmp/xiaoi-ui-*.xml`，拉回 PC 后立即删除。
 - 默认 `tmp/`；`review/` 只放人工确认过的验收图；`tests/` 放日志/XML。
 - 含 token/key 的配置不进入截图目录。
+
+## 14. 0.14 实测命令（2026-11-08）
+
+```bash
+# 0) JDK 21
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# 1) 构建（P2 验收使用 release）
+./gradlew :app:assembleRelease --offline
+# 产物：app/build/outputs/apk/release/app-release.apk
+
+# 2) 门禁
+./tests/run.sh
+./scripts/check-consistency.sh
+./scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
+
+# 3) 安装并打开指定路由（调试/验收）
+adb install -r app/build/outputs/apk/release/app-release.apk
+adb shell am start -n plus.xiaoi.module/.MainActivity --es route Home
+```
+
+19 条路由：`Home`、`Xiaoai`、`Model`、`Access`、`Bridge`、`Token`、`Connect`、
+`Capabilities`、`CapabilityDetail:<id>`、`Tools`、`Permissions`、`Me`、`Appearance`、
+`ConfigManage`、`Diagnostics`、`Logs`、`About`、`Licenses`、`Legacy`。未知路由回首页。
+
+截图（只写 PC，不在手机存 PNG）：
+
+```bash
+# 浅色/深色/1.3 字号，按需换 --route
+./scripts/ui-screenshot.sh --route Home --name p3-home-light
+./scripts/ui-screenshot.sh --route Me --name p3-me-dark --review
+./scripts/ui-screenshot.sh --route Logs --name p3-logs --dump
+```
+
+0.14 结果记录：
+
+| 项 | 结果 |
+| --- | --- |
+| `assembleRelease --offline` | BUILD SUCCESSFUL（P2 验收时 `versionCode=18`、R8 关闭） |
+| `tests/run.sh` | 全部通过（NavStack 49/49） |
+| `check-consistency.sh` | 7/7 通过 |
+| `verify-apk.sh` | PASS；`plus.xiaoi.module`；指纹 `d7dd34b2…d19b` |
+| APK 体积 | 8.3 MiB（R8 关闭）；开启 R8 后以 A8 RELEASE-REPORT 为准 |
+
+> 0.14 的 versionName/versionCode 由 A8 改为 `0.14.0` / `19`；若本文与你本地
+> Manifest 不一致，以 Manifest 和 A8 报告为准。

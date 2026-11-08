@@ -4,18 +4,20 @@
 > **不修改、不重打包、不分发小爱的任何代码或资源。**
 
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
-> 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](../../releases)。
+> 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)。
 >
-> 📦 当前测试版：**v0.13.0-agent.2** ·
-> [下载 APK](https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.2)
+> 📦 当前测试版：**v0.14.0**（Compose + Miuix UI 重写）·
+> [版本说明](docs/ui/RELEASE-0.14.md) ·
+> [下载 / 发布状态](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
 >
-> ✅ 0.13.0-agent.2 的 CI 门禁已覆盖 JVM 单测（1453 断言）、工程一致性与
-> APK 签名指纹（未签名/错签名不能进入 Release）。
-> ⚠️ 真机 P0 矩阵（控制面拒绝第三方、关闭即停、LAN 弱 token、远程写拒绝、
-> beta.4 升级不丢配置、降级警告）仍需发布前补跑；输出前缀暂隐藏，完整 45 项契约需本机设备脚本。
+> ✅ 0.14 的 JVM 单测、工程一致性与 APK 签名指纹门禁可在本机复现；
+> P1/P2 功能与视觉验收结果见 [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)
+> 与 `docs/ui/reports/`。
+> ⚠️ 设备当前断开：LSPosed 注入、R8 后体积与真机回归以 A8 的 RELEASE-REPORT 为准。
+> 在报告确认前，本文不声称“已通过全部真机矩阵”，也不承诺 APK ≤6MB。
 
 ## 它做什么
 
@@ -32,6 +34,29 @@
 
 已验证的小爱版本见 [兼容性矩阵](docs/compatibility.md)，目前只有 **8.2.65.4714**。
 
+## 设置 App（0.14 UI）
+
+0.14 起设置页是**单 Activity + Compose + Miuix**，底部 4 个 tab；旧版
+`HomeActivity` / `ConfigActivity` 仅作为过渡入口保留，**0.15 删除**。
+
+| tab | 主要页面 | 能做什么 |
+|---|---|---|
+| 首页 | 状态总览、待处理、双域入口、运行概况、最近活动 | 只读看状态；所有按钮只做跳转，不放开关 |
+| 小爱 | 小爱、模型与服务商、运行态、增强能力（占位） | 启用/暂停第三方模型（即时保存）；编辑服务商/模型/端点/密钥（显式保存） |
+| 接入 | 接入、端口与服务、令牌与局域网、连接信息、能力清单/详情、工具清单、权限 | 看 8771/8770 通道、改令牌与 LAN、复制连接信息；能力与工具只读 |
+| 我的 | 我的、外观、配置管理、诊断、日志、关于、开源许可、兼容模式 | 主题三档、备份/还原/脱敏导出、诊断/日志、危险区「停用全部」 |
+
+- 共 **19 条路由**；一级页显示底栏，二级/三级页隐藏底栏并显示返回箭头。
+- 深浅色跟随系统或手动三档；颜色/字号来自 `XiaoiTheme`，组件优先用 Miuix
+  （`Scaffold`、`SmallTopAppBar`、`NavigationBar`、`Card`、`Button`、`Switch`、
+  `TextField`、`SnackbarHost`），只有 Miuix 没有的筛选 chip、空态、状态 Hero 自绘。
+- 日志页支持级别筛选、跟随、清空、分享；0.14 **没有域筛选**。
+- 「我的 › 诊断 › 兼容模式」提供只读的旧配置/文件信息；旧页面本身仍是过渡入口。
+- 提示词、工具注入、技能包、记忆、语音与路由在 0.14 **只是只读占位**，
+  没有开关也没有执行入口；不要按已实现功能理解。
+- 页面与组件契约见 [docs/ui/SCREENS.md](docs/ui/SCREENS.md)、
+  [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md)。
+
 ## 前提
 
 - Android 12+，已 root（KernelSU / Magisk）
@@ -40,7 +65,7 @@
 
 ## 下载与安装
 
-从 [Releases](../../releases) 下载最新 `xiaoi-plus-<version>.apk` 和同名 `.sha256`，先校验再安装：
+从 [Releases](https://github.com/xuanyuanluoxue/xiaoi-plus/releases) 下载最新 `xiaoi-plus-<version>.apk` 和同名 `.sha256`，先校验再安装：
 
 ```bash
 sha256sum -c xiaoi-plus-<version>.apk.sha256
@@ -54,7 +79,8 @@ adb install -r xiaoi-plus-<version>.apk
 1. 打开 **LSPosed 管理器** → 模块 → 找到「小爱同学plus」→ 打开「启用模块」
 2. 点「作用域」，**只勾选「超级小爱」**（`com.miui.voiceassist`）。
    不要勾系统框架、不要勾其他应用——多勾没有好处，只会扩大影响面。
-3. 打开「小爱同学plus」应用（就是模块自己的设置页），填写配置并保存
+3. 打开「小爱同学plus」应用 → **小爱 › 模型与服务商**，填写服务商/端点/模型/API Key 并保存；
+   需要桥或动作面时再到 **接入 › 令牌与局域网** 设置 Token 与 LAN
 4. 保存后配置写入 App 私有 `config.json`，并通过控制面通知正在运行的小爱重新加载；
    小爱未运行时下次启动会自动拉取。若页面一直未生效，可强制停止小爱再打开：
 
@@ -72,16 +98,19 @@ adb install -r xiaoi-plus-<version>.apk
 
 ### 设置页字段
 
-| 字段 | 填什么 | 示例 |
-|---|---|---|
-| 服务商 / 端点 | 上游 OpenAI 兼容 base URL，按服务商要求带不带 `/v1` | `https://api.example.com/v1` |
-| 模型 ID | 原样传给上游的 `model` 字段 | `deepseek-chat` |
-| API Key | 服务商给的 key；跟服务商走，明文存在模块私有目录 | `sk-...` |
-| 启用第三方模型 | 暂停只关重定向，不清配置 | 开 |
-| 开启本地能力桥 | 实验性，默认关；默认监听 `127.0.0.1:8771~8775` | 开 |
-| 允许局域网访问 | 需配合 **32 位十六进制** Token；满足时监听 `0.0.0.0`，同一 Wi-Fi 的设备可直连 `/mcp`。短 token/非 hex token 自动回退仅本机 | 关 |
-| Agent 动作面允许局域网访问 | 只影响 `8770`；同样要求 **32 位十六进制** Token，弱 token 自动回退仅本机。8770 可执行设备动作，公共 Wi-Fi/公司网络建议关闭 | 关 |
-| 能力桥 Token | 调用方必须带 `Authorization: Bearer <token>`；**留空则拒绝所有请求**。局域网要求 32 hex（128 bit） | 一段长随机串 |
+字段分布在两个 tab：模型/端点/密钥在 **小爱 › 模型与服务商**；桥、Token、LAN 在
+**接入 › 令牌与局域网**。下表的「位置」列对应 0.14 UI；旧版配置页只作为过渡入口保留。
+
+| 字段 | 位置 | 填什么 | 示例 |
+|---|---|---|---|
+| 服务商 / 端点 | 小爱 › 模型与服务商 | 上游 OpenAI 兼容 base URL，按服务商要求带不带 `/v1` | `https://api.example.com/v1` |
+| 模型 ID | 小爱 › 模型与服务商 | 原样传给上游的 `model` 字段 | `deepseek-chat` |
+| API Key | 小爱 › 模型与服务商 | 服务商给的 key；跟服务商走，明文存在模块私有目录 | `sk-...` |
+| 启用第三方模型 | 小爱（主开关） | 暂停只关重定向，不清配置 | 开 |
+| 开启本地能力桥 | 接入 › 令牌与局域网 | 实验性，默认关；默认监听 `127.0.0.1:8771~8775` | 开 |
+| 允许局域网访问 | 接入 › 令牌与局域网 | 需配合 **32 位十六进制** Token；满足时监听 `0.0.0.0`，同一 Wi-Fi 的设备可直连 `/mcp`。短 token/非 hex token 自动回退仅本机 | 关 |
+| Agent 动作面允许局域网访问 | 接入 › 令牌与局域网 | 只影响 `8770`；同样要求 **32 位十六进制** Token，弱 token 自动回退仅本机。8770 可执行设备动作，公共 Wi-Fi/公司网络建议关闭 | 关 |
+| 能力桥 Token | 接入 › 令牌与局域网 | 调用方必须带 `Authorization: Bearer <token>`；**留空则拒绝所有请求**。局域网要求 32 hex（128 bit） | 一段长随机串 |
 
 服务商、模型 ID、API Key 三者齐全才会启用；暂停（enabled=false）不会清空这些字段。
 模型标识 `X-Model-Provider-Id` 随启用自动发送，不再提供单独开关。
@@ -94,8 +123,15 @@ adb 普通用户无法直接读写，密钥不再落在 `Android/data`）。
 `Android/data/plus.xiaoi.module/files/config.json` 的配置会在升级后首次打开 App 时自动迁移，
 成功后删除旧文件（若私有目录已有配置，旧文件归档为 `config.json.legacy.<ts>`，不会覆盖）。
 文件改完在 App 进程活着时 **1~2 秒自动生效**；进程被杀则下次打开 App 时应用。
-运行时变更（MCP `switch_model` 等）不会自动写回文件，配置页有「从运行中小爱导入」可一键回流——
+运行时变更（MCP `switch_model` 等）不会自动写回文件，「我的 › 配置管理」有「从运行中的小爱导入」可一键回流——
 文件永远优先。若文件损坏，App 会保留原文件并生成 `config.json.corrupt.<ts>`，此时保存会被阻止。
+
+> **安全提示**
+> - **完整备份是明文**：包含 `apiKey` 与 MCP Token，任何拿到文件的人都能直接使用；只在可信位置保存，用完删除。
+> - **脱敏副本不可还原**：导出/分享会把密钥与 Token 替换为 `***`，适合排障，不能当备份。
+> - **Token 就是手机接口的访问凭证**：8771/8770（以及开启 LAN 后的同一 Wi-Fi 设备）都靠它鉴权；
+>   不要发到群里、截图或提交到仓库。轮换 Token 会让旧客户端立即 401。
+> - LAN 只在需要时开；公共 Wi-Fi/公司网络建议用 `adb forward`，用完关掉。
 
 带 `enabled` 显式开关：暂停只关重定向、不清配置；无密钥的配置不会用于模型请求。
 桥与模型重定向互不影响：不勾桥，重定向照常工作。
@@ -125,11 +161,11 @@ App 内「日志」页直接显示小爱经控制面上报的运行日志，MCP 
 | 日志 | 含义 |
 |---|---|
 | `已启用 model=xxx` | 正常，配置读到了 |
-| `配置为空，跳过` | 设置页没保存，或模型名/端点为空 |
+| `配置为空，跳过` | 模型页没保存，或模型名/端点为空 |
 | `版本不在白名单: 8.x.x` | 该版本未适配，看 [如何适配新版本](docs/compatibility.md#如何适配新版本) |
 | `配置 hook 失败` / `provider 标识 hook 失败` | 混淆名变了，同上 |
 
-标识只在启用重定向时随请求头发送，配置页不再提供单独开关。
+标识只在启用重定向时随请求头发送，模型页不再提供单独开关。
 v0.5 起标识走请求头，不再往提示词里塞 `[model=...]` 规则——
 既不占上下文，也不依赖模型服从；旧会话里偶尔看到前缀是模型在模仿历史，不是模块注入。
 
@@ -150,7 +186,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 # ok facade=true
 ```
 
-手机 IP 与端口会在设置页 MCP 卡片里直接显示（端口来自控制面，不再扫描）。没有 token
+手机 IP 与端口会在「接入 › 连接信息」里直接显示（端口来自控制面，不再扫描）。没有 token
 或 token 不对会返回 `401 unauthorized`；短 token/非 hex token 只会绑 loopback。
 关闭局域网开关后，非回环请求会立即被拒绝。桥的边界与风险见
 [docs/security.md](docs/security.md#3-本地能力桥实验性默认关闭)。
@@ -188,7 +224,7 @@ curl -s -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' \
 
 **A. 同一 Wi-Fi 直连（推荐）**
 
-设置页打开「允许局域网访问」，保证 Token 非空并保存。把卡片里显示的
+在「接入 › 令牌与局域网」打开「允许局域网访问」，保证 Token 非空并保存。把「连接信息」里显示的
 `http://<手机IP>:8771/mcp` 连同 `Authorization: Bearer <token>` 头注册到 MCP 客户端即可，
 不需要 adb、不需要 root、不需要数据线。桥随小爱进程启动，请保持小爱在后台运行。
 
@@ -225,31 +261,42 @@ App 保存配置则通过控制面通知小爱重新拉取（不再有 `/config`
 
 只有**首次启用**需要在 LSPosed 里勾一次作用域；之后全部可远程完成。
 
-## 从源码构建
+## 从源码构建（0.14）
 
-无 Gradle，一条命令（需要 JDK 17、build-tools、`android.jar`、`zip`，见 [docs/build.md](docs/build.md)）：
+0.14 起用 Gradle wrapper 构建，不再用 `build.sh`（`build.sh` 只覆盖 ≤0.13 的纯 Java 构建）。
 
-```bash
-chmod +x build.sh && ./build.sh
-# 产物：build/xiaoi-plus.apk
-```
+环境：
 
-改代码后先跑测试（纯 JVM，无需设备）：
-
-```bash
-./tests/run.sh                 # 桌面单测（Json / Http / Mcp / Logs）
-XIAOI_TOKEN=<token> scripts/contract-test.sh   # 真机契约（可选，详见脚本头注释）
-scripts/check-all.sh           # 本地全量门禁：单测 + 认知检查 + 真机契约
-```
-
-正式发版不要手敲上面这行，用脚本——它会检查工作区、构建、强制校验签名/包名/versionCode/固定指纹、
-归档到 `dist/`、算 sha256 并生成 Release Notes 草稿：
+- **JDK 21**（AGP 9.5.1 要求）
+- Android SDK：`platforms;android-37.0`、`build-tools;37.0.0`、`platform-tools`
+- Gradle **9.9.0**（wrapper 固定）、AGP **9.5.1**、Kotlin 2.4.21、Compose 1.12.2、Miuix 0.9.4
+- `local.properties` 的 `sdk.dir` 指向 Linux SDK；依赖镜像已在 `settings.gradle.kts` 配好
 
 ```bash
-scripts/release.sh
+export JAVA_HOME=/path/to/jdk-21
+./gradlew :app:assembleDebug
+./gradlew :app:assembleRelease
+# 产物：app/build/outputs/apk/debug/ 或 release/
 ```
 
-版本号在 `app/src/main/AndroidManifest.xml` 的 `android:versionName` / `android:versionCode`；完整发版流程见 **[docs/release.md](docs/release.md)**。
+改代码后跑门禁（单测纯 JVM，无需设备）：
+
+```bash
+./tests/run.sh                 # 桌面单测（Json / Http / Mcp / NavStack / Status…）
+./scripts/check-consistency.sh # 版本/SDK/R 引用/线程/提示/死资源
+./scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
+# 校验：已签名 + 包名 plus.xiaoi.module + versionCode + 固定证书指纹
+```
+
+`XIAOI_TOKEN=<token> scripts/contract-test.sh` 是可选的真机契约，设备断开时会跳过/失败，
+不要把它当成日常构建门禁。
+
+R8/shrink、CI 与发布脚本的 0.14 适配在 P3（A8）收尾；APK 体积目标 ≤6MB，但**以
+RELEASE-REPORT 的实测为准**，本文不提前承诺。版本号单一来源是
+`app/src/main/AndroidManifest.xml` 的 `android:versionName` / `android:versionCode`
+（Gradle 读取）；0.14 目标为 `0.14.0` / `19`。完整构建说明见
+[docs/ui/BUILD.md](docs/ui/BUILD.md)，版本说明见
+[docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)。
 
 ## 完全卸载
 
@@ -266,7 +313,7 @@ scripts/release.sh
    adb shell am force-stop com.miui.voiceassist
    ```
 
-4. 确认日志里不再出现 `provider 标识 hook 完成`，`8771~8775` 也不再监听（含局域网模式）
+4. 确认日志里不再出现 `provider 标识 hook 完成`，`8771~8775` 与 `8770` 也不再监听（含局域网模式）
 
 模块只在运行时注入，不写小爱的数据、不改系统分区、不留后台服务；
 卸载时私有目录（含 API Key）一并删除。
@@ -275,13 +322,17 @@ scripts/release.sh
 
 | 文档 | 内容 |
 |---|---|
-| [docs/build.md](docs/build.md) | 从零构建、产物、常见报错 |
+| [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md) | 0.14 版本内容、页面清单、验收、限制、截图索引 |
+| [docs/ui/BUILD.md](docs/ui/BUILD.md) | 0.14 Gradle/Compose 构建、门禁、截图命令 |
+| [docs/ui/SCREENS.md](docs/ui/SCREENS.md) | 19 条路由、页面区块与 0.14 不做项 |
+| [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md) | Miuix 组件契约、`FilterChips`、8770 状态判定 |
+| [docs/build.md](docs/build.md) | 旧版 `build.sh` 构建（≤0.13，0.14 不用） |
 | [docs/release.md](docs/release.md) | 版本号、签名密钥、发 tag、回滚 |
 | [docs/security.md](docs/security.md) | 密钥存哪、数据去向、桥的边界、回滚与风险 |
 | [docs/compatibility.md](docs/compatibility.md) | 版本矩阵、适配新版本的操作清单 |
 | [docs/architecture.md](docs/architecture.md) | hook 点与设计原则 |
-| [docs/design-system.md](docs/design-system.md) | UI 声明（令牌 / 组件 / 状态） |
-| [docs/ui-architecture.md](docs/ui-architecture.md) | 四页结构与数据流 |
+| [docs/design-system.md](docs/design-system.md) | UI 声明（令牌 / 组件 / 状态）+ 对比度实测 |
+| [docs/ui-architecture.md](docs/ui-architecture.md) | 旧版四页结构与数据流（0.14 新结构见 SCREENS） |
 | [docs/remote-debug.md](docs/remote-debug.md) | 远程调试与排障 |
 | [CHANGELOG.md](CHANGELOG.md) | 更新日志 |
 

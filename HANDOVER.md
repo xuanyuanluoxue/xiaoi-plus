@@ -1,22 +1,18 @@
-# 交接说明（2026-11-07）
+# 交接说明（2026-11-08）
 
-> 状态：**`v0.13.0-agent.2` 已发布**（prerelease，versionCode 18）：修复 `alarm.set` 伪报成功，
-> 新增 `mode=auto/clock/app` 与 App 内 AlarmManager 闹钟。
-> JVM 单测 1478 断言全绿；工程一致性通过；`scripts/verify-apk.sh` 固定指纹校验通过。
-> 真机已验证：App 内闹钟精确注册（`exact=true`/`verified=true`）、到点通知与闹钟铃声、
-> `mode=clock` 被系统拒绝、`mode=auto` 正确回退并带 warning。
-> 其余 0.13.0-agent.1 主路径不变；已知限制见 `docs/agent/PHASE1.md` 第 7 节。
+> 状态：**0.14 UI 重写已完成 P0/P1/P2，P3 由 A8 进行中**（R8/CI/真机收尾）。
+> 设置 App 已是单 Activity + Compose + Miuix 的 4 tab（首页/小爱/接入/我的），
+> 共 19 条路由；P2 功能验收 65 PASS / 0 FAIL / 2 BLOCKED，P2 视觉 5 条 P1 已修。
 >
-> - Release：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.2>
-> - 上一版：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.1>
-> - 资产命名：`xiaoi-plus-0.13.0-agent.2.apk` + `.sha256`；CI 构建，签名指纹
->   `d7dd34b2…d19b`
+> - 上一个已发布版本：`v0.13.0-agent.2`（prerelease，versionCode 18）。
+> - 0.14 目标：`0.14.0` / versionCode 19（A8 定版）；版本说明见
+>   [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)。
+> - 设备当前断开：LSPosed 注入、R8 后体积、8770/8771 真机回归以 A8 的
+>   RELEASE-REPORT 为准；在报告确认前不声称“全部真机通过”，也不承诺 APK ≤6MB。
+> - 旧 `HomeActivity`/`ConfigActivity` 仅作 0.14 过渡入口保留，**0.15 删除**。
 >
-> 0.12 核心重构（WP1~WP8）已完成并发布 `v0.12.0-beta.1`；
-> Agent 能力计划见 [docs/agent/PLAN.md](docs/agent/PLAN.md)，工作包见
-> [docs/agent/PHASE1.md](docs/agent/PHASE1.md)。
 > 发布门禁：未签名/错签名产物不能进入 Release；无正式密钥的 tag 只上传 artifact，不建 Release。
-> 0.13 仍是测试版；root/alarm/LAN 安全边界需继续验证后再考虑正式版。
+> 0.14 仍是测试版；root/alarm/LAN 安全边界需继续验证后再考虑正式版。
 
 ## 1. 这是什么
 
@@ -31,7 +27,7 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 | 手机 | 小米 HyperOS 设备（机型与系统版本因环境而异） |
 | 连接 | USB adb 或无线 adb（IP 与串号属于本机环境，换成你自己的） |
 | 小爱 | 8.2.65.4714（版本白名单精确匹配，不在名单自动 no-op） |
-| 模块 | 0.12.0-beta.1（测试版），LSPosed 已启用，作用域只勾「超级小爱」 |
+| 模块 | 0.14.0（目标，A8 定版；上一发布 0.13.0-agent.2），LSPosed 已启用，作用域只勾「超级小爱」 |
 | 当前模型 | 任意 OpenAI 兼容端点与模型（BYOK） |
 | MCP token | 存在 `config.json` 的 `mcp.token`，同时在 `~/.config/xiaoi/token`（本机，不进仓库） |
 
@@ -42,20 +38,22 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 ```
 
 - 不再写 `Android/data`；旧位置的文件会在升级后首次打开 App 时自动迁移
-- 需要查看/迁移时用 App 内「分享（已脱敏）」或「完整备份」；不要用公共目录转发含密钥文件
+- 需要查看/迁移时用「我的 › 配置管理」的「分享（已脱敏）」或「完整备份」；不要用公共目录转发含密钥文件
 - 改完 App 进程活着时 **1~2 秒自动生效**；进程被杀则下次打开 App 应用
 - 关键字段：`version`（v3）、`rev`（每次保存自增）、`enabled`（暂停不清配置）、
   `activeProviderId/activeModelId`、`providers[].apiKey`、`mcp.enabled/token`、`markerTemplate`
 - 文件损坏时保留原文件 + `config.json.corrupt.<ts>`，App 进入只读态并阻止保存
-- 运行时变更（MCP `switch_model`）不回写文件；配置页有「从运行中小爱导入」
+- 运行时变更（MCP `switch_model`）不回写文件；「我的 › 配置管理」有「从运行中的小爱导入」
 
 ## 4. 常用验证命令
 
 ```bash
-./tests/run.sh                     # JVM 单测（1453 断言，无需设备）
-./scripts/check-all.sh             # 单测 + aoci check + 真机契约
-./scripts/verify-apk.sh build/xiaoi-plus.apk            # 已签名/包名/versionCode/固定指纹
-./scripts/verify-apk.sh --self-test build/xiaoi-plus.apk # 门禁自测（含负向用例）
+./tests/run.sh                     # JVM 单测（含 NavStack 49，无需设备）
+./scripts/check-consistency.sh     # 版本/SDK/R/线程/提示/死资源
+./scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk  # 已签名/包名/versionCode/固定指纹
+./scripts/verify-apk.sh --self-test app/build/outputs/apk/release/app-release.apk # 门禁自测
+# 0.14 构建：JAVA_HOME=<jdk-21> ./gradlew :app:assembleRelease --offline
+# check-all / contract-test 需要设备；设备断开时不要当日常门禁
 XIAOI_TOKEN=$(cat ~/.config/xiaoi/token) ./scripts/contract-test.sh --check  # 契约 45 项
 ./scripts/ime.sh on|off|type "文本" # adb 输入法（中文/符号），用完 off
 ```
@@ -70,7 +68,22 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"xiaoai_config","arguments":{}}}'
 ```
 
-## 5. 本轮完成（P0~P4）
+## 5. 本轮完成（0.14 UI，2026-11-08）
+
+- **P0**：Gradle 9.9 + AGP 9.5.1 + Kotlin 2.4.21 + Compose 1.12.2 + Miuix 0.9.4；
+  namespace/签名/versionCode 门禁跑通。
+- **P1**：单 Activity + `NavStack` + 4 tab + `XiaoiTheme`；日志/关于/我的；
+  严格 Miuix（`Scaffold`/`SmallTopAppBar`/`NavigationBar`/`SnackbarHost`）。
+- **P2**：首页/小爱/模型/接入/能力/工具/权限/我的/外观/配置管理/诊断/兼容模式；
+  19 条路由；P2 功能 65 PASS / 0 FAIL / 2 BLOCKED；P2 视觉 5 条 P1 + 低成本 P2 已修。
+- **A3 数据层**：`AgentRuntimeStatus`、`BridgeStatus` 实际 bind/LAN、`PermissionProbe`、
+  `IssueInputFactory`、`ActivityHub`、`CapabilityRegistry`、`NavStack`。
+- **P3（A8 进行中）**：R8/shrink、CI、发布脚本、真机回归；文档由 A9 同步
+  （README/CHANGELOG/PLAN/SCREENS/COMPONENTS/BUILD/RELEASE-0.14）。
+
+### 更早的完成项（P0~P4）
+
+
 
 - **P0 收口**：升级不丢密钥；`marker_tpl` 漏写修复；删死代码 SettingsActivity；文档纠偏
 - **P1 数据层**：`ConfigCodec`（纯 JVM）统一 parse/normalize/validate/migrate；配置层 53 断言
@@ -173,23 +186,25 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
    日志失败四分类未真机触发（需关 MCP/清令牌）；launcher adaptive-icon 未单独截图；
    配置页「推送状态未知」仍可能需要手动点一次（P1）；装饰性 `↻`/`↧` 尚未全换矢量。
    局域网 MCP 已完成真机验证（health/tools/status/cli/logs/stats、401/403、开关热切换）。
-10. **重构尚未完成的部分**（P3c/P4）：
-   - 四个页面仍有约 100 处硬编码中文，尚未全部迁到 `strings.xml`
-   - `ConfigActivity` 仍有 ~1600 行，未拆成 Page/ModelEditor/PushController
-   - 组件仍是「style + 页面内联」，尚未抽成可复用 CompoundView
-   - 页面骨架（AppBar 在滚动区 vs 固定工具条）尚未完全统一
-   - 单 Activity 方案未采用，仍是 4 Activity + shell
+10. **0.14 之后的未完成项**：
+   - Compose 页面仍有硬编码中文，尚未全部迁到 `strings.xml`
+   - 旧 `ConfigActivity`（~1600 行）仅作过渡，0.15 删除；不要在两套页面同时加功能
+   - 日志没有域筛选；Connect 是二级页；能力/工具/审计/确认/测试台仍只读或占位
+   - P3 的 R8/CI/真机回归与 APK 体积由 A8 收口，文档不提前下结论
 11. **MCP 关闭时 D3/D4 以数据面 leader 为准**：控制面仍连接、模型重定向仍生效，
    但主页会显示「端点可用 / 运行态尚未确认」，配置页显示「等待小爱连接后应用」。
    这是保守口径（不伪造“已确认”），不是数据面异常；后续可把控制面连接与数据面端口拆开。
 
 ## 7. 下一阶段建议
 
-1. **0.9 M1-L1 语音动作引擎**（`docs/feature-candidates.md` Top1）：命令词 + ActionRegistry
+1. **0.14 收尾（A8）**：R8/shrink、CI、发布脚本、LSPosed/8770/8771 真机回归；
+   补测弱令牌回退与损坏只读两个 BLOCKED 用例，确认 APK 体积后再发布。
+2. **0.15**：系统提示词 + 工具注入 + 删除旧 Activity；审计/确认队列/测试台评估。
+3. （更后续）语音动作引擎（`docs/feature-candidates.md` Top1）：命令词 + ActionRegistry
    白名单 + 危险动作二次确认 + `POST /action`；开工前跑第 6 节待实测清单（变更性命令需授权）
-2. 输出前缀单点注入（Frida 定位后；修好再恢复配置页卡片）
-3. （可选）`/v1/models` 模型发现——独立规划，不与本轮混做
-4. WP8 发布门禁已完成（`verify-apk.sh`、`expected-signer.sha256`、CI 签名闸门、版本/文档）；
+4. 输出前缀单点注入（Frida 定位后；修好再恢复配置页卡片）
+5. （可选）`/v1/models` 模型发现——独立规划，不与本轮混做
+6. WP8 发布门禁已完成（`verify-apk.sh`、`expected-signer.sha256`、CI 签名闸门、版本/文档）；
    真机 P0 矩阵已通过，`v0.12.0-beta.1` 已打 tag 并发布为 prerelease；
    CI 用正式密钥签名，Release 资产通过固定指纹校验。无正式密钥的 tag 构建只上传 artifact，不建 Release。
    后续 0.12.0 正式版需先处理第 6 节第 11 条的 MCP 关闭状态口径，并补跑 leader 接管、弱 token、

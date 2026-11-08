@@ -110,6 +110,8 @@ fun XiaoiButton(
 
 - 高 48dp；圆角 16dp；主按钮 `primary/on_primary`；次按钮 `chipOkBg/primary`
   （浅色 `#DCE9F7/#2F4A6B`，深色 `#2E3444/#C7D2FE`），不能白底白卡。
+- 实测对比度：次按钮浅色 **7.42:1**、深色 **8.32:1**（P2 视觉修复只改 SECONDARY，
+  PRIMARY/TEXT/DANGER_TEXT 不动）。
 - `DANGER_TEXT` 只用于确认框内的危险按钮（error 文字）。
 - loading 时禁用并显示 16dp 进度；不要改变宽度导致跳动。
 
@@ -130,7 +132,8 @@ fun XiaoiTextField(
 ```
 
 - 高 44dp；圆角 12dp；背景 Miuix 默认容器；聚焦 1dp `primary`；错误 1dp `error`。
-- label/placeholder 显式传 `textSecondary`（Miuix 默认浅灰在灰底上仅 2.06:1）。
+- label/placeholder 显式传 `textSecondary`（Miuix 默认浅灰在灰底上仅 2.06:1，
+  显式后 **5.01:1**）。
 - 密钥字段默认掩码，右侧“显示/隐藏”仅本次；不把明文写入状态日志。
 
 ### XiaoiSwitchRow
@@ -173,6 +176,7 @@ fun XiaoiCopyRow(title: String, value: String, onCopy: () -> Unit)
 ```
 
 - 用 Miuix `BasicComponent`；副行显示要复制的值，右侧“复制”文字。
+- “复制”最小触控 48×48dp，字号不变（P2 视觉修复）。
 - 不用 `ArrowPreference`：复制不是跳转，不显示 chevron。
 - 复制内容必须与副行展示值一致；提示由调用方 `showSnackbar`。
 
@@ -404,7 +408,8 @@ fun PermissionRow(
 )
 ```
 
-- 56dp；状态徽章 + “去设置”；无标准 API 时显示“未确认”。
+- 56dp；状态徽章 + “去设置”；“去设置”最小触控 48×48dp。
+- 无标准 API 时显示“未确认”，不当成拒绝。
 
 ### FilterChips
 
@@ -420,6 +425,8 @@ fun FilterChips(
 - 28dp 视觉 + 48dp 触控；FlowRow 自动换行，不横向裁切。
 - 未选中 `chipBg` + `textSecondary`；选中 `primary` 实心 + `onPrimary`。
 - 全站唯一筛选 chip 视觉；日志、外观、能力页共用。
+- `XiaoiChip` 已删除（0.14 P2 视觉修复），不要再新增第二套筛选 chip。
+- 日志页 chip 行与下方卡片之间固定 12dp，避免卡片压住 chip 下缘。
 
 ### SearchField
 
@@ -434,6 +441,22 @@ fun SearchField(
 ```
 
 - 44dp；搜索图标；清除按钮；label/placeholder 显式 `textSecondary`。
+
+### AgentStatus / agentPortUi
+
+```kotlin
+enum class AgentPortState { RUNNING, STOPPED, FAILED, DISABLED, UNKNOWN }
+
+fun agentPortUi(
+    mcpEnabled: Boolean,
+    snapshot: AgentRuntimeStatus.Snapshot
+): AgentPortUi
+```
+
+- 8770 动作面状态的**唯一 UI 判定**；Access / Bridge / Diagnostics / Home 共用。
+- 只读 `AgentRuntimeStatus` 快照与 `known()`，不扫端口、不猜 loopback。
+- 文案固定：运行中 / 已停止 / 启动失败 / 未开启 / 未确认；未知统一“未确认”。
+- 不允许页面各自拼一套 `PortState`；新增 8770 状态展示先改本组件。
 
 ## 4. 组件验收
 
