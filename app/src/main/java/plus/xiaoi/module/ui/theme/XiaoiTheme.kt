@@ -37,6 +37,8 @@ data class XiaoiColors(
     val error: Color,
     val errorBg: Color,
     val iconTile: Color,
+    /** Hero 内文字；对应 design-system §2 的 hero-on。 */
+    val heroOn: Color,
 )
 
 /** 尺寸令牌；页面不写裸 dp。 */
@@ -86,6 +88,7 @@ private val LightColors = XiaoiColors(
     error = Color(0xFFC43D3D),
     errorBg = Color(0x1AC43D3D),
     iconTile = Color(0xFFDCE9F7),
+    heroOn = Color(0xFF16202E),
 )
 
 private val DarkColors = XiaoiColors(
@@ -107,6 +110,7 @@ private val DarkColors = XiaoiColors(
     error = Color(0xFFF87171),
     errorBg = Color(0x2EF87171),
     iconTile = Color(0xFF26262B),
+    heroOn = Color(0xFFE8ECF8),
 )
 
 private val LocalXiaoiColors = staticCompositionLocalOf { LightColors }

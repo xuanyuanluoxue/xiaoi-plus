@@ -16,6 +16,33 @@ import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
+/**
+ * 通用占位页：只说明归属与交付批次，不提供旧版入口（旧版入口只在首页保留）。
+ * A4–A7 替换各自 screen 时删除对应的占位实现即可。
+ */
+@Composable
+fun XiaoiPlaceholder(
+    title: String,
+    note: String,
+    modifier: Modifier = Modifier,
+) {
+    val colors = XiaoiTheme.colors
+    Column(
+        modifier
+            .fillMaxSize()
+            .padding(horizontal = XiaoiTheme.dimens.pagePad)
+            .padding(top = XiaoiTheme.dimens.pagePadTop),
+    ) {
+        XiaoiCard {
+            XiaoiBadge("P2 待接入", XiaoiTone.INFO)
+            Spacer(Modifier.height(12.dp))
+            Text(title, color = colors.text, style = XiaoiTheme.typography.title)
+            Spacer(Modifier.height(6.dp))
+            Text(note, color = colors.textSecondary, style = XiaoiTheme.typography.body)
+        }
+    }
+}
+
 /** P1 占位页：保留导航骨架，真实内容在 P2 接入。 */
 @Composable
 fun PlaceholderScreen(

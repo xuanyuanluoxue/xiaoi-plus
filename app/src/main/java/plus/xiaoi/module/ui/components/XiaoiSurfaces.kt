@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,8 +28,10 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -38,10 +41,17 @@ import top.yukonga.miuix.kmp.icon.extended.Notes
 @Composable
 fun XiaoiCard(
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) { content() }
+    if (onClick != null) {
+        Card(modifier = modifier.fillMaxWidth(), onClick = onClick) {
+            Column(Modifier.padding(16.dp), content = content)
+        }
+    } else {
+        Card(modifier = modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), content = content)
+        }
     }
 }
 
@@ -56,25 +66,53 @@ fun XiaoiPreferenceCard(
     }
 }
 
-/** 主按钮：48dp 高、16dp 圆角。 */
+/** 按钮风格；与 COMPONENTS.md §2 对齐。 */
+enum class XiaoiButtonStyle { PRIMARY, SECONDARY, TEXT, DANGER_TEXT }
+
+/** 主/次按钮：48dp 高、16dp 圆角；TEXT/DANGER_TEXT 走 Miuix TextButton。 */
 @Composable
 fun XiaoiButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    style: XiaoiButtonStyle = XiaoiButtonStyle.PRIMARY,
     enabled: Boolean = true,
+    loading: Boolean = false,
 ) {
+    val colors = XiaoiTheme.colors
+    if (style == XiaoiButtonStyle.TEXT || style == XiaoiButtonStyle.DANGER_TEXT) {
+        XiaoiTextButton(
+            text = text,
+            modifier = modifier,
+            enabled = enabled && !loading,
+            danger = style == XiaoiButtonStyle.DANGER_TEXT,
+            onClick = onClick,
+        )
+        return
+    }
+    val container = if (style == XiaoiButtonStyle.PRIMARY) colors.primary else colors.surface2
+    val content = if (style == XiaoiButtonStyle.PRIMARY) colors.onPrimary else colors.text
     Button(
         onClick = onClick,
         modifier = modifier,
-        enabled = enabled,
+        enabled = enabled && !loading,
+        minHeight = XiaoiTheme.dimens.touch,
+        cornerRadius = XiaoiTheme.dimens.radiusButton,
         colors = ButtonDefaults.buttonColors(
-            color = XiaoiTheme.colors.primary,
-            contentColor = XiaoiTheme.colors.onPrimary,
-            disabledColor = XiaoiTheme.colors.chipBg,
-            disabledContentColor = XiaoiTheme.colors.textHint,
+            color = container,
+            contentColor = content,
+            disabledColor = colors.chipBg,
+            disabledContentColor = colors.textHint,
         ),
     ) {
+        if (loading) {
+            CircularProgressIndicator(
+                size = 16.dp,
+                strokeWidth = 2.dp,
+                colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = content),
+            )
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             text = text,
             style = XiaoiTheme.typography.rowTitle,
