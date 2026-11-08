@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.ui.components.XiaoiChip
-import plus.xiaoi.module.ui.components.XiaoiDivider
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
+import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
 import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.theme.XiaoiTheme
@@ -57,7 +57,8 @@ fun LogsScreen(onMessage: (String) -> Unit) {
     var lines by remember { mutableStateOf<List<LogLine>>(emptyList()) }
     var filter by remember { mutableStateOf(0) } // 0 全部 / 1 信息 / 2 错误
     var follow by remember { mutableStateOf(false) }
-    var waiting by remember { mutableStateOf(true) }
+    var received by remember { mutableStateOf(false) }
+    var confirmClear by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     val reload: () -> Unit = {
@@ -66,7 +67,8 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             .filter { it.isNotEmpty() }
             .map { parseLine(it) }
         lines = parsed
-        waiting = parsed.isEmpty()
+        if (parsed.isNotEmpty()) received = true
+        if (parsed.isEmpty()) confirmClear = false
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -96,19 +98,24 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         ) {
             Text("${shown.size} 条", color = colors.text, style = XiaoiTheme.typography.hero)
             Row {
-                XiaoiTextButton("清空") {
-                    BridgeControlService.clearLogs()
-                    lines = emptyList()
-                    waiting = true
-                    onMessage("已清空本机日志缓冲（不删除小爱落盘日志）")
-                }
-                XiaoiTextButton("分享") {
-                    val text = lines.joinToString("\n") { "${it.time} ${it.level} ${it.message}" }
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, text)
+                if (confirmClear) {
+                    XiaoiTextButton("取消") { confirmClear = false }
+                    XiaoiTextButton("确认清空", danger = true, enabled = lines.isNotEmpty()) {
+                        BridgeControlService.clearLogs()
+                        lines = emptyList()
+                        confirmClear = false
+                        onMessage("已清空本机日志缓冲（不删除小爱落盘日志）")
                     }
-                    context.startActivity(Intent.createChooser(intent, "分享日志"))
+                } else {
+                    XiaoiTextButton("清空", enabled = lines.isNotEmpty()) { confirmClear = true }
+                    XiaoiTextButton("分享", enabled = lines.isNotEmpty()) {
+                        val text = lines.joinToString("\n") { "${it.time} ${it.level} ${it.message}" }
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "分享日志"))
+                    }
                 }
             }
         }
@@ -119,20 +126,21 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             Spacer(Modifier.width(8.dp))
             XiaoiChip("错误", filter == 2) { filter = 2 }
         }
-        XiaoiSwitchRow(
-            title = "跟随最新",
-            subtitle = "每 2 秒读取 App 内存镜像，不依赖 MCP",
-            checked = follow,
-            onCheckedChange = { follow = it },
-        )
-        XiaoiDivider()
-        Spacer(Modifier.height(4.dp))
+        XiaoiPreferenceCard {
+            XiaoiSwitchRow(
+                title = "跟随最新",
+                subtitle = "每 2 秒读取 App 内存镜像，不依赖 MCP",
+                checked = follow,
+                onCheckedChange = { follow = it },
+            )
+        }
+        Spacer(Modifier.height(8.dp))
 
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             if (shown.isEmpty()) {
                 item {
                     val (title, desc) = when {
-                        waiting -> "等待小爱上报日志" to "小爱进程连接后这里会自动出现"
+                        !received -> "等待小爱上报日志" to "小爱进程连接后这里会自动出现"
                         lines.isEmpty() -> "还没有日志" to "小爱还没有上报运行日志"
                         else -> "筛选无结果" to "切换筛选条件查看其他日志"
                     }

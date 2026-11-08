@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.ui.components.XiaoiCard
+import plus.xiaoi.module.ui.components.XiaoiCopyRow
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
@@ -72,7 +73,7 @@ fun AboutScreen(onMessage: (String) -> Unit) {
 
         XiaoiGroupHeader("信息")
         XiaoiPreferenceCard {
-            XiaoiInfoRow("作者", "轩辕落雪", onClick = { copy("xuanyuanluoxue", "用户名") })
+            XiaoiCopyRow("作者", "轩辕落雪") { copy("轩辕落雪", "作者名") }
             XiaoiInfoRow("GitHub", "xuanyuanluoxue/xiaoi-plus", onClick = { open(REPO) })
             XiaoiInfoRow("许可证", "GPL-3.0")
             XiaoiInfoRow("致谢", "OpenClaw · KernelSU Next · Miuix")
@@ -96,6 +97,7 @@ fun AboutScreen(onMessage: (String) -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
+        XiaoiGroupHeader("免责声明")
         Text(
             "本项目不修改、不重打包、不分发小爱同学的任何代码或资源；" +
                 "仅通过 LSPosed 在自己设备上做运行时互操作。",

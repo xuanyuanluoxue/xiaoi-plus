@@ -63,8 +63,9 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
    P0 Spike 的 `MiuixTheme.textStyles.title1` 默认色在深色下仍为黑；
    P1 所有 `Text` 显式传 `XiaoiTheme.colors.text`，已验证可读。
 3. **深色卡片颜色**
-   Miuix `surfaceContainer` 默认不是我们的 `surface`；已在 `XiaoiTheme` 显式传入
-   `surfaceContainer/onSurfaceContainer`，深浅色卡片与设计令牌一致。
+   P1 曾显式传入 `surfaceContainer`；P1.1 为严格使用 Miuix 默认值已移除覆盖。
+   浅色卡为 `#FFFFFF`，深色卡为 Miuix 默认容器色 `#242424`。这是组件默认值优先的
+   结果，已记录在 `design-system.md` §9。
 4. **“我的”tab 点按偶发打开支付宝**
    是设备上支付宝浮层/前台残留造成的输入拦截；`force-stop` 支付宝后点按正常。
    不是 `XiaoiBottomBar` 的布局问题。
@@ -83,10 +84,10 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 ## 5. 已知限制
 
 - 首页/小爱/接入仍是占位，P2 接入；`MainActivity` 还不是 launcher。
-- 日志页当前显示 0 条（控制面镜像为空）；页面逻辑与三种空态已验证。
-- 底栏暂时只用文字标签，未接 Miuix 图标；P2 可补图标与选中动效。
+- 日志页当前显示 0 条（控制面镜像为空）；非空 LogRow 待 P2 用真实日志补验。
+- 底栏已接 `miuix-icons`（P1.1）；选中色/对比度见 `design-system.md` §9。
 - 深链仍是调试用 `route` extra；P2 按 `SCREENS.md` 换成 `TAB/PAGE/FOCUS`。
-- R8 未开，release 7.5MB，P3 处理。
+- R8 未开，release 8.1MB（新增 miuix-icons），P3 处理。
 
 ## 6. 结论
 
@@ -117,12 +118,12 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 └─ p1-visual-review.png   # 3×2 拼图（Review 面板已打开）
 ```
 
-### 仍待 P2 决定的视觉项
+### 仍待 P2 决定的视觉项（P1.1 已处理 1–4）
 
-1. **浅色卡片对比**：当前 `bg #F7F8FA` + `surface #F1F2F5`，层次很轻；可改为白卡（`surface #FFFFFF`）更接近 Miuix。
-2. **底部导航**：当前只有文字；P2 加 24dp 图标与选中动效。
-3. **返回箭头**：当前是文本 `‹`；P2 换 24dp Vector 箭头。
-4. **关于页“作者”行**：动作是复制，却显示导航箭头；P2 改“复制” trailing 或图标。
+1. **浅色卡片对比**：已改 Miuix 白卡，做完了。
+2. **底部导航**：已接 24dp `miuix-icons` 与选中态，做完了。
+3. **返回箭头**：已换 `MiuixIcons.Back`，做完了。
+4. **关于页“作者”行**：已改 `XiaoiCopyRow`（无 chevron，复制展示值），做完了。
 5. **P1 预览卡**：P2 删除，不属于最终页面。
 
 ## 8. 严格 Miuix 重构（P1.1，2026-11-08）
@@ -132,7 +133,7 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 | 原实现 | 现在 |
 | --- | --- |
 | 自绘顶栏 Row + 文本 `‹` | `SmallTopAppBar` + `IconButton(MiuixIcons.Back)` |
-| 自绘 4 个文字 tab | `NavigationBar` + `NavigationBarItem` + `miuix-icons` |
+| 自绘 4 个文字 tab | `NavigationBar` 容器 + `miuix-icons`；item 因对比度自绘 |
 | 自绘 Snackbar | `Scaffold` + `SnackbarHostState` + `SnackbarHost` |
 | 自绘 InfoRow/SwitchRow | `ArrowPreference` / `SwitchPreference` / `BasicComponent` |
 | 卡片 24dp 覆盖 | Miuix `Card` 默认 16dp；浅色白卡、深色默认容器色 |
@@ -148,3 +149,29 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 
 仍保留的自定义组件：`XiaoiTheme`（颜色/字号映射）、`XiaoiBadge`/`XiaoiChip`、
 `XiaoiEmptyState`、`StatusHero` 等 Miuix 没有直接对应的业务组件。
+
+## 9. P1 视觉审核修正（2026-11-08）
+
+视觉报告：`~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-08/visual-review-p1.md`
+结论“有条件通过”（0 P0 / 4 P1 / 10 P2）。4 条 P1 已修：
+
+| # | 问题 | 修正 |
+| --- | --- | --- |
+| P1-1 | 日志空态用 `Text("·")` 渲染成 17dp 灰点 | `XiaoiEmptyState` 增加 `icon: ImageVector`，默认 `MiuixIcons.Notes`，48dp `textHint` |
+| P1-2 | 关于页“作者”复制却显示 chevron，展示值与复制值不一致 | 新增 `XiaoiCopyRow`：`BasicComponent` + 右侧“复制”，复制展示值“轩辕落雪” |
+| P1-3 | 日志“清空”无确认，与“分享”同权重 | 两段式确认：清空 → 取消/确认清空（`error` 色）；0 条时禁用清空与分享 |
+| P1-4 | 灰色文本对比度不足（2.45–3.88:1） | 令牌改为 `textSecondary #5F6772`、`textHint #6B7280`、深色 hint `#8E9299`；底栏未选中不再叠 alpha |
+
+顺带修复的 P2：
+
+- `XiaoiTextButton` 改用 Miuix `TextButton`（透明底、48dp）；`XiaoiDivider` 改用 Miuix `HorizontalDivider`。
+- `XiaoiChip` 提到 48dp 触控；未选中文字用新的 `textSecondary`。
+- 日志“跟随最新”包进 `XiaoiPreferenceCard`，去掉裸分割线。
+- 日志空态分支改为 `!received` → `lines.isEmpty()` → 筛选无结果，去掉不可达分支。
+- 我的页版本行拆成“版本”和“设备型号 + Android”，不再混在一起。
+- 关于页“免责声明”增加独立分组标题。
+- 文档补对比度表与自绘例外（`design-system.md` §9）。
+
+底栏 item 自绘原因：Miuix `NavigationBarItem` 对未选中内容强制乘 0.4 alpha，
+纯黑在 `bg #F7F8FA` 上最高 2.82:1，无法达到 3:1；容器仍用 Miuix `NavigationBar`，
+item 用 Miuix `Icon`/`Text` + `selectable(Role.Tab)`，已在 `design-system.md` §9.2 登记。

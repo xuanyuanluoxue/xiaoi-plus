@@ -174,13 +174,50 @@ launcher 使用 adaptive-icon（前景 108、安全区 66、monochrome 层），
 5. 不要让多色品牌图兼任导航/信息行图标
 5. 不要让同一个语义出现两种文案（如"保存"与"提交"并存）
 
-## 7. 0.14 Compose/Miuix 例外
+## 9. 0.14 Compose/Miuix 例外
 
 0.14 起设置页走 Compose + Miuix，组件默认值优先，不再套用旧 XML 的 24dp/56dp 自定尺寸：
 
-- Card 默认 16dp 圆角；Button 默认 40dp；SmallTopAppBar 默认 52dp；
-  NavigationBar/NavigationBarItem 使用 Miuix 默认。
+- Card 默认 16dp 圆角；Button 默认 40dp；SmallTopAppBar 默认 52dp。
 - 颜色仍映射本文的语义令牌（bg/surface/text/primary 等）。
 - 旧 XML 页面（HomeActivity/ConfigActivity 等）仍按 24dp 卡片，不做回改。
+- 设置行不带前置图标：Miuix `ArrowPreference`/`BasicComponent` 默认无 icon，
+  0.14 暂不补 `startAction`，页面层级靠分组标题和行高区分。
+- 深色卡片使用 Miuix 默认容器色（实测 `#242424`），不等于 `surface2 #1F1F23`；
+  这是组件默认值优先的结果，不在页面里覆盖。
 
-规则：**有 Miuix 组件就直接用，不用 Row/Column 模拟**；自定义仅保留 Miuix 没有的业务组件。
+### 9.1 对比度（WCAG 2.1）
+
+浅色：
+
+| 前景/背景 | 对比度 |
+| --- | --- |
+| `text #111318` / `surface2 #FFFFFF` | 18.58:1 |
+| `textSecondary #5F6772` / `surface2` | 5.72:1 |
+| `textSecondary` / `bg #F7F8FA` | 5.39:1 |
+| `textSecondary` / `chipBg #E4EBF3` | 4.76:1 |
+| `textHint #6B7280` / `surface2` | 4.83:1 |
+| `textHint` / `bg` | 4.55:1 |
+| `primary #2F4A6B` / `bg` | 8.55:1 |
+
+深色：
+
+| 前景/背景 | 对比度 |
+| --- | --- |
+| `text #F2F3F5` / `surface #161618` | 16.28:1 |
+| `textSecondary #A0A4AB` / Miuix 容器 `#242424` | 6.20:1 |
+| `textHint #8E9299` / Miuix 容器 `#242424` | 4.97:1 |
+| `primary #C7D2FE` / `bg #0B0B0D` | 13.18:1 |
+
+规则：正文 ≥4.5:1，未选中导航/交互图标 ≥3:1；`textHint` 只用于白卡或页面底，
+不要放到 `surface` 灰块上。
+
+### 9.2 已登记的自绘例外
+
+| 组件 | 原因 | 替代方案 |
+| --- | --- | --- |
+| 底栏 item（容器仍是 Miuix `NavigationBar`） | `NavigationBarItem` 对未选中内容强制乘 0.4 alpha，纯黑在白底下也只有 2.82:1，达不到 3:1 | 用 Miuix `Icon`/`Text` + `selectable(Role.Tab)` 自绘 item，图标/字号/高度与 Miuix 对齐 |
+| `XiaoiChip` | Miuix 0.9.4 无 chip 组件；`TabRow` 是文本页签，形态不符 | 保留自绘，48dp 触控、选中/未选中均过对比度 |
+| `XiaoiEmptyState` | Miuix 无空态组件 | 自绘，但图标 48dp、文字用令牌 |
+
+规则：**有 Miuix 组件就直接用，不用 Row/Column 模拟**；自绘必须在本节登记原因。

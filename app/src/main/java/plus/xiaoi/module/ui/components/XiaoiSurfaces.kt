@@ -5,17 +5,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -23,7 +27,12 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Notes
 
 /** Miuix Card：使用组件默认圆角/颜色；自定义内容加 16dp 内边距。 */
 @Composable
@@ -73,16 +82,30 @@ fun XiaoiButton(
     }
 }
 
-/** 文字按钮：用于卡片内次级动作。 */
+/** 文字按钮：用 Miuix TextButton；透明底，仅保留文字色，48dp 触控。 */
 @Composable
-fun XiaoiTextButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Text(
+fun XiaoiTextButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    danger: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val colors = XiaoiTheme.colors
+    TextButton(
         text = text,
-        color = XiaoiTheme.colors.primary,
-        style = XiaoiTheme.typography.body,
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        minHeight = XiaoiTheme.dimens.touch,
+        insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        colors = ButtonDefaults.textButtonColors(
+            color = Color.Transparent,
+            textColor = if (danger) colors.error else colors.primary,
+            disabledColor = Color.Transparent,
+            disabledTextColor = colors.textHint,
+        ),
+        textStyle = XiaoiTheme.typography.body,
     )
 }
 
@@ -122,9 +145,11 @@ fun XiaoiChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val colors = XiaoiTheme.colors
     Box(
         Modifier
+            .heightIn(min = XiaoiTheme.dimens.touch)
             .background(if (selected) colors.chipOkBg else colors.chipBg, RoundedCornerShape(999.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
@@ -136,14 +161,24 @@ fun XiaoiChip(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun XiaoiEmptyState(title: String, description: String, modifier: Modifier = Modifier) {
+fun XiaoiEmptyState(
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = MiuixIcons.Notes,
+) {
     val colors = XiaoiTheme.colors
     Column(
         modifier = modifier.fillMaxWidth().padding(vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("·", color = colors.textHint, style = XiaoiTheme.typography.display)
-        Spacer(Modifier.height(8.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = colors.textHint,
+        )
+        Spacer(Modifier.height(12.dp))
         Text(title, color = colors.text, style = XiaoiTheme.typography.rowTitle)
         Spacer(Modifier.height(4.dp))
         Text(
@@ -174,7 +209,7 @@ fun XiaoiStatTile(label: String, value: String?) {
 
 @Composable
 fun XiaoiDivider() {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(XiaoiTheme.colors.line))
+    HorizontalDivider(color = XiaoiTheme.colors.line)
 }
 
 @Composable

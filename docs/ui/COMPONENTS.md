@@ -69,10 +69,12 @@ fun XiaoiTopBar(
 fun XiaoiBottomBar(current: MainTab, onSelect: (MainTab) -> Unit)
 ```
 
-- 内部直接用 `NavigationBar` + `NavigationBarItem`；图标来自 `miuix-icons`
-  （Home / Mic / Link / Settings）。
-- 选中态、图标大小、行高由 Miuix 组件决定；不再自绘文字 tab。
-- 只在二级页隐藏；不悬浮、不加背景块。
+- 容器用 Miuix `NavigationBar`；图标来自 `miuix-icons`（Home / Mic / Link / Settings）。
+- item 自绘：Miuix `NavigationBarItem` 会给未选中内容强制乘 0.4 alpha，
+  纯黑在浅色底上最高也只有 2.82:1，达不到 3:1。自绘 item 用 Miuix
+  `Icon`/`Text` + `selectable(Role.Tab)`，48dp 高、24dp 图标、Caption 文字。
+- 选中 `primary`，未选中 `textSecondary`；不叠 alpha。
+- 只在二级页隐藏；不悬浮、不加背景块。例外记录在 `design-system.md` §9.2。
 
 ## 2. 基础组件
 
@@ -161,6 +163,17 @@ fun XiaoiInfoRow(
 - 72dp；标题 16/22/500；副行 12/16；箭头 20dp。
 - 空副行不留空高；点击区域整行。
 
+### XiaoiCopyRow
+
+```kotlin
+@Composable
+fun XiaoiCopyRow(title: String, value: String, onCopy: () -> Unit)
+```
+
+- 用 Miuix `BasicComponent`；副行显示要复制的值，右侧“复制”文字。
+- 不用 `ArrowPreference`：复制不是跳转，不显示 chevron。
+- 复制内容必须与副行展示值一致；提示由调用方 `showSnackbar`。
+
 ### XiaoiValueRow
 
 ```kotlin
@@ -220,13 +233,15 @@ fun XiaoiStatTile(
 @Composable
 fun XiaoiEmptyState(
     title: String,
-    description: String? = null,
-    icon: (@Composable () -> Unit)? = null,
-    action: (@Composable () -> Unit)? = null
+    description: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = MiuixIcons.Notes
 )
 ```
 
-- 图标 48dp `text_hint`；标题 16；说明 12；可选次按钮。
+- 图标 48dp `text_hint`，用 `miuix-icons`，不允许用文字标点占位。
+- 标题 16；说明 12 居中；上下 48dp。
+- 可选次按钮由页面在空态下方自行放置（P2 再扩展）。
 
 ### XiaoiCodeBlock
 

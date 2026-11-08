@@ -1,6 +1,10 @@
 package plus.xiaoi.module.ui.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -39,6 +43,26 @@ fun XiaoiValueRow(label: String, value: String, mono: Boolean = false) {
                 text = value,
                 color = colors.textSecondary,
                 style = if (mono) XiaoiTheme.typography.mono else XiaoiTheme.typography.body,
+            )
+        },
+    )
+}
+
+/** 复制行：不带导航箭头；右侧明确写“复制”，复制内容与展示值一致。 */
+@Composable
+fun XiaoiCopyRow(title: String, value: String, onCopy: () -> Unit) {
+    val colors = XiaoiTheme.colors
+    BasicComponent(
+        title = title,
+        summary = value,
+        endActions = {
+            Text(
+                text = "复制",
+                color = colors.primary,
+                style = XiaoiTheme.typography.body,
+                modifier = Modifier
+                    .clickable(onClick = onCopy)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
             )
         },
     )

@@ -63,12 +63,12 @@ fun MeScreen(
                 Column(Modifier.weight(1f)) {
                     Text("小爱同学plus", color = colors.text, style = XiaoiTheme.typography.hero)
                     Text(
-                        "v$version · ${Build.MODEL}",
+                        "v$version",
                         color = colors.textSecondary,
                         style = XiaoiTheme.typography.caption,
                     )
                     Text(
-                        "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}",
+                        "${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
                         color = colors.textHint,
                         style = XiaoiTheme.typography.caption,
                     )
