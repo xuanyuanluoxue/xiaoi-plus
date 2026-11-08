@@ -198,9 +198,18 @@ launcher 使用 adaptive-icon（前景 108、安全区 66、monochrome 层），
 | `textSecondary #5F6772` / `surface2` | 5.72:1 |
 | `textSecondary` / `bg #F7F8FA` | 5.39:1 |
 | `textSecondary` / `chipBg #E4EBF3` | 4.76:1 |
+| `textSecondary` / 输入框底 `#F1F2F5` | 5.11:1 |
 | `textHint #6B7280` / `surface2` | 4.83:1 |
 | `textHint` / `bg` | 4.55:1 |
 | `primary #2F4A6B` / `bg` | 8.55:1 |
+| `primary` / `chipOkBg #DCE9F7`（次按钮） | 7.37:1 |
+| `success #1B5E43` / 14% success 淡底 | 6.16:1 |
+| `warning #7A4A00` / `warningBg #FFF3D6` | 6.78:1 |
+| `error #9E2B2B` / 10% error 淡底 | 6.43:1 |
+| Hero `success` 标签 / success 12% + 14% 双层 | 4.94:1 |
+| Hero `warning` 标签 / warning 12% + 14% 双层 | 4.81:1 |
+| Hero `error` 标签 / error 12% + 14% 双层 | 4.63:1 |
+| Hero `heroOn` 标签 / UNKNOWN 14% 淡底 | 10.88:1 |
 
 深色：
 
@@ -210,16 +219,22 @@ launcher 使用 adaptive-icon（前景 108、安全区 66、monochrome 层），
 | `textSecondary #A0A4AB` / Miuix 容器 `#242424` | 6.20:1 |
 | `textHint #8E9299` / Miuix 容器 `#242424` | 4.97:1 |
 | `primary #C7D2FE` / `bg #0B0B0D` | 13.18:1 |
+| `primary #C7D2FE` / `chipOkBg #2E3444`（次按钮） | 8.33:1 |
+| `success #4ADE80` / 14% success 淡底 | 6.59:1 |
+| `warning #FBBF24` / `warningBg #2E2511` | 9.06:1 |
+| `error #F87171` / 10% error 淡底 | 4.52:1 |
+| `onPrimary #1A1B1E` / `primary #C7D2FE`（选中 chip） | 13.18:1 |
 
-规则：正文 ≥4.5:1，未选中导航/交互图标 ≥3:1；`textHint` 只用于白卡或页面底，
-不要放到 `surface` 灰块上。
+规则：正文/标签 ≥4.5:1，未选中导航/交互图标 ≥3:1；`textHint` 只用于白卡或页面底，
+不要放到 `surface` 灰块或输入框上。输入框 label/placeholder 显式取 `textSecondary`，
+徽章文字直接使用调深后的 `success/warning/error`；UNKNOWN 维度标签取 `heroOn`。
 
 ### 9.2 已登记的自绘例外
 
 | 组件 | 原因 | 替代方案 |
 | --- | --- | --- |
 | 底栏 item（容器仍是 Miuix `NavigationBar`） | `NavigationBarItem` 对未选中内容强制乘 0.4 alpha，纯黑在白底下也只有 2.82:1，达不到 3:1 | 用 Miuix `Icon`/`Text` + `selectable(Role.Tab)` 自绘 item，图标/字号/高度与 Miuix 对齐 |
-| `XiaoiChip` | Miuix 0.9.4 无 chip 组件；`TabRow` 是文本页签，形态不符 | 保留自绘，48dp 触控、选中/未选中均过对比度 |
+| `FilterChips` | Miuix 0.9.4 无 chip 组件；`TabRow` 是文本页签，形态不符 | 保留自绘，28dp 视觉 + 48dp 触控；未选中 `chipBg/textSecondary`，选中 `primary/onPrimary` |
 | `XiaoiEmptyState` | Miuix 无空态组件 | 自绘，但图标 48dp、文字用令牌 |
 
 规则：**有 Miuix 组件就直接用，不用 Row/Column 模拟**；自绘必须在本节登记原因。

@@ -268,7 +268,7 @@ fun TokenScreen(
                 if (strength == IssueResolver.TokenStrength.NONE) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "没有令牌：数据面不会启动，局域网也不会生效。",
+                        "没有令牌：8771 控制面不会启动，局域网也不会生效。",
                         color = colors.warning,
                         style = XiaoiTheme.typography.caption,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

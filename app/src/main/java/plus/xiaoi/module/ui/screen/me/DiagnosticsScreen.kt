@@ -45,6 +45,7 @@ import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTone
+import plus.xiaoi.module.ui.status.agentPortUi
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
@@ -135,15 +136,16 @@ fun DiagnosticsScreen(
         XiaoiGroupHeader("通道")
         XiaoiPreferenceCard {
             StatusLine(
-                "8771 能力桥",
+                "8771 控制面",
                 portText(snap.bridge8771),
                 portTone(snap.bridge8771),
                 bridgeDetail(snap.bridge, snap.cfg?.mcpEnabled == true),
             )
+            val agentState = agentPortUi(snap.cfg?.mcpEnabled == true, snap.agent)
             StatusLine(
                 "8770 动作面",
-                portText(snap.agent8770),
-                portTone(snap.agent8770),
+                agentState.text,
+                agentState.tone,
                 agentDetail(snap.agent, snap.cfg?.mcpEnabled == true),
             )
         }
@@ -303,7 +305,6 @@ private data class DiagSnapshot(
     val d3: StateModel.AppliedState,
     val d4: StateModel.RuntimeState,
     val bridge8771: IssueResolver.PortState,
-    val agent8770: IssueResolver.PortState,
     val bridge: BridgeStatus.Snapshot,
     val agent: AgentRuntimeStatus.Snapshot,
     val permissions: PermissionSnapshot,
@@ -339,7 +340,6 @@ private fun capture(context: android.content.Context): DiagSnapshot {
         d3 = input.d3,
         d4 = input.d4,
         bridge8771 = input.bridge8771,
-        agent8770 = input.agent8770,
         bridge = bridge,
         agent = agent,
         permissions = permissions,
@@ -372,7 +372,7 @@ private fun d1Tone(s: StateModel.ConfigState) = when (s) {
 }
 
 private fun d2Text(s: StateModel.EndpointState) = when (s) {
-    StateModel.EndpointState.UNKNOWN -> "未校验"
+    StateModel.EndpointState.UNKNOWN -> "未确认"
     StateModel.EndpointState.CHECKING -> "校验中"
     StateModel.EndpointState.OK -> "端点可用"
     StateModel.EndpointState.AUTH -> "密钥无效"
@@ -391,7 +391,7 @@ private fun d2Tone(s: StateModel.EndpointState) = when (s) {
 }
 
 private fun d3Text(s: StateModel.AppliedState) = when (s) {
-    StateModel.AppliedState.UNKNOWN -> "未知"
+    StateModel.AppliedState.UNKNOWN -> "未确认"
     StateModel.AppliedState.WAITING -> "等待上报"
     StateModel.AppliedState.APPLIED -> "已应用"
     StateModel.AppliedState.STALE -> "上报超时"
@@ -404,7 +404,7 @@ private fun d3Tone(s: StateModel.AppliedState) = when (s) {
 }
 
 private fun d4Text(s: StateModel.RuntimeState) = when (s) {
-    StateModel.RuntimeState.UNKNOWN -> "未知"
+    StateModel.RuntimeState.UNKNOWN -> "未确认"
     StateModel.RuntimeState.IN_USE -> "已确认"
     StateModel.RuntimeState.MODEL_MISMATCH -> "等待应用"
     StateModel.RuntimeState.DISABLED -> "小爱未启用"
@@ -425,7 +425,7 @@ private fun portText(s: IssueResolver.PortState) = when (s) {
     IssueResolver.PortState.OFF -> "未开启"
     IssueResolver.PortState.WAITING -> "等待上报"
     IssueResolver.PortState.FAILED -> "启动失败"
-    IssueResolver.PortState.UNKNOWN -> "未知"
+    IssueResolver.PortState.UNKNOWN -> "未确认"
 }
 
 private fun portTone(s: IssueResolver.PortState) = when (s) {
@@ -444,7 +444,7 @@ private fun bridgeDetail(b: BridgeStatus.Snapshot, mcpEnabled: Boolean): String 
         b.bindHost.isNotBlank() -> b.bindHost
         b.lanEnabled == true -> "绑定局域网（地址未上报）"
         b.lanEnabled == false -> "仅本机（地址未上报）"
-        else -> "绑定未知"
+        else -> "绑定未确认"
     }
     return "端口 ${b.port} · $bind · rev ${b.appliedRev}"
 }
@@ -500,7 +500,8 @@ private fun diagnosticsText(
     sb.append("D4: ").append(d4Text(s.d4)).append('\n')
     sb.append("8771: ").append(portText(s.bridge8771)).append(" · ")
         .append(bridgeDetail(s.bridge, cfg?.mcpEnabled == true)).append('\n')
-    sb.append("8770: ").append(portText(s.agent8770)).append(" · ")
+    sb.append("8770: ")
+        .append(agentPortUi(cfg?.mcpEnabled == true, s.agent).text).append(" · ")
         .append(agentDetail(s.agent, cfg?.mcpEnabled == true)).append('\n')
     sb.append("权限: ")
         .append("通知=").append(permissionText(s.permissions.notifications)).append(' ')

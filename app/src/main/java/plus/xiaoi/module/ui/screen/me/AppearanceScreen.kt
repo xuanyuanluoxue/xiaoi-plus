@@ -1,21 +1,18 @@
 package plus.xiaoi.module.ui.screen.me
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.ThemeMode
+import plus.xiaoi.module.ui.components.FilterChips
 import plus.xiaoi.module.ui.components.XiaoiCard
-import plus.xiaoi.module.ui.components.XiaoiChip
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
@@ -56,13 +53,23 @@ fun AppearanceScreen(
                 style = XiaoiTheme.typography.body,
             )
             Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth()) {
-                XiaoiChip("跟随系统", current == ThemeMode.SYSTEM) { onThemeChange(ThemeMode.SYSTEM) }
-                Spacer(Modifier.size(8.dp))
-                XiaoiChip("浅色", current == ThemeMode.LIGHT) { onThemeChange(ThemeMode.LIGHT) }
-                Spacer(Modifier.size(8.dp))
-                XiaoiChip("深色", current == ThemeMode.DARK) { onThemeChange(ThemeMode.DARK) }
-            }
+            FilterChips(
+                options = listOf("跟随系统", "浅色", "深色"),
+                selected = when (current) {
+                    ThemeMode.LIGHT -> "浅色"
+                    ThemeMode.DARK -> "深色"
+                    else -> "跟随系统"
+                },
+                onSelect = {
+                    onThemeChange(
+                        when (it) {
+                            "浅色" -> ThemeMode.LIGHT
+                            "深色" -> ThemeMode.DARK
+                            else -> ThemeMode.SYSTEM
+                        },
+                    )
+                },
+            )
             Spacer(Modifier.height(12.dp))
             Text(
                 when (current) {

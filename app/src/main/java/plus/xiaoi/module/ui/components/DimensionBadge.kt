@@ -37,6 +37,8 @@ fun DimensionBadge(
         DimensionStatus.ERROR -> colors.error
         DimensionStatus.UNKNOWN -> colors.textSecondary
     }
+    // UNKNOWN 的淡灰底上 textSecondary 只有 3.8:1，标签改用 heroOn；其余状态色已按 ≥4.5:1 调深。
+    val labelColor = if (status == DimensionStatus.UNKNOWN) colors.heroOn else tone
     Box(
         modifier = modifier
             .height(28.dp)
@@ -47,7 +49,7 @@ fun DimensionBadge(
     ) {
         Text(
             text = buildAnnotatedString {
-                withStyle(SpanStyle(color = tone, fontWeight = FontWeight.Medium)) { append(label) }
+                withStyle(SpanStyle(color = labelColor, fontWeight = FontWeight.Medium)) { append(label) }
                 append("  ")
                 append(text)
             },

@@ -147,7 +147,7 @@ internal class HomeStateHolder(context: Context) {
             !facts.configValid -> "配置损坏，无法确认通道"
             bridge.connected && bridge.fresh(now) -> "leader 已连接"
             bridge.connected -> "超过 30 秒未上报，不确认在线"
-            !facts.mcpEnabled -> "能力桥已关闭；不影响 8770 判断"
+            !facts.mcpEnabled -> "8771 控制面已关闭；不影响 8770 判断"
             else -> "等待小爱启动并上报"
         }
         val agentStatus = when {

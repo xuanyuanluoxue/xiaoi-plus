@@ -1,7 +1,6 @@
 package plus.xiaoi.module.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -90,8 +88,9 @@ fun XiaoiButton(
         )
         return
     }
-    val container = if (style == XiaoiButtonStyle.PRIMARY) colors.primary else colors.surface2
-    val content = if (style == XiaoiButtonStyle.PRIMARY) colors.onPrimary else colors.text
+    val primaryStyle = style == XiaoiButtonStyle.PRIMARY
+    val container = if (primaryStyle) colors.primary else colors.chipOkBg
+    val content = if (primaryStyle) colors.onPrimary else colors.primary
     Button(
         onClick = onClick,
         modifier = modifier,
@@ -175,26 +174,6 @@ fun XiaoiBadge(text: String, tone: XiaoiTone = XiaoiTone.NEUTRAL) {
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(text, color = fg, style = XiaoiTheme.typography.caption, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-fun XiaoiChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val colors = XiaoiTheme.colors
-    Box(
-        Modifier
-            .heightIn(min = XiaoiTheme.dimens.touch)
-            .background(if (selected) colors.chipOkBg else colors.chipBg, RoundedCornerShape(999.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            color = if (selected) colors.primary else colors.textSecondary,
-            style = XiaoiTheme.typography.caption,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-        )
     }
 }
 

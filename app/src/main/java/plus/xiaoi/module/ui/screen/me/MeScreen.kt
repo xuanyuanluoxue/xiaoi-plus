@@ -128,7 +128,7 @@ fun MeScreen(
                     if (ok) {
                         StopResult(
                             true,
-                            "已停用：模型重定向 · 8771 能力桥 · 8770 动作面 · 两侧局域网。令牌保留，重新开启时无需重新配对。",
+                            "已停用：模型重定向 · 8771 控制面 · 8770 动作面 · 两侧局域网。令牌保留，重新开启时无需重新配对。",
                         )
                     } else {
                         StopResult(false, "已写入但状态未完全确认，请到诊断页核对四维状态")
@@ -256,7 +256,7 @@ fun MeScreen(
                 Text("将立即写入 config.json", color = colors.text, style = XiaoiTheme.typography.rowTitle)
                 Spacer(Modifier.height(8.dp))
                 DangerLine("关闭模型重定向（小爱恢复官方端点）")
-                DangerLine("关闭 8771 能力桥（MCP 工具不可用）")
+                DangerLine("关闭 8771 控制面（MCP 工具不可用）")
                 DangerLine("关闭 8770 动作面（设备动作不可用）")
                 DangerLine("关闭 8771 / 8770 局域网监听")
                 Spacer(Modifier.height(8.dp))
@@ -296,7 +296,7 @@ fun MeScreen(
     XiaoiConfirmDialog(
         show = showStopConfirm,
         title = "停用全部对外能力？",
-        message = "将关闭模型重定向、8771 能力桥、8770 动作面与两侧局域网，" +
+        message = "将关闭模型重定向、8771 控制面、8770 动作面与两侧局域网，" +
             "并立即写入 config.json。小爱会回到官方端点，外部 Agent 断开。",
         confirmText = "停用全部",
         secondaryNote = "令牌与历史备份会保留，可重新开启；此操作可逆。",

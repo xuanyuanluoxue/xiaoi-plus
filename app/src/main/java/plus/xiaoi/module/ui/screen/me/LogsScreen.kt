@@ -31,7 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import plus.xiaoi.module.control.BridgeControlService
-import plus.xiaoi.module.ui.components.XiaoiChip
+import plus.xiaoi.module.ui.components.FilterChips
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
@@ -120,13 +120,22 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                 }
             }
         }
-        Row(Modifier.fillMaxWidth()) {
-            XiaoiChip("全部", filter == 0) { filter = 0 }
-            Spacer(Modifier.width(8.dp))
-            XiaoiChip("信息", filter == 1) { filter = 1 }
-            Spacer(Modifier.width(8.dp))
-            XiaoiChip("错误", filter == 2) { filter = 2 }
-        }
+        FilterChips(
+            options = listOf("全部", "信息", "错误"),
+            selected = when (filter) {
+                1 -> "信息"
+                2 -> "错误"
+                else -> "全部"
+            },
+            onSelect = {
+                filter = when (it) {
+                    "信息" -> 1
+                    "错误" -> 2
+                    else -> 0
+                }
+            },
+        )
+        Spacer(Modifier.height(12.dp))
         XiaoiPreferenceCard {
             XiaoiSwitchRow(
                 title = "跟随最新",

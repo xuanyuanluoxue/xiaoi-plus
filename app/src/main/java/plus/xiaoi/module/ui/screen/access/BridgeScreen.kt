@@ -24,6 +24,7 @@ import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
+import plus.xiaoi.module.ui.status.agentPortUi
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -57,6 +58,7 @@ fun BridgeScreen(
         }
         val mcpEnabled = facts.config?.mcpEnabled == true
         val now = System.currentTimeMillis()
+        val agentState = agentPortUi(mcpEnabled, agent)
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -113,14 +115,7 @@ fun BridgeScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("状态", color = colors.text, style = XiaoiTheme.typography.rowTitle)
                 Spacer(Modifier.weight(1f))
-                XiaoiBadge(
-                    text = agentStateText(mcpEnabled, agent),
-                    tone = when (agentStateText(mcpEnabled, agent)) {
-                        "运行中" -> XiaoiTone.SUCCESS
-                        "启动失败" -> XiaoiTone.ERROR
-                        else -> XiaoiTone.NEUTRAL
-                    },
-                )
+                XiaoiBadge(text = agentState.text, tone = agentState.tone)
             }
         }
         Spacer(Modifier.height(8.dp))

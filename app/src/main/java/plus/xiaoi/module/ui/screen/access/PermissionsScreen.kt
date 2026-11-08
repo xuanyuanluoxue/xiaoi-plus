@@ -164,7 +164,7 @@ fun PermissionsScreen(
                 name = "全屏通知",
                 status = snap.fullScreenIntent.toUiStatus(),
                 detail = if (Build.VERSION.SDK_INT >= 34) {
-                    "Android 14+ 全屏 Intent 需要允许"
+                    "Android 14+ 需单独授权"
                 } else {
                     "当前系统版本无法确认"
                 },

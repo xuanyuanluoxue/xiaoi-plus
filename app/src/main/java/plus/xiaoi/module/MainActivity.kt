@@ -312,7 +312,10 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 )
 
                 Routes.LOGS -> LogsScreen(onMessage = { message(it) })
-                Routes.ABOUT -> AboutScreen(onMessage = { message(it) })
+                Routes.ABOUT -> AboutScreen(
+                    onNavigate = { navigate(it) },
+                    onMessage = { message(it) },
+                )
 
                 Routes.LICENSES -> LicensesScreen(onMessage = { message(it) })
 

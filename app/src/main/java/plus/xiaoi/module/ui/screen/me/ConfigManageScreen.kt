@@ -377,7 +377,7 @@ fun ConfigManageScreen(
             )
         }
 
-        XiaoiGroupHeader("从运行动态导入")
+        XiaoiGroupHeader("从运行中的小爱导入")
         XiaoiPreferenceCard {
             XiaoiInfoRow(
                 title = "从运行中的小爱导入",

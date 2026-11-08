@@ -84,7 +84,7 @@ fun ToolsScreen(
         }
         groups.forEach { group ->
             item(key = "header-${group.title}") {
-                XiaoiGroupHeader("${group.title}（${group.items.size}）")
+                XiaoiGroupHeader(group.title)
             }
             item(key = "group-${group.title}") {
                 XiaoiPreferenceCard {
@@ -150,7 +150,7 @@ private fun buildToolGroups(): List<ToolGroupUi> = listOf(
         },
     ),
     ToolGroupUi(
-        title = "8771 数据面工具",
+        title = "8771 控制面工具",
         note = "只操作小爱/配置/统计，不执行设备动作；工具表未声明风险等级。",
         items = toolItems(Mcp.toolsList()),
     ),

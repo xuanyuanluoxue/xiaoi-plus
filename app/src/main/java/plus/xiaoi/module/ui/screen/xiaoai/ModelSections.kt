@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ui.components.XiaoiBadge
@@ -77,26 +78,40 @@ internal fun ProviderListSection(
             providers.forEach { provider ->
                 val active = provider.id == activeProviderId
                 BasicComponent(
-                    title = provider.name.ifEmpty { provider.id },
-                    summary = buildString {
-                        append(hostOf(provider.baseUrl).ifEmpty { "端点未填写" })
-                        append(" · ${provider.models.size} 个模型")
-                        if (provider.apiKey.isNotEmpty()) append(" · 已设置密钥")
-                        if (active) append(" · 当前")
-                    },
                     onClick = { onSelect(provider.id) },
                     enabled = editable,
                     endActions = {
-                        if (active) XiaoiBadge("当前", XiaoiTone.INFO)
-                        if (editable && providers.size > 1) {
-                            XiaoiTextButton(
-                                text = "删除",
-                                danger = true,
-                                onClick = { onDelete(provider) },
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (active) XiaoiBadge("当前", XiaoiTone.INFO)
+                            if (editable && providers.size > 1) {
+                                XiaoiTextButton(
+                                    text = "删除",
+                                    danger = true,
+                                    onClick = { onDelete(provider) },
+                                )
+                            }
                         }
                     },
-                )
+                ) {
+                    Text(
+                        provider.name.ifEmpty { provider.id },
+                        color = XiaoiTheme.colors.text,
+                        style = XiaoiTheme.typography.rowTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        buildString {
+                            append(hostOf(provider.baseUrl).ifEmpty { "端点未填写" })
+                            append(" · ${provider.models.size} 个模型")
+                            if (provider.apiKey.isNotEmpty()) append(" · 已设置密钥")
+                        },
+                        color = XiaoiTheme.colors.textSecondary,
+                        style = XiaoiTheme.typography.body,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
@@ -130,27 +145,42 @@ internal fun ModelListSection(
             else -> provider.models.forEach { model ->
                 val active = model.id == activeModelId
                 BasicComponent(
-                    title = model.id,
-                    summary = buildString {
-                        if (model.name.isNotEmpty() && model.name != model.id) {
-                            append(model.name)
-                            append(" · ")
-                        }
-                        if (active) append("当前使用") else append("点按切换")
-                    },
                     onClick = { onSelect(model.id) },
                     enabled = editable,
                     endActions = {
-                        if (active) XiaoiBadge("当前", XiaoiTone.INFO)
-                        if (editable) {
-                            XiaoiTextButton(
-                                text = "删除",
-                                danger = true,
-                                onClick = { onDelete(model) },
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (active) XiaoiBadge("当前", XiaoiTone.INFO)
+                            if (editable) {
+                                XiaoiTextButton(
+                                    text = "删除",
+                                    danger = true,
+                                    onClick = { onDelete(model) },
+                                )
+                            }
                         }
                     },
-                )
+                ) {
+                    Text(
+                        model.id,
+                        color = XiaoiTheme.colors.text,
+                        style = XiaoiTheme.typography.rowTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        buildString {
+                            if (model.name.isNotEmpty() && model.name != model.id) {
+                                append(model.name)
+                                append(" · ")
+                            }
+                            if (active) append("当前使用") else append("点按切换")
+                        },
+                        color = XiaoiTheme.colors.textSecondary,
+                        style = XiaoiTheme.typography.body,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
@@ -180,8 +210,6 @@ internal fun ModelFormCard(
             )
             return@XiaoiCard
         }
-        Text("服务商设置", color = colors.text, style = XiaoiTheme.typography.rowTitle)
-        Spacer(Modifier.height(10.dp))
         XiaoiTextField(
             value = provider.name,
             onValueChange = onNameChange,

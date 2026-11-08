@@ -108,7 +108,8 @@ fun XiaoiButton(
 )
 ```
 
-- 高 48dp；圆角 16dp；主按钮 `primary/on_primary`；次按钮 `surface_2/text`。
+- 高 48dp；圆角 16dp；主按钮 `primary/on_primary`；次按钮 `chipOkBg/primary`
+  （浅色 `#DCE9F7/#2F4A6B`，深色 `#2E3444/#C7D2FE`），不能白底白卡。
 - `DANGER_TEXT` 只用于确认框内的危险按钮（error 文字）。
 - loading 时禁用并显示 16dp 进度；不要改变宽度导致跳动。
 
@@ -128,7 +129,8 @@ fun XiaoiTextField(
 )
 ```
 
-- 高 44dp；圆角 12dp；背景 `surface_2`；聚焦 1dp `primary`；错误 1dp `error`。
+- 高 44dp；圆角 12dp；背景 Miuix 默认容器；聚焦 1dp `primary`；错误 1dp `error`。
+- label/placeholder 显式传 `textSecondary`（Miuix 默认浅灰在灰底上仅 2.06:1）。
 - 密钥字段默认掩码，右侧“显示/隐藏”仅本次；不把明文写入状态日志。
 
 ### XiaoiSwitchRow
@@ -415,7 +417,9 @@ fun FilterChips(
 )
 ```
 
-- 28dp；横向滚动；选中 `primary` 15% 底 + `primary` 文字。
+- 28dp 视觉 + 48dp 触控；FlowRow 自动换行，不横向裁切。
+- 未选中 `chipBg` + `textSecondary`；选中 `primary` 实心 + `onPrimary`。
+- 全站唯一筛选 chip 视觉；日志、外观、能力页共用。
 
 ### SearchField
 
@@ -429,7 +433,7 @@ fun SearchField(
 )
 ```
 
-- 44dp；搜索图标；清除按钮；无焦点时背景 `surface_2`。
+- 44dp；搜索图标；清除按钮；label/placeholder 显式 `textSecondary`。
 
 ## 4. 组件验收
 

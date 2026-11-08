@@ -38,7 +38,7 @@ public final class McpSection {
     private final TextView tvMcpUrl, tvMcpJson;
     private final EditText etToken;
 
-    /** 8770 Agent 动作面（与 8771 数据面独立开关，但共用同一个 token）。 */
+    /** 8770 Agent 动作面（与 8771 控制面独立开关，但共用同一个 token）。 */
     private static final int AGENT_PORT = 8770;
 
     /** 实际桥端口（控制面未上报时保留 8771 提示值）；用于复制连接信息与 Skill。 */
@@ -269,7 +269,7 @@ public final class McpSection {
                 : "前置：adb forward tcp:" + AGENT_PORT + " tcp:" + AGENT_PORT + "\n";
 
         String skill = "# 小爱同学plus MCP\n\n"
-                + "## 8771 数据面（小爱）\n\n"
+                + "## 8771 控制面（小爱）\n\n"
                 + pre
                 + "端点：" + url + "（streamable-http，Bearer token）\n\n"
                 + "工具：\n" + Mcp.toolListText()

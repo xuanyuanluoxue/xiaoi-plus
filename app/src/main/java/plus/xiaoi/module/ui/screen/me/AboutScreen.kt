@@ -27,7 +27,7 @@ import top.yukonga.miuix.kmp.basic.Text
 private const val REPO = "https://github.com/xuanyuanluoxue/xiaoi-plus"
 
 @Composable
-fun AboutScreen(onMessage: (String) -> Unit) {
+fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
     val context = LocalContext.current
     val colors = XiaoiTheme.colors
     val version = runCatching {
@@ -65,7 +65,7 @@ fun AboutScreen(onMessage: (String) -> Unit) {
             Text("v$version", color = colors.textSecondary, style = XiaoiTheme.typography.caption)
             Spacer(Modifier.height(8.dp))
             Text(
-                "模型重定向 / 能力桥 / Agent 动作面；仅在自己设备生效。",
+                "模型重定向 / 8771 控制面 / 8770 动作面；仅在自己设备生效。",
                 color = colors.textSecondary,
                 style = XiaoiTheme.typography.body,
             )
@@ -75,7 +75,7 @@ fun AboutScreen(onMessage: (String) -> Unit) {
         XiaoiPreferenceCard {
             XiaoiCopyRow("作者", "轩辕落雪") { copy("轩辕落雪", "作者名") }
             XiaoiInfoRow("GitHub", "xuanyuanluoxue/xiaoi-plus", onClick = { open(REPO) })
-            XiaoiInfoRow("许可证", "GPL-3.0")
+            XiaoiInfoRow("许可证", "GPL-3.0", onClick = { onNavigate("Licenses") })
             XiaoiInfoRow("致谢", "OpenClaw · KernelSU Next · Miuix")
         }
 

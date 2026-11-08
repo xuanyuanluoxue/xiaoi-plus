@@ -1,10 +1,12 @@
 package plus.xiaoi.module.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -45,14 +47,19 @@ fun PermissionRow(
                 XiaoiBadge(label, tone)
                 if (onOpenSettings != null) {
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "去设置",
-                        color = colors.primary,
-                        style = XiaoiTheme.typography.body,
+                    Box(
                         modifier = Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                             .clickable(onClick = onOpenSettings)
-                            .padding(horizontal = 8.dp, vertical = 12.dp),
-                    )
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "去设置",
+                            color = colors.primary,
+                            style = XiaoiTheme.typography.body,
+                        )
+                    }
                 }
             }
         },

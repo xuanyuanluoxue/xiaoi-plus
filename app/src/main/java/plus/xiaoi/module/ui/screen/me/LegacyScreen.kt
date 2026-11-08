@@ -161,7 +161,7 @@ fun LegacyScreen(
                 subtitle = if (cfg?.enabled == true) "开" else "暂停",
             )
             XiaoiInfoRow(
-                title = "能力桥 / 8770 动作面",
+                title = "8771 控制面 / 8770 动作面",
                 subtitle = if (cfg?.mcpEnabled == true) "开（8771 + 8770 按令牌启动）" else "关",
             )
             XiaoiInfoRow(

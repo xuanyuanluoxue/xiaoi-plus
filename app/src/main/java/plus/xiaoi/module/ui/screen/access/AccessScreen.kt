@@ -29,6 +29,7 @@ import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
+import plus.xiaoi.module.ui.status.agentPortUi
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -105,26 +106,37 @@ fun AccessScreen(
         val lanRequested = cfg?.let { it.mcpLan || it.agentLan } == true
         val strength = tokenStrengthOf(token)
         val now = System.currentTimeMillis()
+        val bridgeState = bridgeStateText(mcpEnabled, bridge, now)
+        val agentState = agentPortUi(mcpEnabled, agent)
 
         XiaoiGroupHeader("通道")
         PortCard(
             name = "8771 控制面",
             port = bridge.port.takeIf { it > 0 },
-            bind = bindDetail(bridge.bindHost, bridge.lanEnabled),
+            bind = "绑定 · " + bindDetail(bridge.bindHost, bridge.lanEnabled),
             lanText = when (bridge.lanEnabled) {
                 true -> "局域网"
                 false -> "仅本机"
                 null -> "未确认"
             },
             running = bridge.port > 0 && bridge.fresh(now),
-            stateText = bridgeStateText(mcpEnabled, bridge, now),
+            stateText = bridgeState,
+            stateTone = when (bridgeState) {
+                "运行中" -> XiaoiTone.SUCCESS
+                "等待上报", "等待小爱" -> XiaoiTone.WARNING
+                else -> XiaoiTone.NEUTRAL
+            },
             onClick = { onNavigate("Bridge") },
         )
         Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
         PortCard(
             name = "8770 动作面",
             port = agent.port.takeIf { it > 0 },
-            bind = if (agent.known()) bindDetail(agent.bindHost, agent.bindHost == "0.0.0.0") else "未确认",
+            bind = "绑定 · " + if (agent.known()) {
+                bindDetail(agent.bindHost, agent.bindHost == "0.0.0.0")
+            } else {
+                "未确认"
+            },
             lanText = if (!agent.known()) {
                 "未确认"
             } else if (agent.bindHost == "0.0.0.0") {
@@ -135,7 +147,8 @@ fun AccessScreen(
                 "未确认"
             },
             running = agent.running,
-            stateText = agentStateText(mcpEnabled, agent),
+            stateText = agentState.text,
+            stateTone = agentState.tone,
             onClick = { onNavigate("Bridge") },
         )
 
@@ -226,6 +239,7 @@ private fun PortCard(
     lanText: String,
     running: Boolean,
     stateText: String,
+    stateTone: XiaoiTone,
     onClick: () -> Unit,
 ) {
     val colors = XiaoiTheme.colors
@@ -243,15 +257,7 @@ private fun PortCard(
                 .padding(start = 24.dp, end = 16.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            XiaoiBadge(
-                text = stateText,
-                tone = when (stateText) {
-                    "运行中" -> XiaoiTone.SUCCESS
-                    "等待上报", "等待小爱" -> XiaoiTone.WARNING
-                    "启动失败" -> XiaoiTone.ERROR
-                    else -> XiaoiTone.NEUTRAL
-                },
-            )
+            XiaoiBadge(text = stateText, tone = stateTone)
             Spacer(Modifier.weight(1f))
             Text(
                 "LAN · $lanText",

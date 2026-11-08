@@ -137,7 +137,7 @@ fun ConnectScreen(
 
         XiaoiGroupHeader("本机地址")
         XiaoiPreferenceCard {
-            XiaoiCopyRow("8771 数据面", mcpLocal) {
+            XiaoiCopyRow("8771 控制面", mcpLocal) {
                 copy(mcpLocal, "已复制 8771 本机地址")
             }
             XiaoiValueRow("MCP 路径", "/mcp", mono = true)
@@ -258,7 +258,7 @@ private fun buildClientJson(mcpUrl: String, agentUrl: String, token: String): St
 private fun buildSkillText(mcpUrl: String, agentUrl: String): String {
     val sb = StringBuilder()
     sb.append("# 小爱同学plus MCP\n\n")
-    sb.append("## 8771 数据面\n\n")
+    sb.append("## 8771 控制面\n\n")
     sb.append("端点：").append(mcpUrl).append("（streamable-http，Bearer token）\n\n")
     sb.append("工具：\n")
     sb.append(toolLines(Mcp.toolsList()))

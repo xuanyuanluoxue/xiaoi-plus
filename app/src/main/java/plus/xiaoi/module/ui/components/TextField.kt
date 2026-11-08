@@ -22,6 +22,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.basic.TextFieldDefaults
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Hide
 import top.yukonga.miuix.kmp.icon.extended.Show
@@ -54,6 +55,8 @@ fun XiaoiTextField(
             enabled = enabled,
             singleLine = true,
             textStyle = XiaoiTheme.typography.body.copy(color = colors.text),
+            // 不依赖 Miuix 默认浅灰：label/placeholder 在浅色输入底上必须 ≥4.5:1。
+            colors = TextFieldDefaults.textFieldColors(labelColor = colors.textSecondary),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = if (isSecret && !revealed) {
                 PasswordVisualTransformation()

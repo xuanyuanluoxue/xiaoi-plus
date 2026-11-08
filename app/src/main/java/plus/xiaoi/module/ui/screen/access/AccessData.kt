@@ -145,18 +145,6 @@ internal fun bridgeStateText(
     else -> "等待小爱"
 }
 
-/** 8770 状态：有事实才说运行/停止/失败，从未上报则“未确认”。 */
-internal fun agentStateText(
-    mcpEnabled: Boolean,
-    snapshot: AgentRuntimeStatus.Snapshot,
-): String = when {
-    !mcpEnabled -> "未开启"
-    snapshot.running -> "运行中"
-    snapshot.known() && snapshot.failed() -> "启动失败"
-    snapshot.known() -> "已停止"
-    else -> "未确认"
-}
-
 /** 时间戳：0 表示没有事实，显示 “—”，不补当前时间。 */
 internal fun formatTime(at: Long): String {
     if (at <= 0L) return "—"

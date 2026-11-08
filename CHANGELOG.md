@@ -1,5 +1,19 @@
 # 更新日志
 
+## 未发布 — UI P2 视觉修复（A8 前）
+
+- 对比度：输入/搜索 label 改用 `textSecondary`（2.06:1 → 5.01:1）；浅色
+  `success/warning/error` 调深，徽章文字 6.08/6.85/6.54:1；Hero UNKNOWN 标签改
+  `heroOn`（10.83:1）。
+- 筛选 chip 收敛为 `FilterChips`（28dp 视觉 + 48dp 触控，选中 primary 实心）；
+  日志 chip 与卡片间补 12dp，删除 `XiaoiChip`。
+- 模型页服务商副标题单行省略、去重复“当前/服务商设置”；模型行动作水平居中。
+- 8771 统一“控制面”；8770 状态由 `ui/status/AgentStatus.kt` 单点判定，
+  Access/Bridge/Diagnostics 同源；未知统一“未确认”。
+- `XiaoiButton(SECONDARY)` 改 `chipOkBg/primary`，浅色下可见（7.42:1）。
+- 低成本 P2：复制/去设置触控 48dp、About 许可证进入 Licenses、Tools 去重复计数、
+  全屏通知副标题缩短、配置管理组名改“从运行中的小爱导入”。
+
 ## 0.13.0-agent.2 — 2026-11-07 — alarm.set 语义修复
 
 > 修复 0.13.0-agent.1 中 `alarm.set` 在 HyperOS 上“返回成功但闹钟不存在”的问题。

@@ -9,6 +9,7 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.basic.TextFieldDefaults
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Search
 import top.yukonga.miuix.kmp.icon.basic.SearchCleanup
@@ -34,6 +35,8 @@ fun SearchField(
         useLabelAsPlaceholder = true,
         singleLine = true,
         textStyle = XiaoiTheme.typography.body.copy(color = colors.text),
+        // 搜索占位同样显式取 textSecondary，避免默认 #A9A9A9 在灰底上只有 2.06:1。
+        colors = TextFieldDefaults.textFieldColors(labelColor = colors.textSecondary),
         leadingIcon = {
             Icon(
                 imageVector = MiuixIcons.Basic.Search,
