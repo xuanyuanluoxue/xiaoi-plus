@@ -4,12 +4,27 @@
 > 原则：一个文件一个 owner；每个 Agent 独立 worktree；合并由主 Agent 负责；共享组件不跨 Agent 直接改。
 > 关联：[PLAN.md](PLAN.md)、[CONVENTIONS.md](CONVENTIONS.md)、[COMPONENTS.md](COMPONENTS.md)、[SCREENS.md](SCREENS.md)。
 
-## 0. 当前运行中
+## 0. 当前状态
 
-| Agent | 任务 | 产出 |
+### 已完成
+
+| Agent | 结果 |
+| --- | --- |
+| QA-Acceptance | P1 功能验收 41 PASS / 0 FAIL，报告 `xiaoi-plus-ui/tests/2026-11-08/acceptance-p1.md` |
+| QA-Visual | P1 视觉审核“有条件通过”，4 条 P1 已修，报告 `xiaoi-plus-ui/tests/2026-11-08/visual-review-p1.md` |
+| A3 Core Data | `eb71416`：`AgentRuntimeStatus`/`PermissionProbe`/`IssueInputFactory`/`ActivityHub`，104 断言 |
+| A2 UI Foundation | `4f7f7e4`：19 路由、16 占位页、14 共享组件，报告 `docs/ui/FOUNDATION-REPORT.md` |
+
+### 运行中（Wave 2）
+
+| Agent | 分支 | 产出 |
 | --- | --- | --- |
-| QA-Acceptance | P1 功能验收：构建/安装/导航/页面/LSPosed/截图 | `~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-08/acceptance-p1.md` |
-| QA-Visual | P1 视觉审核：Miuix 一致性/层级/深浅色/截断 | `~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-08/visual-review-p1.md` |
+| A4 Home | `feat/ui-home` | `ui/screen/home/**` + `docs/ui/reports/A4-HOME.md` |
+| A5 Xiaoai+Model | `feat/ui-xiaoai` | `ui/screen/xiaoai/**` + `docs/ui/reports/A5-XIAOAI.md` |
+| A6 Access+Capability | `feat/ui-access` | `ui/screen/access/**` + `docs/ui/reports/A6-ACCESS.md` |
+| A7 Me+Config/Diagnostics | `feat/ui-me` | `ui/screen/me/**` + `docs/ui/reports/A7-ME.md` |
+
+> 页面 Agent 不占用设备；合并后由主 Agent 统一做真机与视觉验收。
 
 ## 1. Wave 1：地基（2 个 Agent，可并行）
 
