@@ -15,16 +15,30 @@
 | A3 Core Data | `eb71416`：`AgentRuntimeStatus`/`PermissionProbe`/`IssueInputFactory`/`ActivityHub`，104 断言 |
 | A2 UI Foundation | `4f7f7e4`：19 路由、16 占位页、14 共享组件，报告 `docs/ui/FOUNDATION-REPORT.md` |
 
-### 运行中（Wave 2）
+### Wave 2 页面（已完成并合并）
 
-| Agent | 分支 | 产出 |
+| Agent | Commit | 产出 |
 | --- | --- | --- |
-| A4 Home | `feat/ui-home` | `ui/screen/home/**` + `docs/ui/reports/A4-HOME.md` |
-| A5 Xiaoai+Model | `feat/ui-xiaoai` | `ui/screen/xiaoai/**` + `docs/ui/reports/A5-XIAOAI.md` |
-| A6 Access+Capability | `feat/ui-access` | `ui/screen/access/**` + `docs/ui/reports/A6-ACCESS.md` |
-| A7 Me+Config/Diagnostics | `feat/ui-me` | `ui/screen/me/**` + `docs/ui/reports/A7-ME.md` |
+| A4 Home | `0b47440` | `ui/screen/home/**` + `docs/ui/reports/A4-HOME.md` |
+| A6 Access | `762663c` | `ui/screen/access/**` + `docs/ui/reports/A6-ACCESS.md` |
+| A5 Xiaoai+Model | `d2ba076` | `ui/screen/xiaoai/**` + `docs/ui/reports/A5-XIAOAI.md` |
+| A7 Me+Config/Diagnostics | `3eb3967` | `ui/screen/me/**` + `docs/ui/reports/A7-ME.md` |
+| 集成修复 | `c03aa40` | 能力页不自动弹键盘、FilterChips 换行 |
 
-> 页面 Agent 不占用设备；合并后由主 Agent 统一做真机与视觉验收。
+### P2 验收
+
+| Agent | 结果 |
+| --- | --- |
+| QA-Functional | 65 PASS / 0 FAIL / 2 BLOCKED，报告 `acceptance-p2.md` |
+| QA-Visual | 有条件通过：0 P0 / 5 P1 / 13 P2，报告 `visual-review-p2.md` |
+
+### 运行中（P1 修复）
+
+| Agent | 分支 | 范围 |
+| --- | --- | --- |
+| P2-Fix | `feat/ui-p2-fixes` | 对比度、统一 chip、模型页布局、8771/8770 口径、次级按钮 |
+
+> 修复完成后重新跑真机截图与视觉复验，再派 A8/A9。
 
 ## 1. Wave 1：地基（2 个 Agent，可并行）
 
