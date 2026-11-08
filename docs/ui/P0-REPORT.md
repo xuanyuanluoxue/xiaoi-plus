@@ -312,8 +312,8 @@ Compose 类是否在小爱进程产生冲突。必须等设备恢复后补测。
 | 首页启动 | `am start -W` WARM 156ms；无 FATAL/AndroidRuntime 崩溃 |
 | 配置保留 | `xiaoai_config`：model=deepseek-v4.1-flash、baseUrl 不变、bridge=true；测试前 enabled=false |
 | Miuix Spike | 真机启动成功；uiautomator 可见 Miuix Hello / 示例开关 / 输入框 / 按钮 |
-| 深浅色截图 | `~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/p0-spike-{light,dark}.png` |
-| 首页截图 | `~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/p0-home.png` |
+| 深浅色截图 | `~/xiaoi-plus-dev/xiaoi-plus-ui/review/2026-11-08/p0-spike-{light,dark}.png` |
+| 首页截图 | `~/xiaoi-plus-dev/xiaoi-plus-ui/review/2026-11-08/p0-home.png` |
 
 **深色模式发现**：Spike 的 `MiuixTheme.textStyles.title1` 在深色下仍是黑字，黑底黑字不可读；
 P1 的 `XiaoiTheme` 必须显式提供 `onBackground` 文本色（或包裹 `LocalContentColor`），

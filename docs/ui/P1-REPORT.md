@@ -72,7 +72,7 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 ## 4. 截图
 
 ```text
-~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/
+~/xiaoi-plus-dev/xiaoi-plus-ui/review/2026-11-08/
 ├─ p1-home-light.png       # 首页占位 + 4 tab
 ├─ p1-me-light2.png        # 我的（浅色，最终卡片色）
 ├─ p1-me-dark2.png         # 我的（深色）
@@ -107,7 +107,7 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 干净截图与拼图：
 
 ```text
-~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/
+~/xiaoi-plus-dev/xiaoi-plus-ui/review/2026-11-08/
 ├─ p1-final3-home-light.png
 ├─ p1-final5-me-light.png
 ├─ p1-final-logs-light.png

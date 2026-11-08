@@ -262,3 +262,26 @@ git branch -d feat/ui-p0
 4. **依赖镜像**：本机到 `dl.google.com` 的 TLS 不稳定，`settings.gradle.kts` 优先使用
    阿里云 Google/Central 镜像，官方源保留兜底；这不改变依赖版本。
 5. **P0 R8 关闭**：release 仅验证签名与可安装，P3 必须打开 R8/shrink 并回归 Xposed。
+
+## 13. UI 截图与测试产物
+
+```bash
+# 默认写 ~/xiaoi-plus-dev/xiaoi-plus-ui/tmp/YYYY-MM-DD/
+./scripts/ui-screenshot.sh --route Me --name me-light
+
+# 同时抓 uiautomator XML（设备临时文件会删除）
+./scripts/ui-screenshot.sh --route Logs --name logs --dump
+
+# 人工挑选后归档到 review/YYYY-MM-DD/
+./scripts/ui-screenshot.sh --route Me --name me-dark --review
+
+# 清理 tmp 下 7 天前的目录
+./scripts/ui-screenshot.sh --clean
+```
+
+规则：
+
+- 截图只走 `adb exec-out screencap -p`，**不在手机保存 PNG**。
+- UI dump 写 `/data/local/tmp/xiaoi-ui-*.xml`，拉回 PC 后立即删除。
+- 默认 `tmp/`；`review/` 只放人工确认过的验收图；`tests/` 放日志/XML。
+- 含 token/key 的配置不进入截图目录。
