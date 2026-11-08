@@ -2,7 +2,7 @@
 
 > 日期：2026-11-08
 > 目标：`0.14.0` / versionCode 19（A8 定版）
-> 状态：**P0/P1/P2/P3 完成**（R8/CI 已收尾；设备已恢复并完成 LSPosed 注入复验）
+> 状态：**已发布**（`v0.14.0`；P0/P1/P2/P3 完成，R8/CI 收尾，LSPosed 真机复验）
 > 详细验收：`docs/ui/reports/`、`~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-08/`
 
 ## 1. 本版内容
