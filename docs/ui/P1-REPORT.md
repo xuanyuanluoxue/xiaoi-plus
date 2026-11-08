@@ -94,3 +94,33 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 
 下一步：Home / Xiaoai+Model / Access+Capability / Me 完整页；先补 `AgentRuntime`、`IssueResolver`
 接入首页，再把 `MainActivity` 设为 launcher。
+
+## 7. 视觉验收修正（2026-11-08）
+
+| 问题 | 修正 |
+| --- | --- |
+| 主按钮白字 + Miuix 默认浅灰底，几乎不可见 | `XiaoiButton` 显式 `ButtonDefaults.buttonColors(primary/onPrimary)`，高 48dp；占位页按钮全宽 |
+| 深色主题状态栏仍是白底 | `MainActivity.applySystemBars()` 同步状态栏/导航栏颜色与浅色图标；强制浅/深色也生效 |
+| 深色卡片色不对 | `XiaoiTheme` 显式 `surfaceContainer/onSurfaceContainer` |
+| 自适应图标不能 `painterResource` | 改用 `R.drawable.ic_xiaoi`（Vector） |
+
+干净截图与拼图：
+
+```text
+~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/
+├─ p1-final3-home-light.png
+├─ p1-final5-me-light.png
+├─ p1-final-logs-light.png
+├─ p1-final-about-light.png
+├─ p1-final2-me-dark.png
+├─ p1-final2-home-dark.png
+└─ p1-visual-review.png   # 3×2 拼图（Review 面板已打开）
+```
+
+### 仍待 P2 决定的视觉项
+
+1. **浅色卡片对比**：当前 `bg #F7F8FA` + `surface #F1F2F5`，层次很轻；可改为白卡（`surface #FFFFFF`）更接近 Miuix。
+2. **底部导航**：当前只有文字；P2 加 24dp 图标与选中动效。
+3. **返回箭头**：当前是文本 `‹`；P2 换 24dp Vector 箭头。
+4. **关于页“作者”行**：动作是复制，却显示导航箭头；P2 改“复制” trailing 或图标。
+5. **P1 预览卡**：P2 删除，不属于最终页面。

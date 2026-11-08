@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -43,10 +44,20 @@ fun XiaoiButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    Button(onClick = onClick, modifier = modifier, enabled = enabled) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        minHeight = 48.dp,
+        colors = ButtonDefaults.buttonColors(
+            color = XiaoiTheme.colors.primary,
+            contentColor = XiaoiTheme.colors.onPrimary,
+            disabledColor = XiaoiTheme.colors.chipBg,
+            disabledContentColor = XiaoiTheme.colors.textHint,
+        ),
+    ) {
         Text(
             text = text,
-            color = XiaoiTheme.colors.onPrimary,
             style = XiaoiTheme.typography.rowTitle,
         )
     }

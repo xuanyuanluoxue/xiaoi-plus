@@ -1,7 +1,10 @@
 package plus.xiaoi.module
 
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -35,6 +38,7 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applySystemBars(ThemeManager.get(this))
         setContent {
             XiaoiTheme(mode = ThemeManager.get(this)) {
                 XiaoiApp(
@@ -46,6 +50,35 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+    /**
+     * targetSdk 26 下用平台 API 同步状态栏/导航栏；深色主题必须切浅色图标，
+     * 否则会出现“黑界面 + 白状态栏”。
+     */
+    private fun applySystemBars(mode: Int) {
+        val dark = when (mode) {
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+            else -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                Configuration.UI_MODE_NIGHT_YES
+        }
+        val bg = if (dark) 0xFF0B0B0D.toInt() else 0xFFF7F8FA.toInt()
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
+        var flags = window.decorView.systemUiVisibility
+        flags = if (dark) {
+            flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+        } else {
+            flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        }
+        if (Build.VERSION.SDK_INT >= 26) {
+            flags = if (dark) {
+                flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+            } else {
+                flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            }
+        }
+        window.decorView.systemUiVisibility = flags
     }
 }
 

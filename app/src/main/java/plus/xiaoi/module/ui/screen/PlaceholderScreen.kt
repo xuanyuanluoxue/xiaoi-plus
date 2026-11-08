@@ -3,6 +3,7 @@ package plus.xiaoi.module.ui.screen
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -37,7 +38,7 @@ fun PlaceholderScreen(
             Spacer(Modifier.height(6.dp))
             Text(description, color = colors.textSecondary, style = XiaoiTheme.typography.body)
             Spacer(Modifier.height(16.dp))
-            XiaoiButton(legacyLabel, onOpenLegacy)
+            XiaoiButton(legacyLabel, onOpenLegacy, Modifier.fillMaxWidth())
         }
     }
 }
