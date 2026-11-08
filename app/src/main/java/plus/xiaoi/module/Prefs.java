@@ -22,5 +22,11 @@ public final class Prefs {
      */
     public static final String KEY_CONTROL_PLANE = "control_plane";
 
+    /**
+     * 悬浮玻璃底栏开关（仅 App 进程）。默认 true；关掉或系统关闭动画时
+     * 底栏退回同尺寸实心胶囊。当前没有 UI 写入口，预留给外观页。
+     */
+    public static final String KEY_GLASS_BOTTOM_BAR = "ui_glass_bottom_bar";
+
     private Prefs() {}
 }

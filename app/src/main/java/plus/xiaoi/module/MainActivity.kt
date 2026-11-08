@@ -19,14 +19,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.core.NavStack
 import plus.xiaoi.module.ui.components.LocalXiaoiPageActions
 import plus.xiaoi.module.ui.components.XiaoiBottomBar
 import plus.xiaoi.module.ui.components.XiaoiPageActionsState
 import plus.xiaoi.module.ui.components.XiaoiTopBar
+import plus.xiaoi.module.ui.components.glass.GlassSupport
+import plus.xiaoi.module.ui.components.glass.glassBackdropSource
+import plus.xiaoi.module.ui.components.glass.rememberGlassBackdrop
+import plus.xiaoi.module.ui.components.glass.rememberGlassBarReservedHeight
 import plus.xiaoi.module.ui.screen.XiaoiPlaceholder
 import plus.xiaoi.module.ui.screen.access.AccessScreen
 import plus.xiaoi.module.ui.screen.access.BridgeScreen
@@ -216,6 +224,13 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     BackHandler { back() }
 
     val key = Routes.keyOf(route)
+    val dimensions = XiaoiTheme.dimens
+    val glassMode = GlassSupport.rememberMode()
+    val glassBackdrop = rememberGlassBackdrop(glassMode)
+    val barReserved = rememberGlassBarReservedHeight()
+    val root = nav.isRoot()
+    // BLUR 分支需要底栏在内容坐标系中的位置；FULL/SOLID 不使用。
+    var contentCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Scaffold(
         topBar = {
             XiaoiTopBar(
@@ -224,123 +239,152 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 actions = { pageActions.actions?.invoke(this) },
             )
         },
-        bottomBar = {
-            if (nav.isRoot()) {
-                XiaoiBottomBar(current = nav.tab(), onSelect = { tab ->
-                    nav.switchTab(tab)
-                    route = nav.current()
-                })
+        // 底栏悬浮在内容之上：不占用 Scaffold bottomBar，避免把页面挤窄。
+        snackbarHost = {
+            Box(
+                Modifier.padding(
+                    bottom = if (root) barReserved + dimensions.glassBarGap else 0.dp,
+                ),
+            ) {
+                SnackbarHost(snackbarHostState)
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = colors.bg,
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            CompositionLocalProvider(LocalXiaoiPageActions provides pageActions) {
-                screenStates.SaveableStateProvider(route) {
-                    when (key) {
-                Routes.HOME -> HomeScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding(),
+                ),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { if (it.isAttached) contentCoordinates = it }
+                    .glassBackdropSource(glassBackdrop)
+                    // 一级页内容底部预留玻璃条高度；二级页隐藏底栏后不留白。
+                    .padding(bottom = if (root) barReserved else 0.dp),
+            ) {
+                CompositionLocalProvider(LocalXiaoiPageActions provides pageActions) {
+                    screenStates.SaveableStateProvider(route) {
+                        when (key) {
+                            Routes.HOME -> HomeScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.XIAOAI -> XiaoaiScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.XIAOAI -> XiaoaiScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.MODEL -> ModelScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.MODEL -> ModelScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.ACCESS -> AccessScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.ACCESS -> AccessScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.BRIDGE -> BridgeScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.BRIDGE -> BridgeScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.TOKEN -> TokenScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.TOKEN -> TokenScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.CONNECT -> ConnectScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.CONNECT -> ConnectScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.CAPABILITIES -> CapabilitiesScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.CAPABILITIES -> CapabilitiesScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.CAPABILITY_DETAIL -> CapabilityDetailScreen(
-                    capabilityId = Routes.argOf(route),
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.CAPABILITY_DETAIL -> CapabilityDetailScreen(
+                                capabilityId = Routes.argOf(route),
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.TOOLS -> ToolsScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.TOOLS -> ToolsScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.PERMISSIONS -> PermissionsScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.PERMISSIONS -> PermissionsScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.ME -> MeScreen(
-                    themeMode = ThemeManager.get(context),
-                    onThemeChange = onThemeChange,
-                    onNavigate = { navigate(it) },
-                    onOpenLogs = { navigate(Routes.LOGS) },
-                    onOpenAbout = { navigate(Routes.ABOUT) },
-                    onOpenLegacyHome = { openLegacy(HomeActivity::class.java) },
-                    onOpenLegacyConfig = { openLegacy(ConfigActivity::class.java) },
-                    onMessage = { message(it) },
-                )
+                            Routes.ME -> MeScreen(
+                                themeMode = ThemeManager.get(context),
+                                onThemeChange = onThemeChange,
+                                onNavigate = { navigate(it) },
+                                onOpenLogs = { navigate(Routes.LOGS) },
+                                onOpenAbout = { navigate(Routes.ABOUT) },
+                                onOpenLegacyHome = { openLegacy(HomeActivity::class.java) },
+                                onOpenLegacyConfig = { openLegacy(ConfigActivity::class.java) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.APPEARANCE -> AppearanceScreen(
-                    themeMode = ThemeManager.get(context),
-                    onThemeChange = onThemeChange,
-                    onMessage = { message(it) },
-                )
+                            Routes.APPEARANCE -> AppearanceScreen(
+                                themeMode = ThemeManager.get(context),
+                                onThemeChange = onThemeChange,
+                                onMessage = { message(it) },
+                            )
 
-                Routes.CONFIG_MANAGE -> ConfigManageScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.CONFIG_MANAGE -> ConfigManageScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.DIAGNOSTICS -> DiagnosticsScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.DIAGNOSTICS -> DiagnosticsScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.LOGS -> LogsScreen(onMessage = { message(it) })
-                Routes.ABOUT -> AboutScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.LOGS -> LogsScreen(onMessage = { message(it) })
+                            Routes.ABOUT -> AboutScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                Routes.LICENSES -> LicensesScreen(onMessage = { message(it) })
+                            Routes.LICENSES -> LicensesScreen(onMessage = { message(it) })
 
-                Routes.LEGACY -> LegacyScreen(
-                    onNavigate = { navigate(it) },
-                    onMessage = { message(it) },
-                )
+                            Routes.LEGACY -> LegacyScreen(
+                                onNavigate = { navigate(it) },
+                                onMessage = { message(it) },
+                            )
 
-                else -> XiaoiPlaceholder(
-                    title = "页面不存在",
-                    note = "未知路由，返回首页。",
-                )
+                            else -> XiaoiPlaceholder(
+                                title = "页面不存在",
+                                note = "未知路由，返回首页。",
+                            )
+                        }
                     }
                 }
+            }
+            if (root) {
+                XiaoiBottomBar(
+                    current = nav.tab(),
+                    onSelect = { tab ->
+                        nav.switchTab(tab)
+                        route = nav.current()
+                    },
+                    backdrop = glassBackdrop,
+                    contentCoordinates = contentCoordinates,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
         }
     }

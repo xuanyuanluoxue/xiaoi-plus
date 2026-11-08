@@ -1,5 +1,16 @@
 # 更新日志
 
+## 未发布 — 悬浮液态玻璃底栏
+
+- **底栏**：`Miuix NavigationBar` 换成悬浮胶囊玻璃底栏（首页 / 小爱 / 接入 / 我的），
+  选中 pill 支持点击、按压放大与横向拖拽切换；内容区 `layerBackdrop` 采样，
+  一级页底部预留玻璃条高度，二级页隐藏底栏。
+- **三级回退**：API 33+ 且 RuntimeShader 可用走 miuix-blur 模糊 + 折射；API 31–32
+  走 Compose GraphicsLayer + 平台 RenderEffect 模糊；API 26–30、系统关闭动画或
+  用户关闭走同尺寸实心胶囊（主题色），交互与选中态一致。
+- **令牌**：`XiaoiColors` / `XiaoiDimens` 新增 `glass*` 令牌；Snackbar 随底栏高度上移。
+- 未新增权限，未改 minSdk / targetSdk / 版本号。
+
 ## 0.14.1 — 2026-11-08 — 修复启动入口仍指向旧首页
 
 > versionCode 19 → 20。
