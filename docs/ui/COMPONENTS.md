@@ -47,7 +47,7 @@ Scaffold(
 - 不再手写 `Column + Box(weight)` 骨架。
 - `SnackbarHostState.showSnackbar()` 统一提示；不使用自绘 Snackbar/Toast。
 
-### XiaoiTopBar（Miuix SmallTopAppBar wrapper）
+### XiaoiTopBar（紧凑大标题）
 
 ```kotlin
 @Composable
@@ -58,9 +58,9 @@ fun XiaoiTopBar(
 )
 ```
 
-- 内部直接用 `SmallTopAppBar`；标题居中、默认高 52dp。
-- 返回用 `IconButton + Icon(MiuixIcons.Back)`；不再用字符 `‹`。
-- 颜色传 `bg/text`；不覆盖组件尺寸/圆角。
+- 状态栏下 48dp 行；标题 32sp 左对齐；返回 48dp；页面动作与标题同排。
+- 对齐参考实现 `ManagerCompactTopBar`；不做折叠大标题的空白行。
+- 页面级动作用 `XiaoiPageActions` 发布到顶栏，不在内容区另起工具栏。
 
 ### XiaoiBottomBar（Miuix NavigationBar）
 
@@ -89,8 +89,8 @@ fun XiaoiCard(
 )
 ```
 
-- 使用 Miuix `Card` 默认圆角 16dp；不覆盖颜色/圆角。
-- 自定义内容用 `XiaoiCard`（16dp 内边距）；偏好列表用 `XiaoiPreferenceCard`（不加内边距）。
+- Miuix `Card`，圆角 28dp、内边距 20dp；偏好行用 `XiaoiPreferenceCard`（不加内边距）。
+- 多张独立卡用 `XiaoiCardGroup` 包裹，间距 12dp。
 - 可点击时提供 ripple + `Role.Button`；不可点击不加。
 
 ### XiaoiButton
@@ -152,20 +152,28 @@ fun XiaoiSwitchRow(
 - 高 56dp；整行 `toggleable(role = Role.Switch)`；内部 Switch `onCheckedChange = null`。
 - 高风险开关由调用方先弹确认，再调用 `onCheckedChange`。
 
-### XiaoiInfoRow
+### XiaoiInfoRow / XiaoiRowIcon
 
 ```kotlin
 @Composable
 fun XiaoiInfoRow(
     title: String,
     subtitle: String? = null,
-    leading: (@Composable () -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    icon: ImageVector? = null,
+    iconTone: XiaoiIconTone = XiaoiIconTone.NEUTRAL,
+    badge: String? = null,
+    badgeTone: XiaoiTone = XiaoiTone.NEUTRAL
 )
+
+@Composable
+fun XiaoiRowIcon(icon: ImageVector, tone: XiaoiIconTone = XiaoiIconTone.NEUTRAL)
 ```
 
-- 72dp；标题 16/22/500；副行 12/16；箭头 20dp。
+- 72dp；左 48dp 语义色圆 + 26dp 白色图形；右侧徽章 + chevron。
+- `XiaoiIconTone`：GREEN/BLUE/ORANGE/PINK/RED/CYAN/PURPLE/INDIGO/NEUTRAL，
+  颜色只表达“是什么”，状态仍用徽章文字。
+- 首页用彩色圆；设置页保留彩色圆但同一入口固定同一语义色。
 - 空副行不留空高；点击区域整行。
 
 ### XiaoiCopyRow

@@ -31,8 +31,17 @@
 | warning | #B26A00 | #FBBF24 | 暂停 / 需注意 |
 | error | #C43D3D | #F87171 | 失败 |
 | hero-on | #16202E | #E8ECF8 | Hero 内文字 |
+| icon-green | #248A3D | #34C759 | 状态 / 运行 |
+| icon-blue | #007AFF | #0A84FF | 接入 / 通道 / 令牌 |
+| icon-orange | #B25000 | #FF9F0A | 模型 / 服务商 |
+| icon-pink | #D70015 | #FF375F | 日志 / 活动 |
+| icon-red | #C62828 | #FF453A | 诊断 / 权限 / 危险 |
+| icon-cyan | #0071A4 | #64D2FF | 隐私 / 局域网 |
+| icon-purple | #8944AB | #BF5AF2 | 配置 / 备份 |
+| icon-indigo | #3634A3 | #5E5CE6 | 关于 / 致谢 |
 
-Hero 底色按状态：`已启用 = success 12% 透明`、`未配置 = surface`、`已暂停 = warning 12%`、`异常 = error 12%`。
+Hero 底色按状态：`已启用 = success 14% 透明`、`未配置 = surface`、`已暂停 = warning 14%`、`异常 = error 14%`。
+彩色圆图标统一 48dp 圆 + 26dp 白色图形；颜色只表达“是什么”，状态仍由徽章文字表达。
 
 ## 3. 字体
 
@@ -51,16 +60,17 @@ Hero 底色按状态：`已启用 = success 12% 透明`、`未配置 = surface`�
 ## 4. 间距与圆角
 
 - 栅格：4dp
-- 页面左右：16dp；顶部：12dp；底部：112dp（导航 80 + FAB 32）
+- 页面左右：16dp；顶部：4–12dp；底部：24dp（二级页）/ 悬浮底栏高度 + 手势条（一级页）
 - 卡片内边距：20dp
-- 卡片间距：24dp（分组之间）、12dp（同组之间）
+- 卡片间距：12dp（独立卡清单）；分组之间 24dp（仅诊断等密集页保留）
 - 列表行高：72dp（信息行）、56dp（输入/开关行）、48dp（次级行）
-- 圆角：卡片 24dp、输入框 12dp、胶囊 999dp、FAB 18dp
+- 圆角：卡片 28dp、输入框 12dp、胶囊 999dp
 
 ## 5. 组件声明
 
 ### 5.1 AppBar
-高 56dp，背景 bg，无阴影；左标题 Title，右侧动作图标 24dp。
+状态栏下 48dp 行，背景 bg，无阴影；标题 32sp（左对齐），返回按钮 48dp，
+页面级动作与标题同排。不做折叠大标题的空白行。
 
 ### 5.2 HeroCard
 圆角 24，内边距 20；左 44dp 图标；状态 Hero；右侧徽章（Chip，最多 2 个）；副行 Caption。
@@ -75,11 +85,12 @@ Hero 底色按状态：`已启用 = success 12% 透明`、`未配置 = surface`�
 文字 Caption，颜色 text-secondary；上间距 24dp，下间距 8dp；不加线。
 
 ### 5.5 Card
-背景 surface，圆角 24，内边距 20，无描边无阴影，间距 24dp。
+背景 surface，圆角 28，内边距 20，无描边无阴影；独立卡之间间距 12dp。
+Hero 卡按状态使用 14% 语义色底。
 
 ### 5.6 InfoRow
-高 72dp；左 24dp 线性图标（text-secondary）；标题 RowTitle，副标题 Caption（值）；
-右箭头可选；整行可点，按压态背景 `line` 20%。
+高 72dp；左 48dp 语义色圆形图标（白图形，`XiaoiIconTone`）；
+标题 RowTitle，副标题 Body/Caption；右侧值/徽章 + chevron 可选；整行可点。
 
 ### 5.7 InputRow
 高 56dp；左标签 88dp（Caption）；右输入框高 44dp、圆角 12、背景 surface_2、
