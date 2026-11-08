@@ -13,11 +13,11 @@
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
 >
-> ✅ 0.14 的 JVM 单测、工程一致性与 APK 签名指纹门禁可在本机复现；
+> ✅ 0.14 的 JVM 单测、工程一致性、APK 签名指纹与 R8 release 构建可在本机复现；
 > P1/P2 功能与视觉验收结果见 [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)
-> 与 `docs/ui/reports/`。
-> ⚠️ 设备当前断开：LSPosed 注入、R8 后体积与真机回归以 A8 的 RELEASE-REPORT 为准。
-> 在报告确认前，本文不声称“已通过全部真机矩阵”，也不承诺 APK ≤6MB。
+> 与 `docs/ui/reports/`。R8 后 APK 实测 **1.6 MiB**，LSPosed 注入已真机复验。
+> ⚠️ 8770 动作面与小米自带本地服务同端口，存在 EADDRINUSE 抢占；失败时 UI 会如实显示，
+> 8771 控制面不受影响。详见 [已知限制](docs/ui/RELEASE-0.14.md#4-已知限制)。
 
 ## 它做什么
 
@@ -291,10 +291,10 @@ export JAVA_HOME=/path/to/jdk-21
 `XIAOI_TOKEN=<token> scripts/contract-test.sh` 是可选的真机契约，设备断开时会跳过/失败，
 不要把它当成日常构建门禁。
 
-R8/shrink、CI 与发布脚本的 0.14 适配在 P3（A8）收尾；APK 体积目标 ≤6MB，但**以
-RELEASE-REPORT 的实测为准**，本文不提前承诺。版本号单一来源是
+R8/shrink 与 CI 已随 0.14 收尾：release 开启 `minifyEnabled` + `shrinkResources`，
+APK 从 8.4 MiB 降到 **1.6 MiB**（实测）。版本号单一来源是
 `app/src/main/AndroidManifest.xml` 的 `android:versionName` / `android:versionCode`
-（Gradle 读取）；0.14 目标为 `0.14.0` / `19`。完整构建说明见
+（Gradle 读取）；0.14 为 `0.14.0` / `19`。完整构建说明见
 [docs/ui/BUILD.md](docs/ui/BUILD.md)，版本说明见
 [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)。
 

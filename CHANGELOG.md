@@ -5,8 +5,8 @@
 > versionCode 18 → 19（A8 定版）。设置页从「4 个 Activity + XML」迁到
 > **单 Activity + Compose + Miuix**，4 个 tab、19 条路由；本版只做功能 parity，
 > 不新增提示词、工具注入、技能包、记忆或语音路由。
-> 构建、签名、R8 与真机回归的最终数据见 A8 的 `RELEASE-REPORT`；
-> 若 Manifest 尚未改为 0.14.0，以发布报告为准。
+> 构建与签名：`0.14.0` / versionCode 19；R8 后 APK **1.6 MiB**（R8 前 8.4 MiB）；
+> LSPosed 注入已在真机复验。8770 端口冲突见 Release Notes 已知限制。
 
 ### 本版重点
 

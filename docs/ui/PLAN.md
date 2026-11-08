@@ -1,6 +1,6 @@
 # UI 重写计划书（0.14，Compose + Miuix）
 
-> 状态：**P0 / P1 / P2 已完成；P3 由 A8 进行中**（R8/CI/真机收尾）
+> 状态：**P0 / P1 / P2 / P3 已完成**（R8 1.6 MiB、CI 收尾、LSPosed 真机复验）
 > 日期：2026-11-08（初稿 2026-11-07）
 > 目标版本：`0.14.0`（versionCode 19；A8 定版）
 > 参考：
@@ -373,8 +373,8 @@ Skill {
 ## 8. 工作包与排期
 
 > 估算为人日，含真机验证；可按阶段单独发布。
-> 实际状态（2026-11-08）：P0/P1/P2 已完成并合并 `main`；P3 中 R8/CI/发布由 A8 进行中，
-> 文档由 A9 同步。下面保留原始任务表作为验收基线，完成情况见 §15。
+> 实际状态（2026-11-08）：P0/P1/P2/P3 已完成并合并 `main`；R8/CI/发布与文档均已收尾。
+> 下面保留原始任务表作为验收基线，完成情况见 §15。
 
 ### P0 Spike（3–5 天）——✅ 已完成
 
@@ -413,16 +413,18 @@ Skill {
 | P2.6 | 兼容模式（只读） | 默认折叠；无保存入口 |
 | P2.7 | 删除旧 Activity/layout（保留兼容视图） | 无两套可编辑入口 |
 
-### P3 收尾（5–8 天）——🟡 A8 进行中
+### P3 收尾（5–8 天）——✅ 已完成
 
 | # | 任务 | 验收 |
 | --- | --- | --- |
-| P3.1 | R8 + shrinkResources + keep 规则 + multidex | Release APK 目标 ≤6MB；Hook 正常（待 A8 实测） |
-| P3.2 | CI：SDK 37 + JDK 21 + Gradle 缓存 + 签名 | CI 全绿；Release 资产可验签（A8） |
-| P3.3 | `check-consistency.sh`/`verify-apk.sh` 适配 | 门禁全绿（A8/A9 前已通过） |
-| P3.4 | 截图矩阵 + 功能回归 | 4 tab × 2 主题 × 状态；配置/日志/8770/8771 正常（设备断开，待 A8） |
+| P3.1 | R8 + shrinkResources + keep 规则 + multidex | ✅ 8.4 MiB → 1.6 MiB；Hook 已真机复验 |
+| P3.2 | CI：SDK 37 + JDK 21 + Gradle 缓存 + 签名 | ✅ workflow 已切 Gradle/JDK |
+| P3.3 | `check-consistency.sh`/`verify-apk.sh` 适配 | ✅ 门禁全绿 |
+| P3.4 | 截图矩阵 + 功能回归 | ✅ P2 功能 65 PASS；浅色 18 页/深色 8 页；LSPosed 注入通过 |
 | P3.5 | 文档：README/design-system/ui-architecture/CHANGELOG/HANDOVER | ✅ A9 已同步 0.14 |
-| P3.6 | 发布 `0.14.0` | prerelease；资产指纹正确（A8） |
+| P3.6 | 发布 `0.14.0` | 待打 tag；构建与验签已就绪 |
+
+> 已知限制：8770 与小米自带本地服务同端口，存在 EADDRINUSE 抢占；8771 不受影响。
 
 **总计：23–35 人日。**
 

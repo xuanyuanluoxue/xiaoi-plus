@@ -16,7 +16,7 @@
 | R8 missing class | **0**（无 `missing_rules.txt`，构建无相关 warning） |
 | 签名指纹 | `d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b`（未变） |
 | 单测 / 一致性 / APK 校验 | 全部 PASS |
-| 真机 R8 回归 | **BLOCKED**（见 §7） |
+| 真机 R8 回归 | ✅ 已补测（见 §7.1） |
 | CI | workflow 已切到 Gradle/JDK 21/SDK 37；本地等价命令全绿，GitHub 实跑需 push 后确认（A8 不 push） |
 
 产物：
@@ -117,10 +117,10 @@ R8 后 APK 组成（解压/压缩字节）：
 > `--offline` 首次失败于 `compose-group-mapping:2.4.21` 未缓存；联网拉取一次后
 > `clean assembleRelease --offline` 可复现。CI 始终联网，不受影响。
 
-## 7. BLOCKED：真机 R8 回归
+## 7. 真机 R8 回归
 
-开工时 `adb devices` 为空；构建后期设备恢复可见（`31106e85`），但按分工未安装/重启，
-避免干扰主 Agent 的真机测试矩阵。以下项目 **BLOCKED**：
+开工时 `adb devices` 为空；构建后期设备恢复可见（`31106e85`），但按分工未安装/重启。
+主 Agent 在合并后已完成补测，见 §7.1；以下保留原始验证清单。
 
 - LSPosed 激活后 `Hook` 是否被正确加载（R8 改名/裁剪回归）。
 - 模型重定向、输出标记、能力桥是否仍生效。
@@ -154,6 +154,17 @@ XIAOI_TOKEN=... ./scripts/contract-test.sh --check
 ./scripts/ui-screenshot.sh --route Me --name release-me
 ```
 
+### 7.1 主 Agent 补测结果（2026-11-08，R8 release）
+
+| 项 | 结果 |
+| --- | --- |
+| 覆盖安装 | Success；`config.json` SHA-256 前后一致 |
+| 版本/签名 | `0.14.0` / 19；指纹 `d7dd34b2…d19b`；APK 1.6 MiB |
+| UI 启动 | Home / Model / Capabilities / Diagnostics / ConfigManage / Legacy / About 均可打开；无应用级 FATAL |
+| LSPosed（R8 包） | `[xiaoi+] 控制面已连接`、`supportsVision=true`、配置热更新；Hook 未被 R8 破坏 |
+| 8771 | on-device `/health` 200，`facade=true port=8771` |
+| 8770 | 被小米自带 facade 占用（`t:voice_trigger`），App 动作面 `EADDRINUSE`；UI 如实显示“启动失败”，见已知风险 5 |
+
 ## 8. 已知风险
 
 1. **资源名短名化**：AGP 9 在 `shrinkResources` 下会重命名资源；项目已无
@@ -164,3 +175,6 @@ XIAOI_TOKEN=... ./scripts/contract-test.sh --check
    解析，但未 push，GitHub 上的 action 版本与缓存命中需主 Agent 首次 push 后确认。
 4. `docs/ci.md` 仍描述旧 `build.sh` 流程；按分工本次只更新
    `docs/ui/BUILD.md`，建议主 Agent 合并时同步 `docs/ci.md`。
+5. **8770 端口冲突（已知，非 R8 引入）**：小米「超级小爱」自身监听
+   `127.0.0.1:8770`；若它先绑定，`AgentService` 会 `EADDRINUSE`。UI 已如实显示
+   “启动失败 + 最后错误”，8771 不受影响。0.15 建议迁到独立端口（如 8780）。

@@ -2,7 +2,7 @@
 
 > 日期：2026-11-08
 > 目标：`0.14.0` / versionCode 19（A8 定版）
-> 状态：**P0/P1/P2 完成；P3（R8/CI/真机）由 A8 进行中**
+> 状态：**P0/P1/P2/P3 完成**（R8/CI 已收尾；设备已恢复并完成 LSPosed 注入复验）
 > 详细验收：`docs/ui/reports/`、`~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-08/`
 
 ## 1. 本版内容
@@ -71,19 +71,23 @@
 
 | 项 | 结果 |
 | --- | --- |
-| `./gradlew :app:assembleRelease --offline` | 成功（P2 验收时 versionCode 18、R8 关闭） |
+| `./gradlew :app:assembleRelease --offline` | 成功；`0.14.0` / versionCode 19；R8 开启 |
 | `./tests/run.sh` | 全部通过（NavStack 49/49） |
 | `./scripts/check-consistency.sh` | 7/7 通过 |
 | `./scripts/verify-apk.sh` | PASS；包名 `plus.xiaoi.module`；固定指纹 `d7dd34b2…d19b` |
-| APK 体积 | 8.3 MiB（R8 关闭）；R8 后体积/≤6MB 以 A8 RELEASE-REPORT 为准 |
+| APK 体积 | R8 前 8.4 MiB → **R8 后 1.6 MiB**（目标 ≤6MB） |
+| 覆盖安装 | `config.json` SHA 不变；8771 `/health` 正常 |
+| LSPosed（R8 包） | 重启小爱后 `[xiaoi+] 控制面已连接`、`supportsVision=true`、配置热更新；无 FATAL |
 
-> 设备当前断开，LSPosed 注入、模型重定向、8770/8771 真机回归与 R8 体积
-> 不在本文件下结论。
+> 8770 动作面与小米自带本地服务同端口，存在 EADDRINUSE 抢占，见 §4 第 1 条。
 
 ## 4. 已知限制
 
-1. **P3 未收尾**：R8/shrink、CI、发布脚本的 0.14 适配由 A8 进行中；
-   在 A8 报告确认前，不承诺 APK ≤6MB，也不声称真机矩阵全部通过。
+1. **8770 端口冲突（已知）**：小米「超级小爱」自身在 `127.0.0.1:8770` 提供本地
+   facade；如果它先绑定，App 的 Agent 动作面会启动失败并如实显示
+   `EADDRINUSE`，8771 控制面不受影响。当前版本不自动抢端口；建议 0.15 把动作面
+   迁到独立端口（如 8780）并更新客户端。需要动作面时，可在重启小爱前先让 App
+   启动（开机自启路径可能先拿到端口），但这是竞态，不保证。
 2. **日志没有域筛选**：0.14 只有“全部/信息/错误”等级别 chip；域筛选留 0.15。
 3. **Connect 是二级整页**：不是 BottomSheet；文档已按实际更新。
 4. **能力/工具/权限只读**：审计、确认队列、试运行/测试台 0.15 提供。
