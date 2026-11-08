@@ -8,9 +8,23 @@ set -euo pipefail
 IN="${1:?用法: ci-sign.sh <aligned.apk> <out.apk>}"
 OUT="${2:?用法: ci-sign.sh <aligned.apk> <out.apk>}"
 
-SDK="${SDK:-$HOME/Android/Sdk}"
-BT="$SDK/android-14"
-[ -x "$BT/apksigner" ] || { echo "找不到 apksigner：$BT/apksigner" >&2; exit 1; }
+# build-tools 布局：优先 $SDK/android-14（旧 build.sh 布局），否则找 $ANDROID_HOME /
+# $ANDROID_SDK_ROOT / $HOME/Android/Sdk 下最新的 build-tools（Gradle 9 / AGP 9 布局）。
+BT=""
+for root in "${SDK:-}" "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk"; do
+  [ -n "$root" ] || continue
+  if [ -x "$root/android-14/apksigner" ]; then
+    BT="$root/android-14"
+    break
+  fi
+  for d in $(ls -d "$root"/build-tools/* 2>/dev/null | sort -V -r); do
+    if [ -x "$d/apksigner" ]; then
+      BT="$d"
+      break 2
+    fi
+  done
+done
+[ -n "$BT" ] || { echo "找不到 apksigner（检查 SDK / ANDROID_HOME 的 build-tools）" >&2; exit 1; }
 
 : "${KEYSTORE_FILE:?缺少 KEYSTORE_FILE}"
 : "${KEYSTORE_PASSWORD:?缺少 KEYSTORE_PASSWORD}"

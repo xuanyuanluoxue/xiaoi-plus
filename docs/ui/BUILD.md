@@ -114,6 +114,8 @@ keystore/xiaoi.keystore
 | compileSdk | 37 |
 | minSdk / targetSdk | 26 / 26 |
 | Java/Kotlin target | 11（Compose 1.12 要求） |
+| versionName / versionCode | 0.14.0 / 19（`AndroidManifest.xml` 单一来源） |
+| release R8 | `isMinifyEnabled = true`、`isShrinkResources = true` |
 
 - 不引入 `miuix-blur`、`miuix-icons`、`miuix-nav`、navigation-compose、DI、图片库。
 - 依赖版本全部写在 `gradle/libs.versions.toml`；禁止在 `app/build.gradle.kts` 里散落版本号。
@@ -130,7 +132,7 @@ android {
         minSdk = 26
         targetSdk = 26
         versionCode = 19
-        versionName = "0.14.0-ui.1"
+        versionName = "0.14.0"
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -166,29 +168,47 @@ android {
 
 ## 6. R8 / 多 dex / 体积
 
-`proguard-rules.pro` 至少：
+release 已开启 R8（`isMinifyEnabled = true`）与资源收缩（`isShrinkResources = true`），
+debug 保持关闭。规则在 `app/proguard-rules.pro`，原则是**只 keep 运行时按名字访问的入口**：
 
-```proguard
--keep class plus.xiaoi.module.Hook { *; }
--keep class plus.xiaoi.module.agent.** { *; }
--keep class plus.xiaoi.module.core.** { *; }
--keepclassmembers class * implements de.robv.android.xposed.IXposedHookLoadPackage { *; }
--keepattributes *Annotation*
-```
+| 规则 | 原因 |
+| --- | --- |
+| `-keep class plus.xiaoi.module.Hook { *; }` | `assets/xposed_init` 声明，LSPosed 反射实例化 |
+| `-keepclassmembers ... IXposedHookLoadPackage { handleLoadPackage }` | 接口方法签名不能改写 |
+| `-keep class plus.xiaoi.module.control.BridgeControlService { *; }` | `ControlKeys.SERVICE_CLASS` 字符串 + 显式 ComponentName 绑定 |
+| `-keepclassmembers ActionDescriptor/ActionRequest/ActionResult/ActionRisk { public <fields>; }` | Agent 协议对象的公开字段名 |
+| `-dontwarn de.robv.android.xposed.**` | Xposed API 是 compileOnly，运行时由 LSPosed 提供 |
+| `-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable` | 注解/内部类与可读崩溃栈 |
 
-- `assets/xposed_init` 不能被 shrink 删除。
+未使用 `-dontobfuscate`，也没有整包 keep；Compose / Miuix / AndroidX / Kotlin 的规则由
+各自 AAR 的 consumer rules 提供。
+
+实测体积（2026-11-08，同一提交）：
+
+| 产物 | 大小 |
+| --- | --- |
+| release，R8 前 | 8,721,766 B（8.4 MiB） |
+| release，R8 后 | 1,657,323 B（1.6 MiB） |
+| debug（不 R8） | 15,718,702 B（15.0 MiB） |
+
+- 目标：release ≤6MB；debug ≤10MB 只是早期预算，当前 debug 含 Compose tooling，仅本地使用。
+- 资源收缩后 APK 内 `res/` 只剩 35 个条目；`assets/xposed_init` 必须保留。
 - minSdk 26 原生 multidex；AGP 自动处理。
-- 目标：release ≤6MB；debug ≤10MB。
-- 开启 `shrinkResources`；保留 `assets/licenses/**` 与 `assets/xposed_init`。
+- 体积回归时先看 `app/build/outputs/mapping/release/`（`mapping.txt`、`usage.txt`、
+  `resources.txt`）和 `unzip -l` 的条目分布，不要为了体积删功能。
 
 ## 7. 命令
 
 ```bash
-# debug
-./gradlew :app:assembleDebug
+# debug（不 R8）
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleDebug
 
-# release（需要签名口令）
-KEYSTORE_PASSWORD=... ./gradlew :app:assembleRelease
+# release（有 keystore 口令时自动签名）
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
+  KEYSTORE_PASSWORD=... ./gradlew :app:assembleRelease
+
+# 已有 Gradle 缓存时可离线构建；首次构建需要联网拉 R8/Compose mapping 依赖
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --offline
 
 # 单测（保持现有脚本）
 ./tests/run.sh
@@ -198,15 +218,25 @@ KEYSTORE_PASSWORD=... ./gradlew :app:assembleRelease
 SDK="$HOME/Android/Sdk" ./scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 ```
 
+产物：`app/build/outputs/apk/release/app-release.apk`（无正式密钥时为
+`app-release-unsigned.apk`）。R8 报告在 `app/build/outputs/mapping/release/`。
+
 > 过渡期可同时保留 `build.sh`；P3 删除手工构建，README 只保留 Gradle 命令。
 
 ## 8. CI
 
-- JDK 21 + SDK 37 + Gradle 缓存。
-- 步骤：`assembleDebug` → `tests/run.sh` → `check-consistency.sh` → `assembleRelease` → `verify-apk.sh`。
-- 签名：GitHub Secrets 注入 keystore（base64）与口令；没有密钥时只产出 unsigned artifact，不建 Release。
-- 缓存：`~/.gradle/caches`、`~/.gradle/wrapper`；key 用 `gradle/libs.versions.toml` 哈希。
-- 保留 `scripts/ci-sdk.sh` 的固定 SDK 思路，改为安装 platforms 37。
+`.github/workflows/build.yml` 与本地命令保持一致：
+
+- JDK 21（temurin）+ `android-actions/setup-android@v3` 安装
+  `platforms;android-37.0`、`build-tools;37.0.0`。
+- Gradle 由 wrapper 固定 9.9.0；缓存 `~/.gradle/caches` 与 `~/.gradle/wrapper`，
+  key 用 `gradle/libs.versions.toml`、wrapper 属性和 `*.gradle.kts` 的哈希。
+- 步骤：`tests/run.sh` → `check-consistency.sh` → `assembleDebug` →
+  `assembleRelease` → `verify-apk.sh`。
+- 签名：GitHub Secrets `KEYSTORE_BASE64` 解码到 `keystore/xiaoi.keystore`，
+  配合 `KEYSTORE_PASSWORD` / `KEYSTORE_ALIAS` / `KEYSTORE_KEY_PASSWORD` 让
+  Gradle 直接产出正式签名 APK；没有密钥时用临时证书签名，只出 artifact、不建 Release。
+- 不新增任何额外 secret；`contract.yml` 仍是手动触发的真机契约。
 
 ## 9. P0 验收
 
@@ -261,7 +291,8 @@ git branch -d feat/ui-p0
    对应 `platforms;android-37.0`。
 4. **依赖镜像**：本机到 `dl.google.com` 的 TLS 不稳定，`settings.gradle.kts` 优先使用
    阿里云 Google/Central 镜像，官方源保留兜底；这不改变依赖版本。
-5. **P0 R8 关闭**：release 仅验证签名与可安装，P3 必须打开 R8/shrink 并回归 Xposed。
+5. **P0 R8 关闭、P3 打开**：0.14 P0 仅验证签名与可安装；A8 已开启
+   R8/shrinkResources（1.6MB），keep 规则见 §6，真机注入回归待设备恢复。
 
 ## 13. UI 截图与测试产物
 

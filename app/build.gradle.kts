@@ -60,9 +60,10 @@ android {
             isMinifyEnabled = false
         }
         release {
-            // P0 先关闭 R8 降低变量；P3 必须打开并回归 Xposed。
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // P3：R8 代码收缩 + 资源收缩。keep 规则见 app/proguard-rules.pro；
+            // 规则必须覆盖 assets/xposed_init、LSPosed 反射入口与字符串加载的组件名。
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
