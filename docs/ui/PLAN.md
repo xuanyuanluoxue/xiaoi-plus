@@ -64,7 +64,7 @@
 | Miuix | 0.9.4 | `miuix-ui` + `miuix-preference` |
 | compileSdk | 37 | Miuix AAR `minCompileSdk=37` |
 | minSdk / targetSdk | 26 / 26 | 保持不变 |
-| JDK | 21（构建） | 源码仍可 `jvmTarget=1.8`（Kotlin） |
+| JDK | 21（构建） | Java/Kotlin target=11（Compose 1.12 要求；源码不用 11+ 语言特性） |
 | build-tools | 37.0.0（Gradle 默认即可） | 不再手工调用 aapt2/d8 |
 
 ### 3.2 Gradle 结构

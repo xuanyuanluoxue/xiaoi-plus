@@ -47,7 +47,7 @@ app/src/main/java/plus/xiaoi/module/
 
 ## 3. Kotlin / Compose 规则
 
-- Kotlin `jvmTarget = 1.8`，与现有 Java 字节码目标一致；不使用 Java 17+ 语言特性。
+- Kotlin/Java `target = 11`（Compose 1.12 要求；AGP 9 不允许 Java/Kotlin target 不一致）；源码仍不使用 Java 11+ 语言特性。
 - 只用 Compose + Miuix + 既有 Java 核心；**不引入** navigation-compose、Hilt/Koin、Retrofit、Coil、Accompanist。
 - 所有 Composable 默认 **无状态**：参数是 `UiState` + 回调；状态提升到 StateHolder。
 - 不在 Composable 里直接读 `ConfigRepository`、`BridgeClient`、`SharedPreferences`；通过 StateHolder 注入数据。

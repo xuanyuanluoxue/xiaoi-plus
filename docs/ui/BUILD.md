@@ -113,7 +113,7 @@ keystore/xiaoi.keystore
 | Miuix | 0.9.4（`miuix-ui`、`miuix-preference`） |
 | compileSdk | 37 |
 | minSdk / targetSdk | 26 / 26 |
-| Java/Kotlin target | 1.8 |
+| Java/Kotlin target | 11（Compose 1.12 要求） |
 
 - 不引入 `miuix-blur`、`miuix-icons`、`miuix-nav`、navigation-compose、DI、图片库。
 - 依赖版本全部写在 `gradle/libs.versions.toml`；禁止在 `app/build.gradle.kts` 里散落版本号。
@@ -134,10 +134,10 @@ android {
     }
     buildFeatures { compose = true }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions { jvmTarget = "1.8" }
+    kotlinOptions { jvmTarget = "11" }
     buildTypes {
         release {
             isMinifyEnabled = true
