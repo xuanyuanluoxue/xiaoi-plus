@@ -19,12 +19,13 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- minSdk / targetSdk 由 app/build.gradle.kts 钉在 26（AGP 9 禁止在 Manifest 写
-         uses-sdk）：保留 127.0.0.1 明文 HTTP 与旧版窗口行为。升级 targetSdk 会引入
-         edge-to-edge 等行为变更，必须单独评估。 -->
+    <!-- minSdk 26 / targetSdk 34 由 app/build.gradle.kts 声明（AGP 9 禁止在 Manifest
+         写 uses-sdk）。targetSdk 34 用于开启预测性返回；未升 35，避免强制
+         edge-to-edge 影响状态栏/底栏。 -->
 
     <application
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true"
         android:label="@string/app_name"
         android:theme="@style/Theme.XiaoiPlus"

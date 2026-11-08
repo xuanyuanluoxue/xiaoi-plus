@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -21,10 +23,13 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.core.NavStack
 import plus.xiaoi.module.ui.components.LocalXiaoiPageActions
@@ -221,7 +226,21 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
         }
     }
 
-    BackHandler { back() }
+    // 一级页返回由普通 BackHandler 处理（非首页回首页，首页退出）；
+    // 二级页交给 PredictiveBackHandler，API 34+ 播放系统预测性返回动画。
+    BackHandler(enabled = nav.isRoot()) { back() }
+
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    PredictiveBackHandler(enabled = !nav.isRoot()) { progress ->
+        try {
+            progress.collect { event -> backProgress = event.progress }
+            backProgress = 0f
+            back()
+        } catch (c: CancellationException) {
+            backProgress = 0f
+            throw c
+        }
+    }
 
     val key = Routes.keyOf(route)
     val dimensions = XiaoiTheme.dimens
@@ -263,6 +282,12 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 Modifier
                     .fillMaxSize()
                     .onGloballyPositioned { if (it.isAttached) contentCoordinates = it }
+                    .graphicsLayer {
+                        val p = backProgress.coerceIn(0f, 1f)
+                        scaleX = 1f - 0.06f * p
+                        scaleY = 1f - 0.06f * p
+                        alpha = 1f - 0.18f * p
+                    }
                     .glassBackdropSource(glassBackdrop)
                     // 一级页内容底部预留玻璃条高度；二级页隐藏底栏后不留白。
                     .padding(bottom = if (root) barReserved else 0.dp),

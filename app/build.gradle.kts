@@ -39,7 +39,7 @@ android {
     defaultConfig {
         applicationId = "plus.xiaoi.module"
         minSdk = 26
-        targetSdk = 26
+        targetSdk = 34
         versionCode = manifestAttr("versionCode").toInt()
         versionName = manifestAttr("versionName")
     }
@@ -86,8 +86,7 @@ android {
     }
 
     lint {
-        // 本模块不是 Play 分发应用；targetSdk=26 是既定约束，其他 lint 仍照常执行。
-        disable += "ExpiredTargetSdkVersion"
+        // 本模块不是 Play 分发应用；targetSdk 用于预测性返回，其他 lint 仍照常执行。
     }
 
     packaging {

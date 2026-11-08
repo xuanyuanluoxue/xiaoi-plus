@@ -48,8 +48,9 @@ else
         || fail "Gradle 缺少 minSdk（必须显式声明，不能靠默认值）"
     [ -n "$GRADLE_TARGET" ] && pass "Gradle targetSdk=$GRADLE_TARGET（AGP 9 单一来源）" \
         || fail "Gradle 缺少 targetSdk（必须显式声明，不能靠默认值）"
-    [ "$GRADLE_MIN" = "26" ] && [ "$GRADLE_TARGET" = "26" ] \
-        || fail "minSdk/targetSdk 必须保持 26（实际 $GRADLE_MIN/$GRADLE_TARGET）"
+    # minSdk 仍为 26；targetSdk 34 用于预测性返回（33–36 可接受，35+ 会强制 edge-to-edge）。
+    [ "$GRADLE_MIN" = "26" ] && [ "$GRADLE_TARGET" -ge 33 ] && [ "$GRADLE_TARGET" -le 36 ] \
+        || fail "minSdk 必须为 26、targetSdk 需在 33–36（实际 $GRADLE_MIN/$GRADLE_TARGET）"
 fi
 
 # ---------------------------------------------------------------- 1.1) 启动入口
