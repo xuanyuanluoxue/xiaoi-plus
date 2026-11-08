@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import plus.xiaoi.module.control.BridgeControlService
@@ -155,6 +156,15 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.Top,
                     ) {
+                        if (line.level == "E") {
+                            Box(
+                                Modifier
+                                    .width(2.dp)
+                                    .height(18.dp)
+                                    .background(colors.error),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
                         Text(
                             line.time,
                             color = colors.textHint,
@@ -171,6 +181,8 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                             line.message,
                             color = colors.text,
                             style = XiaoiTheme.typography.mono,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
                     }
