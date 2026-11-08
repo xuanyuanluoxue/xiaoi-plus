@@ -4,6 +4,7 @@
 > 分支：`feat/ui-p0`（从 `main@8fc6eec` 创建）
 > 工作区：`~/xiaoi-plus-dev/worktrees/ui-p0`
 > 范围：只做 P0 构建/依赖/Spike 验证，不重写页面，不改业务逻辑。
+> **2026-11-08 更新：真机补测完成，P0 结论 Go for P1（见 §14）。**
 
 ---
 
@@ -297,3 +298,50 @@ Compose 类是否在小爱进程产生冲突。必须等设备恢复后补测。
   `Inconsistent JVM targets`。最终 Java/Kotlin 都设为 11，源码仍不使用 Java 11+ 语言特性。
   这是路线 1 的约束变化，需在合并前确认。
 - 下一步：设备恢复后补 P0.4（安装、LSPosed、模型重定向、Compose 类冲突检查）。
+
+
+---
+
+## 14. 2026-11-08 真机补测（P0.4 完成）
+
+设备 `31106e85` 有线 ADB。
+
+| 项 | 结果 |
+| --- | --- |
+| 覆盖安装 | `adb install -r app-release.apk` 成功；versionCode 18、versionName 0.13.0-agent.2、签名指纹不变 |
+| 首页启动 | `am start -W` WARM 156ms；无 FATAL/AndroidRuntime 崩溃 |
+| 配置保留 | `xiaoai_config`：model=deepseek-v4.1-flash、baseUrl 不变、bridge=true；测试前 enabled=false |
+| Miuix Spike | 真机启动成功；uiautomator 可见 Miuix Hello / 示例开关 / 输入框 / 按钮 |
+| 深浅色截图 | `~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/p0-spike-{light,dark}.png` |
+| 首页截图 | `~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/p0-home.png` |
+
+### LSPosed 注入
+
+- release APK 的 `assets/xposed_init` = `plus.xiaoi.module.Hook`。
+- 强制停止并重启小爱后，日志出现：
+  - `[xiaoi+] supportsVision=true 已启用`
+  - `[xiaoi+] 配置已热更新 model=deepseek-v4.1-flash ...`
+  - `[xiaoi+] 控制面已应用配置 ...`
+- 未出现 `FATAL EXCEPTION`、`NoClassDefFoundError`、`ClassNotFoundException`；
+  Compose/Miuix 类没有破坏小爱注入进程。
+
+### 模型重定向
+
+临时把“启用第三方模型”打开，测试后已恢复 `enabled=false`（开关 checked=false）：
+
+- `xiaoai_submit("只回复 OK")` 返回 `{"data":{"text":"[model=deepseek-v4.1-flash] OK"}}`。
+- 日志：`[xiaoi+] 已记录小爱原模型 mimo-omni`、
+  `[xiaoi+] 模型标识已改走请求头 X-Model-Provider-Id=xiaoi-plus`、
+  超级岛提示“第三方模型 deepseek-v4.1-flash”。
+- `xiaoai_stats`：今日 `third=6, official=0`。
+
+### 结论
+
+**P0：Go for P1。**
+
+仍需处理/确认：
+
+1. JVM target 11（Compose 1.12 要求）需要用户确认；若坚持 1.8 只能换 Compose/Miuix 版本。
+2. 真机页面级深浅色截图在 P1 正式页面完成后补；P0 只验证了 Spike 与 Home。
+3. R8/shrink 与 ≤6MB 目标在 P3；当前 release 7.4MB。
+4. 依赖 lockfile/verification-metadata 在 P3 补。
