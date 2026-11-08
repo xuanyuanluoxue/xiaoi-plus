@@ -173,3 +173,14 @@ launcher 使用 adaptive-icon（前景 108、安全区 66、monochrome 层），
 4. 不要给图标上色（除非是状态）；24dp 图标文件内不得写品牌色
 5. 不要让多色品牌图兼任导航/信息行图标
 5. 不要让同一个语义出现两种文案（如"保存"与"提交"并存）
+
+## 7. 0.14 Compose/Miuix 例外
+
+0.14 起设置页走 Compose + Miuix，组件默认值优先，不再套用旧 XML 的 24dp/56dp 自定尺寸：
+
+- Card 默认 16dp 圆角；Button 默认 40dp；SmallTopAppBar 默认 52dp；
+  NavigationBar/NavigationBarItem 使用 Miuix 默认。
+- 颜色仍映射本文的语义令牌（bg/surface/text/primary 等）。
+- 旧 XML 页面（HomeActivity/ConfigActivity 等）仍按 24dp 卡片，不做回改。
+
+规则：**有 Miuix 组件就直接用，不用 Row/Column 模拟**；自定义仅保留 Miuix 没有的业务组件。

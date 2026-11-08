@@ -17,9 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.ui.components.XiaoiCard
-import plus.xiaoi.module.ui.components.XiaoiDivider
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
+import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -71,13 +71,10 @@ fun AboutScreen(onMessage: (String) -> Unit) {
         }
 
         XiaoiGroupHeader("信息")
-        XiaoiCard {
+        XiaoiPreferenceCard {
             XiaoiInfoRow("作者", "轩辕落雪", onClick = { copy("xuanyuanluoxue", "用户名") })
-            XiaoiDivider()
             XiaoiInfoRow("GitHub", "xuanyuanluoxue/xiaoi-plus", onClick = { open(REPO) })
-            XiaoiDivider()
             XiaoiInfoRow("许可证", "GPL-3.0")
-            XiaoiDivider()
             XiaoiInfoRow("致谢", "OpenClaw · KernelSU Next · Miuix")
         }
 

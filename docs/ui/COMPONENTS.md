@@ -6,6 +6,8 @@
 
 ## 0. 通用约定
 
+- **Miuix 优先**：有现成组件就直接用，不用 Row/Column 模拟；自定义只保留 Miuix 没有的业务组件。
+- 组件默认尺寸（Card 16dp、Button 40dp、TopAppBar 52dp、NavigationBar 默认）不再覆盖；颜色/字号令牌可以按品牌映射。
 - 所有组件无状态：参数 = 数据 + 回调；状态提升到 StateHolder。
 - 所有尺寸/颜色/字体来自 `XiaoiTheme`；组件内部不得出现裸色值。
 - 触控目标 ≥48dp；图标 24dp；行高遵循令牌。
@@ -29,21 +31,23 @@ fun XiaoiTheme(
 - 提供 `XiaoiTheme.colors`、`.dimens`、`.typography`。
 - 不启用 Monet。
 
-### XiaoiScaffold
+### Miuix Scaffold
+
+直接使用 `top.yukonga.miuix.kmp.basic.Scaffold`：
 
 ```kotlin
-@Composable
-fun XiaoiScaffold(
-    topBar: @Composable () -> Unit = {},
-    bottomBar: @Composable () -> Unit = {},
-    snackbarHost: @Composable () -> Unit = {},
-    content: @Composable (PaddingValues) -> Unit
-)
+Scaffold(
+    topBar = { XiaoiTopBar(...) },
+    bottomBar = { XiaoiBottomBar(...) },
+    snackbarHost = { SnackbarHost(snackbarHostState) },
+    containerColor = XiaoiTheme.colors.bg,
+) { padding -> ... }
 ```
 
-- 背景 `bg`；内容左右 16dp；底部预留导航高度 + 16dp。
+- 不再手写 `Column + Box(weight)` 骨架。
+- `SnackbarHostState.showSnackbar()` 统一提示；不使用自绘 Snackbar/Toast。
 
-### XiaoiTopBar
+### XiaoiTopBar（Miuix SmallTopAppBar wrapper）
 
 ```kotlin
 @Composable
@@ -54,21 +58,20 @@ fun XiaoiTopBar(
 )
 ```
 
-- 高 56dp；标题 22sp/500（一级）/20sp/500（二级）；返回 24dp。
-- 背景 `bg`；底部 1dp `line`；无阴影、无折叠。
+- 内部直接用 `SmallTopAppBar`；标题居中、默认高 52dp。
+- 返回用 `IconButton + Icon(MiuixIcons.Back)`；不再用字符 `‹`。
+- 颜色传 `bg/text`；不覆盖组件尺寸/圆角。
 
-### XiaoiBottomBar
+### XiaoiBottomBar（Miuix NavigationBar）
 
 ```kotlin
 @Composable
-fun XiaoiBottomBar(
-    current: MainTab,
-    onSelect: (MainTab) -> Unit
-)
+fun XiaoiBottomBar(current: MainTab, onSelect: (MainTab) -> Unit)
 ```
 
-- 4 项：首页 / 小爱 / 接入 / 我的；高 80dp 含安全区。
-- 图标 24dp + Caption 12sp；选中 `primary`，未选中 `text_secondary`。
+- 内部直接用 `NavigationBar` + `NavigationBarItem`；图标来自 `miuix-icons`
+  （Home / Mic / Link / Settings）。
+- 选中态、图标大小、行高由 Miuix 组件决定；不再自绘文字 tab。
 - 只在二级页隐藏；不悬浮、不加背景块。
 
 ## 2. 基础组件
@@ -84,7 +87,8 @@ fun XiaoiCard(
 )
 ```
 
-- 圆角 24dp；背景 `surface`；内边距 20dp；无描边/阴影。
+- 使用 Miuix `Card` 默认圆角 16dp；不覆盖颜色/圆角。
+- 自定义内容用 `XiaoiCard`（16dp 内边距）；偏好列表用 `XiaoiPreferenceCard`（不加内边距）。
 - 可点击时提供 ripple + `Role.Button`；不可点击不加。
 
 ### XiaoiButton

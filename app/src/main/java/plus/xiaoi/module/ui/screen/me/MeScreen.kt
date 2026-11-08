@@ -22,9 +22,9 @@ import plus.xiaoi.module.R
 import plus.xiaoi.module.ThemeMode
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiChip
-import plus.xiaoi.module.ui.components.XiaoiDivider
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
+import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
@@ -102,9 +102,8 @@ fun MeScreen(
         }
 
         XiaoiGroupHeader("设置")
-        XiaoiCard {
+        XiaoiPreferenceCard {
             XiaoiInfoRow("日志", "查看控制面与小爱上报的运行日志", onOpenLogs)
-            XiaoiDivider()
             XiaoiInfoRow("关于", "版本、GitHub、许可证与致谢", onOpenAbout)
         }
 

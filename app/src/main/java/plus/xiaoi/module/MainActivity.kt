@@ -10,26 +10,29 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import plus.xiaoi.module.core.NavStack
 import plus.xiaoi.module.ui.components.XiaoiBottomBar
-import plus.xiaoi.module.ui.components.XiaoiSnackbar
 import plus.xiaoi.module.ui.components.XiaoiTopBar
 import plus.xiaoi.module.ui.screen.PlaceholderScreen
 import plus.xiaoi.module.ui.screen.me.AboutScreen
 import plus.xiaoi.module.ui.screen.me.LogsScreen
 import plus.xiaoi.module.ui.screen.me.MeScreen
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SnackbarHost
+import top.yukonga.miuix.kmp.basic.SnackbarHostState
 
 /**
  * P1 单 Activity 壳：4 个底部 tab + 主题 + 日志/关于。
@@ -88,13 +91,18 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val colors = XiaoiTheme.colors
     val nav = remember { NavStack() }
     var route by remember { mutableStateOf(nav.current()) }
-    var snackbar by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    fun message(text: String) {
+        scope.launch { snackbarHostState.showSnackbar(text) }
+    }
 
     fun openLegacy(clazz: Class<*>) {
         try {
             context.startActivity(Intent(context, clazz))
         } catch (t: Throwable) {
-            snackbar = "无法打开旧版页面"
+            message("无法打开旧版页面")
         }
     }
 
@@ -120,12 +128,6 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     }
 
     BackHandler { back() }
-    LaunchedEffect(snackbar) {
-        if (snackbar != null) {
-            delay(2600)
-            snackbar = null
-        }
-    }
 
     val title = when (route) {
         "Home" -> "首页"
@@ -137,12 +139,25 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
         else -> route
     }
 
-    Column(Modifier.fillMaxSize().background(colors.bg)) {
-        XiaoiTopBar(
-            title = title,
-            onBack = if (nav.isRoot()) null else ({ back() }),
-        )
-        Box(Modifier.weight(1f)) {
+    Scaffold(
+        topBar = {
+            XiaoiTopBar(
+                title = title,
+                onBack = if (nav.isRoot()) null else ({ back() }),
+            )
+        },
+        bottomBar = {
+            if (nav.isRoot()) {
+                XiaoiBottomBar(current = nav.tab(), onSelect = { tab ->
+                    nav.switchTab(tab)
+                    route = nav.current()
+                })
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = colors.bg,
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
             when (route) {
                 "Home" -> PlaceholderScreen(
                     title = "首页",
@@ -169,26 +184,17 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                     onOpenAbout = { navigate("About") },
                     onOpenLegacyHome = { openLegacy(HomeActivity::class.java) },
                     onOpenLegacyConfig = { openLegacy(ConfigActivity::class.java) },
-                    onMessage = { snackbar = it },
+                    onMessage = { message(it) },
                 )
 
-                "Logs" -> LogsScreen(onMessage = { snackbar = it })
-                "About" -> AboutScreen(onMessage = { snackbar = it })
+                "Logs" -> LogsScreen(onMessage = { message(it) })
+                "About" -> AboutScreen(onMessage = { message(it) })
                 else -> PlaceholderScreen(
                     title = route,
                     description = "该页面尚未接入。",
                     legacyLabel = "打开旧版首页",
                 ) { openLegacy(HomeActivity::class.java) }
             }
-        }
-        if (snackbar != null) {
-            XiaoiSnackbar(snackbar!!)
-        }
-        if (nav.isRoot()) {
-            XiaoiBottomBar(current = nav.tab(), onSelect = { tab ->
-                nav.switchTab(tab)
-                route = nav.current()
-            })
         }
     }
 }

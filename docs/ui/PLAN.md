@@ -557,5 +557,8 @@ P1 地基已完成并真机验证，详见 [P1-REPORT.md](P1-REPORT.md)。
 - 单 Activity + 4 tab + `NavStack` + `XiaoiTheme` + 基础组件已落地。
 - 日志、关于、我的三页已迁移；首页/小爱/接入为 P2 占位。
 - 修复：adaptive icon 不能 `painterResource`、深色标题黑字、`surfaceContainer` 卡片色。
+- P1.1 严格 Miuix：`Scaffold`、`SmallTopAppBar`、`NavigationBar`+`NavigationBarItem`、
+  `SnackbarHost`、`ArrowPreference`/`SwitchPreference`、Miuix 默认 16dp 卡片；
+  不再用 Row/Column 模拟。
 - release 7.5MB（R8 未开）；`tests/run.sh` / `check-consistency.sh` / `verify-apk.sh` 全绿。
 - 下一步：P2 接入首页/小爱/接入完整页，并把 `MainActivity` 设为 launcher。

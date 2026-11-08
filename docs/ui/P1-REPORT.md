@@ -124,3 +124,27 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --of
 3. **返回箭头**：当前是文本 `‹`；P2 换 24dp Vector 箭头。
 4. **关于页“作者”行**：动作是复制，却显示导航箭头；P2 改“复制” trailing 或图标。
 5. **P1 预览卡**：P2 删除，不属于最终页面。
+
+## 8. 严格 Miuix 重构（P1.1，2026-11-08）
+
+根据“严格按 Miuix 组件开发”的要求，P1 壳已改成原生组件：
+
+| 原实现 | 现在 |
+| --- | --- |
+| 自绘顶栏 Row + 文本 `‹` | `SmallTopAppBar` + `IconButton(MiuixIcons.Back)` |
+| 自绘 4 个文字 tab | `NavigationBar` + `NavigationBarItem` + `miuix-icons` |
+| 自绘 Snackbar | `Scaffold` + `SnackbarHostState` + `SnackbarHost` |
+| 自绘 InfoRow/SwitchRow | `ArrowPreference` / `SwitchPreference` / `BasicComponent` |
+| 卡片 24dp 覆盖 | Miuix `Card` 默认 16dp；浅色白卡、深色默认容器色 |
+| 按钮 48dp 覆盖 | Miuix `Button` 默认高度，仅保留 primary/onPrimary 配色 |
+
+- 新增依赖：`miuix-icons:0.9.4`（底部导航图标）。
+- release APK：8.1MB（R8 未开）；P3 会 shrink。
+- 截图（已归档）：
+  `miuix2-home-light.png`、`miuix2-home-dark.png`、`miuix2-me-light.png`、
+  `miuix2-me-dark.png`、`miuix2-logs-light.png`、`miuix2-about-light.png`；
+  拼图 `p1-visual-review-miuix.png`。
+- 门禁：`tests/run.sh`、`check-consistency.sh`、`verify-apk.sh` 全绿。
+
+仍保留的自定义组件：`XiaoiTheme`（颜色/字号映射）、`XiaoiBadge`/`XiaoiChip`、
+`XiaoiEmptyState`、`StatusHero` 等 Miuix 没有直接对应的业务组件。

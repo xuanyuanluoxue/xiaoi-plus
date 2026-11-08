@@ -25,14 +25,25 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 
-/** 统一卡片：24dp 圆角、surface、20dp 内边距、无阴影。 */
+/** Miuix Card：使用组件默认圆角/颜色；自定义内容加 16dp 内边距。 */
 @Composable
 fun XiaoiCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(XiaoiTheme.dimens.cardPad)) { content() }
+        Column(Modifier.padding(16.dp)) { content() }
+    }
+}
+
+/** Preference 卡片：ArrowPreference / SwitchPreference 自带内边距，不再额外加。 */
+@Composable
+fun XiaoiPreferenceCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column { content() }
     }
 }
 
@@ -48,7 +59,6 @@ fun XiaoiButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        minHeight = 48.dp,
         colors = ButtonDefaults.buttonColors(
             color = XiaoiTheme.colors.primary,
             contentColor = XiaoiTheme.colors.onPrimary,
