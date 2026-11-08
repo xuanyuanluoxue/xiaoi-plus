@@ -33,26 +33,31 @@ import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
 import plus.xiaoi.module.ui.components.XiaoiButtonStyle
 import plus.xiaoi.module.ui.components.XiaoiCard
+import plus.xiaoi.module.ui.components.XiaoiCardGroup
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
-import plus.xiaoi.module.ui.components.XiaoiGroupHeader
+import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
-import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
+import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Backup
+import top.yukonga.miuix.kmp.icon.extended.Community
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Help
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.Notes
+import top.yukonga.miuix.kmp.icon.extended.Promotions
 import top.yukonga.miuix.kmp.icon.extended.Theme
 
 /**
  * 我的（SCREENS.md §9）。
  *
- * 五块：本机与版本 / 设置入口 / 危险区；旧版入口只放在「诊断 > 兼容模式」。
+ * 独立卡片清单：项目介绍、赞助、作者、致谢与各设置入口各自一张卡。
  * 危险动作默认折叠，展开后仍需弹窗二次确认；执行结果用重新读取的 config.json 验证。
  */
 @Composable
@@ -97,6 +102,11 @@ fun MeScreen(
         ThemeMode.LIGHT -> "浅色"
         ThemeMode.DARK -> "深色"
         else -> "跟随系统"
+    }
+
+    fun copyAuthor() {
+        val ok = MeSupport.copy(context, "作者名", "轩辕落雪")
+        onMessage(if (ok) "已复制作者名：轩辕落雪" else "复制失败")
     }
 
     fun executeStopAll() {
@@ -159,7 +169,11 @@ fun MeScreen(
     ) {
         XiaoiCard {
             Text("小爱同学plus", color = colors.text, style = XiaoiTheme.typography.title)
-            Text("本机设置", color = colors.textSecondary, style = XiaoiTheme.typography.caption)
+            Text(
+                "模型重定向 · 8771 控制面 · 8770 动作面；仅在本机生效。",
+                color = colors.textSecondary,
+                style = XiaoiTheme.typography.caption,
+            )
             Spacer(Modifier.height(12.dp))
             MeValueRow("版本", "v$version ($versionCode)")
             MeValueRow("设备", Build.MODEL.ifBlank { "未识别" })
@@ -208,52 +222,108 @@ fun MeScreen(
             )
         }
 
-        XiaoiGroupHeader("设置")
-        XiaoiPreferenceGroup {
-            XiaoiInfoRow(
-                title = "外观",
-                subtitle = "当前：$themeLabel · 三档主题即时生效",
-                onClick = { onNavigate("Appearance") },
-                icon = MiuixIcons.Theme,
-            )
-            XiaoiInfoRow(
-                title = "配置管理",
-                subtitle = "备份（含密钥）、还原、脱敏导出、运行时导入、损坏恢复",
-                onClick = { onNavigate("ConfigManage") },
-                icon = MiuixIcons.Backup,
-            )
-            XiaoiInfoRow(
-                title = "诊断",
-                subtitle = "四维状态、8771/8770、权限矩阵、配置完整性、兼容模式",
-                onClick = { onNavigate("Diagnostics") },
-                icon = MiuixIcons.Info,
-            )
-            XiaoiInfoRow(
-                title = "日志",
-                subtitle = when (val n = errorCount) {
-                    null -> "读取本机日志缓冲…"
-                    0 -> "没有错误日志"
-                    else -> "$n 条错误 · 查看控制面与小爱上报"
-                },
-                onClick = onOpenLogs,
-                icon = MiuixIcons.Notes,
-            )
-            XiaoiInfoRow(
-                title = "关于",
-                subtitle = "版本、GitHub、许可证与致谢",
-                onClick = onOpenAbout,
-                icon = MiuixIcons.Help,
-            )
-            XiaoiInfoRow(
-                title = "开源许可",
-                subtitle = "GPL-3.0、Apache-2.0（Miuix）、Kotlin/Compose/AndroidX",
-                onClick = { onNavigate("Licenses") },
-                icon = MiuixIcons.File,
-            )
+        Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
+
+        XiaoiCardGroup {
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "赞助支持",
+                    subtitle = "方式尚未配置 · 可在 GitHub Issues 联系作者",
+                    onClick = {
+                        onMessage("赞助方式尚未配置，可在 GitHub Issues 联系作者")
+                    },
+                    icon = MiuixIcons.Promotions,
+                    iconTone = XiaoiIconTone.ORANGE,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "作者",
+                    subtitle = "轩辕落雪 · 点击复制作者名",
+                    onClick = { copyAuthor() },
+                    icon = MiuixIcons.Community,
+                    iconTone = XiaoiIconTone.INDIGO,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "致谢项目",
+                    subtitle = "OpenClaw · KernelSU Next · Miuix",
+                    onClick = { onNavigate("Licenses") },
+                    icon = MiuixIcons.Favorites,
+                    iconTone = XiaoiIconTone.PINK,
+                )
+            }
         }
 
-        XiaoiGroupHeader("危险区")
-        XiaoiPreferenceGroup {
+        Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
+
+        XiaoiCardGroup {
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "外观",
+                    subtitle = "当前：$themeLabel · 三档主题即时生效",
+                    onClick = { onNavigate("Appearance") },
+                    icon = MiuixIcons.Theme,
+                    iconTone = XiaoiIconTone.PURPLE,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "配置管理",
+                    subtitle = "备份（含密钥）、还原、脱敏导出、运行时导入、损坏恢复",
+                    onClick = { onNavigate("ConfigManage") },
+                    icon = MiuixIcons.Backup,
+                    iconTone = XiaoiIconTone.PURPLE,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "诊断",
+                    subtitle = "四维状态、8771/8770、权限矩阵、配置完整性、兼容模式",
+                    onClick = { onNavigate("Diagnostics") },
+                    icon = MiuixIcons.Info,
+                    iconTone = XiaoiIconTone.RED,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "日志",
+                    subtitle = when (val n = errorCount) {
+                        null -> "读取本机日志缓冲…"
+                        0 -> "没有错误日志"
+                        else -> "$n 条错误 · 查看控制面与小爱上报"
+                    },
+                    onClick = onOpenLogs,
+                    icon = MiuixIcons.Notes,
+                    iconTone = XiaoiIconTone.PINK,
+                    badge = errorCount?.takeIf { it > 0 }?.toString(),
+                    badgeTone = XiaoiTone.ERROR,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "关于",
+                    subtitle = "版本、GitHub、许可证与致谢",
+                    onClick = onOpenAbout,
+                    icon = MiuixIcons.Help,
+                    iconTone = XiaoiIconTone.INDIGO,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "开源许可",
+                    subtitle = "GPL-3.0、Apache-2.0（Miuix）、Kotlin/Compose/AndroidX",
+                    onClick = { onNavigate("Licenses") },
+                    icon = MiuixIcons.File,
+                    iconTone = XiaoiIconTone.INDIGO,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        XiaoiPreferenceCard {
             XiaoiInfoRow(
                 title = "停用全部对外能力",
                 subtitle = if (dangerOpen) "点按收起" else "默认折叠 · 执行前需要二次确认",
@@ -261,10 +331,14 @@ fun MeScreen(
                     dangerOpen = !dangerOpen
                     if (!dangerOpen) stopResult = null
                 },
+                icon = MiuixIcons.Delete,
+                iconTone = XiaoiIconTone.RED,
+                badge = "需确认",
+                badgeTone = XiaoiTone.WARNING,
             )
         }
         if (dangerOpen) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
             XiaoiCard {
                 Text("将立即写入 config.json", color = colors.text, style = XiaoiTheme.typography.rowTitle)
                 Spacer(Modifier.height(8.dp))

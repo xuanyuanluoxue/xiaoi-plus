@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.ui.components.XiaoiCard
+import plus.xiaoi.module.ui.components.XiaoiCardGroup
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
@@ -39,26 +40,30 @@ fun LicensesScreen(onMessage: (String) -> Unit) {
         }
 
         XiaoiGroupHeader("第三方组件")
-        XiaoiCard {
-            LicenseBlock(
-                title = "Miuix · Apache-2.0",
-                body = "© compose-miuix-ui contributors\n" +
-                    "本项目的设置页使用其 Compose 组件与设计令牌。" +
-                    "Apache-2.0 允许商用与修改，需保留版权与许可声明。",
-            )
-            Spacer(Modifier.height(16.dp))
-            LicenseBlock(
-                title = "Kotlin / Compose / AndroidX · 各自许可证",
-                body = "Kotlin © JetBrains s.r.o.（Apache-2.0）\n" +
-                    "Compose Multiplatform © JetBrains s.r.o.（Apache-2.0）\n" +
-                    "AndroidX © The Android Open Source Project（Apache-2.0）",
-            )
-            Spacer(Modifier.height(16.dp))
-            LicenseBlock(
-                title = "致谢",
-                body = "OpenClaw · KernelSU Next · Miuix\n" +
-                    "以上项目仅在本机运行时互操作，本项目不重打包或分发其代码。",
-            )
+        XiaoiCardGroup {
+            XiaoiCard {
+                LicenseBlock(
+                    title = "Miuix · Apache-2.0",
+                    body = "© compose-miuix-ui contributors\n" +
+                        "本项目的设置页使用其 Compose 组件与设计令牌。" +
+                        "Apache-2.0 允许商用与修改，需保留版权与许可声明。",
+                )
+            }
+            XiaoiCard {
+                LicenseBlock(
+                    title = "Kotlin / Compose / AndroidX · 各自许可证",
+                    body = "Kotlin © JetBrains s.r.o.（Apache-2.0）\n" +
+                        "Compose Multiplatform © JetBrains s.r.o.（Apache-2.0）\n" +
+                        "AndroidX © The Android Open Source Project（Apache-2.0）",
+                )
+            }
+            XiaoiCard {
+                LicenseBlock(
+                    title = "致谢",
+                    body = "OpenClaw · KernelSU Next · Miuix\n" +
+                        "以上项目仅在本机运行时互操作，本项目不重打包或分发其代码。",
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))

@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,8 +33,9 @@ import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.ui.components.FilterChips
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
+import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiPageActions
-import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
+import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Icon
@@ -41,6 +43,7 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Notes
 import top.yukonga.miuix.kmp.icon.extended.Share
 
 private data class LogLine(val time: String, val level: String, val message: String)
@@ -155,17 +158,23 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             style = XiaoiTheme.typography.caption,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
         )
-        XiaoiPreferenceGroup {
+        XiaoiPreferenceCard {
             XiaoiSwitchRow(
                 title = "跟随最新",
                 subtitle = "每 2 秒读取 App 内存镜像，不依赖 MCP",
                 checked = follow,
                 onCheckedChange = { follow = it },
+                icon = MiuixIcons.Notes,
+                iconTone = XiaoiIconTone.PINK,
             )
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
 
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
             if (shown.isEmpty()) {
                 item {
                     val (title, desc) = when {

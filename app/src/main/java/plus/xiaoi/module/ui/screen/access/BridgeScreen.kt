@@ -92,7 +92,7 @@ fun BridgeScreen(
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
         XiaoiPreferenceCard {
             PortRow(
                 name = "监听端口",
@@ -114,7 +114,7 @@ fun BridgeScreen(
             "端口/绑定来自控制面的实际上报；旧版小爱未上报时保持“未确认”。",
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,
-            modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+            modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap, start = 4.dp),
         )
 
         XiaoiGroupHeader("8770 动作面")
@@ -125,7 +125,7 @@ fun BridgeScreen(
                 XiaoiBadge(text = agentState.text, tone = agentState.tone)
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
         XiaoiPreferenceCard {
             PortRow(
                 name = "监听端口",
@@ -159,7 +159,7 @@ fun BridgeScreen(
             "8770 跟随 MCP 开关与令牌；没有独立启停。",
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,
-            modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+            modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap, start = 4.dp),
         )
 
         if (!mcpEnabled) {
@@ -171,6 +171,8 @@ fun BridgeScreen(
                 )
             }
         }
+
+        Spacer(Modifier.height(24.dp))
     }
 }
 

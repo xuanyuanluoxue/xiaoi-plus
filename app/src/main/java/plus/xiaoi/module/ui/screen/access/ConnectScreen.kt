@@ -153,7 +153,7 @@ fun ConnectScreen(
             },
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,
-            modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+            modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap, start = 4.dp),
         )
 
         XiaoiGroupHeader("局域网地址")
@@ -219,7 +219,7 @@ fun ConnectScreen(
             "只有本机地址需要 adb forward；局域网地址与电脑在同一 Wi-Fi 时可直接访问。",
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,
-            modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+            modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap, start = 4.dp),
         )
 
         XiaoiGroupHeader("客户端 JSON")
