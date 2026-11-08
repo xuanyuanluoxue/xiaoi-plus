@@ -25,18 +25,31 @@ GRADLE="app/build.gradle.kts"
 
 MANIFEST_MIN="$(sed -n 's/.*android:minSdkVersion="\([0-9]*\)".*/\1/p' "$MANIFEST" | head -1)"
 MANIFEST_TARGET="$(sed -n 's/.*android:targetSdkVersion="\([0-9]*\)".*/\1/p' "$MANIFEST" | head -1)"
-[ -n "$MANIFEST_MIN" ] && pass "manifest minSdk=$MANIFEST_MIN" || fail "manifest 缺少 minSdkVersion"
-[ -n "$MANIFEST_TARGET" ] && pass "manifest targetSdk=$MANIFEST_TARGET" || fail "manifest 缺少 targetSdkVersion（必须显式声明，不能靠默认值）"
 
+GRADLE_MIN=""
+GRADLE_TARGET=""
 if [ -f "$GRADLE" ]; then
     GRADLE_MIN="$(sed -n 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' "$GRADLE" | head -1)"
     GRADLE_TARGET="$(sed -n 's/^[[:space:]]*targetSdk[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' "$GRADLE" | head -1)"
-    [ "$GRADLE_MIN" = "$MANIFEST_MIN" ] \
+fi
+
+# AGP 9 起禁止在 Manifest 写 uses-sdk；Gradle 是唯一来源，但仍必须显式声明。
+if [ -n "$MANIFEST_MIN" ] || [ -n "$MANIFEST_TARGET" ]; then
+    [ -n "$MANIFEST_MIN" ] && pass "manifest minSdk=$MANIFEST_MIN" || fail "manifest 缺少 minSdkVersion"
+    [ -n "$MANIFEST_TARGET" ] && pass "manifest targetSdk=$MANIFEST_TARGET" || fail "manifest 缺少 targetSdkVersion（必须显式声明，不能靠默认值）"
+    [ -n "$GRADLE_MIN" ] && [ "$GRADLE_MIN" = "$MANIFEST_MIN" ] \
         && pass "Gradle minSdk 与 manifest 一致（$GRADLE_MIN）" \
         || fail "Gradle minSdk=$GRADLE_MIN 与 manifest=$MANIFEST_MIN 不一致"
-    [ "$GRADLE_TARGET" = "$MANIFEST_TARGET" ] \
+    [ -n "$GRADLE_TARGET" ] && [ "$GRADLE_TARGET" = "$MANIFEST_TARGET" ] \
         && pass "Gradle targetSdk 与 manifest 一致（$GRADLE_TARGET）" \
         || fail "Gradle targetSdk=$GRADLE_TARGET 与 manifest=$MANIFEST_TARGET 不一致"
+else
+    [ -n "$GRADLE_MIN" ] && pass "Gradle minSdk=$GRADLE_MIN（AGP 9 单一来源）" \
+        || fail "Gradle 缺少 minSdk（必须显式声明，不能靠默认值）"
+    [ -n "$GRADLE_TARGET" ] && pass "Gradle targetSdk=$GRADLE_TARGET（AGP 9 单一来源）" \
+        || fail "Gradle 缺少 targetSdk（必须显式声明，不能靠默认值）"
+    [ "$GRADLE_MIN" = "26" ] && [ "$GRADLE_TARGET" = "26" ] \
+        || fail "minSdk/targetSdk 必须保持 26（实际 $GRADLE_MIN/$GRADLE_TARGET）"
 fi
 
 # ---------------------------------------------------------------- 2) 运行时资源查找

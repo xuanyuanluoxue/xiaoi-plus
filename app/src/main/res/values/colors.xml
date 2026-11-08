@@ -1,29 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 说明：build.sh 以 aapt2 link -R 传入资源（overlay 模式），新增的 values 资源需 add-resource 声明，否则报 “does not override an existing resource”。
-
-     颜色令牌只保留一套语义名（18 个）。旧别名 card / input_bg / divider / hairline /
+<!-- 颜色令牌只保留一套语义名（19 个）。旧别名 card / input_bg / divider / hairline /
      surface / hero_* / nav_bg / pressed 等已删除，引用处统一改为下面的名字。
      Shizuku 风格：近白灰底 + 浅灰卡片 + 深蓝强调。 -->
 <resources>
-    <add-resource type="color" name="bg" />
-    <add-resource type="color" name="surface" />
-    <add-resource type="color" name="surface_2" />
-    <add-resource type="color" name="line" />
-    <add-resource type="color" name="text" />
-    <add-resource type="color" name="text_secondary" />
-    <add-resource type="color" name="text_hint" />
-    <add-resource type="color" name="primary" />
-    <add-resource type="color" name="primary_pressed" />
-    <add-resource type="color" name="on_primary" />
-    <add-resource type="color" name="chip_bg" />
-    <add-resource type="color" name="chip_bg_pressed" />
-    <add-resource type="color" name="chip_ok_bg" />
-    <add-resource type="color" name="success" />
-    <add-resource type="color" name="warning" />
-    <add-resource type="color" name="warning_bg" />
-    <add-resource type="color" name="error" />
-    <add-resource type="color" name="error_bg" />
-    <add-resource type="color" name="icon_tile" />
 
     <color name="bg">#F7F8FA</color>
     <color name="surface">#F1F2F5</color>

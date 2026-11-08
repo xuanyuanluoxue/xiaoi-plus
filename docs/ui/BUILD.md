@@ -246,3 +246,19 @@ git branch -d feat/ui-p0
 | 签名不一致 | 复用 `keystore/xiaoi.keystore` 与原口令；不要生成新证书 |
 | Gradle 下载超时 | 配置代理；使用 `--offline` 仅在有缓存时 |
 | 设备未连接 | P0 可先完成构建；注入测试等设备恢复，记录为 blocked |
+
+## 12. P0 实测修正（2026-11-07）
+
+以下与上文早期假设不同，以本节为准：
+
+1. **jvmTarget = 11，不是 1.8**：Compose Multiplatform 1.12.2 的 Android 产物是
+   JVM 11 字节码，`jvmTarget=1.8` 会报 `Cannot inline bytecode built with JVM target 11`。
+   `app/build.gradle.kts` 的 Java/Kotlin target 都设为 11；源码仍不使用 Java 11+ 语言特性，
+   minSdk 26 由 D8 desugar。P1 若坚持 1.8，需要重新评估 Compose 版本。
+2. **AGP 9 不允许 Manifest 写 `<uses-sdk>`**：minSdk/targetSdk 唯一来源改为
+   `app/build.gradle.kts`；`scripts/check-consistency.sh` 已适配并从 Gradle 读取。
+3. **compileSdk 37.0**：AGP 9 使用 `compileSdk { version = release(37) { minorApiLevel = 0 } }`，
+   对应 `platforms;android-37.0`。
+4. **依赖镜像**：本机到 `dl.google.com` 的 TLS 不稳定，`settings.gradle.kts` 优先使用
+   阿里云 Google/Central 镜像，官方源保留兜底；这不改变依赖版本。
+5. **P0 R8 关闭**：release 仅验证签名与可安装，P3 必须打开 R8/shrink 并回归 Xposed。

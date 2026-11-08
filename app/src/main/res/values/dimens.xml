@@ -1,21 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 设计系统尺寸令牌：布局只引用这里，不写裸 dp/sp。 -->
 <resources>
-    <add-resource type="dimen" name="page_pad" />
-    <add-resource type="dimen" name="page_pad_top" />
-    <add-resource type="dimen" name="content_bottom" />
-    <add-resource type="dimen" name="card_pad" />
-    <add-resource type="dimen" name="card_gap" />
-    <add-resource type="dimen" name="nav_height" />
-    <add-resource type="dimen" name="fab_size" />
-    <add-resource type="dimen" name="radius_card" />
-    <add-resource type="dimen" name="radius_input" />
-    <add-resource type="dimen" name="text_display" />
-    <add-resource type="dimen" name="text_title" />
-    <add-resource type="dimen" name="text_hero" />
-    <add-resource type="dimen" name="text_row" />
-    <add-resource type="dimen" name="text_body" />
-    <add-resource type="dimen" name="text_caption" />
 
     <dimen name="page_pad">16dp</dimen>
     <dimen name="page_pad_top">12dp</dimen>

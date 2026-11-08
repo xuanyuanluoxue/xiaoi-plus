@@ -1,57 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 说明：build.sh 以 aapt2 link -R 传入资源（overlay 模式），新增的 values 资源需 add-resource 声明，否则报 “does not override an existing resource”。 -->
 <resources>
-    <add-resource type="string" name="group_connection" />
-    <add-resource type="string" name="group_enhance" />
-    <add-resource type="string" name="group_device" />
-    <add-resource type="string" name="hint_openai_only" />
-    <add-resource type="string" name="device_info_title" />
-    <add-resource type="string" name="action_expand" />
-    <add-resource type="string" name="action_collapse" />
-    <add-resource type="string" name="app_name" />
-    <add-resource type="string" name="app_subtitle" />
-    <add-resource type="string" name="app_version" />
-    <add-resource type="string" name="card_device" />
-    <add-resource type="string" name="action_island" />
-    <add-resource type="string" name="card_model" />
-    <add-resource type="string" name="card_model_desc" />
-    <add-resource type="string" name="card_enhance" />
-    <add-resource type="string" name="card_enhance_desc" />
-    <add-resource type="string" name="label_base_url" />
-    <add-resource type="string" name="hint_base_url" />
-    <add-resource type="string" name="label_api_key" />
-    <add-resource type="string" name="hint_api_key" />
-    <add-resource type="string" name="label_model" />
-    <add-resource type="string" name="hint_model" />
-    <add-resource type="string" name="switch_marker" />
-    <add-resource type="string" name="switch_marker_desc" />
-    <add-resource type="string" name="switch_bridge" />
-    <add-resource type="string" name="switch_bridge_desc" />
-    <add-resource type="string" name="label_token" />
-    <add-resource type="string" name="hint_token" />
-    <add-resource type="string" name="action_generate" />
-    <add-resource type="string" name="action_show" />
-    <add-resource type="string" name="action_hide" />
-    <add-resource type="string" name="action_save" />
-    <add-resource type="string" name="status_idle" />
-    <add-resource type="string" name="status_pushing" />
-    <add-resource type="string" name="status_ok" />
-    <add-resource type="string" name="status_saved_only" />
-    <add-resource type="string" name="status_serialize_fail" />
-    <add-resource type="string" name="status_bad_endpoint" />
-    <add-resource type="string" name="status_card_title" />
-    <add-resource type="string" name="state_configured" />
-    <add-resource type="string" name="state_unconfigured" />
-    <add-resource type="string" name="state_unconfigured_desc" />
-    <add-resource type="string" name="state_header_on" />
-    <add-resource type="string" name="state_header_off" />
-    <add-resource type="string" name="bridge_on" />
-    <add-resource type="string" name="bridge_off" />
-    <add-resource type="string" name="action_test" />
-    <add-resource type="string" name="status_testing" />
-    <add-resource type="string" name="status_test_ok" />
-    <add-resource type="string" name="status_test_fail" />
-    <add-resource type="string" name="status_test_auth" />
 
     <string name="app_name">小爱同学plus</string>
     <string name="app_subtitle">模型重定向 · 能力桥</string>

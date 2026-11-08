@@ -1,20 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 说明：build.sh 以 aapt2 link -R 传入资源（overlay 模式），新增的 values 资源需 add-resource 声明，否则报 “does not override an existing resource”。 -->
 <resources>
-    <add-resource type="style" name="Theme.XiaoiPlus" />
-    <add-resource type="style" name="Widget.XiaoiPlus.PageTitle" />
-    <add-resource type="style" name="Widget.XiaoiPlus.Card" />
-    <add-resource type="style" name="Widget.XiaoiPlus.CardTitle" />
-    <add-resource type="style" name="Widget.XiaoiPlus.CardDesc" />
-    <add-resource type="style" name="Widget.XiaoiPlus.Label" />
-    <add-resource type="style" name="Widget.XiaoiPlus.RowTitle" />
-    <add-resource type="style" name="Widget.XiaoiPlus.RowDesc" />
-    <add-resource type="style" name="Widget.XiaoiPlus.Input" />
-    <add-resource type="style" name="Widget.XiaoiPlus.Chip" />
-    <add-resource type="style" name="Widget.XiaoiPlus.Button.Primary" />
-    <add-resource type="style" name="Widget.XiaoiPlus.Button.Secondary" />
-    <add-resource type="style" name="Widget.XiaoiPlus.Status" />
-    <add-resource type="style" name="Theme.XiaoiPlus.Dialog" />
 
     <!-- 浅色主题：无 ActionBar，近白灰底 -->
     <style name="Theme.XiaoiPlus" parent="android:Theme.Material.Light.NoActionBar">

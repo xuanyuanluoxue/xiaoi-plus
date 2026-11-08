@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="plus.xiaoi.module"
     android:versionCode="18"
     android:versionName="0.13.0-agent.2">
 
@@ -14,9 +13,9 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- minSdk / targetSdk 都显式钉在 26：保留 127.0.0.1 明文 HTTP 与旧版窗口行为。
-         升级 targetSdk 会引入 edge-to-edge 等行为变更，必须单独评估。 -->
-    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="26" />
+    <!-- minSdk / targetSdk 由 app/build.gradle.kts 钉在 26（AGP 9 禁止在 Manifest 写
+         uses-sdk）：保留 127.0.0.1 明文 HTTP 与旧版窗口行为。升级 targetSdk 会引入
+         edge-to-edge 等行为变更，必须单独评估。 -->
 
     <application
         android:allowBackup="false"
@@ -43,6 +42,12 @@
         <activity android:name=".ConfigActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
         <activity android:name=".LogsActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
         <activity android:name=".AboutActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
+
+        <!-- P0 spike：仅验证 Compose + Miuix 可构建/可渲染；不是启动入口。 -->
+        <activity
+            android:name=".ui.spike.SpikeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.XiaoiPlus" />
 
         <!-- WP1 控制面：显式 ComponentName + exported，供 com.miui.voiceassist
              通过 Binder 拉配置/注册回调。无 intent-filter；安全边界在每个

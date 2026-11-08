@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <add-resource type="style" name="Theme.XiaoiPlus" />
-    <add-resource type="style" name="Theme.XiaoiPlus.Dialog" />
     <style name="Theme.XiaoiPlus" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:colorBackground">@color/bg</item>
