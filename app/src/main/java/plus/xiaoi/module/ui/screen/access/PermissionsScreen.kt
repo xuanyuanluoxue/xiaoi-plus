@@ -33,6 +33,7 @@ import plus.xiaoi.module.core.PermissionSnapshot
 import plus.xiaoi.module.ui.components.PermissionRow
 import plus.xiaoi.module.ui.components.PermissionStatus
 import plus.xiaoi.module.ui.components.XiaoiCard
+import plus.xiaoi.module.ui.components.XiaoiCardGroup
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
@@ -143,51 +144,63 @@ fun PermissionsScreen(
         }
 
         XiaoiGroupHeader("权限")
-        XiaoiPreferenceCard {
-            PermissionRow(
-                name = "通知",
-                status = snap.notifications.toUiStatus(),
-                detail = "普通通知与提醒降级需要",
-                onOpenSettings = { open(PermissionKind.NOTIFICATIONS) },
-            )
-            PermissionRow(
-                name = "精确闹钟",
-                status = snap.exactAlarm.toUiStatus(),
-                detail = if (Build.VERSION.SDK_INT >= 31) {
-                    "Android 12+ 需要单独允许"
-                } else {
-                    "当前系统版本默认可用"
-                },
-                onOpenSettings = { open(PermissionKind.EXACT_ALARM) },
-            )
-            PermissionRow(
-                name = "全屏通知",
-                status = snap.fullScreenIntent.toUiStatus(),
-                detail = if (Build.VERSION.SDK_INT >= 34) {
-                    "Android 14+ 需单独授权"
-                } else {
-                    "当前系统版本无法确认"
-                },
-                onOpenSettings = { open(PermissionKind.FULL_SCREEN) },
-            )
-            PermissionRow(
-                name = "电池优化",
-                status = snap.batteryOptimization.toUiStatus(),
-                detail = "忽略电池优化后后台更稳定",
-                onOpenSettings = { open(PermissionKind.BATTERY) },
-            )
-            PermissionRow(
-                name = "使用情况访问",
-                status = snap.usageAccess.toUiStatus(),
-                detail = "读取前台应用需要 usage access",
-                onOpenSettings = { open(PermissionKind.USAGE) },
-            )
-            PermissionRow(
-                name = "通知使用权",
-                status = snap.notificationListener.toUiStatus(),
-                detail = "读取/取消通知需要单独授权",
-                onOpenSettings = { open(PermissionKind.LISTENER) },
-            )
+        XiaoiCardGroup {
+            XiaoiPreferenceCard {
+                PermissionRow(
+                    name = "通知",
+                    status = snap.notifications.toUiStatus(),
+                    detail = "普通通知与提醒降级需要",
+                    onOpenSettings = { open(PermissionKind.NOTIFICATIONS) },
+                )
+            }
+            XiaoiPreferenceCard {
+                PermissionRow(
+                    name = "精确闹钟",
+                    status = snap.exactAlarm.toUiStatus(),
+                    detail = if (Build.VERSION.SDK_INT >= 31) {
+                        "Android 12+ 需要单独允许"
+                    } else {
+                        "当前系统版本默认可用"
+                    },
+                    onOpenSettings = { open(PermissionKind.EXACT_ALARM) },
+                )
+            }
+            XiaoiPreferenceCard {
+                PermissionRow(
+                    name = "全屏通知",
+                    status = snap.fullScreenIntent.toUiStatus(),
+                    detail = if (Build.VERSION.SDK_INT >= 34) {
+                        "Android 14+ 需单独授权"
+                    } else {
+                        "当前系统版本无法确认"
+                    },
+                    onOpenSettings = { open(PermissionKind.FULL_SCREEN) },
+                )
+            }
+            XiaoiPreferenceCard {
+                PermissionRow(
+                    name = "电池优化",
+                    status = snap.batteryOptimization.toUiStatus(),
+                    detail = "忽略电池优化后后台更稳定",
+                    onOpenSettings = { open(PermissionKind.BATTERY) },
+                )
+            }
+            XiaoiPreferenceCard {
+                PermissionRow(
+                    name = "使用情况访问",
+                    status = snap.usageAccess.toUiStatus(),
+                    detail = "读取前台应用需要 usage access",
+                    onOpenSettings = { open(PermissionKind.USAGE) },
+                )
+            }
+            XiaoiPreferenceCard {
+                PermissionRow(
+                    name = "通知使用权",
+                    status = snap.notificationListener.toUiStatus(),
+                    detail = "读取/取消通知需要单独授权",
+                    onOpenSettings = { open(PermissionKind.LISTENER) },
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))

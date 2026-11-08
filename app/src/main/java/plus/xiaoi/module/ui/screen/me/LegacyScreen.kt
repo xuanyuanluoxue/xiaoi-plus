@@ -191,7 +191,7 @@ fun LegacyScreen(
             )
         }
         if (showJson) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
             XiaoiCard {
                 XiaoiCodeBlock(
                     text = snap.maskedJson,

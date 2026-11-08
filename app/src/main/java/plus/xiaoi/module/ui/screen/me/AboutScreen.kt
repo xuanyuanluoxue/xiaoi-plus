@@ -17,14 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.ui.components.XiaoiCard
+import plus.xiaoi.module.ui.components.XiaoiCardGroup
 import plus.xiaoi.module.ui.components.XiaoiCopyRow
-import plus.xiaoi.module.ui.components.XiaoiGroupHeader
+import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
-import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
+import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Community
+import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Link
 import top.yukonga.miuix.kmp.icon.extended.Refresh
@@ -77,34 +79,67 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
             )
         }
 
-        XiaoiGroupHeader("信息")
-        XiaoiPreferenceGroup {
-            XiaoiCopyRow("作者", "轩辕落雪", onCopy = { copy("轩辕落雪", "作者名") }, icon = MiuixIcons.Community)
-            XiaoiInfoRow("GitHub", "xuanyuanluoxue/xiaoi-plus", onClick = { open(REPO) }, icon = MiuixIcons.Link)
-            XiaoiInfoRow("许可证", "GPL-3.0 · 查看全部开源许可", onClick = { onNavigate("Licenses") }, icon = MiuixIcons.File)
-            XiaoiInfoRow("致谢", "OpenClaw · KernelSU Next · Miuix", icon = MiuixIcons.Community)
+        Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
+
+        XiaoiCardGroup {
+            XiaoiPreferenceCard {
+                XiaoiCopyRow(
+                    "作者",
+                    "轩辕落雪",
+                    onCopy = { copy("轩辕落雪", "作者名") },
+                    icon = MiuixIcons.Community,
+                    iconTone = XiaoiIconTone.INDIGO,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    "GitHub",
+                    "xuanyuanluoxue/xiaoi-plus",
+                    onClick = { open(REPO) },
+                    icon = MiuixIcons.Link,
+                    iconTone = XiaoiIconTone.BLUE,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    "许可证",
+                    "GPL-3.0 · 查看全部开源许可",
+                    onClick = { onNavigate("Licenses") },
+                    icon = MiuixIcons.File,
+                    iconTone = XiaoiIconTone.PURPLE,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    "致谢",
+                    "OpenClaw · KernelSU Next · Miuix",
+                    icon = MiuixIcons.Favorites,
+                    iconTone = XiaoiIconTone.PINK,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    "检查更新",
+                    "打开 GitHub Releases",
+                    onClick = { open("$REPO/releases") },
+                    icon = MiuixIcons.Update,
+                    iconTone = XiaoiIconTone.ORANGE,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    "项目主页",
+                    "README、构建说明与已知限制",
+                    onClick = { open(REPO) },
+                    icon = MiuixIcons.Refresh,
+                    iconTone = XiaoiIconTone.BLUE,
+                )
+            }
         }
 
-        XiaoiGroupHeader("更新")
-        XiaoiPreferenceGroup {
-            XiaoiInfoRow(
-                "检查更新",
-                "打开 GitHub Releases",
-                onClick = { open("$REPO/releases") },
-                icon = MiuixIcons.Update,
-            )
-            XiaoiInfoRow(
-                "项目主页",
-                "README、构建说明与已知限制",
-                onClick = { open(REPO) },
-                icon = MiuixIcons.Refresh,
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-        XiaoiGroupHeader("免责声明")
+        Spacer(Modifier.height(24.dp))
         Text(
-            "本项目不修改、不重打包、不分发小爱同学的任何代码或资源；" +
+            "免责声明：本项目不修改、不重打包、不分发小爱同学的任何代码或资源；" +
                 "仅通过 LSPosed 在自己设备上做运行时互操作。",
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,

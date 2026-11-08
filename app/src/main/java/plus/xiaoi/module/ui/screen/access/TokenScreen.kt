@@ -35,9 +35,11 @@ import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
 import plus.xiaoi.module.ui.components.XiaoiButtonStyle
 import plus.xiaoi.module.ui.components.XiaoiCard
+import plus.xiaoi.module.ui.components.XiaoiCardGroup
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiDirtyBar
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
+import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
@@ -46,6 +48,8 @@ import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.WorldClock
 import java.security.SecureRandom
 
 private enum class LanTarget { MCP, AGENT }
@@ -225,54 +229,62 @@ fun TokenScreen(
             }
 
             XiaoiGroupHeader("局域网")
-            XiaoiPreferenceCard {
-                XiaoiSwitchRow(
-                    title = "8771 局域网",
-                    subtitle = "同一 Wi-Fi 下的设备可访问 MCP 接口",
-                    checked = mcpLan,
-                    enabled = writable,
-                    onCheckedChange = { on ->
-                        if (on) lanDialog = LanTarget.MCP else mcpLanDraft = false
-                    },
-                )
-                XiaoiValueRow(
-                    "保存后将监听",
-                    effectiveBindText(mcpLan, mcpEnabled, token, isAgent = false),
-                    mono = true,
-                )
-                XiaoiSwitchRow(
-                    title = "8770 局域网",
-                    subtitle = "只改监听地址；8770 是否启动仍跟随 MCP 开关",
-                    checked = agentLan,
-                    enabled = writable,
-                    onCheckedChange = { on ->
-                        if (on) lanDialog = LanTarget.AGENT else agentLanDraft = false
-                    },
-                )
-                XiaoiValueRow(
-                    "保存后将监听",
-                    effectiveBindText(agentLan, mcpEnabled, token, isAgent = true),
-                    mono = true,
-                )
+            XiaoiCardGroup {
+                XiaoiPreferenceCard {
+                    XiaoiSwitchRow(
+                        title = "8771 局域网",
+                        subtitle = "同一 Wi-Fi 下的设备可访问 MCP 接口",
+                        checked = mcpLan,
+                        enabled = writable,
+                        onCheckedChange = { on ->
+                            if (on) lanDialog = LanTarget.MCP else mcpLanDraft = false
+                        },
+                        icon = MiuixIcons.WorldClock,
+                        iconTone = XiaoiIconTone.CYAN,
+                    )
+                    XiaoiValueRow(
+                        "保存后将监听",
+                        effectiveBindText(mcpLan, mcpEnabled, token, isAgent = false),
+                        mono = true,
+                    )
+                }
+                XiaoiPreferenceCard {
+                    XiaoiSwitchRow(
+                        title = "8770 局域网",
+                        subtitle = "只改监听地址；8770 是否启动仍跟随 MCP 开关",
+                        checked = agentLan,
+                        enabled = writable,
+                        onCheckedChange = { on ->
+                            if (on) lanDialog = LanTarget.AGENT else agentLanDraft = false
+                        },
+                        icon = MiuixIcons.WorldClock,
+                        iconTone = XiaoiIconTone.CYAN,
+                    )
+                    XiaoiValueRow(
+                        "保存后将监听",
+                        effectiveBindText(agentLan, mcpEnabled, token, isAgent = true),
+                        mono = true,
+                    )
+                }
                 if (strength == IssueResolver.TokenStrength.WEAK &&
                     (mcpLan || agentLan)
                 ) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "令牌不足 32 位：局域网请求已回退仅本机（保存后仍按回退执行）。",
-                        color = colors.warning,
-                        style = XiaoiTheme.typography.caption,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
+                    XiaoiCard {
+                        Text(
+                            "令牌不足 32 位：局域网请求已回退仅本机（保存后仍按回退执行）。",
+                            color = colors.warning,
+                            style = XiaoiTheme.typography.caption,
+                        )
+                    }
                 }
                 if (strength == IssueResolver.TokenStrength.NONE) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "没有令牌：8771 控制面不会启动，局域网也不会生效。",
-                        color = colors.warning,
-                        style = XiaoiTheme.typography.caption,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
+                    XiaoiCard {
+                        Text(
+                            "没有令牌：8771 控制面不会启动，局域网也不会生效。",
+                            color = colors.warning,
+                            style = XiaoiTheme.typography.caption,
+                        )
+                    }
                 }
             }
 

@@ -41,8 +41,10 @@ import plus.xiaoi.module.ui.components.PermissionRow
 import plus.xiaoi.module.ui.components.PermissionStatus
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
+import plus.xiaoi.module.ui.components.XiaoiCardGroup
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
+import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTone
@@ -51,6 +53,11 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Copy
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Share
 
 /**
  * 诊断（SCREENS.md §12）。
@@ -251,27 +258,43 @@ fun DiagnosticsScreen(
         }
 
         XiaoiGroupHeader("工具")
-        XiaoiPreferenceCard {
-            XiaoiInfoRow(
-                title = "复制诊断信息",
-                subtitle = "版本、状态、端口、权限；脱敏且不含密钥/令牌",
-                onClick = { copyDiagnostics() },
-            )
-            XiaoiInfoRow(
-                title = "导出日志",
-                subtitle = "通过系统分享导出本机日志镜像",
-                onClick = { exportLogs() },
-            )
-            XiaoiInfoRow(
-                title = "清空本机日志",
-                subtitle = "只清 App 内存镜像，不删除小爱落盘日志",
-                onClick = { showClearLogs = true },
-            )
-            XiaoiInfoRow(
-                title = "兼容模式（只读）",
-                subtitle = "旧版 config.json 路径、脱敏 JSON、.corrupt/.legacy 列表",
-                onClick = { onNavigate("Legacy") },
-            )
+        XiaoiCardGroup {
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "复制诊断信息",
+                    subtitle = "版本、状态、端口、权限；脱敏且不含密钥/令牌",
+                    onClick = { copyDiagnostics() },
+                    icon = MiuixIcons.Copy,
+                    iconTone = XiaoiIconTone.BLUE,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "导出日志",
+                    subtitle = "通过系统分享导出本机日志镜像",
+                    onClick = { exportLogs() },
+                    icon = MiuixIcons.Share,
+                    iconTone = XiaoiIconTone.PINK,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "清空本机日志",
+                    subtitle = "只清 App 内存镜像，不删除小爱落盘日志",
+                    onClick = { showClearLogs = true },
+                    icon = MiuixIcons.Delete,
+                    iconTone = XiaoiIconTone.RED,
+                )
+            }
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "兼容模式（只读）",
+                    subtitle = "旧版 config.json 路径、脱敏 JSON、.corrupt/.legacy 列表",
+                    onClick = { onNavigate("Legacy") },
+                    icon = MiuixIcons.File,
+                    iconTone = XiaoiIconTone.PURPLE,
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))
