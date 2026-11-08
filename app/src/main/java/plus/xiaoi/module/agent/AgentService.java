@@ -22,6 +22,8 @@ import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.HomeActivity;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.R;
+import plus.xiaoi.module.core.ActivityFeed;
+import plus.xiaoi.module.core.ActivityHub;
 
 /**
  * App 进程内的 Agent 前台服务。
@@ -131,6 +133,7 @@ public final class AgentService extends Service {
         } catch (Throwable t) {
             Logs.e("AgentService startForeground 失败: " + t.getClass().getSimpleName());
         }
+        ActivityHub.info(ActivityFeed.Domain.AGENT, "Agent 服务已创建");
     }
 
     @Override
@@ -150,11 +153,13 @@ public final class AgentService extends Service {
         server = null;
         runningToken = "";
         if (s != null) s.stop();
+        AgentRuntimeStatus.setStopped();
         try {
             stopForeground(true);
         } catch (Throwable ignored) {
         }
         Logs.i("AgentService 已停止");
+        ActivityHub.info(ActivityFeed.Domain.AGENT, "Agent 服务已停止");
         super.onDestroy();
     }
 
@@ -170,6 +175,8 @@ public final class AgentService extends Service {
                 } catch (Throwable t) {
                     Logs.e("AgentService 启动流程失败: " + t.getClass().getSimpleName());
                     updateNotification(TEXT_FAILED);
+                    AgentRuntimeStatus.setError("启动流程失败：" + t.getClass().getSimpleName());
+                    ActivityHub.error(ActivityFeed.Domain.AGENT, "8770 启动流程失败");
                 } finally {
                     bootstrapping.set(false);
                 }
@@ -182,6 +189,9 @@ public final class AgentService extends Service {
         String token = c.mcpToken == null ? "" : c.mcpToken.trim();
         if (!c.mcpEnabled || token.length() == 0) {
             Logs.i("AgentService: MCP 未启用或 token 为空，停止 8770");
+            AgentRuntimeStatus.setStopped();
+            ActivityHub.info(ActivityFeed.Domain.AGENT,
+                    "8770 未启动（MCP 关闭或令牌为空）");
             stopSelf();
             return;
         }
@@ -191,6 +201,7 @@ public final class AgentService extends Service {
         if (current != null && current.isRunning() && token.equals(runningToken)
                 && current.isLan() == lanEffective) {
             updateNotification(runningText(c.agentLan, current));
+            markRunning(current);
             return;
         }
         if (current != null) {
@@ -223,17 +234,33 @@ public final class AgentService extends Service {
         if (err.length() > 0) {
             Logs.e("AgentService: " + err);
             updateNotification(TEXT_FAILED);
+            AgentRuntimeStatus.setError(err);
+            ActivityHub.error(ActivityFeed.Domain.AGENT, "8770 启动失败");
             return;
         }
         server = next;
         runningToken = token;
         Logs.i("AgentService: 8770 已启动（" + (next.isLan() ? "局域网 " : "仅本机 ")
                 + next.bindHost() + "）");
+        markRunning(next);
         // 请求了局域网但令牌不足：绑定已回退 loopback，日志/通知如实说明，不打印令牌。
         if (next.lastError().length() > 0) {
             Logs.i("AgentService: " + next.lastError());
+            ActivityHub.warn(ActivityFeed.Domain.AGENT, next.lastError());
         }
         updateNotification(runningText(c.agentLan, next));
+    }
+
+    /** 只在运行事实变化时写快照/活动，避免每次 onStartCommand 都产生"刚启动"。 */
+    private static void markRunning(AgentHttpServer s) {
+        if (s == null || !s.isRunning()) return;
+        AgentRuntimeStatus.Snapshot prev = AgentRuntimeStatus.get();
+        if (prev.running && prev.port == s.port() && prev.bindHost.equals(s.bindHost())) {
+            return;
+        }
+        AgentRuntimeStatus.setRunning(s.port(), s.bindHost(), s.isLan());
+        ActivityHub.info(ActivityFeed.Domain.AGENT,
+                "8770 已启动（" + (s.isLan() ? "局域网 " : "仅本机 ") + s.bindHost() + "）");
     }
 
     private static String runningText(boolean requestedLan, AgentHttpServer s) {

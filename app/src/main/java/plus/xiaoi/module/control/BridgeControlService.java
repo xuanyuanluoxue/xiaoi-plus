@@ -21,6 +21,8 @@ import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.ConfigCodec;
 import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.Hash;
+import plus.xiaoi.module.core.ActivityFeed;
+import plus.xiaoi.module.core.ActivityHub;
 import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.BridgeStatus;
 import plus.xiaoi.module.core.ControlKeys;
@@ -59,6 +61,15 @@ public final class BridgeControlService extends Service {
 
     private volatile long lastDenyLogAt;
 
+    /** leader 绑定元数据；只由 register/reportState 写入，未知时为空/null。 */
+    private final Object leaderMetaLock = new Object();
+    private boolean leaderSeen;
+    private int lastLeaderPort;
+    private long leaderSince;
+    private long lastDisconnectedAt;
+    private String leaderBindHost = "";
+    private Boolean leaderLanEnabled = null;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -75,6 +86,7 @@ public final class BridgeControlService extends Service {
             }
         });
         log("控制面服务已创建");
+        ActivityHub.info(ActivityFeed.Domain.XIAOAI, "控制面服务已创建");
     }
 
     @Override
@@ -101,10 +113,20 @@ public final class BridgeControlService extends Service {
         registry.clear();
         LOG_RING.clear();
         // 先清端口/快照再清回调：服务销毁后 App 不应再访问旧 leader 端口或显示旧运行态。
+        long disconnectedAt;
+        synchronized (leaderMetaLock) {
+            if (leaderSeen) {
+                lastDisconnectedAt = System.currentTimeMillis();
+                leaderSeen = false;
+            }
+            lastLeaderPort = 0;
+            disconnectedAt = lastDisconnectedAt;
+        }
         BridgeEndpoint.setPort(0);
-        BridgeStatus.clear();
+        BridgeStatus.clear(disconnectedAt);
         BridgeEndpoint.clearReloadAction();
         log("控制面服务已销毁");
+        ActivityHub.info(ActivityFeed.Domain.XIAOAI, "控制面服务已销毁");
         super.onDestroy();
     }
 
@@ -121,6 +143,7 @@ public final class BridgeControlService extends Service {
         lastDenyLogAt = now;
         // 只记 UID，不记包名/进程/配置内容。
         log("控制面拒绝调用：uid=" + uid + " 不在白名单");
+        ActivityHub.warn(ActivityFeed.Domain.ACCESS, "控制面拒绝调用 uid=" + uid);
     }
 
     static final class LoadResult {
@@ -169,6 +192,8 @@ public final class BridgeControlService extends Service {
                 } catch (Throwable t) {
                     out.error = "config unavailable";
                     log("控制面读取配置失败（已忽略）: " + t.getClass().getSimpleName());
+                    ActivityHub.warn(ActivityFeed.Domain.ACCESS,
+                            "控制面读取配置失败：" + t.getClass().getSimpleName());
                 } finally {
                     latch.countDown();
                 }
@@ -196,10 +221,13 @@ public final class BridgeControlService extends Service {
         int port = in.getInt(ControlKeys.KEY_PORT, 0);
         String legacyJson = in.getString(ControlKeys.KEY_LEGACY_JSON, "");
         long cfgRev = in.getLong(ControlKeys.KEY_CFG_REV, 0L);
+        String bindHost = clean(in.getString(ControlKeys.KEY_BIND_HOST, ""), 40);
+        Boolean lanEnabled = in.containsKey(ControlKeys.KEY_LAN_ENABLED)
+                ? Boolean.valueOf(in.getBoolean(ControlKeys.KEY_LAN_ENABLED, false)) : null;
         InstanceRecord r = InstanceRecord.registered(process, pid, port, legacyJson,
                 System.currentTimeMillis(), cfgRev);
         registry.register(r);
-        syncEndpoint();
+        syncEndpoint(port > 0 ? bindHost : "", port > 0 ? lanEnabled : null);
 
         IBinder cb = in.getBinder(ControlKeys.KEY_CALLBACK);
         String key = r.key();
@@ -223,25 +251,90 @@ public final class BridgeControlService extends Service {
         boolean hasKey = in.getBoolean(ControlKeys.KEY_HAS_KEY, false);
         String version = clean(in.getString(ControlKeys.KEY_VERSION, ""), 40);
         long cfgRev = in.getLong(ControlKeys.KEY_CFG_REV, 0L);
+        String bindHost = clean(in.getString(ControlKeys.KEY_BIND_HOST, ""), 40);
+        Boolean lanEnabled = in.containsKey(ControlKeys.KEY_LAN_ENABLED)
+                ? Boolean.valueOf(in.getBoolean(ControlKeys.KEY_LAN_ENABLED, false)) : null;
         InstanceRecord r = registry.reportState(process, pid, model, enabled, hasKey,
                 version, port, System.currentTimeMillis(), cfgRev);
-        syncEndpoint();
+        syncEndpoint(port > 0 ? bindHost : "", port > 0 ? lanEnabled : null);
         log("控制面状态 process=" + process + " model=" + model
                 + " enabled=" + enabled + " hasKey=" + hasKey + " port=" + r.port
                 + " rev=" + r.cfgRev);
     }
 
-    /** 把当前 leader 端口/运行态同步给 App 进程内的 BridgeClient 与页面。 */
-    private void syncEndpoint() {
+    /**
+     * 把当前 leader 端口/运行态同步给 App 进程内的 BridgeClient 与页面。
+     *
+     * @param bindHost    本次上报的实际 bind 地址；空串 = 本次没有/未知
+     * @param lanEnabled  本次上报的实际 LAN 状态；null = 本次没有/未知
+     */
+    private void syncEndpoint(String bindHost, Boolean lanEnabled) {
         InstanceRecord leader = registry.leader();
+        long now = System.currentTimeMillis();
+        String host;
+        Boolean lan;
+        long connectedAt;
+        long disconnectedAt;
+        boolean leaderChanged;
+        boolean becameDisconnected;
+        String previousHost;
+
+        synchronized (leaderMetaLock) {
+            if (leader == null) {
+                becameDisconnected = leaderSeen;
+                if (leaderSeen) {
+                    lastDisconnectedAt = now;
+                    leaderSeen = false;
+                }
+                lastLeaderPort = 0;
+                leaderChanged = false;
+                previousHost = "";
+                host = "";
+                lan = null;
+                connectedAt = 0L;
+                disconnectedAt = lastDisconnectedAt;
+            } else {
+                leaderChanged = !leaderSeen || leader.port != lastLeaderPort;
+                becameDisconnected = false;
+                if (leaderChanged) {
+                    leaderSeen = true;
+                    lastLeaderPort = leader.port;
+                    leaderSince = now;
+                    leaderBindHost = "";
+                    leaderLanEnabled = null;
+                }
+                previousHost = leaderBindHost;
+                if (bindHost != null && bindHost.length() > 0) leaderBindHost = bindHost;
+                if (lanEnabled != null) leaderLanEnabled = lanEnabled;
+                host = leaderBindHost;
+                lan = leaderLanEnabled;
+                connectedAt = leaderSince;
+                disconnectedAt = lastDisconnectedAt;
+            }
+        }
+
         if (leader == null) {
             BridgeEndpoint.setPort(0);
-            BridgeStatus.clear();
+            BridgeStatus.set(0, "", false, false, 0L, 0L, false,
+                    "", null, connectedAt, disconnectedAt);
+            if (becameDisconnected) {
+                ActivityHub.warn(ActivityFeed.Domain.XIAOAI, "8771 leader 已断开");
+            }
             return;
         }
+
         BridgeEndpoint.setPort(leader.port);
         BridgeStatus.set(leader.port, leader.model, leader.enabled, leader.hasKey,
-                leader.cfgRev, leader.updatedAt, leader.hasState);
+                leader.cfgRev, leader.updatedAt, leader.hasState,
+                host, lan, connectedAt, disconnectedAt);
+
+        if (leaderChanged) {
+            ActivityHub.info(ActivityFeed.Domain.XIAOAI,
+                    "8771 leader 已连接 port=" + leader.port
+                            + (host.length() > 0 ? " bind=" + host : ""));
+        } else if (host.length() > 0 && !host.equals(previousHost)) {
+            ActivityHub.info(ActivityFeed.Domain.XIAOAI, "8771 绑定地址变更 bind=" + host);
+        }
     }
 
     void appendLogs(String text) {
@@ -336,6 +429,7 @@ public final class BridgeControlService extends Service {
         } catch (RemoteException e) {
             callbacks.remove(key, m);
             log("控制面回调失效（已移除）: " + e.getClass().getSimpleName());
+            ActivityHub.warn(ActivityFeed.Domain.XIAOAI, "控制面回调失效（已移除）");
         } catch (Throwable t) {
             callbacks.remove(key, m);
         }

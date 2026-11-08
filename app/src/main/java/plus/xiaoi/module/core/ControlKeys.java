@@ -59,6 +59,10 @@ public final class ControlKeys {
     public static final String KEY_PID = "pid";
     public static final String KEY_PROCESS = "process";
     public static final String KEY_PORT = "port";
+    /** 8771 实际 bind 地址（"127.0.0.1"/"0.0.0.0"）；旧版本桥不发送 = 未知。 */
+    public static final String KEY_BIND_HOST = "bind_host";
+    /** 8771 实际是否监听 0.0.0.0；旧版本桥不发送 = 未知。 */
+    public static final String KEY_LAN_ENABLED = "lan_enabled";
     public static final String KEY_LEGACY_JSON = "legacy_json";
 
     public static final String KEY_MODEL = "model";

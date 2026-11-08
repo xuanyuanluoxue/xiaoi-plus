@@ -142,6 +142,7 @@ public final class AgentHttpServer {
             boundHost = AgentLanPolicy.LOOPBACK;
             shutdownAccept();
             shutdownRequests();
+            AgentRuntimeStatus.setError(lastError);
             return lastError;
         }
     }

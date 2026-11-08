@@ -187,6 +187,18 @@ public final class TestMain {
             System.out.println("  FAIL ActivityFeedTest 套件异常: " + t);
         }
         try {
+            failed += AgentRuntimeStatusTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AgentRuntimeStatusTest 套件异常: " + t);
+        }
+        try {
+            failed += IssueInputFactoryTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL IssueInputFactoryTest 套件异常: " + t);
+        }
+        try {
             failed += NavStackTest.run();
         } catch (Throwable t) {
             failed++;

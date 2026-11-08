@@ -36,6 +36,7 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentMcp.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentHttpServer.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentLanPolicy.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentRuntimeStatus.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Http.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Mcp.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/AppConfig.java" \
@@ -61,6 +62,8 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/IssueResolver.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/CapabilityRegistry.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ActivityFeed.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/ActivityHub.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/IssueInputFactory.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/NavStack.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/bridge/LeaderElection.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/UidGuard.java" \

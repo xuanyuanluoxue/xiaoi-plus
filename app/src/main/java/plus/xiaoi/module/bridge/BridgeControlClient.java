@@ -375,7 +375,9 @@ public final class BridgeControlClient {
         info.putBinder(ControlKeys.KEY_CALLBACK, callback().getBinder());
         info.putInt(ControlKeys.KEY_PID, Process.myPid());
         info.putString(ControlKeys.KEY_PROCESS, processName());
-        info.putInt(ControlKeys.KEY_PORT, Bridge.port());
+        int port = Bridge.port();
+        info.putInt(ControlKeys.KEY_PORT, port);
+        putBindInfo(info, port);
         info.putString(ControlKeys.KEY_LEGACY_JSON, legacyJson());
         Config current = Config.current();
         info.putLong(ControlKeys.KEY_CFG_REV, current == null ? 0L : current.cfgRev());
@@ -391,7 +393,9 @@ public final class BridgeControlClient {
         st.putString(ControlKeys.KEY_MODEL, c.model());
         st.putBoolean(ControlKeys.KEY_ENABLED, c.enabled());
         st.putBoolean(ControlKeys.KEY_HAS_KEY, c.apiKey().length() > 0);
-        st.putInt(ControlKeys.KEY_PORT, Bridge.port());
+        int port = Bridge.port();
+        st.putInt(ControlKeys.KEY_PORT, port);
+        putBindInfo(st, port);
         st.putString(ControlKeys.KEY_VERSION, versionName());
         st.putLong(ControlKeys.KEY_CFG_REV, c.cfgRev());
         // 状态回包为空 Bundle；失败不重连（状态不是关键路径）。
@@ -545,6 +549,17 @@ public final class BridgeControlClient {
         } catch (Throwable t) {
             return "{}";
         }
+    }
+
+    /**
+     * 只上报实际绑定的结果（弱令牌回退 loopback 时 lan=false），不发送令牌。
+     * 端口为 0 表示本进程不是 leader，两项都不写 = App 侧保持未知。
+     */
+    private static void putBindInfo(Bundle b, int port) {
+        if (b == null || port <= 0) return;
+        boolean lan = Bridge.isBoundLan();
+        b.putString(ControlKeys.KEY_BIND_HOST, lan ? "0.0.0.0" : "127.0.0.1");
+        b.putBoolean(ControlKeys.KEY_LAN_ENABLED, lan);
     }
 
     private static String processName() {

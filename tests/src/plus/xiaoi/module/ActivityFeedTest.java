@@ -6,6 +6,7 @@ import plus.xiaoi.module.core.ActivityFeed;
 import plus.xiaoi.module.core.ActivityFeed.Domain;
 import plus.xiaoi.module.core.ActivityFeed.Event;
 import plus.xiaoi.module.core.ActivityFeed.Level;
+import plus.xiaoi.module.core.ActivityHub;
 
 /** ActivityFeed：环形覆盖、last 顺序、clear、容量下限、简单并发安全。 */
 public final class ActivityFeedTest {
@@ -87,6 +88,24 @@ public final class ActivityFeedTest {
         T.eq("并发写入 400 条", 400, concurrent.count());
         T.eq("并发 last 400 条", 400, concurrent.last(400).size());
         T.eq("并发 last 只取最近 10", 10, concurrent.last(10).size());
+
+        // App 级共享入口：容量 50，写入/读取顺序与独立 feed 一致。
+        ActivityHub.clear();
+        T.eq("ActivityHub 容量 50", 50, ActivityHub.feed().capacity());
+        T.eq("ActivityHub 初始为空", 0, ActivityHub.count());
+        ActivityHub.info(Domain.XIAOAI, "h1");
+        ActivityHub.warn(Domain.AGENT, "h2");
+        ActivityHub.error(Domain.ACCESS, "h3");
+        T.eq("ActivityHub 写入三条", 3, ActivityHub.count());
+        T.eq("ActivityHub 最近两条", "h2,h3", texts(ActivityHub.recent(2)));
+        T.eq("ActivityHub 级别保留", Level.WARN,
+                ActivityHub.recent(2).get(0).level);
+        T.eq("ActivityHub domain 保留", Domain.ACCESS,
+                ActivityHub.recent(1).get(0).domain);
+        T.eq("ActivityHub 文本去换行", "a b",
+                ActivityHub.info(Domain.AGENT, "a\nb").text);
+        ActivityHub.clear();
+        T.eq("ActivityHub clear 后为空", 0, ActivityHub.count());
 
         return T.report("ActivityFeedTest");
     }

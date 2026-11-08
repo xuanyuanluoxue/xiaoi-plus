@@ -24,9 +24,25 @@ public final class BridgeStatus {
         public final long updatedAt;
         /** true = 收到过 reportState；只有 register 时运行态仍未知。 */
         public final boolean runtimeKnown;
+        /** 8771 实际 bind 地址；空串 = 未知（旧版本桥未上报，不猜 loopback）。 */
+        public final String bindHost;
+        /** 8771 实际是否监听 0.0.0.0；null = 未知。 */
+        public final Boolean lanEnabled;
+        /** 本进程首次观察到 leader 的时间；0 = 未知。 */
+        public final long lastConnectedAt;
+        /** 最近一次 leader 断开的时间；0 = 未知。 */
+        public final long lastDisconnectedAt;
 
         Snapshot(boolean connected, int port, String model, boolean enabled, boolean hasKey,
                  long appliedRev, long updatedAt, boolean runtimeKnown) {
+            this(connected, port, model, enabled, hasKey, appliedRev, updatedAt,
+                    runtimeKnown, "", null, 0L, 0L);
+        }
+
+        Snapshot(boolean connected, int port, String model, boolean enabled, boolean hasKey,
+                 long appliedRev, long updatedAt, boolean runtimeKnown,
+                 String bindHost, Boolean lanEnabled,
+                 long lastConnectedAt, long lastDisconnectedAt) {
             this.connected = connected;
             this.port = port > 0 ? port : 0;
             this.model = model == null ? "" : model;
@@ -35,6 +51,10 @@ public final class BridgeStatus {
             this.appliedRev = appliedRev < 0 ? 0L : appliedRev;
             this.updatedAt = updatedAt < 0 ? 0L : updatedAt;
             this.runtimeKnown = runtimeKnown;
+            this.bindHost = bindHost == null ? "" : bindHost;
+            this.lanEnabled = lanEnabled;
+            this.lastConnectedAt = lastConnectedAt < 0 ? 0L : lastConnectedAt;
+            this.lastDisconnectedAt = lastDisconnectedAt < 0 ? 0L : lastDisconnectedAt;
         }
 
         public boolean fresh(long now) {
@@ -52,12 +72,28 @@ public final class BridgeStatus {
     /** 按 leader 记录更新快照；port &lt;= 0 视为没有 leader。 */
     public static void set(int port, String model, boolean enabled, boolean hasKey,
                            long appliedRev, long updatedAt, boolean runtimeKnown) {
+        set(port, model, enabled, hasKey, appliedRev, updatedAt, runtimeKnown,
+                "", null, 0L, 0L);
+    }
+
+    /**
+     * 扩展写入：额外记录 8771 的实际 bind 地址/LAN 与连接时间。
+     *
+     * <p>未知字段请传空串/null/0；不要为了"看起来完整"猜 127.0.0.1 或 false。
+     * port &lt;= 0 时其它运行态字段一律按断开处理，只保留断开时间。</p>
+     */
+    public static void set(int port, String model, boolean enabled, boolean hasKey,
+                           long appliedRev, long updatedAt, boolean runtimeKnown,
+                           String bindHost, Boolean lanEnabled,
+                           long lastConnectedAt, long lastDisconnectedAt) {
         if (port <= 0) {
-            sSnapshot = DISCONNECTED;
+            sSnapshot = new Snapshot(false, 0, "", false, false, 0L, 0L, false,
+                    "", null, lastConnectedAt, lastDisconnectedAt);
             return;
         }
         sSnapshot = new Snapshot(true, port, model, enabled, hasKey, appliedRev,
-                updatedAt, runtimeKnown);
+                updatedAt, runtimeKnown, bindHost, lanEnabled,
+                lastConnectedAt, lastDisconnectedAt);
     }
 
     /** 当前快照；服务未创建/已销毁时返回 disconnected，调用方无需判空。 */
@@ -72,5 +108,11 @@ public final class BridgeStatus {
     /** 服务销毁 / 没有 leader：回到未知，绝不保留旧端口/旧运行态。 */
     public static void clear() {
         sSnapshot = DISCONNECTED;
+    }
+
+    /** 断开并保留最近断开时间；其它未知字段仍保持未知。 */
+    public static void clear(long lastDisconnectedAt) {
+        sSnapshot = new Snapshot(false, 0, "", false, false, 0L, 0L, false,
+                "", null, 0L, lastDisconnectedAt);
     }
 }
