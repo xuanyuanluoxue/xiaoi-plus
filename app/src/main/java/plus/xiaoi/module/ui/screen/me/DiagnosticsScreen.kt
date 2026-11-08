@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
@@ -75,7 +76,11 @@ fun DiagnosticsScreen(
     var showClearLogs by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
-        snapshot = withContext(Dispatchers.IO) { capture(context) }
+        // 冷启动时 8770 可能比页面晚 1–3 秒起来；定时重采，避免与接入页结论不一致。
+        while (true) {
+            snapshot = withContext(Dispatchers.IO) { capture(context) }
+            delay(3000)
+        }
     }
     LaunchedEffect(Unit) {
         rootInstalled = withContext(Dispatchers.IO) { MeSupport.rootInstalled() }
