@@ -62,19 +62,25 @@ fun XiaoiTopBar(
 - 对齐参考实现 `ManagerCompactTopBar`；不做折叠大标题的空白行。
 - 页面级动作用 `XiaoiPageActions` 发布到顶栏，不在内容区另起工具栏。
 
-### XiaoiBottomBar（Miuix NavigationBar）
+### XiaoiBottomBar（悬浮液态玻璃）
 
 ```kotlin
 @Composable
-fun XiaoiBottomBar(current: MainTab, onSelect: (MainTab) -> Unit)
+fun XiaoiBottomBar(
+    current: MainTab,
+    onSelect: (MainTab) -> Unit,
+    backdrop: GlassBackdropHandle,
+    contentCoordinates: LayoutCoordinates?,
+    modifier: Modifier = Modifier
+)
 ```
 
-- 容器用 Miuix `NavigationBar`；图标来自 `miuix-icons`（Home / Mic / Link / Settings）。
-- item 自绘：Miuix `NavigationBarItem` 会给未选中内容强制乘 0.4 alpha，
-  纯黑在浅色底上最高也只有 2.82:1，达不到 3:1。自绘 item 用 Miuix
-  `Icon`/`Text` + `selectable(Role.Tab)`，48dp 高、24dp 图标、Caption 文字。
-- 选中 `primary`，未选中 `textSecondary`；不叠 alpha。
-- 只在二级页隐藏；不悬浮、不加背景块。例外记录在 `design-system.md` §9.2。
+- 4 tab（首页/小爱/接入/我的），悬浮胶囊；选中 pill、按压缩放、横向拖拽切换。
+- 三级能力：FULL（API 33+ 且 RuntimeShader 可用）/ BLUR（31–32）/ SOLID（26–30、
+  减少动画、外观页关闭）。
+- 内容区 `rememberGlassBackdrop` + `glassBackdropSource` 采样；底栏不占
+  `Scaffold.bottomBar`，一级页底部预留条高，二级页隐藏。
+- 实现改编自 LiquidTab（GPL-3.0），许可与归属见 `LicensesScreen`。
 
 ## 2. 基础组件
 

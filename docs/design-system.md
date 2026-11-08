@@ -114,10 +114,12 @@ Hero 卡按状态使用 14% 语义色底。
 **脏态** = 主按钮（primary 实色 + on-primary 字）；**干净态** = 次按钮
 （chip 底 + primary 字），不使用低透明度（浅色下白字不可读）。
 
-### 5.12 BottomNav
-高 80dp（含安全区），背景 bg，顶部 1dp line；
-4 项等宽，图标 24dp + Caption；选中项 primary 文字 + 图标；
-不悬浮、不加背景块。
+### 5.12 BottomNav（悬浮液态玻璃）
+一级页底部悬浮胶囊：左右 16dp、底部 12dp、高 56–64dp，4 项等宽；
+选中项有 pill 底与 primary tint，未选中 textSecondary；
+FULL（API 33+）走 miuix-blur 模糊 + 折射 + 高光；BLUR（31–32）走平台 RenderEffect；
+SOLID（26–30 / 减少动画 / 用户关闭）为同尺寸实心胶囊。
+底栏不占 Scaffold `bottomBar`，内容底部预留条高；二级页隐藏。
 
 ### 5.13 Feedback（应用内提示条）
 由 `BaseActivity.showMessage()` 统一实现（替代系统 Toast）：
@@ -244,7 +246,7 @@ launcher 使用 adaptive-icon（前景 108、安全区 66、monochrome 层），
 
 | 组件 | 原因 | 替代方案 |
 | --- | --- | --- |
-| 底栏 item（容器仍是 Miuix `NavigationBar`） | `NavigationBarItem` 对未选中内容强制乘 0.4 alpha，纯黑在白底下也只有 2.82:1，达不到 3:1 | 用 Miuix `Icon`/`Text` + `selectable(Role.Tab)` 自绘 item，图标/字号/高度与 Miuix 对齐 |
+| 玻璃底栏（容器与 item 均自绘） | Miuix 无悬浮玻璃栏组件；参考实现需要 squircle + 背景采样 | 改编 LiquidTab（GPL-3.0）的底栏源码；低版本/关闭动画时退化为实心胶囊，交互与选中态一致 |
 | `FilterChips` | Miuix 0.9.4 无 chip 组件；`TabRow` 是文本页签，形态不符 | 保留自绘，28dp 视觉 + 48dp 触控；未选中 `chipBg/textSecondary`，选中 `primary/onPrimary` |
 | `XiaoiEmptyState` | Miuix 无空态组件 | 自绘，但图标 48dp、文字用令牌 |
 

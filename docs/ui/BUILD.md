@@ -115,7 +115,7 @@ keystore/xiaoi.keystore
 | Compose Multiplatform | 1.12.2 |
 | Miuix | 0.9.4（`miuix-ui`、`miuix-preference`、`miuix-icons`） |
 | compileSdk | 37 |
-| minSdk / targetSdk | 26 / 26 |
+| minSdk / targetSdk | 26 / 34 |
 | Java/Kotlin target | 11（Compose 1.12 要求） |
 | versionName / versionCode | 0.14.1 / 20（`AndroidManifest.xml` 单一来源） |
 | release R8 | `isMinifyEnabled = true`、`isShrinkResources = true` |
@@ -133,7 +133,7 @@ android {
     defaultConfig {
         applicationId = "plus.xiaoi.module"
         minSdk = 26
-        targetSdk = 26
+        targetSdk = 34
         // 单一来源：AndroidManifest.xml（便于 verify-apk / version.sh 读取）
         versionCode = manifestAttr("versionCode").toInt()
         versionName = manifestAttr("versionName")

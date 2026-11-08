@@ -1,7 +1,17 @@
 # 更新日志
 
-## 未发布 — 悬浮液态玻璃底栏
+## 未发布 — UI 对齐 + 悬浮液态玻璃底栏 + 预测性返回
 
+- **卡片体系**：设置页与首页改为独立卡片清单（28dp 圆角、20dp 内边距、12dp 间距）；
+  行首 48dp 语义彩色圆图标（`XiaoiIconTone`），首页与设置页共用同一套色板。
+- **顶栏**：改为状态栏下 48dp 行 + 32sp 左对齐标题；页面级动作收进顶栏，
+  不再在内容区另起“说明 + 按钮”工具栏。
+- **首页**：状态 Hero（四维徽章 + 绿/黄/红）+ 小爱/接入/今日调用/最近活动/能力/
+  配置/关于独立卡；今日调用只查本机 8771，失败保持“未确认”。
+- **设置首页**：项目介绍/版本、赞助、作者、致谢、外观、配置管理、诊断、日志、
+  关于、开源许可、危险区各自独立卡。
+- **预测性返回**：targetSdk 26 → 34，Manifest 开启 `enableOnBackInvokedCallback`；
+  二级页由 `PredictiveBackHandler` 驱动缩放/淡出，一级页仍用普通 `BackHandler`。
 - **底栏**：`Miuix NavigationBar` 换成悬浮胶囊玻璃底栏（首页 / 小爱 / 接入 / 我的），
   选中 pill 支持点击、按压放大与横向拖拽切换；内容区 `layerBackdrop` 采样，
   一级页底部预留玻璃条高度，二级页隐藏底栏。
@@ -9,7 +19,11 @@
   走 Compose GraphicsLayer + 平台 RenderEffect 模糊；API 26–30、系统关闭动画或
   用户关闭走同尺寸实心胶囊（主题色），交互与选中态一致。
 - **令牌**：`XiaoiColors` / `XiaoiDimens` 新增 `glass*` 令牌；Snackbar 随底栏高度上移。
-- 未新增权限，未改 minSdk / targetSdk / 版本号。
+- **许可**：底栏实现改编自 GPL-3.0 的 LiquidTab，保留来源与许可说明；
+  新增 `androidx.graphics:graphics-shapes`（Apache-2.0）。
+- 未新增权限；minSdk 仍为 26；targetSdk 升到 34（预测性返回）；版本号未改。
+- 已知：`miuix-blur` 的 AAR 声明 minSdk 33，本仓库用 `tools:overrideLibrary`
+  放开清单合并，并只在 API 33+ 调用玻璃代码；低版本走实心回退。
 
 ## 0.14.1 — 2026-11-08 — 修复启动入口仍指向旧首页
 

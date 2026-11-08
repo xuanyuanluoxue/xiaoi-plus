@@ -83,8 +83,11 @@ MainActivity
 
 - 单 Activity；`NavStack` 只用 push/pop/switchTab，无 per-tab 栈。
 - 路由用 `sealed interface Route`，参数只放 id/枚举，不放 token/key。
-- 一级页显示底栏；二级页隐藏底栏；返回后恢复。
-- 一级根页返回：非首页 → 首页；首页 → 退出。
+- 一级页显示悬浮玻璃底栏；二级页隐藏底栏；返回后恢复。
+- 一级根页返回：非首页 → 首页；首页 → 退出（`BackHandler(enabled = nav.isRoot())`）。
+- 二级页返回：`PredictiveBackHandler`，手势进度驱动缩放/淡出；API 34+ 播放系统
+  预测性返回动画。页面内脏数据拦截（如 Model）仍用普通 `BackHandler`，优先生效。
+- targetSdk 34；不升 35，避免强制 edge-to-edge。
 - 深链只接受显式 Intent extras：`TAB` / `PAGE` / `FOCUS`；白名单外回首页；不执行任何动作。
 - 二级编辑页拦截系统返回：脏 → 保存/放弃/取消。
 

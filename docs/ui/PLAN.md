@@ -29,7 +29,7 @@
 - 不新增提示词、工具注入、技能包、记忆、ASR/TTS、场景路由功能（只做占位）。
 - 不改 Xiaoai 注入逻辑（`Hook/Bridge/AgentService`）。
 - 不引入 navigation-compose、DI、图片加载库、blur、Monet。
-- 不上调 targetSdk；不重打包小爱；不改包名/签名。
+- 0.14 不上调 targetSdk；0.15 为预测性返回升到 34（不升 35）；不重打包小爱；不改包名/签名。
 - 不做平板双栏、横屏专用布局（0.15 再评估）。
 
 ---
@@ -46,7 +46,7 @@
 | D6 | 保存模型 | 一级主开关即时保存；二级表单显式保存；无全局 FAB |
 | D7 | 旧 Config 只读 | 放“我的 > 诊断 > 兼容模式”，0.15 删除 |
 | D8 | 0.14 parity | 能力页只读；审计/确认/测试台占位；危险区只做“停用全部” |
-| D9 | targetSdk 26 | 不上调；不做 blur/Monet |
+| D9 | targetSdk 34 | 0.15 起升到 34 以开启预测性返回；不升 35（edge-to-edge） |
 | D10 | 8770 无独立开关 | 跟随 `mcpEnabled + token`；LAN 由 `agentLan` 独立控制 |
 
 ---
@@ -63,7 +63,7 @@
 | Compose Multiplatform | 1.12.2 | Android 目标 |
 | Miuix | 0.9.4 | `miuix-ui` + `miuix-preference` |
 | compileSdk | 37 | Miuix AAR `minCompileSdk=37` |
-| minSdk / targetSdk | 26 / 26 | 保持不变 |
+| minSdk / targetSdk | 26 / 34 | minSdk 保持；targetSdk 34 用于预测性返回 |
 | JDK | 21（构建） | Java/Kotlin target=11（Compose 1.12 要求；源码不用 11+ 语言特性） |
 | build-tools | 37.0.0（Gradle 默认即可） | 不再手工调用 aapt2/d8 |
 
@@ -475,7 +475,7 @@ Skill {
 | Miuix AAR 与 AGP/D8 不兼容 | 中 | 阻断 | P0 先验证；必要时降级 Miuix 版本或只借设计 |
 | Compose 类进入 Xposed 注入进程 | 中 | 小爱异常 | Compose 只挂 MainActivity；P0 注入实测；失败拆 APK |
 | APK 体积/启动超预算 | 中 | 体验 | R8 + shrink；基线对比；移除 icons/blur/nav |
-| targetSdk 26 + Compose insets | 中 | 布局错位 | 手动 insets；P1 真机验证 |
+| targetSdk 34 + Compose insets | 中 | 布局错位 | 手动 insets；P1 真机验证 |
 | Miuix 0.x API 变更 | 中 | 维护 | 锁定 0.9.4；封装组件，不散用 |
 | 构建不可复现 | 中 | CI/发布 | lockfile/依赖锁定；Gradle cache；固定 JDK/SDK |
 | 两套保存管线 | 低 | 数据覆盖 | 旧 Config 只读；统一 `ConfigRepository` |
