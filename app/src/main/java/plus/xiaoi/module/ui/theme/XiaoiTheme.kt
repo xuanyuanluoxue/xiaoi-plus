@@ -48,6 +48,17 @@ data class XiaoiColors(
     val iconCyan: Color,
     val iconPurple: Color,
     val iconIndigo: Color,
+    // 悬浮玻璃底栏（仅 ui/components/glass 使用）。
+    /** 模糊层之上的半透明填充；不透明度保证标签 ≥4.5:1。 */
+    val glassFill: Color,
+    /** SOLID 回退的实心胶囊容器（主题色）。 */
+    val glassSolid: Color,
+    /** SOLID 胶囊上的图标/文字。 */
+    val glassOnSolid: Color,
+    /** 选中 pill 的叠加色。 */
+    val glassPill: Color,
+    /** 玻璃边缘高光/描边。 */
+    val glassEdge: Color,
 )
 
 /** 尺寸令牌；页面不写裸 dp。 */
@@ -67,6 +78,14 @@ data class XiaoiDimens(
     val touch: Dp = 48.dp,
     val iconCircle: Dp = 48.dp,
     val iconGlyph: Dp = 26.dp,
+    // 悬浮玻璃底栏尺寸；页面不写裸 dp。
+    val glassBarHeight: Dp = 58.dp,
+    val glassBarMargin: Dp = 10.dp,
+    val glassBarGap: Dp = 8.dp,
+    val glassBarInset: Dp = 6.dp,
+    val glassBarHorizontal: Dp = 16.dp,
+    val glassBarMaxWidth: Dp = 380.dp,
+    val glassTabIcon: Dp = 22.dp,
 )
 
 /** 字号层级；颜色由调用方显式传入，避免 Miuix 默认黑字在深色下不可读。 */
@@ -109,6 +128,11 @@ private val LightColors = XiaoiColors(
     iconCyan = Color(0xFF0071A4),
     iconPurple = Color(0xFF8944AB),
     iconIndigo = Color(0xFF3634A3),
+    glassFill = Color(0xFFFFFFFF).copy(alpha = 0.66f),
+    glassSolid = Color(0xFF2F4A6B),
+    glassOnSolid = Color(0xFFFFFFFF),
+    glassPill = Color(0xFF111318).copy(alpha = 0.06f),
+    glassEdge = Color(0xFFFFFFFF).copy(alpha = 0.72f),
 )
 
 private val DarkColors = XiaoiColors(
@@ -139,6 +163,11 @@ private val DarkColors = XiaoiColors(
     iconCyan = Color(0xFF64D2FF),
     iconPurple = Color(0xFFBF5AF2),
     iconIndigo = Color(0xFF5E5CE6),
+    glassFill = Color(0xFF161618).copy(alpha = 0.62f),
+    glassSolid = Color(0xFFC7D2FE),
+    glassOnSolid = Color(0xFF1A1B1E),
+    glassPill = Color(0xFFFFFFFF).copy(alpha = 0.12f),
+    glassEdge = Color(0xFFFFFFFF).copy(alpha = 0.20f),
 )
 
 private val LocalXiaoiColors = staticCompositionLocalOf { LightColors }
