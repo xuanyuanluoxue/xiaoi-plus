@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -34,6 +35,8 @@ private data class ToolItemUi(
     val params: String,
     val risk: String,
     val riskTone: XiaoiTone,
+    /** 风险（安全/需确认/危险）与“执行前需要一次性确认”是两个维度。 */
+    val requiresConfirm: Boolean = false,
 )
 
 private data class ToolGroupUi(
@@ -103,6 +106,10 @@ fun ToolsScreen(
                                     modifier = Modifier.weight(1f),
                                 )
                                 XiaoiBadge(item.risk, item.riskTone)
+                                if (item.requiresConfirm) {
+                                    Spacer(Modifier.width(6.dp))
+                                    XiaoiBadge("需确认", XiaoiTone.WARNING)
+                                }
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
@@ -146,6 +153,7 @@ private fun buildToolGroups(): List<ToolGroupUi> = listOf(
                 params = schemaParams(descriptor.inputSchema),
                 risk = actionRiskText(descriptor.risk),
                 riskTone = actionRiskTone(descriptor.risk),
+                requiresConfirm = descriptor.risk != ActionRisk.SAFE,
             )
         },
     ),

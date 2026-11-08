@@ -236,7 +236,7 @@ fun TokenScreen(
                     },
                 )
                 XiaoiValueRow(
-                    "实际将监听",
+                    "保存后将监听",
                     effectiveBindText(mcpLan, mcpEnabled, token, isAgent = false),
                     mono = true,
                 )
@@ -250,7 +250,7 @@ fun TokenScreen(
                     },
                 )
                 XiaoiValueRow(
-                    "实际将监听",
+                    "保存后将监听",
                     effectiveBindText(agentLan, mcpEnabled, token, isAgent = true),
                     mono = true,
                 )
@@ -276,7 +276,7 @@ fun TokenScreen(
                 }
             }
 
-            XiaoiGroupHeader("当前实际绑定")
+            XiaoiGroupHeader("当前运行绑定")
             XiaoiPreferenceCard {
                 XiaoiValueRow("8771", actualBridgeBind(bridge))
                 XiaoiValueRow("8770", actualAgentBind(agent))

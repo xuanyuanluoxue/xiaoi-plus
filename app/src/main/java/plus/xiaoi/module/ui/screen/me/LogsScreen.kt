@@ -1,10 +1,7 @@
 package plus.xiaoi.module.ui.screen.me
 
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,12 +30,18 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.ui.components.FilterChips
+import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
-import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.XiaoiPageActions
+import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
-import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Share
 
 private data class LogLine(val time: String, val level: String, val message: String)
 
@@ -51,13 +55,19 @@ private fun parseLine(line: String): LogLine {
     return LogLine("", "I", line)
 }
 
+/**
+ * 日志（SCREENS.md §13）。
+ *
+ * <p>页面级动作（清空/分享）放在顶栏；内容区只保留筛选、跟随开关与列表，
+ * 不再出现“大计数 + 右对齐按钮”的第二条工具栏。</p>
+ */
 @Composable
 fun LogsScreen(onMessage: (String) -> Unit) {
     val context = LocalContext.current
     val colors = XiaoiTheme.colors
     var lines by remember { mutableStateOf<List<LogLine>>(emptyList()) }
-    var filter by remember { mutableStateOf(0) } // 0 全部 / 1 信息 / 2 错误
-    var follow by remember { mutableStateOf(false) }
+    var filter by rememberSaveable { mutableStateOf(0) } // 0 全部 / 1 信息 / 2 错误
+    var follow by rememberSaveable { mutableStateOf(false) }
     var received by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -90,36 +100,40 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = XiaoiTheme.dimens.pagePad)) {
-        Spacer(Modifier.height(8.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("${shown.size} 条", color = colors.text, style = XiaoiTheme.typography.hero)
-            Row {
-                if (confirmClear) {
-                    XiaoiTextButton("取消") { confirmClear = false }
-                    XiaoiTextButton("确认清空", danger = true, enabled = lines.isNotEmpty()) {
-                        BridgeControlService.clearLogs()
-                        lines = emptyList()
-                        confirmClear = false
-                        onMessage("已清空本机日志缓冲（不删除小爱落盘日志）")
-                    }
-                } else {
-                    XiaoiTextButton("清空", enabled = lines.isNotEmpty()) { confirmClear = true }
-                    XiaoiTextButton("分享", enabled = lines.isNotEmpty()) {
-                        val text = lines.joinToString("\n") { "${it.time} ${it.level} ${it.message}" }
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, text)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "分享日志"))
-                    }
-                }
-            }
+    fun share() {
+        val text = lines.joinToString("\n") { "${it.time} ${it.level} ${it.message}" }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
         }
+        context.startActivity(Intent.createChooser(intent, "分享日志"))
+    }
+
+    XiaoiPageActions {
+        IconButton(
+            onClick = { confirmClear = true },
+            enabled = lines.isNotEmpty(),
+        ) {
+            Icon(
+                MiuixIcons.Delete,
+                contentDescription = "清空日志",
+                tint = if (lines.isNotEmpty()) colors.text else colors.textHint,
+            )
+        }
+        IconButton(
+            onClick = { share() },
+            enabled = lines.isNotEmpty(),
+        ) {
+            Icon(
+                MiuixIcons.Share,
+                contentDescription = "分享日志",
+                tint = if (lines.isNotEmpty()) colors.text else colors.textHint,
+            )
+        }
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = XiaoiTheme.dimens.pagePad)) {
+        Spacer(Modifier.height(4.dp))
         FilterChips(
             options = listOf("全部", "信息", "错误"),
             selected = when (filter) {
@@ -135,8 +149,13 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                 }
             },
         )
-        Spacer(Modifier.height(12.dp))
-        XiaoiPreferenceCard {
+        Text(
+            "${shown.size} / ${lines.size} 条 · 只读本机内存镜像",
+            color = colors.textSecondary,
+            style = XiaoiTheme.typography.caption,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+        )
+        XiaoiPreferenceGroup {
             XiaoiSwitchRow(
                 title = "跟随最新",
                 subtitle = "每 2 秒读取 App 内存镜像，不依赖 MCP",
@@ -199,4 +218,20 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             }
         }
     }
+
+    XiaoiConfirmDialog(
+        show = confirmClear,
+        title = "清空本机日志缓冲？",
+        message = "只会清空 App 内存镜像，不删除小爱进程落盘的 xiaoi_plus.log。",
+        confirmText = "清空",
+        secondaryNote = "新的日志会在小爱再次上报后继续出现。",
+        danger = true,
+        onConfirm = {
+            BridgeControlService.clearLogs()
+            lines = emptyList()
+            confirmClear = false
+            onMessage("已清空本机日志缓冲（不删除小爱落盘日志）")
+        },
+        onDismiss = { confirmClear = false },
+    )
 }

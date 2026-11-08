@@ -20,9 +20,15 @@ import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiCopyRow
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
-import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Community
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Link
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.Update
 
 private const val REPO = "https://github.com/xuanyuanluoxue/xiaoi-plus"
 
@@ -72,28 +78,27 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
         }
 
         XiaoiGroupHeader("信息")
-        XiaoiPreferenceCard {
-            XiaoiCopyRow("作者", "轩辕落雪") { copy("轩辕落雪", "作者名") }
-            XiaoiInfoRow("GitHub", "xuanyuanluoxue/xiaoi-plus", onClick = { open(REPO) })
-            XiaoiInfoRow("许可证", "GPL-3.0", onClick = { onNavigate("Licenses") })
-            XiaoiInfoRow("致谢", "OpenClaw · KernelSU Next · Miuix")
-        }
-
-        XiaoiGroupHeader("开源许可")
-        XiaoiCard {
-            Text(
-                "本项目以 GPL-3.0 分发。\n" +
-                    "Miuix 以 Apache-2.0 分发（© compose-miuix-ui contributors）；" +
-                    "其设计令牌与组件在本项目的 UI 中使用。\n" +
-                    "Kotlin / Compose / AndroidX 遵循各自许可证。",
-                color = colors.textSecondary,
-                style = XiaoiTheme.typography.body,
-            )
+        XiaoiPreferenceGroup {
+            XiaoiCopyRow("作者", "轩辕落雪", onCopy = { copy("轩辕落雪", "作者名") }, icon = MiuixIcons.Community)
+            XiaoiInfoRow("GitHub", "xuanyuanluoxue/xiaoi-plus", onClick = { open(REPO) }, icon = MiuixIcons.Link)
+            XiaoiInfoRow("许可证", "GPL-3.0 · 查看全部开源许可", onClick = { onNavigate("Licenses") }, icon = MiuixIcons.File)
+            XiaoiInfoRow("致谢", "OpenClaw · KernelSU Next · Miuix", icon = MiuixIcons.Community)
         }
 
         XiaoiGroupHeader("更新")
-        XiaoiCard {
-            XiaoiInfoRow("检查更新", "打开 GitHub Releases", onClick = { open("$REPO/releases") })
+        XiaoiPreferenceGroup {
+            XiaoiInfoRow(
+                "检查更新",
+                "打开 GitHub Releases",
+                onClick = { open("$REPO/releases") },
+                icon = MiuixIcons.Update,
+            )
+            XiaoiInfoRow(
+                "项目主页",
+                "README、构建说明与已知限制",
+                onClick = { open(REPO) },
+                icon = MiuixIcons.Refresh,
+            )
         }
 
         Spacer(Modifier.height(16.dp))

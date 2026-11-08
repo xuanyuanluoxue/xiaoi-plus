@@ -36,10 +36,18 @@ import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
-import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Backup
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Import
+import top.yukonga.miuix.kmp.icon.extended.Paste
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.Share
+import top.yukonga.miuix.kmp.icon.extended.UploadCloud
 import java.io.File
 
 /**
@@ -290,13 +298,14 @@ fun ConfigManageScreen(
 
         if (readOnly) {
             XiaoiGroupHeader("损坏恢复")
-            XiaoiPreferenceCard {
+            XiaoiPreferenceGroup {
                 val restore = snap.legacyBackups.firstOrNull()
                 if (restore != null) {
                     XiaoiInfoRow(
                         title = "恢复最近旧配置",
                         subtitle = "${restore.name} · 校验通过后才原子写入",
                         onClick = { recovery = RecoveryKind.LEGACY },
+                        icon = MiuixIcons.Backup,
                     )
                 } else {
                     XiaoiInfoRow(
@@ -308,6 +317,9 @@ fun ConfigManageScreen(
                     title = "重建默认配置",
                     subtitle = "默认骨架 + 当前 prefs；损坏原文移入 .corrupt 备份",
                     onClick = { recovery = RecoveryKind.DEFAULTS },
+                    icon = MiuixIcons.Refresh,
+                    badge = "写入",
+                    badgeTone = XiaoiTone.WARNING,
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -324,7 +336,7 @@ fun ConfigManageScreen(
         }
 
         XiaoiGroupHeader("当前配置")
-        XiaoiPreferenceCard {
+        XiaoiPreferenceGroup {
             XiaoiInfoRow(
                 title = "config.json",
                 subtitle = buildString {
@@ -335,20 +347,27 @@ fun ConfigManageScreen(
                         if (snap.cfg?.mcpToken?.isNotBlank() == true) "已设置" else "未设置",
                     )
                 },
+                icon = MiuixIcons.File,
             )
         }
 
         XiaoiGroupHeader("备份与还原")
-        XiaoiPreferenceCard {
+        XiaoiPreferenceGroup {
             XiaoiInfoRow(
                 title = "备份（含密钥）",
                 subtitle = "完整 JSON · 含明文 API Key 与 MCP Token",
                 onClick = { showFullBackupConfirm = true },
+                icon = MiuixIcons.Backup,
+                badge = "含密钥",
+                badgeTone = XiaoiTone.WARNING,
             )
             XiaoiInfoRow(
                 title = "还原配置",
                 subtitle = "选择 JSON；校验失败或脱敏文件不会写入",
                 onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                icon = MiuixIcons.Import,
+                badge = "覆盖",
+                badgeTone = XiaoiTone.WARNING,
             )
             XiaoiInfoRow(
                 title = "从剪贴板还原",
@@ -357,11 +376,14 @@ fun ConfigManageScreen(
                     val text = MeSupport.readClipboard(context)
                     if (text == null) onMessage("剪贴板里没有可用的 JSON") else prepareImport(text)
                 },
+                icon = MiuixIcons.Paste,
+                badge = "覆盖",
+                badgeTone = XiaoiTone.WARNING,
             )
         }
 
         XiaoiGroupHeader("导出与分享")
-        XiaoiPreferenceCard {
+        XiaoiPreferenceGroup {
             XiaoiInfoRow(
                 title = "导出（脱敏）",
                 subtitle = "密钥与令牌写成 ***；只能排障，不能还原",
@@ -369,20 +391,25 @@ fun ConfigManageScreen(
                     exportMasked = true
                     exportLauncher.launch("xiaoi-plus-config-masked.json")
                 },
+                icon = MiuixIcons.UploadCloud,
             )
             XiaoiInfoRow(
                 title = "分享（脱敏）",
                 subtitle = "通过系统分享；文件可能被转发或留存",
                 onClick = { shareMasked() },
+                icon = MiuixIcons.Share,
             )
         }
 
         XiaoiGroupHeader("从运行中的小爱导入")
-        XiaoiPreferenceCard {
+        XiaoiPreferenceGroup {
             XiaoiInfoRow(
                 title = "从运行中的小爱导入",
                 subtitle = "读取当前生效的模型/端点；密钥沿用当前文件",
                 onClick = { showRuntimeImportConfirm = true },
+                icon = MiuixIcons.Refresh,
+                badge = "写入",
+                badgeTone = XiaoiTone.INFO,
             )
         }
 

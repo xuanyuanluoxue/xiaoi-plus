@@ -27,11 +27,19 @@ import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
 import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
 import plus.xiaoi.module.ui.status.agentPortUi
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Link
+import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.Lock
+import top.yukonga.miuix.kmp.icon.extended.Tasks
+import top.yukonga.miuix.kmp.icon.extended.Unlock
+import top.yukonga.miuix.kmp.icon.extended.WorldClock
 
 /**
  * 接入一级：先回答“谁可以连进来、连的是哪个通道、安不安全”。
@@ -189,36 +197,42 @@ fun AccessScreen(
         }
 
         XiaoiGroupHeader("入口")
-        XiaoiPreferenceCard {
+        XiaoiPreferenceGroup {
             XiaoiInfoRow(
                 title = "端口与服务",
                 subtitle = "8771/8770 只读详情",
                 onClick = { onNavigate("Bridge") },
+                icon = MiuixIcons.Link,
             )
             XiaoiInfoRow(
                 title = "令牌与局域网",
                 subtitle = "令牌掩码/生成、8771 与 8770 LAN",
                 onClick = { onNavigate("Token") },
+                icon = MiuixIcons.Lock,
             )
             XiaoiInfoRow(
                 title = "连接信息",
                 subtitle = "URL、adb forward、客户端 JSON 与 Skill",
                 onClick = { onNavigate("Connect") },
+                icon = MiuixIcons.WorldClock,
             )
             XiaoiInfoRow(
                 title = "能力清单",
                 subtitle = "${CapabilityRegistry.all().size} 条能力 · 搜索/筛选/详情",
                 onClick = { onNavigate("Capabilities") },
+                icon = MiuixIcons.ListView,
             )
             XiaoiInfoRow(
                 title = "工具清单",
                 subtitle = "5 个动作 · 8771 8 个 · 8770 6 个",
                 onClick = { onNavigate("Tools") },
+                icon = MiuixIcons.Tasks,
             )
             XiaoiInfoRow(
                 title = "权限",
                 subtitle = "通知、精确闹钟、全屏、电池、usage、通知监听",
                 onClick = { onNavigate("Permissions") },
+                icon = MiuixIcons.Unlock,
             )
         }
 

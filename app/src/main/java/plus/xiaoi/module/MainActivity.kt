@@ -12,16 +12,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.core.NavStack
+import plus.xiaoi.module.ui.components.LocalXiaoiPageActions
 import plus.xiaoi.module.ui.components.XiaoiBottomBar
+import plus.xiaoi.module.ui.components.XiaoiPageActionsState
 import plus.xiaoi.module.ui.components.XiaoiTopBar
 import plus.xiaoi.module.ui.screen.XiaoiPlaceholder
 import plus.xiaoi.module.ui.screen.access.AccessScreen
@@ -179,6 +183,10 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     var route by remember { mutableStateOf(nav.current()) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // 每个路由一份页面动作容器：screen 通过 LocalXiaoiPageActions 把动作放进顶栏。
+    val pageActions = remember(route) { XiaoiPageActionsState() }
+    // 二级页返回后恢复搜索/筛选/滚动位置，而不是重建页面。
+    val screenStates = rememberSaveableStateHolder()
 
     fun message(text: String) {
         scope.launch { snackbarHostState.showSnackbar(text) }
@@ -213,6 +221,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
             XiaoiTopBar(
                 title = Routes.titleOf(key),
                 onBack = if (nav.isRoot()) null else ({ back() }),
+                actions = { pageActions.actions?.invoke(this) },
             )
         },
         bottomBar = {
@@ -227,7 +236,9 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
         containerColor = colors.bg,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            when (key) {
+            CompositionLocalProvider(LocalXiaoiPageActions provides pageActions) {
+                screenStates.SaveableStateProvider(route) {
+                    when (key) {
                 Routes.HOME -> HomeScreen(
                     onNavigate = { navigate(it) },
                     onMessage = { message(it) },
@@ -328,6 +339,8 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                     title = "页面不存在",
                     note = "未知路由，返回首页。",
                 )
+                    }
+                }
             }
         }
     }

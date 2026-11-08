@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,7 +36,7 @@ import top.yukonga.miuix.kmp.basic.Text
 private const val FILTER_ALL = "全部"
 
 private val DOMAIN_FILTERS = listOf(FILTER_ALL, "小爱", "系统", "桥")
-private val STATUS_FILTERS = listOf(FILTER_ALL, "已实现", "部分可用", "需授权", "规划中", "不提供")
+private val STATUS_FILTERS = listOf(FILTER_ALL, "可用", "部分可用", "需授权", "规划中", "不提供", "不支持")
 
 /** 能力清单：67 条只读能力，按域/状态筛选 + 搜索；无执行按钮。 */
 @Composable
@@ -48,9 +49,9 @@ fun CapabilitiesScreen(
     // Compose 窗口首次获得焦点时会把焦点给第一个可聚焦控件；用 1dp 焦点占位块
     // 接住初始焦点，避免搜索框一进页面就弹键盘。
     LaunchedEffect(Unit) { initialFocus.requestFocus() }
-    var query by remember { mutableStateOf("") }
-    var domain by remember { mutableStateOf(FILTER_ALL) }
-    var status by remember { mutableStateOf(FILTER_ALL) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var domain by rememberSaveable { mutableStateOf(FILTER_ALL) }
+    var status by rememberSaveable { mutableStateOf(FILTER_ALL) }
 
     val all = remember { CapabilityRegistry.all() }
     val filtered = remember(query, domain, status) {
@@ -177,14 +178,14 @@ private fun matchesStatus(descriptor: CapabilityRegistry.Descriptor, selected: S
 }
 
 private fun statusLabel(status: CapabilityRegistry.CapabilityStatus): String = when (status) {
-    CapabilityRegistry.CapabilityStatus.AVAILABLE -> "已实现"
+    CapabilityRegistry.CapabilityStatus.AVAILABLE -> "可用"
     CapabilityRegistry.CapabilityStatus.LIMITED -> "部分可用"
     CapabilityRegistry.CapabilityStatus.PERMISSION_MISSING -> "需授权"
     CapabilityRegistry.CapabilityStatus.PLANNED -> "规划中"
     CapabilityRegistry.CapabilityStatus.DISABLED,
     CapabilityRegistry.CapabilityStatus.UNAVAILABLE,
-    CapabilityRegistry.CapabilityStatus.UNSUPPORTED,
     -> "不提供"
+    CapabilityRegistry.CapabilityStatus.UNSUPPORTED -> "不支持"
 }
 
 private fun CapabilityRegistry.CapabilityStatus.toUiStatus(): CapabilityStatus = when (this) {

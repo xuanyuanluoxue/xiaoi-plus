@@ -36,11 +36,18 @@ import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
-import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.XiaoiPreferenceGroup
 import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Backup
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Help
+import top.yukonga.miuix.kmp.icon.extended.Info
+import top.yukonga.miuix.kmp.icon.extended.Notes
+import top.yukonga.miuix.kmp.icon.extended.Theme
 
 /**
  * 我的（SCREENS.md §9）。
@@ -202,21 +209,24 @@ fun MeScreen(
         }
 
         XiaoiGroupHeader("设置")
-        XiaoiPreferenceCard {
+        XiaoiPreferenceGroup {
             XiaoiInfoRow(
                 title = "外观",
                 subtitle = "当前：$themeLabel · 三档主题即时生效",
                 onClick = { onNavigate("Appearance") },
+                icon = MiuixIcons.Theme,
             )
             XiaoiInfoRow(
                 title = "配置管理",
                 subtitle = "备份（含密钥）、还原、脱敏导出、运行时导入、损坏恢复",
                 onClick = { onNavigate("ConfigManage") },
+                icon = MiuixIcons.Backup,
             )
             XiaoiInfoRow(
                 title = "诊断",
                 subtitle = "四维状态、8771/8770、权限矩阵、配置完整性、兼容模式",
                 onClick = { onNavigate("Diagnostics") },
+                icon = MiuixIcons.Info,
             )
             XiaoiInfoRow(
                 title = "日志",
@@ -226,21 +236,24 @@ fun MeScreen(
                     else -> "$n 条错误 · 查看控制面与小爱上报"
                 },
                 onClick = onOpenLogs,
+                icon = MiuixIcons.Notes,
             )
             XiaoiInfoRow(
                 title = "关于",
                 subtitle = "版本、GitHub、许可证与致谢",
                 onClick = onOpenAbout,
+                icon = MiuixIcons.Help,
             )
             XiaoiInfoRow(
                 title = "开源许可",
                 subtitle = "GPL-3.0、Apache-2.0（Miuix）、Kotlin/Compose/AndroidX",
                 onClick = { onNavigate("Licenses") },
+                icon = MiuixIcons.File,
             )
         }
 
         XiaoiGroupHeader("危险区")
-        XiaoiPreferenceCard {
+        XiaoiPreferenceGroup {
             XiaoiInfoRow(
                 title = "停用全部对外能力",
                 subtitle = if (dangerOpen) "点按收起" else "默认折叠 · 执行前需要二次确认",

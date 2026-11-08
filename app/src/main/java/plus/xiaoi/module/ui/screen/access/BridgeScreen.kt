@@ -20,13 +20,17 @@ import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
+import plus.xiaoi.module.ui.components.XiaoiPageActions
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
-import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
 import plus.xiaoi.module.ui.status.agentPortUi
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Notes
 
 /**
  * 端口与服务（只读）：8771/8770 分开渲染，未知字段显示“未确认/—”。
@@ -42,6 +46,12 @@ fun BridgeScreen(
     val bridge = rememberBridgeSnapshot()
     val agent = rememberAgentSnapshot()
     val facts = loaded.value
+
+    XiaoiPageActions {
+        IconButton(onClick = { onNavigate("Logs") }) {
+            Icon(MiuixIcons.Notes, contentDescription = "查看日志", tint = colors.text)
+        }
+    }
 
     Column(
         Modifier
@@ -60,15 +70,12 @@ fun BridgeScreen(
         val now = System.currentTimeMillis()
         val agentState = agentPortUi(mcpEnabled, agent)
 
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "只读快照，不重启服务",
-                color = colors.textSecondary,
-                style = XiaoiTheme.typography.caption,
-            )
-            Spacer(Modifier.weight(1f))
-            XiaoiTextButton("查看日志") { onNavigate("Logs") }
-        }
+        Text(
+            "只读快照，不重启服务",
+            color = colors.textSecondary,
+            style = XiaoiTheme.typography.caption,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
 
         XiaoiGroupHeader("8771 控制面")
         XiaoiCard {

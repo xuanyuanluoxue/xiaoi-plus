@@ -57,7 +57,7 @@ fun XiaoiCard(
 @Composable
 fun XiaoiPreferenceCard(
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column { content() }
