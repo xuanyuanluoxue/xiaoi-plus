@@ -1,5 +1,19 @@
 # 更新日志
 
+## 0.14.1 — 2026-11-08 — 修复启动入口仍指向旧首页
+
+> versionCode 19 → 20。
+
+- **根因**：0.14.0 的 `AndroidManifest.xml` 仍把 `MAIN/LAUNCHER` 放在旧
+  `HomeActivity`，`MainActivity` 是 `exported=false`。从桌面图标进入时看到的还是
+  旧 XML 首页，Compose UI 只能靠 `--es route` 打开。
+- **修复**：`MAIN/LAUNCHER` 移到 `MainActivity`（`exported=true`）；`HomeActivity`
+  改为 `exported=false`，只从「我的 › 兼容模式」显式打开。
+- **门禁**：`check-consistency.sh` 新增 launcher 检查，启动入口不是
+  `.MainActivity` 或未 `exported=true` 时直接失败。
+- **验证**：覆盖安装后 `cmd package resolve-activity` 返回
+  `plus.xiaoi.module/.MainActivity`；桌面图标启动落在 Compose 首页。
+
 ## 0.14.0 — 2026-11-08 — Compose + Miuix UI 重写
 
 > versionCode 18 → 19（A8 定版）。设置页从「4 个 Activity + XML」迁到

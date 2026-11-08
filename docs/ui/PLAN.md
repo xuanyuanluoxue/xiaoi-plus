@@ -2,7 +2,7 @@
 
 > 状态：**P0 / P1 / P2 / P3 已完成**（R8 1.6 MiB、CI 收尾、LSPosed 真机复验）
 > 日期：2026-11-08（初稿 2026-11-07）
-> 目标版本：`0.14.0`（versionCode 19；A8 定版）
+> 目标版本：`0.14.1`（versionCode 20；修复 0.14.0 launcher 指向旧首页）
 > 参考：
 > - 可行性评估：`~/xiaoi-plus-dev/tmp/miuix-ui-feasibility.md`
 > - 页面设计：`~/xiaoi-plus-dev/tmp/ui-page-design.md`
@@ -422,7 +422,7 @@ Skill {
 | P3.3 | `check-consistency.sh`/`verify-apk.sh` 适配 | ✅ 门禁全绿 |
 | P3.4 | 截图矩阵 + 功能回归 | ✅ P2 功能 65 PASS；浅色 18 页/深色 8 页；LSPosed 注入通过 |
 | P3.5 | 文档：README/design-system/ui-architecture/CHANGELOG/HANDOVER | ✅ A9 已同步 0.14 |
-| P3.6 | 发布 `0.14.0` | 待打 tag；构建与验签已就绪 |
+| P3.6 | 发布 `0.14.0` / `0.14.1` | ✅ 0.14.1 修复 launcher 并已发布 |
 
 > 已知限制：8770 与小米自带本地服务同端口，存在 EADDRINUSE 抢占；8771 不受影响。
 

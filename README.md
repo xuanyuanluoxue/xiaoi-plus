@@ -6,8 +6,8 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)。
 >
-> 📦 当前测试版：**v0.14.0**（Compose + Miuix UI 重写）·
-> [版本说明](docs/ui/RELEASE-0.14.md) ·
+> 📦 当前测试版：**v0.14.1**（Compose + Miuix UI 重写）·
+> [版本说明](docs/ui/RELEASE-0.14.1.md) ·
 > [下载 / 发布状态](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
@@ -294,7 +294,7 @@ export JAVA_HOME=/path/to/jdk-21
 R8/shrink 与 CI 已随 0.14 收尾：release 开启 `minifyEnabled` + `shrinkResources`，
 APK 从 8.4 MiB 降到 **1.6 MiB**（实测）。版本号单一来源是
 `app/src/main/AndroidManifest.xml` 的 `android:versionName` / `android:versionCode`
-（Gradle 读取）；0.14 为 `0.14.0` / `19`。完整构建说明见
+（Gradle 读取）；当前为 `0.14.1` / `20`。完整构建说明见
 [docs/ui/BUILD.md](docs/ui/BUILD.md)，版本说明见
 [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)。
 

@@ -52,6 +52,21 @@ else
         || fail "minSdk/targetSdk 必须保持 26（实际 $GRADLE_MIN/$GRADLE_TARGET）"
 fi
 
+# ---------------------------------------------------------------- 1.1) 启动入口
+# 0.14 起 Compose MainActivity 必须是唯一 LAUNCHER；旧 XML 首页不能抢图标。
+LAUNCHER_ACTIVITY="$(grep -B12 'android.intent.category.LAUNCHER' "$MANIFEST" 2>/dev/null \
+    | sed -n 's/.*android:name="\(\.[^"]*\)".*/\1/p' | tail -1)"
+if [ "$LAUNCHER_ACTIVITY" = ".MainActivity" ]; then
+    pass "launcher 指向 .MainActivity"
+else
+    fail "launcher 必须是 .MainActivity（实际 '${LAUNCHER_ACTIVITY:-未找到}'）"
+fi
+if grep -A3 'android:name=".MainActivity"' "$MANIFEST" | grep -q 'android:exported="true"'; then
+    pass "MainActivity exported=true"
+else
+    fail "MainActivity 必须 exported=true（launcher 需要）"
+fi
+
 # ---------------------------------------------------------------- 2) 运行时资源查找
 HITS="$(grep -rn 'getIdentifier' app/src/main/java 2>/dev/null || true)"
 if [ -z "$HITS" ]; then

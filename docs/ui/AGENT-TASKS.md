@@ -46,8 +46,8 @@
 - `main` 已推送；门禁全绿；R8 包真机安装、LSPosed 注入与 8771 已复验。
 - 已知限制：8770 与小米自带服务同端口，存在 EADDRINUSE 抢占；8771 不受影响。
 - 剩余 P2 视觉项（顶栏动作、底栏图标风格、日志域筛选、Connect Sheet 等）转 0.15。
-- 发布：`v0.14.0` 已打 tag 并通过 CI 创建 GitHub Release；资产
-  `xiaoi-plus-0.14.0.apk`（1.6 MiB）SHA-256 与签名均已复验。
+- 发布：`v0.14.0` 已发布，但 launcher 仍指向旧 `HomeActivity`；
+  `v0.14.1` 修复启动入口并重新发布（versionCode 20）。
 
 ## 1. Wave 1：地基（2 个 Agent，可并行）
 

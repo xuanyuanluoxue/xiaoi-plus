@@ -117,7 +117,7 @@ keystore/xiaoi.keystore
 | compileSdk | 37 |
 | minSdk / targetSdk | 26 / 26 |
 | Java/Kotlin target | 11（Compose 1.12 要求） |
-| versionName / versionCode | 0.14.0 / 19（`AndroidManifest.xml` 单一来源） |
+| versionName / versionCode | 0.14.1 / 20（`AndroidManifest.xml` 单一来源） |
 | release R8 | `isMinifyEnabled = true`、`isShrinkResources = true` |
 
 - 不引入 `miuix-blur`、`miuix-nav`、navigation-compose、DI、图片库；`miuix-icons` 仅用于底栏/空态矢量图标。
@@ -154,7 +154,7 @@ android {
 }
 ```
 
-- `versionCode`/`versionName` 单一来源：**AndroidManifest.xml**（0.14 起 Gradle 读取）；目标值 `0.14.0` / `19`，由 A8 定版。
+- `versionCode`/`versionName` 单一来源：**AndroidManifest.xml**（0.14 起 Gradle 读取）；当前值 `0.14.1` / `20`。
 - 签名读取 `KEYSTORE_PATH`/`KEYSTORE_PASS`/`KEY_ALIAS`/`KEY_PASSWORD`，与 `scripts/release.sh` 一致。
 - `android:debuggable` 只在 debug。
 
@@ -367,5 +367,5 @@ adb shell am start -n plus.xiaoi.module/.MainActivity --es route Home
 | `verify-apk.sh` | PASS；`plus.xiaoi.module`；指纹 `d7dd34b2…d19b` |
 | APK 体积 | 8.3 MiB（R8 关闭）；开启 R8 后以 A8 RELEASE-REPORT 为准 |
 
-> 0.14 的 versionName/versionCode 由 A8 改为 `0.14.0` / `19`；若本文与你本地
+> 0.14 的 versionName/versionCode 当前为 `0.14.1` / `20`；若本文与你本地
 > Manifest 不一致，以 Manifest 和 A8 报告为准。
