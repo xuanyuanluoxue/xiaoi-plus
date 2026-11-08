@@ -39,6 +39,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- P1 单 Activity 壳；P2 完成后接替 launcher。 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.XiaoiPlus" />
         <activity android:name=".ConfigActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
         <activity android:name=".LogsActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
         <activity android:name=".AboutActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />

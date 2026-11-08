@@ -1,0 +1,96 @@
+# P1 报告：单 Activity + 4 tab + 主题 + 日志/关于
+
+> 日期：2026-11-08
+> 分支：`feat/ui-p1`（从 `main@ac5ef73` 创建）
+> 工作区：`~/xiaoi-plus-dev/worktrees/ui-p1`
+> 范围：P1 地基；首页/小爱/接入暂为占位，真实页面在 P2。
+
+---
+
+## 1. 交付内容
+
+| 文件 | 内容 |
+| --- | --- |
+| `MainActivity.kt` | 单 Activity 壳；4 tab；`NavStack` 单栈；返回规则；Snackbar |
+| `ui/theme/XiaoiTheme.kt` | 19 色令牌、尺寸、字号；深浅色；`surfaceContainer` 对齐 |
+| `ui/components/XiaoiBars.kt` | 顶栏、底栏、Snackbar |
+| `ui/components/XiaoiSurfaces.kt` | Card、Button、GroupHeader、Badge、Chip、EmptyState、StatTile、Divider |
+| `ui/components/XiaoiRows.kt` | InfoRow、ValueRow、SwitchRow |
+| `ui/screen/me/MeScreen.kt` | 本机/版本、主题三档、日志/关于入口、旧版入口 |
+| `ui/screen/me/LogsScreen.kt` | 日志读取/筛选/跟随/清空/分享、三种空态 |
+| `ui/screen/me/AboutScreen.kt` | 版本、作者、GitHub、许可证、致谢、更新、免责 |
+| `ui/screen/PlaceholderScreen.kt` | P2 占位页，保留旧版入口 |
+| `AndroidManifest.xml` | 新增 `MainActivity`（非导出；P2 接替 launcher） |
+
+- 旧 `HomeActivity/ConfigActivity/LogsActivity/AboutActivity` 保留；P1 不改变启动入口。
+- `MainActivity` 支持调试深链：`--es route Me|Logs|About|Home|Xiaoai|Access`（P2 换成正式 `TAB/PAGE`）。
+
+## 2. 构建与门禁
+
+```bash
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --offline
+```
+
+| 项 | 结果 |
+| --- | --- |
+| release APK | 7.5 MB（R8 仍关） |
+| versionCode / versionName | 18 / 0.13.0-agent.2（P1 不升版本） |
+| 签名 / 包名 / 指纹 | PASS；`plus.xiaoi.module`；`d7dd34b2…d19b` |
+| `tests/run.sh` | 全部通过（1653 断言） |
+| `check-consistency.sh` | 通过 |
+| `verify-apk.sh` | PASS |
+
+## 3. 真机验证（31106e85）
+
+| 项 | 结果 |
+| --- | --- |
+| 覆盖安装 | 成功，配置保留 |
+| `MainActivity` 启动 | COLD 502ms / WARM 150ms；无 FATAL |
+| 底部 4 tab | 首页 / 小爱 / 接入 / 我的 均可切换 |
+| 深链 `route=Logs` | 正常；筛选/跟随/清空/分享可见；空态“等待小爱上报日志” |
+| 深链 `route=About` | 正常；版本/作者/GitHub/许可证/致谢/更新/免责 |
+| 深链 `route=Me` | 正常；本机卡、主题三档、日志/关于、旧版入口 |
+| 深色主题 | 可切换；文字/卡片/底栏可读；切回“跟随系统”正常 |
+| 返回 | 二级页返回一级；非首页根页返回首页；首页退出 |
+
+### 发现并修复
+
+1. **`painterResource(R.mipmap.ic_launcher)` 崩溃**
+   adaptive icon 不是 Vector/PNG，Compose 抛
+   `Only VectorDrawables and rasterized asset types are supported`。
+   改为现有矢量 `R.drawable.ic_xiaoi`。
+2. **深色标题黑字**
+   P0 Spike 的 `MiuixTheme.textStyles.title1` 默认色在深色下仍为黑；
+   P1 所有 `Text` 显式传 `XiaoiTheme.colors.text`，已验证可读。
+3. **深色卡片颜色**
+   Miuix `surfaceContainer` 默认不是我们的 `surface`；已在 `XiaoiTheme` 显式传入
+   `surfaceContainer/onSurfaceContainer`，深浅色卡片与设计令牌一致。
+4. **“我的”tab 点按偶发打开支付宝**
+   是设备上支付宝浮层/前台残留造成的输入拦截；`force-stop` 支付宝后点按正常。
+   不是 `XiaoiBottomBar` 的布局问题。
+
+## 4. 截图
+
+```text
+~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/
+├─ p1-home-light.png       # 首页占位 + 4 tab
+├─ p1-me-light2.png        # 我的（浅色，最终卡片色）
+├─ p1-me-dark2.png         # 我的（深色）
+├─ p1-logs-light.png       # 日志空态
+└─ p1-about-light.png      # 关于
+```
+
+## 5. 已知限制
+
+- 首页/小爱/接入仍是占位，P2 接入；`MainActivity` 还不是 launcher。
+- 日志页当前显示 0 条（控制面镜像为空）；页面逻辑与三种空态已验证。
+- 底栏暂时只用文字标签，未接 Miuix 图标；P2 可补图标与选中动效。
+- 深链仍是调试用 `route` extra；P2 按 `SCREENS.md` 换成 `TAB/PAGE/FOCUS`。
+- R8 未开，release 7.5MB，P3 处理。
+
+## 6. 结论
+
+**P1 完成，可以进入 P2 页面开发。**
+
+下一步：Home / Xiaoai+Model / Access+Capability / Me 完整页；先补 `AgentRuntime`、`IssueResolver`
+接入首页，再把 `MainActivity` 设为 launcher。
