@@ -171,8 +171,9 @@ XIAOI_TOKEN=... ./scripts/contract-test.sh --check
    `getIdentifier`（一致性门禁保证），但 Miuix 若未来引入按名查找需重新评估。
 2. **R8 keep 依赖字符串契约**：新增 `ComponentName`/`Class.forName` 加载的本项目类时，
    必须同步 `proguard-rules.pro`。
-3. **CI 实跑未验证**：workflow 已按 JDK 21 / SDK 37 / Gradle 9.9 改写并通过 YAML
-   解析，但未 push，GitHub 上的 action 版本与缓存命中需主 Agent 首次 push 后确认。
+3. **CI**：workflow 已按 JDK 21 / SDK 37 / Gradle 9.9 改写；首次实跑因 GitHub
+   Releases 504 换成腾讯镜像并固定 SHA-256，随后 `main` 两次 push 均 success
+   （含 docs-only 46s 缓存命中）。
 4. `docs/ci.md` 仍描述旧 `build.sh` 流程；按分工本次只更新
    `docs/ui/BUILD.md`，建议主 Agent 合并时同步 `docs/ci.md`。
 5. **8770 端口冲突（已知，非 R8 引入）**：小米「超级小爱」自身监听
