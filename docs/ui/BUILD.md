@@ -59,8 +59,11 @@ sdk.dir=/home/chatxavier/Android/Sdk
 cp -r /home/chatxavier/code/github/miuix/gradle/wrapper gradle/
 cp /home/chatxavier/code/github/miuix/gradlew .
 cp /home/chatxavier/code/github/miuix/gradlew.bat .
-# 修改 gradle/wrapper/gradle-wrapper.properties:
-# distributionUrl=https\://services.gradle.org/distributions/gradle-9.9.0-bin.zip
+# gradle/wrapper/gradle-wrapper.properties 已固定 9.9.0：
+#   distributionUrl=https\://mirrors.cloud.tencent.com/gradle/gradle-9.9.0-bin.zip
+#   distributionSha256Sum=0b00b0ff…
+# services.gradle.org 会 307 到 GitHub Releases；GitHub CDN 曾持续 504，
+# 因此改用镜像并用固定 SHA-256 校验完整性。
 chmod +x gradlew
 ```
 
