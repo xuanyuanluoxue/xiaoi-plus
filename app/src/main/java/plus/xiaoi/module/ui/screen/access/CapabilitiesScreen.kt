@@ -1,18 +1,24 @@
 package plus.xiaoi.module.ui.screen.access
 
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import plus.xiaoi.module.core.CapabilityRegistry
 import plus.xiaoi.module.ui.components.CapabilityRisk
@@ -38,6 +44,10 @@ fun CapabilitiesScreen(
     onMessage: (String) -> Unit,
 ) {
     val colors = XiaoiTheme.colors
+    val initialFocus = remember { FocusRequester() }
+    // Compose 窗口首次获得焦点时会把焦点给第一个可聚焦控件；用 1dp 焦点占位块
+    // 接住初始焦点，避免搜索框一进页面就弹键盘。
+    LaunchedEffect(Unit) { initialFocus.requestFocus() }
     var query by remember { mutableStateOf("") }
     var domain by remember { mutableStateOf(FILTER_ALL) }
     var status by remember { mutableStateOf(FILTER_ALL) }
@@ -57,6 +67,12 @@ fun CapabilitiesScreen(
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop),
     ) {
+        Box(
+            Modifier
+                .size(1.dp)
+                .focusRequester(initialFocus)
+                .focusable(),
+        )
         LazyColumn(Modifier.fillMaxSize()) {
             item {
                 SearchField(
