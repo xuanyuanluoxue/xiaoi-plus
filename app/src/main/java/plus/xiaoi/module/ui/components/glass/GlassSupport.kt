@@ -29,10 +29,18 @@ object GlassSupport {
     const val FULL_MIN_SDK: Int = 33
     const val BLUR_MIN_SDK: Int = 31
 
-    /** miuix-blur 的 RuntimeShader 能力；只在 API 33+ 才会真正调用库函数。 */
+    /**
+     * miuix-blur 的 RuntimeShader 能力。
+     *
+     * <p>库调用放在独立对象里：API < 33 时短路，不会加载/解析 miuix-blur 的类，
+     * 避免低版本在类校验阶段碰到 API 33 才有的 RuntimeShader 符号。</p>
+     */
     fun isRuntimeShaderSupported(): Boolean =
-        Build.VERSION.SDK_INT >= FULL_MIN_SDK &&
-            top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported()
+        Build.VERSION.SDK_INT >= FULL_MIN_SDK && BlurCapability.isSupported()
+
+    private object BlurCapability {
+        fun isSupported(): Boolean = top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported()
+    }
 
     /** 是否可以使用完整液态玻璃（任务要求的入口名）。 */
     fun isGlassSupported(): Boolean = isRuntimeShaderSupported()
