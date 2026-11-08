@@ -315,6 +315,10 @@ Compose 类是否在小爱进程产生冲突。必须等设备恢复后补测。
 | 深浅色截图 | `~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/p0-spike-{light,dark}.png` |
 | 首页截图 | `~/xiaoi-plus-dev/artifacts/2026-11-08/screenshots/p0-home.png` |
 
+**深色模式发现**：Spike 的 `MiuixTheme.textStyles.title1` 在深色下仍是黑字，黑底黑字不可读；
+P1 的 `XiaoiTheme` 必须显式提供 `onBackground` 文本色（或包裹 `LocalContentColor`），
+不能直接依赖 Miuix 默认 Text 颜色。浅色/深色截图已存档。
+
 ### LSPosed 注入
 
 - release APK 的 `assets/xposed_init` = `plus.xiaoi.module.Hook`。
