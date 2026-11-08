@@ -3,10 +3,14 @@ package plus.xiaoi.module.ui.components
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -18,6 +22,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import plus.xiaoi.module.R
 import plus.xiaoi.module.core.NavStack
 import plus.xiaoi.module.ui.theme.XiaoiTheme
@@ -25,7 +30,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Link
@@ -33,8 +37,8 @@ import top.yukonga.miuix.kmp.icon.extended.Mic
 import top.yukonga.miuix.kmp.icon.extended.Settings
 
 /**
- * 顶栏：Miuix [TopAppBar] 的「返回行 + 大标题」布局，与 XiaomiHelper 的
- * HyperXPage 一致；页面级动作走 `actions`，不再在内容区另起一条工具栏。
+ * 顶栏：与参考实现的 `ManagerCompactTopBar` 对齐——状态栏下 48dp 行、
+ * 32sp 标题、返回按钮与页面动作同排；不做折叠大标题的空白行。
  */
 @Composable
 fun XiaoiTopBar(
@@ -43,22 +47,33 @@ fun XiaoiTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = XiaoiTheme.colors
-    TopAppBar(
-        title = "",
-        titleColor = colors.text,
-        largeTitle = title,
-        largeTitleColor = colors.text,
-        color = colors.bg,
-        navigationIcon = {
-            if (onBack != null) {
-                IconButton(onClick = onBack) {
-                    Icon(MiuixIcons.Back, contentDescription = "返回", tint = colors.text)
-                }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 4.dp)
+            .height(48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Icon(MiuixIcons.Back, contentDescription = "返回", tint = colors.text)
             }
-        },
-        actions = actions,
-        defaultWindowInsetsPadding = false,
-    )
+        }
+        Text(
+            text = title,
+            color = colors.text,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Normal,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+            content = actions,
+        )
+    }
 }
 
 /** 底部导航：容器用 Miuix NavigationBar；item 自绘以绕开 0.4 alpha 的对比度上限。 */

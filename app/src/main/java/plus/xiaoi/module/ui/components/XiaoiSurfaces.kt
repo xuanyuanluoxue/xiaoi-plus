@@ -35,7 +35,10 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Notes
 
-/** Miuix Card：使用组件默认圆角/颜色；自定义内容加 16dp 内边距。 */
+/**
+ * 独立卡片：28dp 圆角、20dp 内边距，卡与卡之间由页面用 [XiaoiCardGroup] 或
+ * `Spacer(cardGap)` 分隔。对应参考截图的卡片形态。
+ */
 @Composable
 fun XiaoiCard(
     modifier: Modifier = Modifier,
@@ -43,12 +46,21 @@ fun XiaoiCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     if (onClick != null) {
-        Card(modifier = modifier.fillMaxWidth(), onClick = onClick) {
-            Column(Modifier.padding(16.dp), content = content)
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            cornerRadius = XiaoiTheme.dimens.radiusCard,
+            insideMargin = PaddingValues(0.dp),
+            onClick = onClick,
+        ) {
+            Column(Modifier.padding(XiaoiTheme.dimens.cardPad), content = content)
         }
     } else {
-        Card(modifier = modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), content = content)
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            cornerRadius = XiaoiTheme.dimens.radiusCard,
+            insideMargin = PaddingValues(0.dp),
+        ) {
+            Column(Modifier.padding(XiaoiTheme.dimens.cardPad), content = content)
         }
     }
 }
@@ -59,7 +71,11 @@ fun XiaoiPreferenceCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        cornerRadius = XiaoiTheme.dimens.radiusCard,
+        insideMargin = PaddingValues(0.dp),
+    ) {
         Column { content() }
     }
 }

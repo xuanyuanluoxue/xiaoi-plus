@@ -28,11 +28,12 @@ fun XiaoiInfoRow(
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
     icon: ImageVector? = null,
+    iconTone: XiaoiIconTone = XiaoiIconTone.NEUTRAL,
     badge: String? = null,
     badgeTone: XiaoiTone = XiaoiTone.NEUTRAL,
 ) {
     val startAction: (@Composable () -> Unit)? = if (icon != null) {
-        { XiaoiRowIcon(icon) }
+        { XiaoiRowIcon(icon, iconTone) }
     } else {
         null
     }
@@ -69,12 +70,13 @@ fun XiaoiValueRow(
     value: String,
     mono: Boolean = false,
     icon: ImageVector? = null,
+    iconTone: XiaoiIconTone = XiaoiIconTone.NEUTRAL,
 ) {
     val colors = XiaoiTheme.colors
     BasicComponent(
         title = label,
         startAction = if (icon != null) {
-            { XiaoiRowIcon(icon) }
+            { XiaoiRowIcon(icon, iconTone) }
         } else {
             null
         },
@@ -94,6 +96,7 @@ fun XiaoiCopyRow(
     title: String,
     value: String,
     icon: ImageVector? = null,
+    iconTone: XiaoiIconTone = XiaoiIconTone.NEUTRAL,
     onCopy: () -> Unit,
 ) {
     val colors = XiaoiTheme.colors
@@ -101,7 +104,7 @@ fun XiaoiCopyRow(
         title = title,
         summary = value,
         startAction = if (icon != null) {
-            { XiaoiRowIcon(icon) }
+            { XiaoiRowIcon(icon, iconTone) }
         } else {
             null
         },
@@ -132,6 +135,7 @@ fun XiaoiSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
     icon: ImageVector? = null,
+    iconTone: XiaoiIconTone = XiaoiIconTone.NEUTRAL,
 ) {
     SwitchPreference(
         checked = checked,
@@ -140,7 +144,7 @@ fun XiaoiSwitchRow(
         summary = subtitle,
         enabled = enabled,
         startAction = if (icon != null) {
-            { XiaoiRowIcon(icon) }
+            { XiaoiRowIcon(icon, iconTone) }
         } else {
             null
         },

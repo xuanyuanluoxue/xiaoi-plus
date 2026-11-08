@@ -39,6 +39,15 @@ data class XiaoiColors(
     val iconTile: Color,
     /** Hero 内文字；对应 design-system §2 的 hero-on。 */
     val heroOn: Color,
+    // 首页/设置入口的彩色圆图标；浅色用更深一档保证白字对比度。
+    val iconGreen: Color,
+    val iconBlue: Color,
+    val iconOrange: Color,
+    val iconPink: Color,
+    val iconRed: Color,
+    val iconCyan: Color,
+    val iconPurple: Color,
+    val iconIndigo: Color,
 )
 
 /** 尺寸令牌；页面不写裸 dp。 */
@@ -46,16 +55,18 @@ data class XiaoiDimens(
     val pagePad: Dp = 16.dp,
     val pagePadTop: Dp = 12.dp,
     val cardPad: Dp = 20.dp,
-    val cardGap: Dp = 14.dp,
+    val cardGap: Dp = 12.dp,
     val navHeight: Dp = 80.dp,
     val navItemHeight: Dp = 64.dp,
-    val radiusCard: Dp = 24.dp,
+    val radiusCard: Dp = 28.dp,
     val radiusInput: Dp = 12.dp,
     val radiusButton: Dp = 16.dp,
     val rowInfo: Dp = 72.dp,
     val rowValue: Dp = 56.dp,
     val rowSwitch: Dp = 56.dp,
     val touch: Dp = 48.dp,
+    val iconCircle: Dp = 48.dp,
+    val iconGlyph: Dp = 26.dp,
 )
 
 /** 字号层级；颜色由调用方显式传入，避免 Miuix 默认黑字在深色下不可读。 */
@@ -90,6 +101,14 @@ private val LightColors = XiaoiColors(
     errorBg = Color(0x1AC43D3D),
     iconTile = Color(0xFFDCE9F7),
     heroOn = Color(0xFF16202E),
+    iconGreen = Color(0xFF248A3D),
+    iconBlue = Color(0xFF007AFF),
+    iconOrange = Color(0xFFB25000),
+    iconPink = Color(0xFFD70015),
+    iconRed = Color(0xFFC62828),
+    iconCyan = Color(0xFF0071A4),
+    iconPurple = Color(0xFF8944AB),
+    iconIndigo = Color(0xFF3634A3),
 )
 
 private val DarkColors = XiaoiColors(
@@ -112,6 +131,14 @@ private val DarkColors = XiaoiColors(
     errorBg = Color(0x2EF87171),
     iconTile = Color(0xFF26262B),
     heroOn = Color(0xFFE8ECF8),
+    iconGreen = Color(0xFF34C759),
+    iconBlue = Color(0xFF0A84FF),
+    iconOrange = Color(0xFFFF9F0A),
+    iconPink = Color(0xFFFF375F),
+    iconRed = Color(0xFFFF453A),
+    iconCyan = Color(0xFF64D2FF),
+    iconPurple = Color(0xFFBF5AF2),
+    iconIndigo = Color(0xFF5E5CE6),
 )
 
 private val LocalXiaoiColors = staticCompositionLocalOf { LightColors }
