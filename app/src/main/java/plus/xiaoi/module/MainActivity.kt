@@ -287,6 +287,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 Routes.ME -> MeScreen(
                     themeMode = ThemeManager.get(context),
                     onThemeChange = onThemeChange,
+                    onNavigate = { navigate(it) },
                     onOpenLogs = { navigate(Routes.LOGS) },
                     onOpenAbout = { navigate(Routes.ABOUT) },
                     onOpenLegacyHome = { openLegacy(HomeActivity::class.java) },

@@ -33,6 +33,7 @@ import top.yukonga.miuix.kmp.basic.Text
 fun MeScreen(
     themeMode: Int,
     onThemeChange: (Int) -> Unit,
+    onNavigate: (String) -> Unit,
     onOpenLogs: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenLegacyHome: () -> Unit,
