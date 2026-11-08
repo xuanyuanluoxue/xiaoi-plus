@@ -51,6 +51,28 @@ fun LicensesScreen(onMessage: (String) -> Unit) {
             }
             XiaoiCard {
                 LicenseBlock(
+                    title = "LiquidTab · GPL-3.0",
+                    body = "底栏玻璃效果的实现参考并改编自 big-dictator/LiquidTab" +
+                        "（GPL-3.0）；改编文件保留原始版权与许可头。" +
+                        "本项目同样以 GPL-3.0 分发。",
+                )
+            }
+            XiaoiCard {
+                LicenseBlock(
+                    title = "AndroidX Graphics Shapes · Apache-2.0",
+                    body = "© The Android Open Source Project\n" +
+                        "用于底栏的连续曲率（squircle）外形计算。",
+                )
+            }
+            XiaoiCard {
+                LicenseBlock(
+                    title = "Kyant0 / AndroidLiquidGlass · Apache-2.0",
+                    body = "液态玻璃的折射与高光渲染思路参考 Kyant0 的 Backdrop" +
+                        "（AndroidLiquidGlass）；本项目未整体打包该库。",
+                )
+            }
+            XiaoiCard {
+                LicenseBlock(
                     title = "Kotlin / Compose / AndroidX · 各自许可证",
                     body = "Kotlin © JetBrains s.r.o.（Apache-2.0）\n" +
                         "Compose Multiplatform © JetBrains s.r.o.（Apache-2.0）\n" +
