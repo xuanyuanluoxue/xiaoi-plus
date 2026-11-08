@@ -1,5 +1,6 @@
 package plus.xiaoi.module.ui.screen.me
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,12 +9,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import plus.xiaoi.module.Prefs
 import plus.xiaoi.module.ThemeMode
 import plus.xiaoi.module.ui.components.FilterChips
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
+import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.XiaoiSwitchRow
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -31,6 +40,13 @@ fun AppearanceScreen(
     onMessage: (String) -> Unit,
 ) {
     val colors = XiaoiTheme.colors
+    val context = LocalContext.current
+    var glassEnabled by remember {
+        mutableStateOf(
+            context.getSharedPreferences(Prefs.NAME, android.content.Context.MODE_PRIVATE)
+                .getBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, true),
+        )
+    }
     val current = when (themeMode) {
         ThemeMode.LIGHT -> ThemeMode.LIGHT
         ThemeMode.DARK -> ThemeMode.DARK
@@ -79,6 +95,21 @@ fun AppearanceScreen(
                 },
                 color = colors.textHint,
                 style = XiaoiTheme.typography.caption,
+            )
+        }
+
+        XiaoiGroupHeader("底栏")
+        XiaoiPreferenceCard {
+            XiaoiSwitchRow(
+                title = "玻璃底栏",
+                subtitle = "关闭后使用同尺寸实心胶囊；系统移除动画时也会自动回退",
+                checked = glassEnabled,
+                onCheckedChange = { on ->
+                    glassEnabled = on
+                    context.getSharedPreferences(Prefs.NAME, android.content.Context.MODE_PRIVATE)
+                        .edit().putBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, on).apply()
+                    (context as? Activity)?.recreate()
+                },
             )
         }
 
