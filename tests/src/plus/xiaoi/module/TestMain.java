@@ -168,6 +168,30 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL AgentIdempotencyPersistenceTest 套件异常: " + t);
         }
+        try {
+            failed += IssueResolverTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL IssueResolverTest 套件异常: " + t);
+        }
+        try {
+            failed += CapabilityRegistryTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL CapabilityRegistryTest 套件异常: " + t);
+        }
+        try {
+            failed += ActivityFeedTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ActivityFeedTest 套件异常: " + t);
+        }
+        try {
+            failed += NavStackTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL NavStackTest 套件异常: " + t);
+        }
         System.out.println();
         if (failed == 0) {
             System.out.println("==> 全部通过");

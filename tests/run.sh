@@ -57,6 +57,11 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgeStatus.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/StateModel.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/RateLimiter.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/PermissionSnapshot.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/IssueResolver.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/CapabilityRegistry.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/ActivityFeed.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/NavStack.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/bridge/LeaderElection.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/UidGuard.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/control/InstanceRecord.java" \
