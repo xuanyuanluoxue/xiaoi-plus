@@ -50,7 +50,7 @@ public final class AgentService extends Service {
     private static final String TEXT_RUNNING_LAN = "8770 运行中（局域网）· 点击打开";
     private static final String TEXT_RUNNING_FALLBACK =
             "8770 运行中（仅本机：局域网需要 32 位令牌）· 点击打开";
-    private static final String TEXT_FAILED = "8770 启动失败 · 点击打开";
+    private static final String TEXT_FAILED = "Agent 端口启动失败 · 点击打开";
 
     private final AtomicBoolean bootstrapping = new AtomicBoolean(false);
     private volatile AgentHttpServer server;
@@ -235,7 +235,7 @@ public final class AgentService extends Service {
             Logs.e("AgentService: " + err);
             updateNotification(TEXT_FAILED);
             AgentRuntimeStatus.setError(err);
-            ActivityHub.error(ActivityFeed.Domain.AGENT, "8770 启动失败");
+            ActivityHub.error(ActivityFeed.Domain.AGENT, "Agent 端口启动失败");
             return;
         }
         server = next;
