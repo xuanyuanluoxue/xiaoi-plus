@@ -326,7 +326,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
             Modifier
                 .fillMaxSize()
                 .padding(
-                    top = topOverlayHeight,
+                    top = if (root) 0.dp else topOverlayHeight,
                     bottom = 0.dp, // 内容穿到小白条下方
                 ),
         ) {
@@ -509,7 +509,7 @@ private fun TopBlurScrim(
     androidx.compose.foundation.layout.Box(
         modifier
             .fillMaxWidth()
-            .height(topInset + 96.dp)
+            .height(topInset + 88.dp)
             .topBlurBackdrop(backdrop, effect, colors.bg),
     )
 }

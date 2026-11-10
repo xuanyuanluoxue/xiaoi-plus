@@ -78,6 +78,7 @@ fun HomeScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .padding(top = plus.xiaoi.module.ui.components.xiaoiTopBarHeight())
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = 4.dp, bottom = 24.dp),
     ) {

@@ -95,6 +95,7 @@ fun XiaoaiScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .padding(top = plus.xiaoi.module.ui.components.xiaoiTopBarHeight())
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop, bottom = 24.dp),
     ) {

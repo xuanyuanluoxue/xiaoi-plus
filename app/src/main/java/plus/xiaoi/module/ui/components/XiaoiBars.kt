@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import plus.xiaoi.module.core.NavStack
@@ -87,3 +90,8 @@ fun XiaoiBottomBar(
         contentCoordinates = contentCoordinates,
     )
 }
+
+/** 顶栏占用的竖向高度（状态栏 inset + 40dp 标题栏）：滚动内容用它做顶部内边距。 */
+@androidx.compose.runtime.Composable
+fun xiaoiTopBarHeight(): androidx.compose.ui.unit.Dp =
+    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 40.dp
