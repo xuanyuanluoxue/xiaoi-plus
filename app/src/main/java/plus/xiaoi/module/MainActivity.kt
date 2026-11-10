@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import top.yukonga.miuix.kmp.blur.drawBackdrop
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.Composable
@@ -470,21 +472,10 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                     }
                 }
             }
-            if (root) {
-                androidx.compose.foundation.layout.Box(
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .height(32.dp)
-                        .drawBehind {
-                            drawRect(
-                                androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    0.0f to colors.bg,
-                                    0.55f to colors.bg.copy(alpha = 0.72f),
-                                    1.0f to colors.bg.copy(alpha = 0f),
-                                ),
-                            )
-                        },
+            if (root && Build.VERSION.SDK_INT >= 33) {
+                TopBlurScrim(
+                    source = glassBackdrop,
+                    modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
             if (root) {
@@ -502,3 +493,50 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
         }
     }
 }
+
+
+/** 顶栏下方渐变模糊带：真采样页面内容做高斯模糊，再叠「底色→透明」渐变遮罩。 */
+@androidx.annotation.RequiresApi(33)
+@androidx.compose.runtime.Composable
+private fun TopBlurScrim(
+    source: plus.xiaoi.module.ui.components.glass.GlassBackdropSource,
+    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
+) {
+    val backdrop = source.miuixBackdrop as? top.yukonga.miuix.kmp.blur.Backdrop ?: return
+    val colors = plus.xiaoi.module.ui.theme.XiaoiTheme.colors
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val radiusPx = with(density) { 22.dp.toPx() }
+    val effect = androidx.compose.runtime.remember(radiusPx) {
+        plus.xiaoi.module.ui.components.glass.GlassNativeBlur.effect(radiusPx)
+    }
+    androidx.compose.foundation.layout.Box(
+        modifier
+            .fillMaxWidth()
+            .height(96.dp)
+            .topBlurBackdrop(backdrop, effect, colors.bg),
+    )
+}
+
+private fun androidx.compose.ui.Modifier.topBlurBackdrop(
+    backdrop: top.yukonga.miuix.kmp.blur.Backdrop,
+    effect: android.graphics.RenderEffect,
+    bg: androidx.compose.ui.graphics.Color,
+): androidx.compose.ui.Modifier = this.then(
+    androidx.compose.ui.Modifier.drawBackdrop(
+        backdrop = backdrop,
+        shape = { androidx.compose.ui.graphics.RectangleShape },
+        effects = {
+            renderEffect = effect.asComposeRenderEffect()
+            downscaleFactor = 1
+        },
+        onDrawSurface = {
+            drawRect(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    0.0f to bg.copy(alpha = 0.94f),
+                    0.5f to bg.copy(alpha = 0.6f),
+                    1.0f to bg.copy(alpha = 0f),
+                ),
+            )
+        },
+    ),
+)

@@ -40,8 +40,8 @@ fun XiaoiTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 4.dp)
-            .height(48.dp),
+            .padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)
+            .height(40.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
@@ -52,7 +52,7 @@ fun XiaoiTopBar(
         Text(
             text = title,
             color = colors.text,
-            fontSize = 32.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Normal,
             maxLines = 1,
             modifier = Modifier.weight(1f),
