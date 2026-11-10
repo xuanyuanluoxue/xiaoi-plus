@@ -100,16 +100,15 @@ fun HomeScreen(
             onPrimary = cta?.let { target -> { onNavigate(target.route) } },
         )
 
-        if (state.issues.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            state.issues.forEach { issue ->
-                XiaoiCardGroup {
-                    XiaoiPreferenceCard {
-                        IssueRow(issue.ui, onClick = { onNavigate(issue.route) })
-                    }
+        // 与 Hero 之间始终留出区块间距：没有待处理项时，入口卡也不能贴着 Hero。
+        Spacer(Modifier.height(16.dp))
+        state.issues.forEachIndexed { index, issue ->
+            XiaoiCardGroup {
+                XiaoiPreferenceCard {
+                    IssueRow(issue.ui, onClick = { onNavigate(issue.route) })
                 }
-                Spacer(Modifier.height(12.dp))
             }
+            Spacer(Modifier.height(if (index == state.issues.lastIndex) 16.dp else 12.dp))
         }
 
         XiaoiCardGroup {
