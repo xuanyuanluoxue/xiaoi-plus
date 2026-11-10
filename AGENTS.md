@@ -4,7 +4,8 @@
 
 ## 构建与测试
 
-- 构建：`SDK=/path/to/android-sdk ./build.sh` → `build/xiaoi-plus.apk`
+- 构建：`./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`
+  （`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，不再用于发版）
 - 单测：`./tests/run.sh`（纯 JVM，无需设备）
 - 门禁：`scripts/check-consistency.sh`（版本/SDK/资源引用/线程与提示规范）
 - 真机契约（可选）：`XIAOI_TOKEN=<token> scripts/contract-test.sh`

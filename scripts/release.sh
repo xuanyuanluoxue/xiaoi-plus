@@ -25,7 +25,7 @@ die() { echo "错误：$*" >&2; exit 1; }
 
 command -v git >/dev/null || die "需要 git"
 command -v zip >/dev/null || die "需要 zip（sudo apt install zip）"
-[ -f build.sh ] || die "不在仓库根目录"
+[ -f gradlew ] || die "不在仓库根目录"
 
 VERSION="$(scripts/version.sh name)"
 CODE="$(scripts/version.sh code)"
@@ -52,18 +52,29 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
   die "tag $TAG 已存在；发新版本请先改 app/src/main/AndroidManifest.xml 的 android:versionName/android:versionCode"
 fi
 
-# 3) 签名密钥检查（build.sh 缺密钥会自动生成新密钥，正式版不能这样）
+# 3) 签名密钥检查（正式版必须用固定 keystore，不能静默换签名）
 if [ ! -f keystore/xiaoi.keystore ] && [ "$ALLOW_NEW_KEY" -eq 0 ]; then
   die "缺少 keystore/xiaoi.keystore。请从备份恢复（见 docs/release.md），或加 --allow-new-key 仅做本地验证"
 fi
 
-# 4) 构建
+# 4) 构建（0.14 起唯一构建入口是 Gradle；build.sh 只覆盖 ≤0.13 的纯 Java 构建）
 echo "==> 构建"
-if [ "$ALLOW_NEW_KEY" -eq 1 ]; then
-  # 显式允许本次构建生成新证书；否则 build.sh 在缺 keystore 时会直接失败。
-  export XIAOI_ALLOW_NEW_KEY=1
+export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
+GRADLE_APK="app/build/outputs/apk/release/app-release.apk"
+if [ "$ALLOW_NEW_KEY" -eq 1 ] && [ ! -f keystore/xiaoi.keystore ]; then
+  # 显式允许时才生成临时证书；该包不能覆盖安装正式版。
+  mkdir -p keystore
+  TEMP_PASS="temp-xiaoi-$$"
+  keytool -genkeypair -keystore keystore/xiaoi.keystore -storepass "$TEMP_PASS" \
+    -keypass "$TEMP_PASS" -alias xiaoi -keyalg RSA -keysize 2048 -validity 3650 \
+    -dname "CN=XiaoAi Plus Temp, O=OpenSource, C=CN" >/dev/null 2>&1
+  export KEYSTORE_PASSWORD="$TEMP_PASS" KEY_PASSWORD="$TEMP_PASS" KEY_ALIAS=xiaoi
 fi
-./build.sh
+chmod +x gradlew
+./gradlew :app:assembleRelease --stacktrace
+[ -f "$GRADLE_APK" ] || die "Gradle 未产出 $GRADLE_APK（签名口令或 SDK 配置有问题）"
+mkdir -p build
+cp -f "$GRADLE_APK" "$APK"
 [ -f "$APK" ] || die "构建结束但找不到 $APK"
 
 # 5) 发布门禁：签名（固定指纹）/ 包名 / versionCode；失败不归档、不生成 notes

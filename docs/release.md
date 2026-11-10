@@ -1,6 +1,7 @@
 # 发版流程
 
-本项目没有 Gradle，构建由 `build.sh` 完成（javac + d8 + aapt2 + zipalign + apksigner）。
+0.14 起用 Gradle wrapper 构建（`./gradlew :app:assembleRelease`），
+CI 与本地发版都走 Gradle；`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，**不要再用于发版**。
 发版额外做三件事：定版本、用固定密钥签名、把产物和校验和挂到 GitHub Release。
 
 ## 1. 版本号
@@ -12,9 +13,8 @@ android:versionCode="7"     <!-- 整数，每次发版 +1，只能增 -->
 android:versionName="0.7.0" <!-- 展示用，SemVer -->
 ```
 
-`build.sh` 不读这两个字段，它们只用于制品命名、tag 校验和 Release Notes。
-`scripts/version.sh` 是脚本侧的统一读取入口（manifest 优先）。
-`app/build.gradle.kts` 不参与构建，只是给 IDE 看的元数据壳（见其文件头注释）。
+Gradle 构建直接读取 manifest 的 `versionName/versionCode`；CI 用
+`scripts/version.sh`（manifest 优先）做制品命名、tag 校验和 Release Notes。
 
 规则：
 
@@ -72,10 +72,8 @@ rm /tmp/ks.b64
 工作流不会失败：检测不到 `KEYSTORE_BASE64` 就打 `::warning::`，用 CI 临时密钥签名并继续产出 artifact。
 这种包**只能测试，不能覆盖安装正式版**，Release Notes 会自动加警告；即使推的是 tag，
 **也不会创建 GitHub Release**（只上传 artifact，并输出跳过 Release 的 warning/notice）。
-本地 `build.sh` 缺少签名口令时只产出**未签名** APK（用于编译验证），不会假装签名成功。
-本地有口令但 `keystore/xiaoi.keystore` 缺失时，`build.sh` 会直接失败，不再静默生成新证书；
-仅本地验证可设 `XIAOI_ALLOW_NEW_KEY=1`（`release.sh --allow-new-key` 会自动设置），
-生成的包不能覆盖安装正式版。
+本地 Gradle 缺少签名口令时只产出 `app-release-unsigned.apk`（用于编译验证），不会假装签名成功。
+`release.sh --allow-new-key` 仅在显式允许时生成临时证书供本地试跑，生成的包不能覆盖安装正式版。
 
 ## 3. 本地一键发版
 
@@ -88,7 +86,7 @@ scripts/release.sh
 1. 检查已跟踪文件是否干净（未跟踪的 `dist/` 不阻塞）；不干净就退出
 2. 检查 `v<version>` tag 是否已存在（存在即拒绝，避免覆盖已发布版本）
 3. 检查 `keystore/xiaoi.keystore` 是否存在（缺失即拒绝，防止静默换签名）
-4. 跑 `./build.sh`
+4. 跑 `./gradlew :app:assembleRelease`，复制为 `build/xiaoi-plus.apk`
 5. 跑 `scripts/verify-apk.sh build/xiaoi-plus.apk`：校验已签名、包名、versionCode 与固定证书指纹；
    **失败直接退出，不归档、不生成 notes**
 6. 复制为 `dist/xiaoi-plus-<version>.apk`，生成 `.sha256`
@@ -155,11 +153,11 @@ git push origin v0.1.0
 
 推送 tag 后 `.github/workflows/build.yml` 会：
 
-1. 下载 build-tools 35 与 platform 35（`dl.google.com`），命中缓存则跳过
+1. 安装 platform 37.0 与 build-tools 37.0.0，命中缓存则跳过
 2. 校验 tag 与 `versionName` 一致（不一致直接失败）
 3. 跑 JVM 单测与 `scripts/check-consistency.sh`
-4. `./build.sh`
-5. 有 `KEYSTORE_BASE64` 就重新签名（`scripts/ci-sign.sh`），没有则警告 + 临时签名
+4. `./gradlew :app:assembleDebug :app:assembleRelease`（Gradle 直接读取签名环境变量）
+5. 有 `KEYSTORE_BASE64` 就用正式密钥产物；没有则用临时证书签名并打 warning
 6. 跑 `scripts/verify-apk.sh`：
    - `signed=true`：必须命中 `scripts/expected-signer.sha256`，否则 job 失败；
    - `signed=false`：只校验已签名 + 包名 + versionCode，并打 `::warning::`

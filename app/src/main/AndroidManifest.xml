@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:versionCode="20"
-    android:versionName="0.14.1">
+    android:versionCode="21"
+    android:versionName="0.15.0-beta.1">
 
     <!-- miuix-blur 的 AAR 声明 minSdk 33；本项目 minSdk 26，玻璃效果只在
          API 33+ 调用，低版本走实心回退（GlassSupport）。override 只放开清单合并，

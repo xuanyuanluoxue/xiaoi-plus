@@ -8,8 +8,9 @@ VERSION="${1:?用法: release-notes.sh <version> <apk>}"
 APK="${2:?用法: release-notes.sh <version> <apk>}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SDK="${SDK:-$HOME/Android/Sdk}"
-BT="$SDK/android-14"
+SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${SDK:-$HOME/Android/Sdk}}}"
+# 0.14 起用 build-tools 37；不再写死 android-14，按版本排序取最新一套。
+BT="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
 
 [ -f "$APK" ] || { echo "APK 不存在：$APK" >&2; exit 1; }
 
