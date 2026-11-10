@@ -15,7 +15,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -105,11 +109,15 @@ class MainActivity : ComponentActivity() {
                 Configuration.UI_MODE_NIGHT_YES
         }
         val bg = if (dark) 0xFF0B0B0D.toInt() else 0xFFF7F8FA.toInt()
-        // 系统栏用页面底色填充：保留系统栏内边距，内容不会压到状态栏/小白条上
-        window.statusBarColor = bg
-        window.navigationBarColor = bg
+        // 沉浸式：两条系统栏都透明，内容延伸到小白条与状态栏下方（顶栏自带 statusBarsPadding）
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= 21) {
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        }
         if (Build.VERSION.SDK_INT >= 29) {
             window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
         }
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bg))
         var flags = window.decorView.systemUiVisibility
@@ -294,11 +302,23 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     var contentCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Scaffold(
         topBar = {
+            androidx.compose.foundation.layout.Box(
+                Modifier.drawBehind {
+                    drawRect(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            0.0f to colors.bg,
+                            0.70f to colors.bg.copy(alpha = 0.92f),
+                            1.0f to colors.bg.copy(alpha = 0f),
+                        ),
+                    )
+                },
+            ) {
             XiaoiTopBar(
                 title = Routes.titleOf(key),
                 onBack = if (nav.isRoot()) null else ({ back() }),
                 actions = { pageActions.actions?.invoke(this) },
             )
+            }
         },
         // 底栏悬浮在内容之上：不占用 Scaffold bottomBar，避免把页面挤窄。
         snackbarHost = {
@@ -317,7 +337,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 .fillMaxSize()
                 .padding(
                     top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding(),
+                    bottom = 0.dp, // 内容穿到小白条下方
                 ),
         ) {
             Box(
@@ -451,6 +471,23 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 }
             }
             if (root) {
+                androidx.compose.foundation.layout.Box(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(32.dp)
+                        .drawBehind {
+                            drawRect(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    0.0f to colors.bg,
+                                    0.55f to colors.bg.copy(alpha = 0.72f),
+                                    1.0f to colors.bg.copy(alpha = 0f),
+                                ),
+                            )
+                        },
+                )
+            }
+            if (root) {
                 XiaoiBottomBar(
                     current = nav.tab(),
                     onSelect = { tab ->
@@ -459,7 +496,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                     },
                     backdrop = glassBackdrop,
                     contentCoordinates = contentCoordinates,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
                 )
             }
         }
