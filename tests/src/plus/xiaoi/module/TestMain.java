@@ -199,6 +199,12 @@ public final class TestMain {
             System.out.println("  FAIL IssueInputFactoryTest 套件异常: " + t);
         }
         try {
+            failed += AgentHttpServerTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AgentHttpServerTest 套件异常: " + t);
+        }
+        try {
             failed += NavStackTest.run();
         } catch (Throwable t) {
             failed++;

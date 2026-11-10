@@ -259,9 +259,11 @@ public final class AgentHttpServer {
                     respondQuietly(socket, 401, "text/plain; charset=utf-8", "unauthorized");
                     return;
                 }
+                // 真机验收发现：这里曾拼常量 PORT，8770 被占用顺延后仍报 8770。
+                // 改报本实例实际绑定成功的端口（AgentService 上报到 AgentRuntimeStatus 的同一值）。
                 Http.respond(socket.getOutputStream(), 200,
                         "text/plain; charset=utf-8",
-                        "ok agent=true port=" + PORT + " bind=" + boundHost);
+                        "ok agent=true port=" + port + " bind=" + boundHost);
                 return;
             }
 
