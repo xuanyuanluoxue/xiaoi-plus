@@ -30,7 +30,12 @@ import plus.xiaoi.module.Http;
 public final class AgentHttpServer {
 
     public static final String HOST = "127.0.0.1";
-    public static final int PORT = 8770;
+    /** 首选端口；被别的进程占用时按 PORT_MIN~PORT_MAX 依次顺延。 */
+    public static final int DEFAULT_PORT = 8770;
+    public static final int PORT_MIN = 8770;
+    public static final int PORT_MAX = 8775;
+    /** 兼容旧引用（等于首选端口）。 */
+    public static final int PORT = DEFAULT_PORT;
 
     private static final int REQUEST_CORE = 2;
     private static final int REQUEST_MAX = 4;
@@ -47,6 +52,8 @@ public final class AgentHttpServer {
     private volatile boolean running;
     private volatile String lastError = "";
     private volatile String boundHost = AgentLanPolicy.LOOPBACK;
+    /** 实际绑定成功的端口（顺延后可能与 DEFAULT_PORT 不同）。 */
+    private volatile int port = DEFAULT_PORT;
     private ServerSocket server;
     private ExecutorService acceptExecutor;
     private ThreadPoolExecutor requestPool;
@@ -64,7 +71,7 @@ public final class AgentHttpServer {
     }
 
     public int port() {
-        return PORT;
+        return port;
     }
 
     public boolean isRunning() {
@@ -109,15 +116,39 @@ public final class AgentHttpServer {
         String host = AgentLanPolicy.bindHost(lan, token);
         String fallback = AgentLanPolicy.fallbackReason(lan, token);
         try {
-            ss = new ServerSocket();
-            ss.setReuseAddress(true);
-            ss.bind(new InetSocketAddress(InetAddress.getByName(host), PORT));
-            ss.setSoTimeout(0);
+            String bindFailure = "";
+            for (int candidate = PORT_MIN; candidate <= PORT_MAX; candidate++) {
+                ServerSocket attempt = null;
+                try {
+                    attempt = new ServerSocket();
+                    attempt.setReuseAddress(true);
+                    attempt.bind(new InetSocketAddress(InetAddress.getByName(host), candidate));
+                    attempt.setSoTimeout(0);
+                    ss = attempt;
+                    port = candidate;
+                    break;
+                } catch (Throwable t) {
+                    closeQuietly(attempt);
+                    if (bindFailure.length() == 0) {
+                        bindFailure = t.getClass().getSimpleName()
+                                + (t.getMessage() == null ? "" : "（" + t.getMessage() + "）");
+                    }
+                }
+            }
+            if (ss == null) {
+                lastError = "绑定 " + host + ":" + PORT_MIN + "~" + PORT_MAX
+                        + " 全部失败：" + bindFailure;
+                AgentRuntimeStatus.setError(lastError);
+                return lastError;
+            }
             server = ss;
             boundHost = host;
             running = true;
             // 回退说明放在 lastError（running=true 时不是失败），方便通知/日志如实展示。
-            lastError = fallback;
+            lastError = port == DEFAULT_PORT
+                    ? fallback
+                    : (fallback.length() == 0 ? "" : fallback + "；")
+                      + "端口 " + DEFAULT_PORT + " 被占用，已顺延到 " + port;
             acceptExecutor = Executors.newSingleThreadExecutor(
                     factory("xiaoi-agent-accept"));
             requestPool = new ThreadPoolExecutor(REQUEST_CORE, REQUEST_MAX,
@@ -133,7 +164,7 @@ public final class AgentHttpServer {
             });
             return "";
         } catch (Throwable t) {
-            lastError = "绑定 " + host + ":" + PORT + " 失败："
+            lastError = "绑定 " + host + ":" + PORT_MIN + "~" + PORT_MAX + " 失败："
                     + t.getClass().getSimpleName()
                     + (t.getMessage() == null ? "" : "（" + t.getMessage() + "）");
             closeQuietly(ss);
