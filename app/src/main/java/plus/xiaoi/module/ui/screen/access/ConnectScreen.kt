@@ -140,17 +140,17 @@ fun ConnectScreen(
 
         XiaoiGroupHeader("本机地址")
         XiaoiPreferenceCard {
-            XiaoiCopyRow("8771 控制面", mcpLocal) {
+            XiaoiCopyRow("小爱任务 · 8771", mcpLocal) {
                 copy(mcpLocal, "已复制 8771 本机地址")
             }
-            XiaoiValueRow("MCP 路径", "/mcp", mono = true)
-            XiaoiCopyRow("8770 动作面", agentLocal) {
+            XiaoiValueRow("接口路径", "/mcp", mono = true)
+            XiaoiCopyRow("设备操作 · 8770", agentLocal) {
                 copy(agentLocal, "已复制 8770 本机地址")
             }
         }
         Text(
             if (bridge.port > 0) {
-                "8771 使用控制面实际上报端口 $bridgePort。"
+                "8771 使用小爱任务的实际监听端口 $bridgePort。"
             } else {
                 "8771 端口未上报，按默认 $bridgePort 生成；启动后以实际端口为准。"
             },
@@ -183,7 +183,7 @@ fun ConnectScreen(
             XiaoiCard {
                 when {
                     !mcpEnabled -> Text(
-                        "MCP 未开启：两个通道都不会监听，以下地址暂不可用。",
+                        "外部接入未开启：两个接口都不会监听，以下地址暂不可用。",
                         color = colors.textSecondary,
                         style = XiaoiTheme.typography.body,
                     )
@@ -243,7 +243,7 @@ fun ConnectScreen(
             Spacer(Modifier.height(12.dp))
             XiaoiCard {
                 Text(
-                    "当前没有令牌：所有 MCP 请求都会 401。",
+                    "当前没有令牌：所有请求都会 401。",
                     color = colors.warning,
                     style = XiaoiTheme.typography.body,
                 )
@@ -261,11 +261,11 @@ private fun buildClientJson(mcpUrl: String, agentUrl: String, token: String): St
 private fun buildSkillText(mcpUrl: String, agentUrl: String): String {
     val sb = StringBuilder()
     sb.append("# 小爱同学plus MCP\n\n")
-    sb.append("## 8771 控制面\n\n")
+    sb.append("## 小爱任务（8771）\n\n")
     sb.append("端点：").append(mcpUrl).append("（streamable-http，Bearer token）\n\n")
     sb.append("工具：\n")
     sb.append(toolLines(Mcp.toolsList()))
-    sb.append("\n## 8770 Agent 动作面\n\n")
+    sb.append("\n## 设备操作（8770）\n\n")
     sb.append("端点：").append(agentUrl).append("（streamable-http，Bearer token）\n\n")
     sb.append("工具：\n")
     sb.append(toolLines(AgentMcp("0").toolsList()))

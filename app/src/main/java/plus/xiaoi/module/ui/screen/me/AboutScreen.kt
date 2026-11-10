@@ -75,7 +75,7 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
             Text("v$version", color = colors.textSecondary, style = XiaoiTheme.typography.caption)
             Spacer(Modifier.height(8.dp))
             Text(
-                "模型重定向 / 8771 控制面 / 8770 动作面；仅在自己设备生效。",
+                "模型重定向 / 小爱任务 / 设备操作；仅在自己设备生效。",
                 color = colors.textSecondary,
                 style = XiaoiTheme.typography.body,
             )

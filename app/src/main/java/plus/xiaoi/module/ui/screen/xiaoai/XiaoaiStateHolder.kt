@@ -13,7 +13,7 @@ import plus.xiaoi.module.core.ActivityHub
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.ui.components.DimensionState
-import plus.xiaoi.module.ui.components.DimensionStatus
+import plus.xiaoi.module.ui.components.userDimensions
 
 /** 小爱一级页的只读投影；所有字段都是事实或“未确认”，不做乐观伪造。 */
 internal data class XiaoaiUiState(
@@ -156,22 +156,17 @@ internal class XiaoaiStateHolder(private val context: Context) {
             keySet = cfg.apiKeyOfActive().isNotEmpty(),
             heroTitle = result.heroTitle(),
             heroSub = result.heroSub(),
-            dimensions = listOf(
-                configDimension(result.d1),
-                endpointDimension(result.d2),
-                appliedDimension(result.d3),
-                runtimeDimension(result.d4),
-            ),
+            dimensions = userDimensions(result),
             bridgeLine = when {
-                !snap.connected -> "8771 控制面未连接（未确认）"
-                snap.fresh(now) -> "8771 控制面已连接 · 端口 ${snap.port}"
-                else -> "8771 控制面已连接，但超过 30 秒未上报"
+                !snap.connected -> "小爱任务接口未连接（未确认）"
+                snap.fresh(now) -> "小爱任务接口已连接 · 端口 ${snap.port}"
+                else -> "小爱任务接口已连接，但超过 30 秒未上报"
             },
             appliedLine = when (result.d3) {
-                StateModel.AppliedState.APPLIED -> "已应用 rev ${snap.appliedRev}"
+                StateModel.AppliedState.APPLIED -> "已加载 rev ${snap.appliedRev}"
                 StateModel.AppliedState.WAITING ->
-                    "等待应用 · 文件 rev ${cfg.rev} / 运行 rev ${snap.appliedRev}"
-                StateModel.AppliedState.STALE -> "超过 30 秒未上报，不确认已应用"
+                    "等待加载 · 文件 rev ${cfg.rev} / 小爱 rev ${snap.appliedRev}"
+                StateModel.AppliedState.STALE -> "超过 30 秒未上报，不确认已加载"
                 StateModel.AppliedState.UNKNOWN -> "未确认"
             },
             lastReport = formatClock(snap.updatedAt),
@@ -187,42 +182,6 @@ internal class XiaoaiStateHolder(private val context: Context) {
         if (snap.model.isEmpty()) return "小爱未上报运行模型"
         if (snap.model == fileModel) return "小爱在用 ${snap.model}"
         return "小爱在用 ${snap.model} · 文件 ${fileModel.ifEmpty { "未选择" }}"
-    }
-
-    private fun configDimension(value: StateModel.ConfigState): DimensionState = when (value) {
-        StateModel.ConfigState.READY -> DimensionState("配置", DimensionStatus.OK, "就绪")
-        StateModel.ConfigState.PAUSED -> DimensionState("配置", DimensionStatus.WAITING, "已暂停")
-        StateModel.ConfigState.NOT_CONFIGURED ->
-            DimensionState("配置", DimensionStatus.UNKNOWN, "未配置")
-        StateModel.ConfigState.INVALID -> DimensionState("配置", DimensionStatus.ERROR, "损坏")
-    }
-
-    private fun endpointDimension(value: StateModel.EndpointState): DimensionState = when (value) {
-        StateModel.EndpointState.OK -> DimensionState("端点", DimensionStatus.OK, "可用")
-        StateModel.EndpointState.CHECKING ->
-            DimensionState("端点", DimensionStatus.WAITING, "校验中")
-        StateModel.EndpointState.AUTH -> DimensionState("端点", DimensionStatus.ERROR, "密钥无效")
-        StateModel.EndpointState.MODEL ->
-            DimensionState("端点", DimensionStatus.ERROR, "模型不存在")
-        StateModel.EndpointState.ENDPOINT ->
-            DimensionState("端点", DimensionStatus.ERROR, "不可达")
-        StateModel.EndpointState.UNKNOWN -> DimensionState("端点", DimensionStatus.UNKNOWN, "未确认")
-    }
-
-    private fun appliedDimension(value: StateModel.AppliedState): DimensionState = when (value) {
-        StateModel.AppliedState.APPLIED -> DimensionState("已应用", DimensionStatus.OK, "最新")
-        StateModel.AppliedState.WAITING -> DimensionState("已应用", DimensionStatus.WAITING, "等待")
-        StateModel.AppliedState.STALE -> DimensionState("已应用", DimensionStatus.WAITING, "超时")
-        StateModel.AppliedState.UNKNOWN -> DimensionState("已应用", DimensionStatus.UNKNOWN, "未确认")
-    }
-
-    private fun runtimeDimension(value: StateModel.RuntimeState): DimensionState = when (value) {
-        StateModel.RuntimeState.IN_USE -> DimensionState("运行", DimensionStatus.OK, "在用")
-        StateModel.RuntimeState.MODEL_MISMATCH ->
-            DimensionState("运行", DimensionStatus.WAITING, "不一致")
-        StateModel.RuntimeState.DISABLED -> DimensionState("运行", DimensionStatus.WAITING, "未启用")
-        StateModel.RuntimeState.NO_KEY -> DimensionState("运行", DimensionStatus.ERROR, "缺密钥")
-        StateModel.RuntimeState.UNKNOWN -> DimensionState("运行", DimensionStatus.UNKNOWN, "未确认")
     }
 
     private fun StatusResolver.Probe.toStateProbe(): StateModel.Probe = when (this) {

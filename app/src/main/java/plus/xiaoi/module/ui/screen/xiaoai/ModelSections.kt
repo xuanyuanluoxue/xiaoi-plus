@@ -102,7 +102,7 @@ internal fun ProviderListSection(
                     )
                     Text(
                         buildString {
-                            append(hostOf(provider.baseUrl).ifEmpty { "端点未填写" })
+                            append(hostOf(provider.baseUrl).ifEmpty { "接口地址未填写" })
                             append(" · ${provider.models.size} 个模型")
                             if (provider.apiKey.isNotEmpty()) append(" · 已设置密钥")
                         },
@@ -204,7 +204,7 @@ internal fun ModelFormCard(
     XiaoiCard {
         if (provider == null) {
             Text(
-                "先添加服务商，再填写端点与密钥",
+                "先添加服务商，再填写接口地址与密钥",
                 color = colors.textHint,
                 style = XiaoiTheme.typography.body,
             )
@@ -222,8 +222,8 @@ internal fun ModelFormCard(
         XiaoiTextField(
             value = provider.baseUrl,
             onValueChange = onBaseUrlChange,
-            label = "端点",
-            placeholder = "端点，如 https://api.example.com/v1",
+            label = "接口地址",
+            placeholder = "如 https://api.example.com/v1",
             error = errors.baseUrl,
             enabled = editable,
             keyboardType = KeyboardType.Uri,
@@ -257,7 +257,7 @@ internal fun ModelFormCard(
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             XiaoiButton(
-                text = "校验端点",
+                text = "校验接口",
                 style = XiaoiButtonStyle.SECONDARY,
                 enabled = editable && !check.running,
                 loading = check.running,
@@ -305,8 +305,8 @@ internal fun AddProviderCard(
         XiaoiTextField(
             value = url,
             onValueChange = { url = it; error = null },
-            label = "端点",
-            placeholder = "端点，如 https://api.example.com/v1",
+            label = "接口地址",
+            placeholder = "如 https://api.example.com/v1",
             keyboardType = KeyboardType.Uri,
         )
         if (error != null) {

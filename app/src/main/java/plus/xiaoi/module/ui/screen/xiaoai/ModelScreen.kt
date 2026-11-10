@@ -297,7 +297,7 @@ private fun ModelContent(
         if (!draft.enabled) {
             Spacer(Modifier.height(8.dp))
             Text(
-                "当前为暂停状态：可以保存不完整的草稿；启用前需要端点、模型与密钥齐全。",
+                "当前为暂停状态：可以保存不完整的草稿；启用前需要接口地址、模型与密钥齐全。",
                 color = colors.textHint,
                 style = XiaoiTheme.typography.caption,
             )

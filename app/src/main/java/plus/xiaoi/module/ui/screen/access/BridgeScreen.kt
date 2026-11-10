@@ -34,7 +34,7 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Notes
 
 /**
- * 端口与服务（只读）：8771/8770 分开渲染，未知字段显示“未确认/—”。
+ * 接口状态（只读）：小爱任务与设备操作分开渲染，未知字段显示“未确认/—”。
  * 不提供重启/停止按钮，避免页面越过服务生命周期。
  */
 @Composable
@@ -79,7 +79,7 @@ fun BridgeScreen(
             modifier = Modifier.padding(bottom = 4.dp),
         )
 
-        XiaoiGroupHeader("8771 控制面")
+        XiaoiGroupHeader("小爱任务 · 8771")
         XiaoiCard {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("状态", color = colors.text, style = XiaoiTheme.typography.rowTitle)
@@ -108,18 +108,18 @@ fun BridgeScreen(
             XiaoiValueRow("最后连接", formatTime(bridge.lastConnectedAt))
             XiaoiValueRow("最后断开", formatTime(bridge.lastDisconnectedAt))
             XiaoiValueRow("最后上报", formatTime(bridge.updatedAt))
-            XiaoiValueRow("上报新鲜度", freshnessText(bridge, now))
-            XiaoiValueRow("已应用 rev", if (bridge.appliedRev > 0) bridge.appliedRev.toString() else "—")
+            XiaoiValueRow("上报状态", freshnessText(bridge, now))
+            XiaoiValueRow("已加载版本", if (bridge.appliedRev > 0) "rev " + bridge.appliedRev else "—")
             XiaoiValueRow("运行模型", bridge.model.ifEmpty { "—" })
         }
         Text(
-            "端口/绑定来自控制面的实际上报；旧版小爱未上报时保持“未确认”。",
+            "端口与监听地址来自小爱的实时上报；未上报时保持「未确认」。",
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,
             modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap, start = 4.dp),
         )
 
-        XiaoiGroupHeader("8770 动作面")
+        XiaoiGroupHeader("设备操作 · 8770")
         XiaoiCard {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("状态", color = colors.text, style = XiaoiTheme.typography.rowTitle)
@@ -158,7 +158,7 @@ fun BridgeScreen(
             XiaoiValueRow("状态来源", if (agent.known()) "本机运行快照" else "未确认")
         }
         Text(
-            "8770 跟随 MCP 开关与令牌；没有独立启停。",
+            "设备操作接口跟随「外部接入」开关与令牌；没有独立启停。",
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,
             modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap, start = 4.dp),
@@ -167,7 +167,7 @@ fun BridgeScreen(
         if (!mcpEnabled) {
             XiaoiCard(modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap)) {
                 Text(
-                    "MCP 未开启，两个通道均不会启动。",
+                    "外部接入未开启，两个接口都不会启动。",
                     color = colors.textSecondary,
                     style = XiaoiTheme.typography.body,
                 )

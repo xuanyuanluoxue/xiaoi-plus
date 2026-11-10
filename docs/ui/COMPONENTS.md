@@ -483,7 +483,7 @@ fun agentPortUi(
 ): AgentPortUi
 ```
 
-- 8770 动作面状态的**唯一 UI 判定**；Access / Bridge / Diagnostics / Home 共用。
+- 设备操作接口（8770）状态的**唯一 UI 判定**；Access / Bridge / Diagnostics / Home 共用。
 - 只读 `AgentRuntimeStatus` 快照与 `known()`，不扫端口、不猜 loopback。
 - 文案固定：运行中 / 已停止 / 启动失败 / 未开启 / 未确认；未知统一“未确认”。
 - 不允许页面各自拼一套 `PortState`；新增 8770 状态展示先改本组件。

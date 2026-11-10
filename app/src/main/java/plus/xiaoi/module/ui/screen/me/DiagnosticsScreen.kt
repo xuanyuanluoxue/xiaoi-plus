@@ -139,25 +139,25 @@ fun DiagnosticsScreen(
             return@Column
         }
 
-        XiaoiGroupHeader("四维状态")
+        XiaoiGroupHeader("运行状态")
         XiaoiPreferenceCard {
-            StatusLine("D1 配置", d1Text(snap.d1), d1Tone(snap.d1), "只要求服务商/模型/密钥/端点齐全")
-            StatusLine("D2 端点", d2Text(snap.d2), d2Tone(snap.d2), "由最近一次校验结论决定，不回写 D4")
-            StatusLine("D3 已应用", d3Text(snap.d3), d3Tone(snap.d3), "控制面是否已加载当前文件 rev")
-            StatusLine("D4 运行时", d4Text(snap.d4), d4Tone(snap.d4), "只有「已确认」表示小爱真的在用")
+            StatusLine("配置", d1Text(snap.d1), d1Tone(snap.d1), "服务商、模型、密钥、地址齐全即可")
+            StatusLine("模型服务", d2Text(snap.d2), d2Tone(snap.d2), "最近一次校验结论，不影响「小爱」状态")
+            StatusLine("配置加载", d3Text(snap.d3), d3Tone(snap.d3), "小爱是否已读取最新配置")
+            StatusLine("小爱使用", d4Text(snap.d4), d4Tone(snap.d4), "只有「生效中」表示小爱真的在用")
         }
 
-        XiaoiGroupHeader("通道")
+        XiaoiGroupHeader("接口")
         XiaoiPreferenceCard {
             StatusLine(
-                "8771 控制面",
+                "小爱任务 · 8771",
                 portText(snap.bridge8771),
                 portTone(snap.bridge8771),
                 bridgeDetail(snap.bridge, snap.cfg?.mcpEnabled == true),
             )
             val agentState = agentPortUi(snap.cfg?.mcpEnabled == true, snap.agent)
             StatusLine(
-                "8770 动作面",
+                "设备操作 · 8770",
                 agentState.text,
                 agentState.tone,
                 agentDetail(snap.agent, snap.cfg?.mcpEnabled == true),
@@ -203,9 +203,9 @@ fun DiagnosticsScreen(
             XiaoiInfoRow(
                 title = "LSPosed",
                 subtitle = if (lsposedConnected) {
-                    "已连接（控制面收到小爱上报）"
+                    "已连接（收到小爱上报）"
                 } else {
-                    "未确认（没有控制面证据，不判定为未启用）"
+                    "未确认（没有收到小爱上报，不判定为未启用）"
                 },
             )
             XiaoiInfoRow(
@@ -404,10 +404,10 @@ private fun d1Tone(s: StateModel.ConfigState) = when (s) {
 private fun d2Text(s: StateModel.EndpointState) = when (s) {
     StateModel.EndpointState.UNKNOWN -> "未确认"
     StateModel.EndpointState.CHECKING -> "校验中"
-    StateModel.EndpointState.OK -> "端点可用"
+    StateModel.EndpointState.OK -> "服务可用"
     StateModel.EndpointState.AUTH -> "密钥无效"
     StateModel.EndpointState.MODEL -> "模型不存在"
-    StateModel.EndpointState.ENDPOINT -> "端点不可达"
+    StateModel.EndpointState.ENDPOINT -> "服务不可达"
 }
 
 private fun d2Tone(s: StateModel.EndpointState) = when (s) {
@@ -422,8 +422,8 @@ private fun d2Tone(s: StateModel.EndpointState) = when (s) {
 
 private fun d3Text(s: StateModel.AppliedState) = when (s) {
     StateModel.AppliedState.UNKNOWN -> "未确认"
-    StateModel.AppliedState.WAITING -> "等待上报"
-    StateModel.AppliedState.APPLIED -> "已应用"
+    StateModel.AppliedState.WAITING -> "等待加载"
+    StateModel.AppliedState.APPLIED -> "已加载"
     StateModel.AppliedState.STALE -> "上报超时"
 }
 
@@ -435,8 +435,8 @@ private fun d3Tone(s: StateModel.AppliedState) = when (s) {
 
 private fun d4Text(s: StateModel.RuntimeState) = when (s) {
     StateModel.RuntimeState.UNKNOWN -> "未确认"
-    StateModel.RuntimeState.IN_USE -> "已确认"
-    StateModel.RuntimeState.MODEL_MISMATCH -> "等待应用"
+    StateModel.RuntimeState.IN_USE -> "生效中"
+    StateModel.RuntimeState.MODEL_MISMATCH -> "待应用"
     StateModel.RuntimeState.DISABLED -> "小爱未启用"
     StateModel.RuntimeState.NO_KEY -> "缺少密钥"
 }
@@ -467,8 +467,8 @@ private fun portTone(s: IssueResolver.PortState) = when (s) {
 
 private fun bridgeDetail(b: BridgeStatus.Snapshot, mcpEnabled: Boolean): String {
     if (!b.connected || b.port <= 0) {
-        return if (mcpEnabled) "等待小爱上报控制面；未知端口不猜 loopback"
-        else "MCP 关闭或未设置令牌，8771 不启动"
+        return if (mcpEnabled) "等待小爱上报；未知端口不做猜测"
+        else "外部接入关闭或未设置令牌，小爱任务接口不启动"
     }
     val bind = when {
         b.bindHost.isNotBlank() -> b.bindHost
@@ -481,7 +481,7 @@ private fun bridgeDetail(b: BridgeStatus.Snapshot, mcpEnabled: Boolean): String 
 
 private fun agentDetail(a: AgentRuntimeStatus.Snapshot, mcpEnabled: Boolean): String {
     if (!a.known()) {
-        return if (mcpEnabled) "未收到 8770 上报；不下结论" else "MCP 关闭，动作面不启动"
+        return if (mcpEnabled) "未收到设备操作接口上报；不下结论" else "外部接入关闭，设备操作接口不启动"
     }
     if (a.running) {
         val bind = a.bindHost.ifBlank { "地址未上报" }
@@ -524,13 +524,13 @@ private fun diagnosticsText(
     sb.append("端点: ").append(MeSupport.hostOf(cfg?.baseUrl())).append('\n')
     sb.append("密钥: ").append(if (cfg?.apiKeyOfActive()?.isNotBlank() == true) "已设置" else "未设置").append('\n')
     sb.append("令牌: ").append(MeSupport.tokenStrength(cfg?.mcpToken)).append('\n')
-    sb.append("D1: ").append(d1Text(s.d1)).append('\n')
-    sb.append("D2: ").append(d2Text(s.d2)).append('\n')
-    sb.append("D3: ").append(d3Text(s.d3)).append('\n')
-    sb.append("D4: ").append(d4Text(s.d4)).append('\n')
-    sb.append("8771: ").append(portText(s.bridge8771)).append(" · ")
+    sb.append("配置: ").append(d1Text(s.d1)).append('\n')
+    sb.append("模型服务: ").append(d2Text(s.d2)).append('\n')
+    sb.append("配置加载: ").append(d3Text(s.d3)).append('\n')
+    sb.append("小爱使用: ").append(d4Text(s.d4)).append('\n')
+    sb.append("小爱任务: ").append(portText(s.bridge8771)).append(" · ")
         .append(bridgeDetail(s.bridge, cfg?.mcpEnabled == true)).append('\n')
-    sb.append("8770: ")
+    sb.append("设备操作: ")
         .append(agentPortUi(cfg?.mcpEnabled == true, s.agent).text).append(" · ")
         .append(agentDetail(s.agent, cfg?.mcpEnabled == true)).append('\n')
     sb.append("权限: ")

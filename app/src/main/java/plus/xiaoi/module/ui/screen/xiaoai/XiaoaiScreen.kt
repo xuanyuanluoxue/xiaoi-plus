@@ -171,7 +171,7 @@ fun XiaoaiScreen(
                 style = XiaoiTheme.typography.mono,
             )
             Spacer(Modifier.height(6.dp))
-            XiaoiValueRow("端点", hostOf(state.endpoint).ifEmpty { "未设置" })
+            XiaoiValueRow("接口地址", hostOf(state.endpoint).ifEmpty { "未设置" })
             XiaoiValueRow("密钥", if (state.keySet) "已设置" else "未设置")
             Spacer(Modifier.height(8.dp))
             XiaoiButton(
@@ -190,7 +190,7 @@ fun XiaoaiScreen(
                 style = XiaoiTheme.typography.body,
             )
             Spacer(Modifier.height(6.dp))
-            XiaoiValueRow("已应用", state.appliedLine)
+            XiaoiValueRow("配置加载", state.appliedLine)
             XiaoiValueRow("最近上报", state.lastReport, mono = true)
             XiaoiValueRow("运行模型", state.runtimeModelLine)
             XiaoiValueRow("最后错误", state.lastError.ifEmpty { "无" })

@@ -41,7 +41,7 @@ public final class McpSection {
     private final EditText etToken;
 
     /**
-     * 8770 Agent 动作面（与 8771 控制面独立开关，但共用同一个 token）。
+     * 设备操作接口（与小爱任务接口独立开关，但共用同一个 token）。
      *
      * <p>实际端口以 {@link AgentRuntimeStatus} 的上报为准：8770 被小爱 facade 等
      * 进程占用时服务会顺延到 8771~8775，展示/复制不能再拼死 8770。</p>
@@ -53,7 +53,7 @@ public final class McpSection {
                 : AgentHttpServer.DEFAULT_PORT;
     }
 
-    /** 实际桥端口（控制面未上报时保留 8771 提示值）；用于复制连接信息与 Skill。 */
+    /** 实际桥端口（小爱未上报时保留 8771 提示值）；用于复制连接信息与 Skill。 */
     private volatile int bridgePort = Bridge.PORT_START;
     private long lastPortProbeAt;
 
@@ -290,11 +290,11 @@ public final class McpSection {
                 : "前置：adb forward tcp:" + port + " tcp:" + port + "\n";
 
         String skill = "# 小爱同学plus MCP\n\n"
-                + "## 8771 控制面（小爱）\n\n"
+                + "## 小爱任务（8771）\n\n"
                 + pre
                 + "端点：" + url + "（streamable-http，Bearer token）\n\n"
                 + "工具：\n" + Mcp.toolListText()
-                + "\n## 8770 Agent 动作面\n\n"
+                + "\n## 设备操作（8770）\n\n"
                 + agentPre
                 + "端点：" + agentUrl + "（streamable-http，Bearer token）\n\n"
                 + "Agent 工具：capabilities / action / confirm / audit / notify / ask\n";

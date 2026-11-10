@@ -10,10 +10,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.agent.AgentRuntimeStatus
+import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.CapabilityRegistry
@@ -29,6 +40,7 @@ import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiInfoRow
 import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.XiaoiSwitchRow
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
 import plus.xiaoi.module.ui.status.agentPortUi
@@ -44,9 +56,9 @@ import top.yukonga.miuix.kmp.icon.extended.Unlock
 import top.yukonga.miuix.kmp.icon.extended.WorldClock
 
 /**
- * 接入一级：先回答“谁可以连进来、连的是哪个通道、安不安全”。
+ * 接入一级：先回答“外部能否接入、连的是哪个接口、安不安全”。
  * 只读事实来自 [BridgeStatus] / [AgentRuntimeStatus] 与 config.json；
- * 8770 没有独立开关，页面不提供启停控件。
+ * 总开关是「允许外部 AI 接入」，两个接口没有独立的启停。
  */
 @Composable
 fun AccessScreen(
@@ -54,6 +66,9 @@ fun AccessScreen(
     onMessage: (String) -> Unit,
 ) {
     val colors = XiaoiTheme.colors
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
     val loaded = rememberAccessConfig()
     val bridge = rememberBridgeSnapshot()
     val agent = rememberAgentSnapshot()
@@ -116,15 +131,56 @@ fun AccessScreen(
         val token = cfg?.mcpToken.orEmpty()
         val lanRequested = cfg?.let { it.mcpLan || it.agentLan } == true
         val strength = tokenStrengthOf(token)
+        val writable = !facts.readOnly && !facts.skeleton
         val now = System.currentTimeMillis()
         val bridgeState = bridgeStateText(mcpEnabled, bridge, now)
         val agentState = agentPortUi(mcpEnabled, agent)
 
-        XiaoiGroupHeader("通道")
+        XiaoiGroupHeader("外部接入")
+        XiaoiPreferenceCard {
+            XiaoiSwitchRow(
+                title = "允许外部 AI 接入",
+                subtitle = when {
+                    !writable -> "配置只读，无法修改"
+                    token.isBlank() -> "先在「令牌与局域网」生成令牌，否则接口不会启动"
+                    mcpEnabled -> "小爱任务与设备操作接口按令牌启动"
+                    else -> "关闭后两个接口都不启动，令牌与设置保留"
+                },
+                checked = mcpEnabled,
+                enabled = writable && !saving,
+                onCheckedChange = { on ->
+                    if (writable && !saving) {
+                        saving = true
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                runCatching {
+                                    val repo = ConfigRepository.get(context)
+                                    val fresh = repo.loadForUi()
+                                    fresh.mcpEnabled = on
+                                    repo.save(fresh)
+                                    AgentService.startIfEnabled(context)
+                                }
+                            }
+                            saving = false
+                            result.onSuccess {
+                                loaded.reload()
+                                onMessage(if (on) "已开启外部接入" else "已关闭外部接入")
+                            }.onFailure {
+                                onMessage("保存失败：${it.message ?: "未知错误"}")
+                            }
+                        }
+                    }
+                },
+                icon = MiuixIcons.WorldClock,
+                iconTone = XiaoiIconTone.ACCENT,
+            )
+        }
+
+        XiaoiGroupHeader("两个接口")
         PortCard(
-            name = "8771 控制面",
+            name = "小爱任务",
             port = bridge.port.takeIf { it > 0 },
-            bind = "绑定 · " + bindDetail(bridge.bindHost, bridge.lanEnabled),
+            bind = "监听 · " + bindDetail(bridge.bindHost, bridge.lanEnabled),
             lanText = when (bridge.lanEnabled) {
                 true -> "局域网"
                 false -> "仅本机"
@@ -141,9 +197,9 @@ fun AccessScreen(
         )
         Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
         PortCard(
-            name = "8770 动作面",
+            name = "设备操作",
             port = agent.port.takeIf { it > 0 },
-            bind = "绑定 · " + if (agent.known()) {
+            bind = "监听 · " + if (agent.known()) {
                 bindDetail(agent.bindHost, agent.bindHost == "0.0.0.0")
             } else {
                 "未确认"
@@ -180,7 +236,7 @@ fun AccessScreen(
             Spacer(Modifier.height(8.dp))
             if (!mcpEnabled) {
                 Text(
-                    "MCP 未开启：8771 与 8770 都不会启动；开关在小爱页。",
+                    "外部接入未开启：两个接口都不会启动；用上方开关开启。",
                     color = colors.textSecondary,
                     style = XiaoiTheme.typography.caption,
                 )
@@ -195,16 +251,16 @@ fun AccessScreen(
         Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
         XiaoiPreferenceCard {
             XiaoiValueRow("令牌", maskedToken(token), mono = true)
-            XiaoiValueRow("8771 实际监听", bridgeBindText(bridge))
-            XiaoiValueRow("8770 实际监听", agentBindText(agent))
+            XiaoiValueRow("小爱任务监听", bridgeBindText(bridge))
+            XiaoiValueRow("设备操作监听", agentBindText(agent))
         }
 
         XiaoiGroupHeader("入口")
         XiaoiCardGroup {
             XiaoiPreferenceCard {
                 XiaoiInfoRow(
-                    title = "端口与服务",
-                    subtitle = "8771/8770 只读详情",
+                    title = "接口状态",
+                    subtitle = "监听端口与连接情况",
                     onClick = { onNavigate("Bridge") },
                     icon = MiuixIcons.Link,
                     iconTone = XiaoiIconTone.ACCENT,
@@ -213,7 +269,7 @@ fun AccessScreen(
             XiaoiPreferenceCard {
                 XiaoiInfoRow(
                     title = "令牌与局域网",
-                    subtitle = "令牌掩码/生成、8771 与 8770 LAN",
+                    subtitle = "令牌掩码/生成、两个接口是否允许局域网",
                     onClick = { onNavigate("Token") },
                     icon = MiuixIcons.Lock,
                     iconTone = XiaoiIconTone.ACCENT,
@@ -222,7 +278,7 @@ fun AccessScreen(
             XiaoiPreferenceCard {
                 XiaoiInfoRow(
                     title = "连接信息",
-                    subtitle = "URL、adb forward、客户端 JSON 与 Skill",
+                    subtitle = "客户端接入地址、示例与 Skill",
                     onClick = { onNavigate("Connect") },
                     icon = MiuixIcons.WorldClock,
                     iconTone = XiaoiIconTone.ACCENT,
@@ -240,7 +296,7 @@ fun AccessScreen(
             XiaoiPreferenceCard {
                 XiaoiInfoRow(
                     title = "工具清单",
-                    subtitle = "5 个动作 · 8771 8 个 · 8770 6 个",
+                    subtitle = "内置动作 5 个 · 小爱任务 8 个 · 设备操作 6 个",
                     onClick = { onNavigate("Tools") },
                     icon = MiuixIcons.Tasks,
                     iconTone = XiaoiIconTone.ACCENT,
@@ -259,7 +315,7 @@ fun AccessScreen(
 
         Spacer(Modifier.height(12.dp))
         Text(
-            "8770 跟随 MCP 开关与令牌，没有独立启停；局域网由 agentLan 单独控制。",
+            "设备操作接口跟随总开关与令牌，没有独立启停；局域网可以单独控制。",
             color = colors.textHint,
             style = XiaoiTheme.typography.caption,
         )

@@ -56,7 +56,7 @@ public final class IssueResolver {
         public boolean lanRequested;
 
         public boolean configReadOnly;
-        /** 用户是否开启能力桥/动作面；关闭时不把可选通道当作待处理问题。 */
+        /** 用户是否开启两个接口；关闭时不把可选通道当作待处理问题。 */
         public boolean mcpEnabled;
         /** 权限探针；null 等同全 UNKNOWN。 */
         public PermissionSnapshot permissions;
@@ -137,7 +137,7 @@ public final class IssueResolver {
             }
 
             if (d3 == StateModel.AppliedState.STALE) {
-                add(out, "bridge.stale", "控制面超过 30 秒未上报", "重新通知或重启小爱",
+                add(out, "bridge.stale", "小爱超过 30 秒未上报", "重新通知或重启小爱",
                         Severity.WARN, "Bridge");
             } else if (d3 == StateModel.AppliedState.WAITING) {
                 add(out, "runtime.not_applied", "配置等待小爱应用", "重新通知小爱",
@@ -163,18 +163,18 @@ public final class IssueResolver {
                 add(out, "xiaoi.waiting", "小爱未运行或未上报", "打开小爱并重新通知",
                         Severity.INFO, "Xiaoai");
             } else if (in.bridge8771 == PortState.FAILED) {
-                add(out, "bridge.mcp_failed", "能力桥 8771 启动失败", "查看端口与服务",
+                add(out, "bridge.mcp_failed", "小爱任务接口启动失败", "查看接口状态",
                         Severity.ERROR, "Bridge");
             } else if (in.bridge8771 == PortState.OFF) {
-                add(out, "bridge.mcp_off", "能力桥 8771 未启动", "到接入页开启",
+                add(out, "bridge.mcp_off", "小爱任务接口未启动", "到接口页开启",
                         Severity.WARN, "Access");
             }
 
             if (in.agent8770 == PortState.FAILED) {
-                add(out, "agent.failed", "动作面 8770 启动失败", "查看端口与服务",
+                add(out, "agent.failed", "设备操作接口启动失败", "查看接口状态",
                         Severity.ERROR, "Bridge");
             } else if (in.agent8770 == PortState.OFF) {
-                add(out, "agent.off", "动作面 8770 未启动", "查看端口与服务",
+                add(out, "agent.off", "设备操作接口未启动", "查看接口状态",
                         Severity.WARN, "Bridge");
             }
         }

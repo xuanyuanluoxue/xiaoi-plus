@@ -2,7 +2,7 @@ package plus.xiaoi.module;
 
 import plus.xiaoi.module.core.StateModel;
 
-/** 四维状态模型：D1~D4 规则、组合、文案与「只有 D4 能叫已确认」。 */
+/** 四维状态模型：D1~D4 规则、组合、文案与「只有 D4 能叫生效」。 */
 public final class StateModelTest {
 
     private StateModelTest() {}
@@ -97,7 +97,7 @@ public final class StateModelTest {
         d2ok.probe = StateModel.Probe.OK;
         d2ok.runtimeKnown = false;
         T.eq("D4 未上报 → UNKNOWN", StateModel.RuntimeState.UNKNOWN, r(d2ok).d4);
-        T.ok("D2 成功不等于已确认", !r(d2ok).verified());
+        T.ok("D2 成功不等于生效", !r(d2ok).verified());
         StateModel.Input staleRuntime = ready();
         staleRuntime.now = 1_000L + StateModel.STALE_MS + 1L;
         T.eq("D4 超 30s → UNKNOWN", StateModel.RuntimeState.UNKNOWN, r(staleRuntime).d4);
@@ -121,13 +121,13 @@ public final class StateModelTest {
         T.eq("D4 文件未选模型但运行时在用 → IN_USE",
                 StateModel.RuntimeState.IN_USE, r(runtimeOnly).d4);
 
-        // Hero 文案：端点可用 ≠ 已确认
+        // Hero 文案：模型服务可用 ≠ 生效
         StateModel.Input verified = ready();
         verified.probe = StateModel.Probe.OK;
         StateModel.Result vr = r(verified);
-        T.eq("已确认标题", "已确认", vr.heroTitle());
+        T.eq("生效标题", "第三方模型已生效", vr.heroTitle());
         StateModel.Result er = r(d2ok);
-        T.eq("端点可用标题", "端点可用", er.heroTitle());
+        T.eq("模型服务可用标题", "模型服务可用", er.heroTitle());
         T.ok("端点可用副行等待上报", er.heroSub().contains("等待"));
         T.eq("暂停标题", "已暂停", r(paused).heroTitle());
         T.ok("暂停可继续编辑", r(paused).heroSub().contains("继续编辑"));
@@ -135,11 +135,11 @@ public final class StateModelTest {
         T.eq("损坏标题", "配置异常", r(invalid).heroTitle());
         T.ok("超时副行不说在线", r(staleRuntime).heroSub().contains("30"));
         T.eq("D2 错误标题", "密钥无效", r(authOnly).heroTitle());
-        T.eq("D4 不一致标题", "等待应用", r(mismatch).heroTitle());
+        T.eq("D4 不一致标题", "等待小爱应用", r(mismatch).heroTitle());
 
         // 状态投影：暂停优先，运行在用才 OK
         T.eq("暂停颜色态", AppStatus.PAUSED, r(paused).status());
-        T.eq("已确认颜色态", AppStatus.OK, vr.status());
+        T.eq("生效颜色态", AppStatus.OK, vr.status());
         T.eq("校验错误颜色态", AppStatus.AUTH, r(authOnly).status());
         T.eq("配置未就绪颜色态", AppStatus.NOT_CONFIGURED, r(noKey).status());
 

@@ -11,15 +11,15 @@ import plus.xiaoi.module.AppStatus;
  *       不要求端点可达。</li>
  *   <li>D2 endpoint：只由 {@code ModelValidator} / {@code StatusCache} 的探针结论决定。</li>
  *   <li>D3 applied：控制面 leader 是否已加载 {@code fileRev}；超过 30s 无上报即 STALE。</li>
- *   <li>D4 runtime：控制面上报的小爱运行态；<b>只有 IN_USE 能叫「已确认」</b>。</li>
+ *   <li>D4 runtime：控制面上报的小爱运行态；<b>只有 IN_USE 能叫「生效」</b>。</li>
  * </ul>
  *
  * <p>为什么 D2 成功不能改 D4：校验只是向端点发了一次请求，小爱可能仍暂停、
- * 仍用旧配置，甚至没有启动。把「端点可用」说成「已确认」是 beta.4 的主要歧义。</p>
+ * 仍用旧配置，甚至没有启动。把「模型服务可用」说成「小爱已生效」是 beta.4 的主要歧义。</p>
  */
 public final class StateModel {
 
-    /** 控制面上报超过这个时间未更新，就不再把小爱当成在线/已确认。 */
+    /** 控制面上报超过这个时间未更新，就不再把小爱当成在线/生效。 */
     public static final long STALE_MS = 30_000L;
 
     private StateModel() {}
@@ -93,7 +93,7 @@ public final class StateModel {
             this.fileModel = fileModel == null ? "" : fileModel.trim();
         }
 
-        /** 只有控制面明确上报「正在用小爱」才算确认。 */
+        /** 只有小爱明确上报「正在用」才算生效。 */
         public boolean verified() {
             return d4 == RuntimeState.IN_USE;
         }
@@ -103,7 +103,7 @@ public final class StateModel {
             return d1 == ConfigState.READY;
         }
 
-        /** Hero 主标题；D2 的成功文案是「端点可用」，绝不写成「已确认」。 */
+        /** Hero 主标题；D2 的成功文案是「模型服务可用」，绝不写成「生效」。 */
         public String heroTitle() {
             switch (d1) {
                 case NOT_CONFIGURED: return "未配置";
@@ -114,8 +114,8 @@ public final class StateModel {
                     break;
             }
             switch (d4) {
-                case IN_USE: return "已确认";
-                case MODEL_MISMATCH: return "等待应用";
+                case IN_USE: return "第三方模型已生效";
+                case MODEL_MISMATCH: return "等待小爱应用";
                 case DISABLED: return "小爱未启用";
                 case NO_KEY: return "缺少密钥";
                 case UNKNOWN:
@@ -124,12 +124,12 @@ public final class StateModel {
             }
             switch (d2) {
                 case CHECKING: return "校验中";
-                case OK: return "端点可用";
+                case OK: return "模型服务可用";
                 case AUTH: return "密钥无效";
                 case MODEL: return "模型不存在";
                 case ENDPOINT: return "端点不可达";
                 case UNKNOWN:
-                default: return "待确认";
+                default: return "等待小爱";
             }
         }
 
@@ -160,7 +160,7 @@ public final class StateModel {
             if (!runtimeKnown) return "等待小爱上报运行状态";
             if (stale) return "超过 30 秒未上报 · 不确认在线";
             switch (d2) {
-                case OK: return "端点可用 · 运行态尚未确认";
+                case OK: return "模型服务可用 · 等待小爱使用";
                 case CHECKING: return "正在校验端点与模型…";
                 case AUTH: return "密钥无效或被拒 · 检查密钥是否属于该服务商";
                 case MODEL: return "模型不存在 · 检查模型 ID 是否拼写正确";
@@ -170,7 +170,7 @@ public final class StateModel {
             }
         }
 
-        /** 给现有 UI 颜色令牌用的投影；不参与任何「已确认」判断。 */
+        /** 给现有 UI 颜色令牌用的投影；不参与任何「生效」判断。 */
         public AppStatus status() {
             if (d1 == ConfigState.INVALID) return AppStatus.ENDPOINT;
             if (d1 == ConfigState.NOT_CONFIGURED) return AppStatus.NOT_CONFIGURED;

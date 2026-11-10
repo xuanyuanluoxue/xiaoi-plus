@@ -150,7 +150,7 @@ fun ToolsScreen(
 private fun buildToolGroups(): List<ToolGroupUi> = listOf(
     ToolGroupUi(
         title = "5 个内置动作",
-        note = "动作由 8770 执行；风险来自 ActionRisk，需确认/危险动作要一次性 token。",
+        note = "动作由设备操作接口执行；需确认/危险动作要一次性令牌。",
         items = Actions.builtins().map { descriptor ->
             ToolItemUi(
                 name = descriptor.name,
@@ -163,13 +163,13 @@ private fun buildToolGroups(): List<ToolGroupUi> = listOf(
         },
     ),
     ToolGroupUi(
-        title = "8771 控制面工具",
-        note = "只操作小爱/配置/统计，不执行设备动作；工具表未声明风险等级。",
+        title = "小爱任务工具",
+        note = "只操作小爱、配置与统计，不执行设备动作；工具表未声明风险等级。",
         items = toolItems(Mcp.toolsList()),
     ),
     ToolGroupUi(
-        title = "8770 Agent 工具",
-        note = "capabilities/action/confirm/audit/notify/ask；action 的实际风险由每个动作声明。",
+        title = "设备操作工具",
+        note = "外部 Agent 通过 capabilities / action / confirm / audit / notify / ask 操作；风险由每个动作声明。",
         items = toolItems(AgentMcp("0").toolsList()),
     ),
 )

@@ -4,7 +4,7 @@ import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.ui.components.XiaoiTone
 
 /**
- * 8770 动作面状态的唯一 UI 判定：Access / Bridge / Diagnostics 共用。
+ * 设备操作接口（8770）状态的唯一 UI 判定：Access / Bridge / Diagnostics 共用。
  *
  * 只读 [AgentRuntimeStatus.get] 的快照与 [AgentRuntimeStatus.Snapshot.known]，
  * 不扫端口、不猜 loopback；未知状态统一显示「未确认」。

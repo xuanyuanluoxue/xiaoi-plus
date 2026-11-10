@@ -7,7 +7,7 @@ import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.ui.components.DimensionState
-import plus.xiaoi.module.ui.components.DimensionStatus
+import plus.xiaoi.module.ui.components.userDimensions
 
 /** 首页主按钮：只做导航，不执行动作。 */
 internal data class HomeCta(val text: String, val route: String)
@@ -48,17 +48,12 @@ internal object HomeFacts {
         return StateModel.resolve(input)
     }
 
-    /** 四维徽章：D1 配置 / D2 端点 / D3 已应用 / D4 运行时。 */
-    fun dimensions(result: StateModel.Result): List<DimensionState> = listOf(
-        DimensionState("D1 配置", configStatus(result.d1), configText(result.d1)),
-        DimensionState("D2 端点", endpointStatus(result.d2), endpointText(result.d2)),
-        DimensionState("D3 已应用", appliedStatus(result.d3), appliedText(result.d3)),
-        DimensionState("D4 运行时", runtimeStatus(result.d4), runtimeText(result.d4)),
-    )
+    /** 三枚用户能理解的事实；措辞与徽章映射见 [userDimensions]。 */
+    fun dimensions(result: StateModel.Result): List<DimensionState> = userDimensions(result)
 
     /**
      * 每种状态都有唯一主 CTA：配置问题去配置，运行/通道问题去只读详情。
-     * 只有 D4 IN_USE 时 Hero 才显示「已确认」，由 StateModel 决定。
+     * 只有 D4 IN_USE 时 Hero 才显示「第三方模型已生效」，由 StateModel 决定。
      */
     fun cta(result: StateModel.Result): HomeCta = when {
         result.d1 == StateModel.ConfigState.INVALID ->
@@ -68,7 +63,7 @@ internal object HomeFacts {
             HomeCta("去配置模型", "Model")
 
         result.d1 == StateModel.ConfigState.PAUSED ->
-            HomeCta("去小爱页启用", "Xiaoai")
+            HomeCta("去小爱页开启", "Xiaoai")
 
         result.d2 == StateModel.EndpointState.AUTH ||
             result.d2 == StateModel.EndpointState.MODEL ||
@@ -80,71 +75,9 @@ internal object HomeFacts {
 
         result.d3 == StateModel.AppliedState.WAITING ||
             result.d3 == StateModel.AppliedState.STALE ->
-            HomeCta("查看端口与服务", "Bridge")
+            HomeCta("查看接口状态", "Bridge")
 
-        else -> HomeCta("查看端口与服务", "Bridge")
-    }
-
-    private fun configStatus(state: StateModel.ConfigState): DimensionStatus = when (state) {
-        StateModel.ConfigState.READY -> DimensionStatus.OK
-        StateModel.ConfigState.PAUSED -> DimensionStatus.WAITING
-        StateModel.ConfigState.NOT_CONFIGURED -> DimensionStatus.WAITING
-        StateModel.ConfigState.INVALID -> DimensionStatus.ERROR
-    }
-
-    private fun configText(state: StateModel.ConfigState): String = when (state) {
-        StateModel.ConfigState.READY -> "就绪"
-        StateModel.ConfigState.PAUSED -> "已暂停"
-        StateModel.ConfigState.NOT_CONFIGURED -> "未配置"
-        StateModel.ConfigState.INVALID -> "损坏"
-    }
-
-    private fun endpointStatus(state: StateModel.EndpointState): DimensionStatus = when (state) {
-        StateModel.EndpointState.OK -> DimensionStatus.OK
-        StateModel.EndpointState.CHECKING -> DimensionStatus.WAITING
-        StateModel.EndpointState.AUTH,
-        StateModel.EndpointState.MODEL,
-        StateModel.EndpointState.ENDPOINT -> DimensionStatus.ERROR
-        StateModel.EndpointState.UNKNOWN -> DimensionStatus.UNKNOWN
-    }
-
-    private fun endpointText(state: StateModel.EndpointState): String = when (state) {
-        StateModel.EndpointState.OK -> "可用"
-        StateModel.EndpointState.CHECKING -> "校验中"
-        StateModel.EndpointState.AUTH -> "密钥无效"
-        StateModel.EndpointState.MODEL -> "模型不存在"
-        StateModel.EndpointState.ENDPOINT -> "不可达"
-        StateModel.EndpointState.UNKNOWN -> "未确认"
-    }
-
-    private fun appliedStatus(state: StateModel.AppliedState): DimensionStatus = when (state) {
-        StateModel.AppliedState.APPLIED -> DimensionStatus.OK
-        StateModel.AppliedState.WAITING,
-        StateModel.AppliedState.STALE -> DimensionStatus.WAITING
-        StateModel.AppliedState.UNKNOWN -> DimensionStatus.UNKNOWN
-    }
-
-    private fun appliedText(state: StateModel.AppliedState): String = when (state) {
-        StateModel.AppliedState.APPLIED -> "已应用"
-        StateModel.AppliedState.WAITING -> "等待应用"
-        StateModel.AppliedState.STALE -> "上报超时"
-        StateModel.AppliedState.UNKNOWN -> "未确认"
-    }
-
-    private fun runtimeStatus(state: StateModel.RuntimeState): DimensionStatus = when (state) {
-        StateModel.RuntimeState.IN_USE -> DimensionStatus.OK
-        StateModel.RuntimeState.MODEL_MISMATCH,
-        StateModel.RuntimeState.DISABLED,
-        StateModel.RuntimeState.NO_KEY -> DimensionStatus.WAITING
-        StateModel.RuntimeState.UNKNOWN -> DimensionStatus.UNKNOWN
-    }
-
-    private fun runtimeText(state: StateModel.RuntimeState): String = when (state) {
-        StateModel.RuntimeState.IN_USE -> "已确认"
-        StateModel.RuntimeState.MODEL_MISMATCH -> "待应用"
-        StateModel.RuntimeState.DISABLED -> "未启用"
-        StateModel.RuntimeState.NO_KEY -> "缺密钥"
-        StateModel.RuntimeState.UNKNOWN -> "未确认"
+        else -> HomeCta("查看接口状态", "Bridge")
     }
 
     /** 运行概况时间戳；0/负数 = 没有事实，显示“未确认”。 */

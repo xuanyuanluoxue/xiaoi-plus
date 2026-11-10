@@ -114,9 +114,9 @@ internal fun validateDraft(cfg: AppConfig): ModelErrors {
     }
     val base = provider.baseUrl.trim()
     if (base.isEmpty()) {
-        if (cfg.enabled) result = result.copy(baseUrl = "启用前需要填写端点")
+        if (cfg.enabled) result = result.copy(baseUrl = "启用前需要填写接口地址")
     } else if (!(base.startsWith("http://") || base.startsWith("https://"))) {
-        result = result.copy(baseUrl = "端点必须以 http:// 或 https:// 开头")
+        result = result.copy(baseUrl = "接口地址必须以 http:// 或 https:// 开头")
     }
     val models = provider.models
     val activeIndex = models.indexOfFirst { it.id == cfg.activeModelId }

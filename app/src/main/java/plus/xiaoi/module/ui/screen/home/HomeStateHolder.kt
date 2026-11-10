@@ -25,7 +25,7 @@ import plus.xiaoi.module.ui.components.IssueSeverity
 import plus.xiaoi.module.ui.components.IssueUi
 import plus.xiaoi.module.ui.components.XiaoiTone
 
-/** 双域入口卡：8771 与 8770 各自一份，绝不互相代替判断。 */
+/** 两个接口的入口卡：小爱任务（8771）与设备操作（8770）各自一份。 */
 internal data class DomainCardUi(
     val title: String,
     val route: String,
@@ -52,18 +52,18 @@ internal data class HomeIssue(val ui: IssueUi, val route: String)
 
 internal data class HomeUiState(
     val loading: Boolean = true,
-    val heroTitle: String = "待确认",
+    val heroTitle: String = "等待小爱",
     val heroSub: String = "正在读取本机配置与运行快照",
     val dimensions: List<DimensionState> = emptyList(),
     val cta: HomeCta? = null,
     val issues: List<HomeIssue> = emptyList(),
     val issueTotal: Int = 0,
     val xiaoai: DomainCardUi = DomainCardUi(
-        title = "小爱 · 8771", route = "Access", status = "未确认",
+        title = "小爱任务 · 8771", route = "Access", status = "未确认",
         tone = XiaoiTone.NEUTRAL, port = "—", bind = "未确认", note = "",
     ),
     val agent: DomainCardUi = DomainCardUi(
-        title = "接入 · 8770", route = "Bridge", status = "未确认",
+        title = "设备操作 · 8770", route = "Bridge", status = "未确认",
         tone = XiaoiTone.NEUTRAL, port = "—", bind = "未确认", note = "",
     ),
     val bridgeRows: List<ValueUi> = emptyList(),
@@ -97,7 +97,7 @@ internal class HomeStateHolder(context: Context) {
             } catch (t: Throwable) {
                 HomeUiState(
                     loading = false,
-                    heroTitle = "未确认",
+                    heroTitle = "读取失败",
                     heroSub = "读取本机状态失败，请稍后重试",
                     cta = HomeCta("查看诊断", "Diagnostics"),
                 )
@@ -150,9 +150,9 @@ internal class HomeStateHolder(context: Context) {
         }
         val xiaoaiNote = when {
             !facts.configValid -> "配置损坏，无法确认通道"
-            bridge.connected && bridge.fresh(now) -> "leader 已连接"
+            bridge.connected && bridge.fresh(now) -> "小爱已连接"
             bridge.connected -> "超过 30 秒未上报，不确认在线"
-            !facts.mcpEnabled -> "8771 控制面已关闭；不影响 8770 判断"
+            !facts.mcpEnabled -> "小爱任务接口已关闭；不影响设备操作"
             else -> "等待小爱启动并上报"
         }
         val agentStatus = when {
@@ -164,12 +164,12 @@ internal class HomeStateHolder(context: Context) {
             else -> "未确认" to XiaoiTone.NEUTRAL
         }
         val agentNote = when {
-            !facts.configValid -> "配置损坏，无法确认动作面"
+            !facts.configValid -> "配置损坏，无法确认设备操作"
             agent.running && agent.lanEnabled -> "局域网可访问"
             agent.running -> "仅本机可访问"
             agent.failed() -> agent.lastError
             agent.known() -> "已停止，未收到本次启动事实"
-            !facts.mcpEnabled -> "MCP 关闭时不会启动"
+            !facts.mcpEnabled -> "外部接入关闭时不会启动"
             else -> "尚未收到启动事实"
         }
 
@@ -184,7 +184,7 @@ internal class HomeStateHolder(context: Context) {
             issues = issues,
             issueTotal = allIssues.size,
             xiaoai = DomainCardUi(
-                title = "小爱 · 8771",
+                title = "小爱任务 · 8771",
                 route = "Access",
                 status = xiaoaiStatus.first,
                 tone = xiaoaiStatus.second,
@@ -193,7 +193,7 @@ internal class HomeStateHolder(context: Context) {
                 note = xiaoaiNote,
             ),
             agent = DomainCardUi(
-                title = "接入 · 8770",
+                title = "设备操作 · 8770",
                 route = "Bridge",
                 status = agentStatus.first,
                 tone = agentStatus.second,
@@ -207,7 +207,7 @@ internal class HomeStateHolder(context: Context) {
             ),
             bridgeRows = listOf(
                 ValueUi(
-                    "leader 端口",
+                    "实际端口",
                     if (bridge.connected && bridge.port > 0) bridge.port.toString() else "—",
                     mono = true,
                 ),
@@ -300,8 +300,8 @@ internal class HomeStateHolder(context: Context) {
 
     private fun domainLabel(domain: ActivityFeed.Domain): String = when (domain) {
         ActivityFeed.Domain.XIAOAI -> "小爱"
-        ActivityFeed.Domain.AGENT -> "动作面"
-        ActivityFeed.Domain.ACCESS -> "接入"
+        ActivityFeed.Domain.AGENT -> "设备操作"
+        ActivityFeed.Domain.ACCESS -> "接口"
     }
 
     private companion object {

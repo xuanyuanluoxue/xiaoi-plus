@@ -168,7 +168,7 @@ private object Routes {
         XIAOAI to XiaoiRoute("小爱", NavStack.MainTab.XIAOAI),
         MODEL to XiaoiRoute("模型与服务商", NavStack.MainTab.XIAOAI),
         ACCESS to XiaoiRoute("接入", NavStack.MainTab.ACCESS),
-        BRIDGE to XiaoiRoute("端口与服务", NavStack.MainTab.ACCESS),
+        BRIDGE to XiaoiRoute("接口状态", NavStack.MainTab.ACCESS),
         TOKEN to XiaoiRoute("令牌与局域网", NavStack.MainTab.ACCESS),
         CONNECT to XiaoiRoute("连接信息", NavStack.MainTab.ACCESS),
         CAPABILITIES to XiaoiRoute("能力清单", NavStack.MainTab.ACCESS),

@@ -135,7 +135,7 @@ fun TokenScreen(
                     fresh.mcpLan = mcpLan
                     fresh.agentLan = agentLan
                     repo.save(fresh)
-                    // 保存后按新配置重绑 8770；8771 由控制面 reload 生效。
+                    // 保存后按新配置重绑设备操作接口；小爱任务接口由小爱重新加载配置后生效。
                     AgentService.startIfEnabled(context)
                 }
             }
@@ -145,7 +145,7 @@ fun TokenScreen(
                 mcpLanDraft = null
                 agentLanDraft = null
                 loaded.reload()
-                onMessage("已保存：8770 将按新配置重绑，8771 等待控制面 reload")
+                onMessage("已保存：设备操作接口会重连，小爱任务接口等待小爱重新加载")
             }.onFailure {
                 onMessage("保存失败：${it.message ?: "未知错误"}")
             }
@@ -181,7 +181,7 @@ fun TokenScreen(
             XiaoiGroupHeader("令牌")
             XiaoiCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("MCP 令牌", color = colors.text, style = XiaoiTheme.typography.rowTitle)
+                    Text("接入令牌", color = colors.text, style = XiaoiTheme.typography.rowTitle)
                     Spacer(Modifier.weight(1f))
                     XiaoiBadge(
                         text = tokenStrengthText(strength),
@@ -223,7 +223,7 @@ fun TokenScreen(
                 if (tokenDraft != null) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "新令牌尚未保存；保存后旧 MCP 客户端会立即 401。",
+                        "新令牌尚未保存；保存后旧的接入客户端会立即 401。",
                         color = colors.warning,
                         style = XiaoiTheme.typography.caption,
                     )
@@ -234,8 +234,8 @@ fun TokenScreen(
             XiaoiCardGroup {
                 XiaoiPreferenceCard {
                     XiaoiSwitchRow(
-                        title = "8771 局域网",
-                        subtitle = "同一 Wi-Fi 下的设备可访问 MCP 接口",
+                        title = "小爱任务 · 局域网",
+                        subtitle = "同一 Wi-Fi 下的设备可访问小爱任务接口",
                         checked = mcpLan,
                         enabled = writable,
                         onCheckedChange = { on ->
@@ -252,8 +252,8 @@ fun TokenScreen(
                 }
                 XiaoiPreferenceCard {
                     XiaoiSwitchRow(
-                        title = "8770 局域网",
-                        subtitle = "只改监听地址；8770 是否启动仍跟随 MCP 开关",
+                        title = "设备操作 · 局域网",
+                        subtitle = "只改监听地址；是否启动仍跟随「外部接入」开关",
                         checked = agentLan,
                         enabled = writable,
                         onCheckedChange = { on ->
@@ -282,7 +282,7 @@ fun TokenScreen(
                 if (strength == IssueResolver.TokenStrength.NONE) {
                     XiaoiCard {
                         Text(
-                            "没有令牌：8771 控制面不会启动，局域网也不会生效。",
+                            "没有令牌：小爱任务接口不会启动，局域网也不会生效。",
                             color = colors.warning,
                             style = XiaoiTheme.typography.caption,
                         )

@@ -146,7 +146,7 @@ fun MeScreen(
                     if (ok) {
                         StopResult(
                             true,
-                            "已停用：模型重定向 · 8771 控制面 · 8770 动作面 · 两侧局域网。令牌保留，重新开启时无需重新配对。",
+                            "已停用：模型重定向、小爱任务与设备操作接口、两侧局域网。令牌保留，重新开启时无需重新配对。",
                         )
                     } else {
                         StopResult(false, "已写入但状态未完全确认，请到诊断页核对四维状态")
@@ -172,7 +172,7 @@ fun MeScreen(
         XiaoiCard {
             Text("小爱同学plus", color = colors.text, style = XiaoiTheme.typography.title)
             Text(
-                "模型重定向 · 8771 控制面 · 8770 动作面；仅在本机生效。",
+                "模型重定向 · 小爱任务 · 设备操作；仅在本机生效。",
                 color = colors.textSecondary,
                 style = XiaoiTheme.typography.caption,
             )
@@ -218,7 +218,7 @@ fun MeScreen(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "Root 只检测 su 是否存在，不显示“已授权”；LSPosed 以控制面连接为准。",
+                "Root 只检测 su 是否存在，不显示“已授权”；LSPosed 以小爱上报为准。",
                 color = colors.textHint,
                 style = XiaoiTheme.typography.caption,
             )
@@ -294,7 +294,7 @@ fun MeScreen(
                     subtitle = when (val n = errorCount) {
                         null -> "读取本机日志缓冲…"
                         0 -> "没有错误日志"
-                        else -> "$n 条错误 · 查看控制面与小爱上报"
+                        else -> "$n 条错误 · 查看小爱上报与接口状态"
                     },
                     onClick = onOpenLogs,
                     icon = MiuixIcons.Notes,
@@ -344,9 +344,9 @@ fun MeScreen(
             XiaoiCard {
                 Text("将立即写入 config.json", color = colors.text, style = XiaoiTheme.typography.rowTitle)
                 Spacer(Modifier.height(8.dp))
-                DangerLine("关闭模型重定向（小爱恢复官方端点）")
-                DangerLine("关闭 8771 控制面（MCP 工具不可用）")
-                DangerLine("关闭 8770 动作面（设备动作不可用）")
+                DangerLine("关闭模型重定向（小爱恢复官方模型）")
+                DangerLine("关闭小爱任务接口（外部 AI 无法调用小爱）")
+                DangerLine("关闭设备操作接口（外部 AI 无法操作手机）")
                 DangerLine("关闭 8771 / 8770 局域网监听")
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -385,8 +385,8 @@ fun MeScreen(
     XiaoiConfirmDialog(
         show = showStopConfirm,
         title = "停用全部对外能力？",
-        message = "将关闭模型重定向、8771 控制面、8770 动作面与两侧局域网，" +
-            "并立即写入 config.json。小爱会回到官方端点，外部 Agent 断开。",
+        message = "将关闭模型重定向、小爱任务与设备操作接口，以及两侧局域网，" +
+            "并立即写入 config.json。小爱会回到官方模型，外部 Agent 断开。",
         confirmText = "停用全部",
         secondaryNote = "令牌与历史备份会保留，可重新开启；此操作可逆。",
         danger = true,

@@ -65,7 +65,7 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(lifecycleOwner) {
-        // 只在 RESUMED 时重读：控制面超过 30 秒未上报时自动退回“未确认”。
+        // 只在 RESUMED 时重读：小爱超过 30 秒未上报时自动退回“未确认”。
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             holder.refresh()
             while (true) {
@@ -116,7 +116,11 @@ fun HomeScreen(
                 icon = MiuixIcons.Mic,
                 tone = XiaoiIconTone.ACCENT,
                 title = "小爱同学",
-                summary = "${state.xiaoai.status} · 端口 ${state.xiaoai.port} · ${state.xiaoai.bind}",
+                summary = if (state.xiaoai.port == "—") {
+                    state.xiaoai.note
+                } else {
+                    "端口 ${state.xiaoai.port} · ${state.xiaoai.bind}"
+                },
                 badge = state.xiaoai.status,
                 badgeTone = state.xiaoai.tone,
                 onClick = { onNavigate(state.xiaoai.route) },
@@ -124,8 +128,8 @@ fun HomeScreen(
             XiaoiEntryCard(
                 icon = MiuixIcons.Link,
                 tone = XiaoiIconTone.ACCENT,
-                title = "接入通道",
-                summary = "8771 ${state.xiaoai.status} · 8770 ${state.agent.status}",
+                title = "外部接入",
+                summary = "小爱任务 ${state.xiaoai.status} · 设备操作 ${state.agent.status}",
                 badge = state.agent.status,
                 badgeTone = state.agent.tone,
                 onClick = { onNavigate("Access") },
@@ -136,8 +140,8 @@ fun HomeScreen(
                 title = "今日调用",
                 summary = when {
                     state.usageThird != null && state.usageOfficial != null ->
-                        "三方 ${state.usageThird} · 官方 ${state.usageOfficial}"
-                    else -> "未确认（需要 MCP 与令牌）"
+                        "第三方 ${state.usageThird} 次 · 官方 ${state.usageOfficial} 次"
+                    else -> "未确认（需要外部接入与令牌）"
                 },
                 onClick = { onNavigate("Bridge") },
             )
