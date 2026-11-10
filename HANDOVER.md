@@ -1,19 +1,21 @@
 # 交接说明（2026-11-10）
 
-> 状态：**0.15.0-beta.1 已进入发布流程**（UI 收尾：渐变模糊顶栏、玻璃底栏、
-> 配色收敛、用户视角文案、底栏跳转与首页显示修复）。
-> 设置 App 已是单 Activity + Compose + Miuix 的 4 tab（首页/小爱/接入/我的），
-> 共 19 条路由；P2 功能验收 65 PASS / 0 FAIL / 2 BLOCKED，P2 视觉 5 条 P1 已修。
+> 状态：**0.15.0-beta.1 已发布（2026-11-10，prerelease，versionCode 21）**
+> <https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.15.0-beta.1>
 >
-> - 上一个已发布版本：`v0.13.0-agent.2`（prerelease，versionCode 18）。
-> - 0.14 目标：`0.14.0` / versionCode 19（A8 定版）；版本说明见
->   [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)。
-> - 设备当前断开：LSPosed 注入、R8 后体积、8770/8771 真机回归以 A8 的
->   RELEASE-REPORT 为准；在报告确认前不声称“全部真机通过”，也不承诺 APK ≤6MB。
-> - 旧 `HomeActivity`/`ConfigActivity` 仅作 0.14 过渡入口保留，**0.15 删除**。
+> 设置 App 已是单 Activity + Compose + Miuix 的 4 tab（首页/小爱/接入/我的），
+> 共 19 条路由。本版完成：渐变模糊顶栏（Miuix `SmallTopAppBar` + `progressiveBlur`）、
+> 玻璃底栏、配色收敛、用户视角文案（小爱任务/设备操作/第三方模型已生效）、
+> 底栏跳转修复、首页状态区显示修复。
+>
+> - 上一个已发布版本：`v0.14.1`（versionCode 20）。
+> - 真机升级已验证：`v0.14.1 → 0.15.0-beta.1` 配置保留；`/health` 带 token 200 / 无 token 401；
+>   `POST /config` 410；MCP `initialize` 返回 `0.15.0-beta.1`，`tools/list` 9 个工具。
+> - 待补验收：浅色主题、预测性返回（API 34+）在更多 ROM 上的表现。
+> - 旧 `HomeActivity`/`ConfigActivity` 仍作兼容入口保留，尚未删除。
 >
 > 发布门禁：未签名/错签名产物不能进入 Release；无正式密钥的 tag 只上传 artifact，不建 Release。
-> 0.14 仍是测试版；root/alarm/LAN 安全边界需继续验证后再考虑正式版。
+> 仍是 0.x 测试版；root/alarm/LAN 安全边界需继续验证后再考虑正式版。
 
 ## 2026-11-10 状态更新（最新，先看这节）
 
@@ -21,10 +23,10 @@
 
 | 项 | 现状 |
 | --- | --- |
-| 开发分支 | `feat/ui-liquid`（worktree `~/xiaoi-plus-dev/worktrees/liquid-nav`），HEAD `c0fc247` |
-| `main` | `31f9a24`，落后 feature 分支（UI 玻璃/pager/系统栏等未合） |
-| 已完成并真机验证 | 玻璃底栏折射、左右滑动 pager（跟手）、底栏避开手势条、`/health` 报实际端口、协议层创建待办 `xiaoai_todo_create` |
-| 正在做 | 顶栏迁移到 Miuix `TopAppBar`（自研顶栏反复出问题，见 `docs/ui/TOPBAR.md`） |
+| 开发分支 | `feat/ui-liquid`（worktree `~/xiaoi-plus-dev/worktrees/liquid-nav`），HEAD `1f0fd8f` |
+| `main` | `0174389`（已合并 feat/ui-liquid 并发布 `v0.15.0-beta.1`） |
+| 已完成并真机验证 | 渐变模糊顶栏、玻璃底栏折射、pager 单向驱动切 tab、配色收敛、用户视角文案、外部接入总开关 |
+| 待补验收 | 浅色主题、预测性返回（API 34+）、更多 ROM 的玻璃回退 |
 | 真机验收记录 | `docs/ui/DEVICE-CHECK-2026-11-10.md` |
 | 协议侦察报告 | `docs/agent/OSBOT-PROTOCOL.md`（8770 facade 归属、`OsbotRequest`、待办最小请求） |
 
@@ -46,7 +48,7 @@ OpenAI 兼容端点，并开一个 MCP 接口给本机或同一局域网的电�
 | 手机 | 小米 HyperOS 设备（机型与系统版本因环境而异） |
 | 连接 | USB adb 或无线 adb（IP 与串号属于本机环境，换成你自己的） |
 | 小爱 | 8.2.65.4714（版本白名单精确匹配，不在名单自动 no-op） |
-| 模块 | 0.14.0（目标，A8 定版；上一发布 0.13.0-agent.2），LSPosed 已启用，作用域只勾「超级小爱」 |
+| 模块 | 0.15.0-beta.1（上一发布 0.14.1），LSPosed 已启用，作用域只勾「超级小爱」 |
 | 当前模型 | 任意 OpenAI 兼容端点与模型（BYOK） |
 | MCP token | 存在 `config.json` 的 `mcp.token`，同时在 `~/.config/xiaoi/token`（本机，不进仓库） |
 
