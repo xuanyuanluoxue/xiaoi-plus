@@ -1,5 +1,6 @@
 package plus.xiaoi.module.ui.components
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -9,13 +10,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import plus.xiaoi.module.core.NavStack
@@ -28,9 +37,12 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 
+/** 顶栏标题行高度（不含状态栏 inset）：顶栏本体、模糊带、页面顶部留白共用这一处。 */
+val XiaoiTopBarHeight: Dp = 44.dp
+
 /**
- * 顶栏：与参考实现的 `ManagerCompactTopBar` 对齐——状态栏下 48dp 行、
- * 32sp 标题、返回按钮与页面动作同排；不做折叠大标题的空白行。
+ * 顶栏：与参考实现的 `ManagerCompactTopBar` 对齐——状态栏下 [XiaoiTopBarHeight] 行、
+ * 26sp 标题、返回按钮与页面动作同排；不做折叠大标题的空白行。
  */
 @Composable
 fun XiaoiTopBar(
@@ -43,8 +55,8 @@ fun XiaoiTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)
-            .height(40.dp),
+            .padding(start = 16.dp, end = 8.dp)
+            .height(XiaoiTopBarHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
@@ -91,7 +103,36 @@ fun XiaoiBottomBar(
     )
 }
 
-/** 顶栏占用的竖向高度（状态栏 inset + 40dp 标题栏）：滚动内容用它做顶部内边距。 */
-@androidx.compose.runtime.Composable
-fun xiaoiTopBarHeight(): androidx.compose.ui.unit.Dp =
-    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 40.dp
+/** 顶栏占用的竖向高度（状态栏 inset + [XiaoiTopBarHeight]）：滚动内容用它做顶部内边距。 */
+@Composable
+fun xiaoiTopBarHeight(): Dp =
+    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + XiaoiTopBarHeight
+
+/**
+ * 当前页面的滚动位置（像素）：MainActivity 提供，各页用 [xiaoiScrollState] /
+ * [rememberXiaoiListState] 写入。0 表示还在顶部，大于 8dp 表示内容已经滚起来。
+ */
+val LocalXiaoiScrollY = staticCompositionLocalOf<MutableIntState> { mutableIntStateOf(0) }
+
+/** 可滚动页面的 [ScrollState]：滚动量变化时上报给顶栏，驱动「实色 → 半透明模糊」。 */
+@Composable
+fun xiaoiScrollState(): ScrollState {
+    val st = rememberScrollState()
+    val scrollY = LocalXiaoiScrollY.current
+    LaunchedEffect(st.value) { scrollY.intValue = st.value }
+    return st
+}
+
+/**
+ * 可滚动列表的 [LazyListState]：第一项还在顶部时报像素偏移，
+ * 已经滚到第二项以后报一个足够大的哨兵值（顶栏只关心「是否 > 8dp」）。
+ */
+@Composable
+fun rememberXiaoiListState(): LazyListState {
+    val st = rememberLazyListState()
+    val scrollY = LocalXiaoiScrollY.current
+    LaunchedEffect(st.firstVisibleItemIndex, st.firstVisibleItemScrollOffset) {
+        scrollY.intValue = if (st.firstVisibleItemIndex == 0) st.firstVisibleItemScrollOffset else 10000
+    }
+    return st
+}
