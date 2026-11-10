@@ -9,7 +9,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.pager.HorizontalPager
@@ -22,7 +25,13 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.platform.LocalDensity
+import plus.xiaoi.module.ui.components.LocalXiaoiScrollY
+import plus.xiaoi.module.ui.components.XiaoiTopBarHeight
 import top.yukonga.miuix.kmp.blur.drawBackdrop
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.input.pointer.pointerInput
@@ -233,6 +242,9 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val scope = rememberCoroutineScope()
     // 每个路由一份页面动作容器：screen 通过 LocalXiaoiPageActions 把动作放进顶栏。
     val pageActions = remember(route) { XiaoiPageActionsState() }
+    // 滚动量单源：各页写、顶栏读。换页先归零，避免上一页的滚动量带到新页。
+    val scrollYState = remember { mutableIntStateOf(0) }
+    LaunchedEffect(route) { scrollYState.intValue = 0 }
     // 二级页返回后恢复搜索/筛选/滚动位置，而不是重建页面。
     val screenStates = rememberSaveableStateHolder()
 
@@ -284,9 +296,6 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val glassBackdrop = rememberGlassBackdrop(glassMode, colors.bg)
     val barReserved = rememberGlassBarReservedHeight()
     val root = nav.isRoot()
-    // 顶栏总高度（状态栏 inset + 40dp）：内容区顶部留白，避免钻到顶栏下面
-    val topOverlayHeight = androidx.compose.foundation.layout.WindowInsets.statusBars
-        .asPaddingValues().calculateTopPadding() + 40.dp
     val tabs = NavStack.MainTab.values()
     val pagerState = rememberPagerState(
         initialPage = tabs.indexOf(nav.tab()).coerceAtLeast(0),
@@ -325,10 +334,9 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
         Box(
             Modifier
                 .fillMaxSize()
-                .padding(
-                    top = if (root) 0.dp else topOverlayHeight,
-                    bottom = 0.dp, // 内容穿到小白条下方
-                ),
+                // 所有页面都不再留白：内容直接穿到顶栏下方，
+                // 顶部呼吸感由各页自己的 xiaoiTopBarHeight() + 8dp 负责。
+                .padding(top = 0.dp, bottom = 0.dp),
         ) {
             Box(
                 Modifier
@@ -344,7 +352,10 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                     // 一级页内容底部预留玻璃条高度；二级页隐藏底栏后不留白。
                     .padding(bottom = 0.dp), // TEST: 让内容从玻璃底栏下穿过，验证折射
             ) {
-                CompositionLocalProvider(LocalXiaoiPageActions provides pageActions) {
+                CompositionLocalProvider(
+                    LocalXiaoiPageActions provides pageActions,
+                    LocalXiaoiScrollY provides scrollYState,
+                ) {
                     val renderKey: @Composable (String) -> Unit = { _k ->
                         when (_k) {
                             Routes.HOME -> HomeScreen(
@@ -463,16 +474,17 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
             if (Build.VERSION.SDK_INT >= 33) {
                 TopBlurScrim(
                     source = glassBackdrop,
+                    scrollY = scrollYState,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
-            androidx.compose.foundation.layout.Box(Modifier.align(Alignment.TopCenter)) {
-                XiaoiTopBar(
-                    title = Routes.titleOf(key),
-                    onBack = if (nav.isRoot()) null else ({ back() }),
-                    actions = { pageActions.actions?.invoke(this) },
-                )
-            }
+            XiaoiTopBarOverlay(
+                scrollY = scrollYState,
+                title = Routes.titleOf(key),
+                onBack = if (nav.isRoot()) null else ({ back() }),
+                actions = { pageActions.actions?.invoke(this) },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
             if (root) {
                 XiaoiBottomBar(
                     current = nav.tab(),
@@ -495,6 +507,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
 @androidx.compose.runtime.Composable
 private fun TopBlurScrim(
     source: plus.xiaoi.module.ui.components.glass.GlassBackdropSource,
+    scrollY: MutableIntState,
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
 ) {
     val backdrop = source.miuixBackdrop as? top.yukonga.miuix.kmp.blur.Backdrop ?: return
@@ -502,6 +515,9 @@ private fun TopBlurScrim(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val topInset = androidx.compose.foundation.layout.WindowInsets.statusBars
         .asPaddingValues().calculateTopPadding()
+    // 顶部时完全不可见（alpha = 0），滚起来才淡入，避免静止时压暗标题。
+    val scrolled = scrollY.intValue > with(density) { XiaoiScrollThreshold.roundToPx() }
+    val blurAlpha by animateFloatAsState(if (scrolled) 1f else 0f, label = "xiaoiTopBlurAlpha")
     val radiusPx = with(density) { 22.dp.toPx() }
     val effect = androidx.compose.runtime.remember(radiusPx) {
         plus.xiaoi.module.ui.components.glass.GlassNativeBlur.effect(radiusPx)
@@ -509,7 +525,8 @@ private fun TopBlurScrim(
     androidx.compose.foundation.layout.Box(
         modifier
             .fillMaxWidth()
-            .height(topInset + 88.dp)
+            .height(topInset + XiaoiTopBarHeight)  // 正好等于顶栏高度，避免盖到内容
+            .alpha(blurAlpha)
             .topBlurBackdrop(backdrop, effect, colors.bg),
     )
 }
@@ -548,3 +565,32 @@ private fun androidx.compose.ui.Modifier.topBlurBackdrop(
         },
     ),
 )
+
+/** 判定「内容已经滚起来」的阈值：超过它就切到半透明 + 背景模糊。 */
+private val XiaoiScrollThreshold = 8.dp
+
+/**
+ * 顶栏浮层：默认实色（alpha 1.0）；页面内容向上滚过 [XiaoiScrollThreshold] 后
+ * 渐变到半透明（alpha 0.35），配合 [TopBlurScrim] 的背景模糊与下边缘渐变。
+ */
+@Composable
+private fun XiaoiTopBarOverlay(
+    scrollY: MutableIntState,
+    title: String,
+    onBack: (() -> Unit)?,
+    actions: @Composable RowScope.() -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrolled = scrollY.intValue > with(LocalDensity.current) { XiaoiScrollThreshold.roundToPx() }
+    val barAlpha by animateFloatAsState(
+        targetValue = if (scrolled) 0.35f else 1f,
+        label = "xiaoiTopBarAlpha",
+    )
+    Box(
+        modifier
+            .fillMaxWidth()
+            .background(XiaoiTheme.colors.bg.copy(alpha = barAlpha)),
+    ) {
+        XiaoiTopBar(title = title, onBack = onBack, actions = actions)
+    }
+}
