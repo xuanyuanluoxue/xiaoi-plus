@@ -14,6 +14,24 @@
 > 发布门禁：未签名/错签名产物不能进入 Release；无正式密钥的 tag 只上传 artifact，不建 Release。
 > 0.14 仍是测试版；root/alarm/LAN 安全边界需继续验证后再考虑正式版。
 
+## 2026-11-10 状态更新（最新，先看这节）
+
+> 本节由手机端 DSH 追加。**开发已交给电脑端 opencode**，任务文件在仓库根 `TASK-FOR-OPENCODE.md`。
+
+| 项 | 现状 |
+| --- | --- |
+| 开发分支 | `feat/ui-liquid`（worktree `~/xiaoi-plus-dev/worktrees/liquid-nav`），HEAD `c0fc247` |
+| `main` | `31f9a24`，落后 feature 分支（UI 玻璃/pager/系统栏等未合） |
+| 已完成并真机验证 | 玻璃底栏折射、左右滑动 pager（跟手）、底栏避开手势条、`/health` 报实际端口、协议层创建待办 `xiaoai_todo_create` |
+| 正在做 | 顶栏迁移到 Miuix `TopAppBar`（自研顶栏反复出问题，见 `docs/ui/TOPBAR.md`） |
+| 真机验收记录 | `docs/ui/DEVICE-CHECK-2026-11-10.md` |
+| 协议侦察报告 | `docs/agent/OSBOT-PROTOCOL.md`（8770 facade 归属、`OsbotRequest`、待办最小请求） |
+
+**回归必看**：每次 `pm install -r` 后 8771/8772 会显示「等待」，需 `am force-stop com.miui.voiceassist`
+让其重启重载 hook 才恢复。
+
+---
+
 ## 1. 这是什么
 
 LSPosed 模块「小爱同学plus」+ 自带设置 App（`plus.xiaoi.module`）：

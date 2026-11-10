@@ -1,5 +1,21 @@
 # 更新日志
 
+## 2026-11-10 — 玻璃底栏真机调通 / 滑动 pager / 协议层待办
+
+- **底栏玻璃**：真机确认 `GlassMode.FULL` 生效，内容从胶囊下方穿过并被实时模糊；
+  底栏加 `navigationBarsPadding()` 避开手势条；`glassFill` 不透明度 0.66 → 0.15，去掉"背景板"感。
+- **滑动 pager**：一级页改 `HorizontalPager`，跟手滑动切 tab，与底栏选中态双向同步；
+  二级页仍走原路由栈不参与滑动。
+- **系统栏**：状态栏/导航栏透明沉浸式，内容延伸到小白条下；页面顶部统一留出顶栏高度，
+  底部 112dp，最后一项可滚出底栏。
+- **顶栏（进行中）**：自研顶栏多次返工（压字/两层/硬边鬼影），已决定迁移 Miuix `TopAppBar`；
+  问题清单与迁移方案见 `docs/ui/TOPBAR.md`。
+- **协议层待办**：8771 新增 `xiaoai_todo_create`（确定性，不走 LLM），
+  真机实测返回 `noteId`，并由 `ai_agentic_db` 双重验证落库。
+- **侦察结论**：8770 的 facade 不属于本模块（属独立探针 `xavier.xa`），只放行 `resolveTaskMode`；
+  真技能入口是模块已持有的 `OsbotFacadeImpl.execute(request, Continuation)`。
+  详见 `docs/agent/OSBOT-PROTOCOL.md`。
+
 ## 未发布 — UI 对齐 + 悬浮液态玻璃底栏 + 预测性返回
 
 - **卡片体系**：设置页与首页改为独立卡片清单（28dp 圆角、20dp 内边距、12dp 间距）；
