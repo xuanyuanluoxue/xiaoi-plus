@@ -37,8 +37,9 @@ fun XiaoiTheme(
 
 ```kotlin
 Scaffold(
-    topBar = { XiaoiTopBar(...) },
-    bottomBar = { XiaoiBottomBar(...) },
+    // 顶栏直接放 Miuix 官方组件（见下一节），由 Scaffold 实测其高度。
+    topBar = { XiaoiTopBarSlot(...) },
+    // 底栏仍是悬浮玻璃胶囊：不占 Scaffold bottomBar 槽位，内容从其下方穿过。
     snackbarHost = { SnackbarHost(snackbarHostState) },
     containerColor = XiaoiTheme.colors.bg,
 ) { padding -> ... }
@@ -47,20 +48,34 @@ Scaffold(
 - 不再手写 `Column + Box(weight)` 骨架。
 - `SnackbarHostState.showSnackbar()` 统一提示；不使用自绘 Snackbar/Toast。
 
-### XiaoiTopBar（紧凑大标题）
+### 顶栏（Miuix TopAppBar / SmallTopAppBar）
 
 ```kotlin
-@Composable
-fun XiaoiTopBar(
-    title: String,
-    onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}
+// 一级页：大标题 + 滚动折叠
+TopAppBar(
+    title = title,
+    largeTitle = title,
+    actions = actions,          // 页面动作用 XiaoiPageActions 发布
+    scrollBehavior = behavior,  // MiuixScrollBehavior(topBarState)
+)
+// 二级页：返回 + 标题（会把共享 state 钉住，不参与折叠）
+SmallTopAppBar(
+    title = title,
+    navigationIcon = { /* 48dp IconButton + MiuixIcons.Back */ },
+    actions = actions,
+    scrollBehavior = behavior,
 )
 ```
 
-- 状态栏下 48dp 行；标题 32sp 左对齐；返回 48dp；页面动作与标题同排。
-- 对齐参考实现 `ManagerCompactTopBar`；不做折叠大标题的空白行。
-- 页面级动作用 `XiaoiPageActions` 发布到顶栏，不在内容区另起工具栏。
+- 滚动折叠/展开全部交给 `MiuixScrollBehavior`；`nestedScrollConnection` 挂在
+  MainActivity 的内容根 Box 上，所有页面（含 pager 各 tab）零改动接入。
+- 顶栏高度由 `Scaffold` 实测，内容根统一 `padding(top = calculateTopPadding())`；
+  折叠时视口随顶栏收缩。页面不再自带顶栏 padding，避免双重留白。
+- 当前顶栏为实色；渐变模糊带（`TopBlurScrim`）是实验项，未进入本提交，
+  待真机确认后再按“折叠高度”单独实现。
+- 自研 `XiaoiTopBar` / `LocalXiaoiScrollY` / `xiaoiScrollState()` /
+  `rememberXiaoiListState()` / `LocalXiaoiTopBarHeight` 已全部删除；
+  页面滚动一律 `rememberScrollState()` / `rememberLazyListState()`。
 
 ### XiaoiBottomBar（悬浮液态玻璃）
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -33,7 +34,6 @@ import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiRowIcon
 import plus.xiaoi.module.ui.components.XiaoiTone
-import plus.xiaoi.module.ui.components.xiaoiScrollState
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
@@ -77,8 +77,8 @@ fun HomeScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(xiaoiScrollState())
-            .padding(top = plus.xiaoi.module.ui.components.xiaoiTopBarHeight() + 8.dp, bottom = 112.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 112.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop, bottom = 24.dp),
     ) {

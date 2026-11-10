@@ -13,7 +13,6 @@ import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiTone
-import plus.xiaoi.module.ui.components.xiaoiTopBarHeight
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -31,7 +30,6 @@ fun XiaoiPlaceholder(
     Column(
         modifier
             .fillMaxSize()
-            .padding(top = xiaoiTopBarHeight() + 8.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop),
     ) {
@@ -57,7 +55,6 @@ fun PlaceholderScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .padding(top = xiaoiTopBarHeight() + 8.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop),
     ) {

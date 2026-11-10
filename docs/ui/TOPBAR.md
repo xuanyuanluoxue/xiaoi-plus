@@ -43,3 +43,22 @@ TopAppBarState: heightOffset / collapsedFraction / overlappedFraction
 TopAppBarDefaults: collapsedHeight / titlePadding / navigationIconPadding
 NavigationBar / FloatingNavigationBar / FloatingNavigationBarItem
 ```
+
+## 迁移完成记录（2026-11-10，电脑端）
+
+按上面方案落地，但**去掉实验性模糊带**，以稳定性优先：
+
+- **`ui/components/XiaoiBars.kt`**：删除自研 `XiaoiTopBar`、`LocalXiaoiScrollY` /
+  `xiaoiScrollState()` / `rememberXiaoiListState()`；只保留玻璃底栏入口。
+- **`MainActivity.kt`**：顶栏进 Scaffold `topBar` 槽位（一级页 `TopAppBar` 大标题、
+  二级页 `SmallTopAppBar` 返回+标题）；`MiuixScrollBehavior` 的 nestedScroll 挂在
+  内容根；内容根用 `padding.calculateTopPadding()` 吃 Scaffold 实测顶栏高度；
+  换页清零 `heightOffset` / `contentOffset`。
+- **19 个 screen**：滚动恢复 `rememberScrollState()` / `rememberLazyListState()`，
+  删除顶栏留白（保留底部 112dp 给玻璃底栏）。
+- **模糊带**：不进入本提交。之前 `matchParentSize` 的版本会盖住展开态大标题，
+  且内容无 padding 时没有可采样背景；等真机能稳定验收后再按“折叠高度”单独实现。
+- **pager**：`beyondViewportPageCount = 0`，避免相邻 Home/Xiaoai 同时跑 5 秒轮询。
+
+门禁：`:app:assembleDebug`、`:app:assembleRelease`、`tests/run.sh`、
+`scripts/check-consistency.sh` 全绿。

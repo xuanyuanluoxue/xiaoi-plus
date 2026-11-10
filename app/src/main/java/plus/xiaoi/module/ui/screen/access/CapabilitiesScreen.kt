@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,8 +32,6 @@ import plus.xiaoi.module.ui.components.SearchField
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
-import plus.xiaoi.module.ui.components.rememberXiaoiListState
-import plus.xiaoi.module.ui.components.xiaoiTopBarHeight
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -78,9 +77,9 @@ fun CapabilitiesScreen(
                 .focusable(),
         )
         LazyColumn(
-            state = rememberXiaoiListState(),
+            state = rememberLazyListState(),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = xiaoiTopBarHeight() + 8.dp, bottom = 112.dp),
+            contentPadding = PaddingValues(bottom = 112.dp),
         ) {
             item {
                 SearchField(

@@ -1,5 +1,19 @@
 # 更新日志
 
+## 2026-11-10 — 顶栏迁移 Miuix 官方组件（任务 1）
+
+- **顶栏**：自研 `XiaoiTopBar` 退役，迁入 Scaffold `topBar` 槽位——一级页
+  `TopAppBar`（大标题、滚动折叠），二级页 `SmallTopAppBar`（返回 + 标题）；
+  折叠/展开交给 `MiuixScrollBehavior`，`nestedScrollConnection` 挂在内容根上。
+- **留白**：内容视口直接使用 Scaffold 实测的顶栏高度（`padding.calculateTopPadding()`），
+  折叠时随顶栏收缩；页面不再自带顶栏 padding，避免双重留白/压字。
+- **删基建**：`LocalXiaoiScrollY` / `xiaoiScrollState()` / `rememberXiaoiListState()` /
+  `LocalXiaoiTopBarHeight` 全部删除；页面滚动恢复 `rememberScrollState()` /
+  `rememberLazyListState()`；换页 `LaunchedEffect(route)` 清零顶栏折叠量。
+- **模糊带**：实验版 `TopBlurScrim`（内容穿到顶栏下 + 渐变模糊）未进入本提交；
+  真机确认参数、解决压字/鬼影后再单独加，当前顶栏为实色。
+- 未动：底栏玻璃胶囊、pager 滑动、8770/8771/8772 端口与报文。
+
 ## 2026-11-10 — 玻璃底栏真机调通 / 滑动 pager / 协议层待办
 
 - **底栏玻璃**：真机确认 `GlassMode.FULL` 生效，内容从胶囊下方穿过并被实时模糊；

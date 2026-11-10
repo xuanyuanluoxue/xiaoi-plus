@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -27,8 +28,6 @@ import plus.xiaoi.module.ui.components.XiaoiDivider
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTone
-import plus.xiaoi.module.ui.components.rememberXiaoiListState
-import plus.xiaoi.module.ui.components.xiaoiTopBarHeight
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -62,12 +61,12 @@ fun ToolsScreen(
     val total = groups.sumOf { it.items.size }
 
     LazyColumn(
-        state = rememberXiaoiListState(),
+        state = rememberLazyListState(),
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop),
-        contentPadding = PaddingValues(top = xiaoiTopBarHeight() + 8.dp, bottom = 112.dp),
+        contentPadding = PaddingValues(bottom = 112.dp),
     ) {
         item {
             XiaoiCard {
