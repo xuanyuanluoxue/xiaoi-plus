@@ -33,6 +33,7 @@ import plus.xiaoi.module.ui.components.XiaoiEmptyState
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Text
 
 private const val FILTER_ALL = "全部"
@@ -79,7 +80,7 @@ fun CapabilitiesScreen(
         LazyColumn(
             state = rememberLazyListState(),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 112.dp),
+            contentPadding = PaddingValues(top = xiaoiTopBarInset(), bottom = 112.dp),
         ) {
             item {
                 SearchField(

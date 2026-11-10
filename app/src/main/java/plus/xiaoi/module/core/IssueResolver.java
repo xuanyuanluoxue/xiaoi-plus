@@ -186,14 +186,10 @@ public final class IssueResolver {
                 add(out, "perm.notification", "通知权限未开启", "去授权",
                         Severity.WARN, "Diagnostics");
             }
-            if (p.exactAlarm == PermissionSnapshot.State.DENIED) {
-                add(out, "perm.exact_alarm", "精确闹钟未授权", "去授权",
-                        Severity.INFO, "Diagnostics");
-            }
-            if (p.fullScreenIntent == PermissionSnapshot.State.DENIED) {
-                add(out, "perm.full_screen", "全屏通知未授权", "去授权",
-                        Severity.WARN, "Diagnostics");
-            }
+            // 精确闹钟 / 全屏通知：模块自身不使用这两项系统能力（没有 AlarmManager
+            // 或 fullScreenIntent 调用），且 Xposed 模块在部分 ROM 的「特殊权限」页里
+            // 根本不出现在列表中。把它们当首页待办只会制造「提示未授权却找不到开关」
+            // 的假问题，因此不进入首页 issues；Diagnostics 里仍可查看原始状态。
             if (p.batteryOptimization == PermissionSnapshot.State.DENIED) {
                 add(out, "perm.battery", "电池优化未关闭", "去设置",
                         Severity.INFO, "Diagnostics");

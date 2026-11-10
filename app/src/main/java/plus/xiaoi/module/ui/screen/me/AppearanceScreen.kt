@@ -24,6 +24,7 @@ import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Text
 
 /**
@@ -57,7 +58,7 @@ fun AppearanceScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 112.dp)
+            .padding(top = xiaoiTopBarInset(), bottom = 112.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop, bottom = 24.dp),
     ) {

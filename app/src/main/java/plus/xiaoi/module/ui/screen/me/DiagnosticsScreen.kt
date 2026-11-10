@@ -50,6 +50,7 @@ import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.status.agentPortUi
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.basic.Text
@@ -127,7 +128,7 @@ fun DiagnosticsScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 112.dp)
+            .padding(top = xiaoiTopBarInset(), bottom = 112.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop, bottom = 24.dp),
     ) {
@@ -241,7 +242,7 @@ fun DiagnosticsScreen(
                 settingsIntent(context, "exactAlarm"), onMessage,
             )
             PermissionItem(
-                "全屏通知", permissions.fullScreenIntent, "API 34+ 免打扰时的提醒",
+                "全屏通知", permissions.fullScreenIntent, "可选 · API 34+ 免打扰提醒",
                 settingsIntent(context, "fullScreenIntent"), onMessage,
             )
             PermissionItem(
@@ -575,7 +576,12 @@ private fun settingsIntent(context: android.content.Context, key: String): Inten
                 Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkgUri)
             } else null
 
-            "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            // 直接请求本 App 的电池白名单对话框；列表页里常常找不到本 App。
+            "battery" -> if (Build.VERSION.SDK_INT >= 23) {
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkgUri)
+            } else {
+                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            }
             "usage" -> Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
             "listener" -> Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
             else -> null

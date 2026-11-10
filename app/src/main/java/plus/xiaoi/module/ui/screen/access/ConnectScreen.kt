@@ -44,6 +44,7 @@ import plus.xiaoi.module.ui.components.XiaoiValueRow
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 import plus.xiaoi.module.Json
+import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 
 /**
  * 连接信息：8771/8770 的 loopback / 局域网地址、adb forward、客户端 JSON 与 Skill 文本。
@@ -115,7 +116,7 @@ fun ConnectScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 112.dp)
+            .padding(top = xiaoiTopBarInset(), bottom = 112.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop, bottom = 24.dp),
     ) {

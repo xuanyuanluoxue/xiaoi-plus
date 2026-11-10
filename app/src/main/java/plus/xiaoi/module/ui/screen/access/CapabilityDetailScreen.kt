@@ -25,6 +25,7 @@ import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Text
 
 /** 能力详情：只读；未知字段显示“未记录”，不补 schema/示例等假数据。 */
@@ -80,7 +81,7 @@ fun CapabilityDetailScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 112.dp)
+            .padding(top = xiaoiTopBarInset(), bottom = 112.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop, bottom = 24.dp),
     ) {

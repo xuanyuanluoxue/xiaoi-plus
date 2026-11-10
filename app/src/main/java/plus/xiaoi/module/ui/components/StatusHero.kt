@@ -51,11 +51,11 @@ fun StatusHero(
 ) {
     val colors = XiaoiTheme.colors
     val tone: Color? = when {
-        dimensions.any { it.status == DimensionStatus.ERROR } -> colors.iconRed
-        dimensions.any { it.status == DimensionStatus.WAITING } -> colors.iconOrange
+        dimensions.any { it.status == DimensionStatus.ERROR } -> colors.iconDanger
+        dimensions.any { it.status == DimensionStatus.WAITING } -> colors.iconWarning
         dimensions.isNotEmpty() && dimensions.all {
             it.status == DimensionStatus.OK || it.status == DimensionStatus.READY
-        } -> colors.iconGreen
+        } -> colors.iconSuccess
         else -> null
     }
     val background = (tone ?: colors.textSecondary).copy(alpha = 0.14f)

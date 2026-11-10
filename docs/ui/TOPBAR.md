@@ -62,3 +62,18 @@ NavigationBar / FloatingNavigationBar / FloatingNavigationBarItem
 
 门禁：`:app:assembleDebug`、`:app:assembleRelease`、`tests/run.sh`、
 `scripts/check-consistency.sh` 全绿。
+
+
+## 最终形态（2026-11-10 晚，真机验收）
+
+真机确认「Scaffold topBar + 内容不穿到顶栏下」无法做真实采样模糊，最终改为：
+
+- **壳层**：`Box` 三层——内容（`glassBackdropSource`）、顶栏（`GlassTopScrim` +
+  `SmallTopAppBar` 透明背景）、悬浮玻璃底栏。
+- **组件**：统一 `SmallTopAppBar`（不再用大标题折叠的 `TopAppBar`），标题居中、
+  二级页返回按钮由组件库负责。
+- **模糊**：`miuix-blur` `progressiveBlur` + `progressiveGradient`，顶部强、底部清晰；
+  叠主题色纵向渐变保可读。API < 33 只用渐变回退。
+- **留白**：`LocalXiaoiTopBarInset`（状态栏 + 52dp + 8dp）注入 19 个页面，
+  放在滚动内容内部；内容滚动时从顶栏下穿过，静止时不压标题。
+- **tab 同步**：pager 单向驱动 nav（落定后同步），外部切 tab 才反向滚 pager。

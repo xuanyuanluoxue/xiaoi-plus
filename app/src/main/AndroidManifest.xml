@@ -17,6 +17,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- App 内闹钟：API 31+ 精确闹钟；未授权时 agent 会退化为非精确并如实返回 exact=false。 -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 首页「电池优化」直接拉起本 App 的白名单对话框；否则只能跳到列表页，
+         用户经常在里面找不到本 App。 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <!-- minSdk 26 / targetSdk 34 由 app/build.gradle.kts 声明（AGP 9 禁止在 Manifest

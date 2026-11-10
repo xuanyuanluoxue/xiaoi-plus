@@ -31,51 +31,51 @@ fun XiaoiTheme(
 - 提供 `XiaoiTheme.colors`、`.dimens`、`.typography`。
 - 不启用 Monet。
 
-### Miuix Scaffold
+### 顶栏骨架（官方组件 + 渐变模糊）
 
-直接使用 `top.yukonga.miuix.kmp.basic.Scaffold`：
-
-```kotlin
-Scaffold(
-    // 顶栏直接放 Miuix 官方组件（见下一节），由 Scaffold 实测其高度。
-    topBar = { XiaoiTopBarSlot(...) },
-    // 底栏仍是悬浮玻璃胶囊：不占 Scaffold bottomBar 槽位，内容从其下方穿过。
-    snackbarHost = { SnackbarHost(snackbarHostState) },
-    containerColor = XiaoiTheme.colors.bg,
-) { padding -> ... }
-```
-
-- 不再手写 `Column + Box(weight)` 骨架。
-- `SnackbarHostState.showSnackbar()` 统一提示；不使用自绘 Snackbar/Toast。
-
-### 顶栏（Miuix TopAppBar / SmallTopAppBar）
+不再使用 Scaffold 的 `topBar` 槽位（它会把内容顶到顶栏下面，无法做真实采样模糊）。
+壳层改成一个全屏 `Box`：
 
 ```kotlin
-// 一级页：大标题 + 滚动折叠
-TopAppBar(
-    title = title,
-    largeTitle = title,
-    actions = actions,          // 页面动作用 XiaoiPageActions 发布
-    scrollBehavior = behavior,  // MiuixScrollBehavior(topBarState)
-)
-// 二级页：返回 + 标题（会把共享 state 钉住，不参与折叠）
-SmallTopAppBar(
-    title = title,
-    navigationIcon = { /* 48dp IconButton + MiuixIcons.Back */ },
-    actions = actions,
-    scrollBehavior = behavior,
-)
+Box(Modifier.fillMaxSize()) {
+    // 1) 页面内容：整块作为玻璃采样源
+    Box(Modifier.fillMaxSize().glassBackdropSource(glassBackdrop)) {
+        CompositionLocalProvider(
+            LocalXiaoiPageActions provides pageActions,
+            LocalXiaoiTopBarInset provides topBarInset, // 状态栏 + 52dp + 8dp
+        ) { /* pager / 二级页 */ }
+    }
+    // 2) 顶栏：渐变模糊带 + 官方 SmallTopAppBar（透明背景）
+    Box(Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
+        GlassTopScrim(backdrop = glassBackdrop)
+        XiaoiTopBar(title, onBack, actions)
+    }
+    // 3) 悬浮玻璃底栏（不占布局高度）
+}
 ```
 
-- 滚动折叠/展开全部交给 `MiuixScrollBehavior`；`nestedScrollConnection` 挂在
-  MainActivity 的内容根 Box 上，所有页面（含 pager 各 tab）零改动接入。
-- 顶栏高度由 `Scaffold` 实测，内容根统一 `padding(top = calculateTopPadding())`；
-  折叠时视口随顶栏收缩。页面不再自带顶栏 padding，避免双重留白。
-- 当前顶栏为实色；渐变模糊带（`TopBlurScrim`）是实验项，未进入本提交，
-  待真机确认后再按“折叠高度”单独实现。
+- **顶栏组件**：`Miuix SmallTopAppBar`，`color = Color.Transparent`，标题居中；
+  二级页左侧 48dp 返回按钮。不再使用大标题折叠（`TopAppBar` + `MiuixScrollBehavior`），
+  避免「展开高度 vs 内容留白」两套尺寸互相打架。
+- **渐变模糊**：`GlassTopScrim` 用 `miuix-blur` 的 `progressiveBlur` +
+  `progressiveGradient`，顶部最强、底部完全清晰；再叠一层主题色纵向渐变保证标题可读。
+  API < 33 / 非 FULL 时只画主题色渐变，不假装模糊。
+- **页面留白**：`LocalXiaoiTopBarInset` 由 MainActivity 注入；页面把它放在
+  **滚动内容内部**（`padding` 在 `verticalScroll` 之后，或 LazyColumn 的 `contentPadding`），
+  所以滚动时内容会从顶栏下穿过并由模糊带处理；静止时第一项又在顶栏下方。
+- **点击隔离**：`SmallTopAppBar` 自带 `pointerInput` 消费点击，顶栏区域不会误触下面的内容。
 - 自研 `XiaoiTopBar` / `LocalXiaoiScrollY` / `xiaoiScrollState()` /
   `rememberXiaoiListState()` / `LocalXiaoiTopBarHeight` 已全部删除；
   页面滚动一律 `rememberScrollState()` / `rememberLazyListState()`。
+
+### 一级页 tab 与 pager
+
+- **单一真源**：pager 的落定页决定 `nav`。点击底栏只调用
+  `pagerState.animateScrollToPage(index)`；`snapshotFlow { isScrollInProgress to currentPage }`
+  在滚动结束后才 `nav.switchTab(...)`。
+- **反向同步**：`LaunchedEffect(nav.tab(), root)` 只在外部切 tab（系统返回回首页、
+  首页 CTA 跳到一级页）时把 pager 滚过去；动画期间 `nav.tab()` 不变，不会形成回环。
+- 底栏高亮直接跟 `pagerState.currentPage`，拖动时即时跟手。
 
 ### XiaoiBottomBar（悬浮液态玻璃）
 
@@ -84,7 +84,7 @@ SmallTopAppBar(
 fun XiaoiBottomBar(
     current: MainTab,
     onSelect: (MainTab) -> Unit,
-    backdrop: GlassBackdropHandle,
+    backdrop: GlassBackdropSource,
     contentCoordinates: LayoutCoordinates?,
     modifier: Modifier = Modifier
 )

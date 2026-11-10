@@ -38,6 +38,7 @@ import plus.xiaoi.module.ui.components.XiaoiPageActions
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
 import plus.xiaoi.module.ui.theme.XiaoiTheme
+import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
@@ -140,7 +141,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             .fillMaxSize()
             .padding(horizontal = XiaoiTheme.dimens.pagePad),
     ) {
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(xiaoiTopBarInset() + 4.dp))
         FilterChips(
             options = listOf("全部", "信息", "错误"),
             selected = when (filter) {

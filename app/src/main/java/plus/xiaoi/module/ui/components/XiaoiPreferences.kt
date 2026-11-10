@@ -32,20 +32,19 @@ enum class XiaoiIconTone {
     NEUTRAL, GREEN, BLUE, ORANGE, PINK, RED, CYAN, PURPLE, INDIGO
 }
 
-/** 语义色对应的圆底色；NEUTRAL 走主题中性色，避免白字在浅灰上不可读。 */
+/**
+ * 圆底色：全站统一强调色，只有 RED 保留危险语义。
+ *
+ * <p>入口图标只表达“是什么”，不承载状态；先前 8 种彩色圆是配色过碎的主因，
+ * 现在统一成一个强调色 + 危险色，状态仍由徽章文字/语义色表达。</p>
+ */
 @Composable
 fun XiaoiIconTone.containerColor(): Color {
     val colors = XiaoiTheme.colors
     return when (this) {
-        XiaoiIconTone.GREEN -> colors.iconGreen
-        XiaoiIconTone.BLUE -> colors.iconBlue
-        XiaoiIconTone.ORANGE -> colors.iconOrange
-        XiaoiIconTone.PINK -> colors.iconPink
-        XiaoiIconTone.RED -> colors.iconRed
-        XiaoiIconTone.CYAN -> colors.iconCyan
-        XiaoiIconTone.PURPLE -> colors.iconPurple
-        XiaoiIconTone.INDIGO -> colors.iconIndigo
+        XiaoiIconTone.RED -> colors.iconDanger
         XiaoiIconTone.NEUTRAL -> colors.iconTile
+        else -> colors.iconAccent
     }
 }
 

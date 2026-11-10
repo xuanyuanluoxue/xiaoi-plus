@@ -176,9 +176,9 @@ public final class IssueResolverTest {
                 .notificationListener(PermissionSnapshot.State.GRANTED)
                 .build();
         List<IssueResolver.Issue> permIssues = IssueResolver.resolve(denied);
-        T.eq("权限缺失四条", 4, permIssues.size());
+        T.eq("权限缺失只剩已有开关的两条", 2, permIssues.size());
         T.eq("权限提示顺序",
-                "[perm.notification, perm.exact_alarm, perm.full_screen, perm.battery]",
+                "[perm.notification, perm.battery]",
                 ids(permIssues).toString());
         T.eq("权限 CTA 去诊断页", "Diagnostics", permIssues.get(0).route);
         T.eq("权限快照 missingCount", 5, denied.permissions.missingCount());

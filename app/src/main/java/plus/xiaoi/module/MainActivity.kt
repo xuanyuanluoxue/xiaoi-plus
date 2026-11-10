@@ -10,16 +10,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,10 +28,10 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -42,12 +41,16 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.core.NavStack
 import plus.xiaoi.module.ui.components.LocalXiaoiPageActions
+import plus.xiaoi.module.ui.components.LocalXiaoiTopBarInset
 import plus.xiaoi.module.ui.components.XiaoiBottomBar
 import plus.xiaoi.module.ui.components.XiaoiPageActionsState
+import plus.xiaoi.module.ui.components.XiaoiTopBar
 import plus.xiaoi.module.ui.components.glass.GlassSupport
+import plus.xiaoi.module.ui.components.glass.GlassTopScrim
 import plus.xiaoi.module.ui.components.glass.glassBackdropSource
 import plus.xiaoi.module.ui.components.glass.rememberGlassBackdrop
 import plus.xiaoi.module.ui.components.glass.rememberGlassBarReservedHeight
+import plus.xiaoi.module.ui.components.glass.rememberTopBarHeight
 import plus.xiaoi.module.ui.screen.XiaoiPlaceholder
 import plus.xiaoi.module.ui.screen.access.AccessScreen
 import plus.xiaoi.module.ui.screen.access.BridgeScreen
@@ -69,18 +72,8 @@ import plus.xiaoi.module.ui.screen.me.MeScreen
 import plus.xiaoi.module.ui.screen.xiaoai.ModelScreen
 import plus.xiaoi.module.ui.screen.xiaoai.XiaoaiScreen
 import plus.xiaoi.module.ui.theme.XiaoiTheme
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
-import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 
 /**
  * 单 Activity 壳：只做路由、标题、底栏显隐与提示。
@@ -234,14 +227,6 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val scope = rememberCoroutineScope()
     // 每个路由一份页面动作容器：screen 通过 LocalXiaoiPageActions 把动作放进顶栏。
     val pageActions = remember(route) { XiaoiPageActionsState() }
-    // 顶栏折叠/展开全权交给 Miuix：所有页面滚动经内容根上的 nestedScroll 汇报给它。
-    val topBarState = rememberTopAppBarState()
-    val topBarBehavior = MiuixScrollBehavior(topBarState)
-    // 换页先把折叠量清零：上一页的滚动状态不能以「半折叠顶栏 + 大标题压字」带进新页。
-    LaunchedEffect(route) {
-        topBarState.heightOffset = 0f
-        topBarState.contentOffset = 0f
-    }
     // 二级页返回后恢复搜索/筛选/滚动位置，而不是重建页面。
     val screenStates = rememberSaveableStateHolder()
 
@@ -292,76 +277,61 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     // 采样层要带页面底色，否则底栏在空白带采到的是全透明层（只有半透明填充）。
     val glassBackdrop = rememberGlassBackdrop(glassMode, colors.bg)
     val barReserved = rememberGlassBarReservedHeight()
+    // 顶栏留白单源：状态栏 + Miuix 紧凑顶栏（52dp）+ 8dp 呼吸感。
+    val topBarInset = rememberTopBarHeight() + 8.dp
     val root = nav.isRoot()
     val tabs = NavStack.MainTab.values()
     val pagerState = rememberPagerState(
         initialPage = tabs.indexOf(nav.tab()).coerceAtLeast(0),
     ) { tabs.size }
-    LaunchedEffect(pagerState.currentPage, root) {
-        if (root) {
-            val t = tabs.getOrNull(pagerState.currentPage) ?: return@LaunchedEffect
-            if (nav.tab() != t) {
-                nav.switchTab(t)
-                route = nav.current()
+    // 一级页 tab 由 pager 单向驱动：只在滚动/动画**结束后**同步 nav。
+    // 旧实现用 currentPage 反向切 tab、又用 nav.tab() 反向滚 pager，两个 effect 在
+    // 跨多个 tab 的动画途中互相触发，目标页被中途改写——这就是“点了底栏跳不准”的根因。
+    LaunchedEffect(root) {
+        if (!root) return@LaunchedEffect
+        snapshotFlow { pagerState.isScrollInProgress to pagerState.currentPage }
+            .collect { (scrolling, page) ->
+                if (scrolling) return@collect
+                val t = tabs.getOrNull(page) ?: return@collect
+                if (nav.tab() != t) {
+                    nav.switchTab(t)
+                    route = nav.current()
+                }
             }
-        }
     }
+    // 外部切 tab（系统返回回首页、首页 CTA 跳到某个一级页）→ 把 pager 滚到对应页。
+    // 动画期间 nav.tab() 不变，所以不会反过来触发上面那个 effect。
     LaunchedEffect(nav.tab(), root) {
-        if (root) {
-            val target = tabs.indexOf(nav.tab())
-            if (target >= 0 && pagerState.currentPage != target) pagerState.animateScrollToPage(target)
+        if (!root) return@LaunchedEffect
+        val target = tabs.indexOf(nav.tab())
+        if (target >= 0 && target != pagerState.currentPage) {
+            pagerState.animateScrollToPage(target)
         }
     }
+    // 底栏高亮跟随 pager 当前页（拖动时即时跟手），落定后与 nav 自然一致。
+    val shownTab = tabs.getOrNull(pagerState.currentPage.coerceIn(0, tabs.lastIndex))
+        ?: nav.tab()
     // BLUR 分支需要底栏在内容坐标系中的位置；FULL/SOLID 不使用。
     var contentCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    Scaffold(
-        // 顶栏放进 Scaffold 槽位：一级页 TopAppBar（大标题、滚动折叠）、二级页 SmallTopAppBar（返回 + 标题）。
-        // 折叠/展开由 MiuixScrollBehavior 接管；内容视口使用 Scaffold 实测的顶栏高度。
-        topBar = {
-            XiaoiTopBarSlot(
-                root = root,
-                title = Routes.titleOf(key),
-                onBack = if (nav.isRoot()) null else ({ back() }),
-                actions = { pageActions.actions?.invoke(this) },
-                behavior = topBarBehavior,
-            )
-        },
-        // 底栏悬浮在内容之上：不占用 Scaffold bottomBar，避免把页面挤窄。
-        snackbarHost = {
-            Box(
-                Modifier.padding(
-                    bottom = if (root) barReserved + dimensions.glassBarGap else 0.dp,
-                ),
-            ) {
-                SnackbarHost(snackbarHostState)
-            }
-        },
-        containerColor = colors.bg,
-    ) { padding ->
+    Box(Modifier.fillMaxSize()) {
         Box(
             Modifier
                 .fillMaxSize()
-                // Scaffold 实测顶栏高度：内容视口从顶栏下方开始，折叠时随顶栏收缩。
-                .padding(
-                    top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding(),
-                ),
+                .onGloballyPositioned { if (it.isAttached) contentCoordinates = it }
+                .graphicsLayer {
+                    val p = backProgress.coerceIn(0f, 1f)
+                    scaleX = 1f - 0.06f * p
+                    scaleY = 1f - 0.06f * p
+                    alpha = 1f - 0.18f * p
+                }
+                // 页面内容整块作为玻璃采样源：顶栏模糊带与底栏都从这里取像素。
+                .glassBackdropSource(glassBackdrop),
         ) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .onGloballyPositioned { if (it.isAttached) contentCoordinates = it }
-                    .graphicsLayer {
-                        val p = backProgress.coerceIn(0f, 1f)
-                        scaleX = 1f - 0.06f * p
-                        scaleY = 1f - 0.06f * p
-                        alpha = 1f - 0.18f * p
-                    }
-                    // 顶栏滚动接线：挂在整个内容根上，pager 里每个页面的滚动都会汇报给 TopAppBar。
-                    .nestedScroll(topBarBehavior.nestedScrollConnection)
-                    .glassBackdropSource(glassBackdrop),
+            CompositionLocalProvider(
+                LocalXiaoiPageActions provides pageActions,
+                // 页面把它当滚动内容内部的顶部留白，滚动时内容从顶栏下穿过。
+                LocalXiaoiTopBarInset provides topBarInset,
             ) {
-                CompositionLocalProvider(LocalXiaoiPageActions provides pageActions) {
                     val renderKey: @Composable (String) -> Unit = { _k ->
                         when (_k) {
                             Routes.HOME -> HomeScreen(
@@ -467,74 +437,55 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                         }
                     
                     }
-                    if (root) {
-                        // 只保活当前页：Home/Xiaoai 都有 5 秒轮询，预组合相邻页会造成重复 IO。
-                        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0) { page ->
-                            val pageTab = tabs[page]
-                            screenStates.SaveableStateProvider(pageTab.root!!) { renderKey(pageTab.root!!) }
+                if (root) {
+                    // 只保活当前页：Home/Xiaoai 都有 5 秒轮询，预组合相邻页会造成重复 IO。
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        beyondViewportPageCount = 0,
+                    ) { page ->
+                        val pageTab = tabs[page]
+                        screenStates.SaveableStateProvider(pageTab.root!!) {
+                            renderKey(pageTab.root!!)
                         }
-                    } else {
-                        screenStates.SaveableStateProvider(key ?: Routes.HOME) { renderKey(key ?: Routes.HOME) }
+                    }
+                } else {
+                    screenStates.SaveableStateProvider(key ?: Routes.HOME) {
+                        renderKey(key ?: Routes.HOME)
                     }
                 }
-            }
-            if (root) {
-                XiaoiBottomBar(
-                    current = nav.tab(),
-                    onSelect = { tab ->
-                        nav.switchTab(tab)
-                        route = nav.current()
-                    },
-                    backdrop = glassBackdrop,
-                    contentCoordinates = contentCoordinates,
-                    modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
-                )
             }
         }
-    }
-}
-
-
-/**
- * Scaffold 顶栏槽位：一级页 Miuix `TopAppBar`（大标题、滚动折叠），
- * 二级页 `SmallTopAppBar`（返回 + 标题）。滚动折叠交给 [MiuixScrollBehavior]。
- *
- * <p>内容不绘制到顶栏下方（避免压字/鬼影）；需要「内容穿到顶栏下」的模糊带
- * 在真机确认参数后再单独加，不在本次提交里混入实验代码。</p>
- */
-@Composable
-private fun XiaoiTopBarSlot(
-    root: Boolean,
-    title: String,
-    onBack: (() -> Unit)?,
-    actions: @Composable RowScope.() -> Unit,
-    behavior: ScrollBehavior,
-) {
-    val colors = XiaoiTheme.colors
-    if (root) {
-        TopAppBar(
-            title = title,
-            color = colors.bg,
-            titleColor = colors.text,
-            largeTitle = title,
-            largeTitleColor = colors.text,
-            actions = actions,
-            scrollBehavior = behavior,
-        )
-    } else {
-        SmallTopAppBar(
-            title = title,
-            color = colors.bg,
-            titleColor = colors.text,
-            navigationIcon = {
-                if (onBack != null) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                        Icon(MiuixIcons.Back, contentDescription = "返回", tint = colors.text)
+        // 顶栏：先铺渐变模糊带（采样页面内容），再叠 Miuix 官方 SmallTopAppBar（透明背景）。
+        Box(Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
+            GlassTopScrim(backdrop = glassBackdrop)
+            XiaoiTopBar(
+                title = Routes.titleOf(key),
+                onBack = if (root) null else ({ back() }),
+                actions = { pageActions.actions?.invoke(this) },
+            )
+        }
+        if (root) {
+            XiaoiBottomBar(
+                current = shownTab,
+                onSelect = { tab ->
+                    val index = tabs.indexOf(tab)
+                    if (index >= 0) {
+                        // 只驱动 pager；nav 由上面的 settledPage 统一落定，避免两套状态互相打架。
+                        scope.launch { pagerState.animateScrollToPage(index) }
                     }
-                }
-            },
-            actions = actions,
-            scrollBehavior = behavior,
+                },
+                backdrop = glassBackdrop,
+                contentCoordinates = contentCoordinates,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+            )
+        }
+        SnackbarHost(
+            state = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (root) barReserved + dimensions.glassBarGap else 24.dp),
         )
     }
 }
+
