@@ -284,6 +284,9 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val glassBackdrop = rememberGlassBackdrop(glassMode, colors.bg)
     val barReserved = rememberGlassBarReservedHeight()
     val root = nav.isRoot()
+    // 顶栏总高度（状态栏 inset + 40dp）：内容区顶部留白，避免钻到顶栏下面
+    val topOverlayHeight = androidx.compose.foundation.layout.WindowInsets.statusBars
+        .asPaddingValues().calculateTopPadding() + 40.dp
     val tabs = NavStack.MainTab.values()
     val pagerState = rememberPagerState(
         initialPage = tabs.indexOf(nav.tab()).coerceAtLeast(0),
@@ -323,7 +326,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
             Modifier
                 .fillMaxSize()
                 .padding(
-                    top = 0.dp,
+                    top = topOverlayHeight,
                     bottom = 0.dp, // 内容穿到小白条下方
                 ),
         ) {
