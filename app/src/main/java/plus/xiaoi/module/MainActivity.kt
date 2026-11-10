@@ -100,8 +100,16 @@ class MainActivity : ComponentActivity() {
                 Configuration.UI_MODE_NIGHT_YES
         }
         val bg = if (dark) 0xFF0B0B0D.toInt() else 0xFFF7F8FA.toInt()
-        window.statusBarColor = bg
-        window.navigationBarColor = bg
+        // 沉浸式：状态栏/导航栏透明，内容延伸到系统栏下方，避免底部出现一条遮挡的背景色
+        if (Build.VERSION.SDK_INT >= 21) {
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bg))
         var flags = window.decorView.systemUiVisibility
         flags = if (dark) {
             flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
@@ -303,7 +311,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                     }
                     .glassBackdropSource(glassBackdrop)
                     // 一级页内容底部预留玻璃条高度；二级页隐藏底栏后不留白。
-                    .padding(bottom = if (root) barReserved else 0.dp),
+                    .padding(bottom = 0.dp), // TEST: 让内容从玻璃底栏下穿过，验证折射
             ) {
                 CompositionLocalProvider(LocalXiaoiPageActions provides pageActions) {
                     screenStates.SaveableStateProvider(route) {
