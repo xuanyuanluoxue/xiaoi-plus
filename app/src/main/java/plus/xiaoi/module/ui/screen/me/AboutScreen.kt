@@ -90,7 +90,7 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
                     "轩辕落雪",
                     onCopy = { copy("轩辕落雪", "作者名") },
                     icon = MiuixIcons.Community,
-                    iconTone = XiaoiIconTone.INDIGO,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -99,7 +99,7 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
                     "xuanyuanluoxue/xiaoi-plus",
                     onClick = { open(REPO) },
                     icon = MiuixIcons.Link,
-                    iconTone = XiaoiIconTone.BLUE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -108,7 +108,7 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
                     "GPL-3.0 · 查看全部开源许可",
                     onClick = { onNavigate("Licenses") },
                     icon = MiuixIcons.File,
-                    iconTone = XiaoiIconTone.PURPLE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -116,7 +116,7 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
                     "致谢",
                     "OpenClaw · KernelSU Next · Miuix",
                     icon = MiuixIcons.Favorites,
-                    iconTone = XiaoiIconTone.PINK,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -125,7 +125,7 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
                     "打开 GitHub Releases",
                     onClick = { open("$REPO/releases") },
                     icon = MiuixIcons.Update,
-                    iconTone = XiaoiIconTone.ORANGE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -134,7 +134,7 @@ fun AboutScreen(onNavigate: (String) -> Unit, onMessage: (String) -> Unit) {
                     "README、构建说明与已知限制",
                     onClick = { open(REPO) },
                     icon = MiuixIcons.Refresh,
-                    iconTone = XiaoiIconTone.BLUE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
         }

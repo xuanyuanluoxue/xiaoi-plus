@@ -235,7 +235,7 @@ fun MeScreen(
                         onMessage("赞助方式尚未配置，可在 GitHub Issues 联系作者")
                     },
                     icon = MiuixIcons.Promotions,
-                    iconTone = XiaoiIconTone.ORANGE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -244,7 +244,7 @@ fun MeScreen(
                     subtitle = "轩辕落雪 · 点击复制作者名",
                     onClick = { copyAuthor() },
                     icon = MiuixIcons.Community,
-                    iconTone = XiaoiIconTone.INDIGO,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -253,7 +253,7 @@ fun MeScreen(
                     subtitle = "OpenClaw · KernelSU Next · Miuix",
                     onClick = { onNavigate("Licenses") },
                     icon = MiuixIcons.Favorites,
-                    iconTone = XiaoiIconTone.PINK,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
         }
@@ -267,7 +267,7 @@ fun MeScreen(
                     subtitle = "当前：$themeLabel · 三档主题即时生效",
                     onClick = { onNavigate("Appearance") },
                     icon = MiuixIcons.Theme,
-                    iconTone = XiaoiIconTone.PURPLE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -276,7 +276,7 @@ fun MeScreen(
                     subtitle = "备份（含密钥）、还原、脱敏导出、运行时导入、损坏恢复",
                     onClick = { onNavigate("ConfigManage") },
                     icon = MiuixIcons.Backup,
-                    iconTone = XiaoiIconTone.PURPLE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -285,7 +285,7 @@ fun MeScreen(
                     subtitle = "四维状态、8771/8770、权限矩阵、配置完整性、兼容模式",
                     onClick = { onNavigate("Diagnostics") },
                     icon = MiuixIcons.Info,
-                    iconTone = XiaoiIconTone.RED,
+                    iconTone = XiaoiIconTone.DANGER,
                 )
             }
             XiaoiPreferenceCard {
@@ -298,7 +298,7 @@ fun MeScreen(
                     },
                     onClick = onOpenLogs,
                     icon = MiuixIcons.Notes,
-                    iconTone = XiaoiIconTone.PINK,
+                    iconTone = XiaoiIconTone.ACCENT,
                     badge = errorCount?.takeIf { it > 0 }?.toString(),
                     badgeTone = XiaoiTone.ERROR,
                 )
@@ -309,7 +309,7 @@ fun MeScreen(
                     subtitle = "版本、GitHub、许可证与致谢",
                     onClick = onOpenAbout,
                     icon = MiuixIcons.Help,
-                    iconTone = XiaoiIconTone.INDIGO,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -318,7 +318,7 @@ fun MeScreen(
                     subtitle = "GPL-3.0、Apache-2.0（Miuix）、Kotlin/Compose/AndroidX",
                     onClick = { onNavigate("Licenses") },
                     icon = MiuixIcons.File,
-                    iconTone = XiaoiIconTone.INDIGO,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
         }
@@ -334,7 +334,7 @@ fun MeScreen(
                     if (!dangerOpen) stopResult = null
                 },
                 icon = MiuixIcons.Delete,
-                iconTone = XiaoiIconTone.RED,
+                iconTone = XiaoiIconTone.DANGER,
                 badge = "需确认",
                 badgeTone = XiaoiTone.WARNING,
             )

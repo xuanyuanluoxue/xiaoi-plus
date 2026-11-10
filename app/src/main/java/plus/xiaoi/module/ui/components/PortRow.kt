@@ -45,7 +45,7 @@ fun PortRow(
                 Modifier
                     .padding(end = 12.dp)
                     .size(8.dp)
-                    .background(if (running) colors.success else colors.textHint, CircleShape),
+                    .background(if (running) colors.primary else colors.textHint, CircleShape),
             )
         },
         endActions = {

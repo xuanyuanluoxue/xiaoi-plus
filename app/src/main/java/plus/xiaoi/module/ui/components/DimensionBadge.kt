@@ -31,18 +31,25 @@ fun DimensionBadge(
     modifier: Modifier = Modifier,
 ) {
     val colors = XiaoiTheme.colors
-    val tone = when (status) {
-        DimensionStatus.READY, DimensionStatus.OK -> colors.success
+    // 正常/已确认 = 中性底（不再用绿色）；只有等待（琥珀）和失败（红）才着色。
+    val background = when (status) {
+        DimensionStatus.READY, DimensionStatus.OK,
+        DimensionStatus.UNKNOWN,
+        -> colors.chipBg
+
+        DimensionStatus.WAITING -> colors.warning.copy(alpha = 0.16f)
+        DimensionStatus.ERROR -> colors.error.copy(alpha = 0.16f)
+    }
+    val labelColor = when (status) {
+        DimensionStatus.READY, DimensionStatus.OK -> colors.heroOn
         DimensionStatus.WAITING -> colors.warning
         DimensionStatus.ERROR -> colors.error
         DimensionStatus.UNKNOWN -> colors.textSecondary
     }
-    // UNKNOWN 的淡灰底上 textSecondary 只有 3.8:1，标签改用 heroOn；其余状态色已按 ≥4.5:1 调深。
-    val labelColor = if (status == DimensionStatus.UNKNOWN) colors.heroOn else tone
     Box(
         modifier = modifier
             .height(28.dp)
-            .background(tone.copy(alpha = 0.14f), RoundedCornerShape(999.dp))
+            .background(background, RoundedCornerShape(999.dp))
             .padding(horizontal = 10.dp)
             .semantics { stateDescription = "$label：$text" },
         contentAlignment = Alignment.Center,

@@ -25,30 +25,25 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Icon
 
 /**
- * 入口图标的语义色。首页与设置页共用同一套色板，颜色只为“是什么”服务，
- * 不承载状态；状态仍由徽章文字表达。
+ * 入口图标语义：ACCENT 承担所有「去哪 / 是什么」的入口；WARNING/DANGER 只给
+ * 需要提醒或破坏性的操作。颜色不承载状态——状态由徽章文字与维度色表达，
+ * 这样页面不会出现 8 种彩色圆各说各话的情况。
  */
-enum class XiaoiIconTone {
-    NEUTRAL, GREEN, BLUE, ORANGE, PINK, RED, CYAN, PURPLE, INDIGO
-}
+enum class XiaoiIconTone { NEUTRAL, ACCENT, WARNING, DANGER }
 
-/**
- * 圆底色：全站统一强调色，只有 RED 保留危险语义。
- *
- * <p>入口图标只表达“是什么”，不承载状态；先前 8 种彩色圆是配色过碎的主因，
- * 现在统一成一个强调色 + 危险色，状态仍由徽章文字/语义色表达。</p>
- */
+/** 圆底色：一个强调色 + 两个语义色；NEUTRAL 走主题中性色。 */
 @Composable
 fun XiaoiIconTone.containerColor(): Color {
     val colors = XiaoiTheme.colors
     return when (this) {
-        XiaoiIconTone.RED -> colors.iconDanger
+        XiaoiIconTone.ACCENT -> colors.iconAccent
+        XiaoiIconTone.WARNING -> colors.iconWarning
+        XiaoiIconTone.DANGER -> colors.iconDanger
         XiaoiIconTone.NEUTRAL -> colors.iconTile
-        else -> colors.iconAccent
     }
 }
 
-/** 圆内图形色：彩色底一律白字；中性底用主题主色。 */
+/** 圆内图形色：强调/语义色底一律白字；中性底用主题次要文字色。 */
 @Composable
 private fun XiaoiIconTone.glyphColor(): Color {
     val colors = XiaoiTheme.colors

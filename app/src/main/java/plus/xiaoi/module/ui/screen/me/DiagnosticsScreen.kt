@@ -267,7 +267,7 @@ fun DiagnosticsScreen(
                     subtitle = "版本、状态、端口、权限；脱敏且不含密钥/令牌",
                     onClick = { copyDiagnostics() },
                     icon = MiuixIcons.Copy,
-                    iconTone = XiaoiIconTone.BLUE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -276,7 +276,7 @@ fun DiagnosticsScreen(
                     subtitle = "通过系统分享导出本机日志镜像",
                     onClick = { exportLogs() },
                     icon = MiuixIcons.Share,
-                    iconTone = XiaoiIconTone.PINK,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -285,7 +285,7 @@ fun DiagnosticsScreen(
                     subtitle = "只清 App 内存镜像，不删除小爱落盘日志",
                     onClick = { showClearLogs = true },
                     icon = MiuixIcons.Delete,
-                    iconTone = XiaoiIconTone.RED,
+                    iconTone = XiaoiIconTone.DANGER,
                 )
             }
             XiaoiPreferenceCard {
@@ -294,7 +294,7 @@ fun DiagnosticsScreen(
                     subtitle = "旧版 config.json 路径、脱敏 JSON、.corrupt/.legacy 列表",
                     onClick = { onNavigate("Legacy") },
                     icon = MiuixIcons.File,
-                    iconTone = XiaoiIconTone.PURPLE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
         }

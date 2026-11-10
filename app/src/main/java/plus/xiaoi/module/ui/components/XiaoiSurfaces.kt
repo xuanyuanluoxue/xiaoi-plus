@@ -172,13 +172,16 @@ fun XiaoiGroupHeader(text: String) {
     )
 }
 
+/** 徽章语义：正常状态不上色，只有需要关注/失败/信息性标记才用颜色。 */
 enum class XiaoiTone { NEUTRAL, SUCCESS, WARNING, ERROR, INFO }
 
 @Composable
 fun XiaoiBadge(text: String, tone: XiaoiTone = XiaoiTone.NEUTRAL) {
     val colors = XiaoiTheme.colors
+    // SUCCESS 与 NEUTRAL 同为中性：正常/已确认不再是满屏绿色，避免和强调色打架。
+    // INFO 用唯一强调色；WARNING/ERROR 只留给真正需要处理的状态。
     val (bg, fg) = when (tone) {
-        XiaoiTone.SUCCESS -> colors.success.copy(alpha = 0.14f) to colors.success
+        XiaoiTone.SUCCESS -> colors.chipBg to colors.textSecondary
         XiaoiTone.WARNING -> colors.warningBg to colors.warning
         XiaoiTone.ERROR -> colors.errorBg to colors.error
         XiaoiTone.INFO -> colors.chipOkBg to colors.primary

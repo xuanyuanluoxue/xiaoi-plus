@@ -114,7 +114,7 @@ fun HomeScreen(
         XiaoiCardGroup {
             XiaoiEntryCard(
                 icon = MiuixIcons.Mic,
-                tone = XiaoiIconTone.ORANGE,
+                tone = XiaoiIconTone.ACCENT,
                 title = "小爱同学",
                 summary = "${state.xiaoai.status} · 端口 ${state.xiaoai.port} · ${state.xiaoai.bind}",
                 badge = state.xiaoai.status,
@@ -123,7 +123,7 @@ fun HomeScreen(
             )
             XiaoiEntryCard(
                 icon = MiuixIcons.Link,
-                tone = XiaoiIconTone.BLUE,
+                tone = XiaoiIconTone.ACCENT,
                 title = "接入通道",
                 summary = "8771 ${state.xiaoai.status} · 8770 ${state.agent.status}",
                 badge = state.agent.status,
@@ -132,7 +132,7 @@ fun HomeScreen(
             )
             XiaoiEntryCard(
                 icon = MiuixIcons.Tasks,
-                tone = XiaoiIconTone.GREEN,
+                tone = XiaoiIconTone.ACCENT,
                 title = "今日调用",
                 summary = when {
                     state.usageThird != null && state.usageOfficial != null ->
@@ -143,7 +143,7 @@ fun HomeScreen(
             )
             XiaoiEntryCard(
                 icon = MiuixIcons.Notes,
-                tone = XiaoiIconTone.PINK,
+                tone = XiaoiIconTone.ACCENT,
                 title = "最近活动",
                 summary = state.activities.firstOrNull()?.let { "${it.time} · ${it.domain} · ${it.text}" }
                     ?: "暂无活动",
@@ -151,21 +151,21 @@ fun HomeScreen(
             )
             XiaoiEntryCard(
                 icon = MiuixIcons.ListView,
-                tone = XiaoiIconTone.CYAN,
+                tone = XiaoiIconTone.ACCENT,
                 title = "能力清单",
                 summary = "只读能力、工具与权限矩阵",
                 onClick = { onNavigate("Capabilities") },
             )
             XiaoiEntryCard(
                 icon = MiuixIcons.Backup,
-                tone = XiaoiIconTone.PURPLE,
+                tone = XiaoiIconTone.ACCENT,
                 title = "配置管理",
                 summary = "备份、还原、脱敏导出与运行时导入",
                 onClick = { onNavigate("ConfigManage") },
             )
             XiaoiEntryCard(
                 icon = MiuixIcons.Info,
-                tone = XiaoiIconTone.INDIGO,
+                tone = XiaoiIconTone.ACCENT,
                 title = "关于",
                 summary = "版本、GitHub、许可证与致谢",
                 onClick = { onNavigate("About") },

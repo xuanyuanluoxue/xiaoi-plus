@@ -170,7 +170,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                 checked = follow,
                 onCheckedChange = { follow = it },
                 icon = MiuixIcons.Notes,
-                iconTone = XiaoiIconTone.PINK,
+                iconTone = XiaoiIconTone.ACCENT,
             )
         }
         Spacer(Modifier.height(XiaoiTheme.dimens.cardGap))
@@ -215,7 +215,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                         )
                         Text(
                             line.level,
-                            color = if (line.level == "E") colors.error else colors.success,
+                            color = if (line.level == "E") colors.error else colors.textSecondary,
                             style = XiaoiTheme.typography.mono,
                             modifier = Modifier.width(16.dp),
                         )

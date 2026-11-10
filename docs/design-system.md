@@ -5,7 +5,8 @@
 
 ## 1. 设计原则
 
-1. **一个强调色**：全站只有 primary 一个品牌色，成功/错误只用于状态
+1. **一个强调色 + 两个状态色**：primary 只用于动作/选中/信息；正常状态不上色（中性灰），
+   只有「需要关注」（warning 琥珀）和「失败/危险」（error 红）才着色
 2. **一种卡片**：同一圆角、同一背景、同一内边距，不出现"另一种卡"
 3. **信息分层靠字号与留白**，不靠边框、阴影、渐变
 4. **数值居中、文本左对齐**；同一列表行高固定
@@ -27,21 +28,28 @@
 | text-hint | #9AA1AC | #6E7278 | 占位 / 注释 |
 | primary | #2F4A6B | #C7D2FE | 强调 / 主按钮 |
 | on-primary | #FFFFFF | #1A1B1E | 主按钮文字 |
-| success | #2E7D5B | #4ADE80 | 已启用 / 成功 |
+| —（已删除 success） | — | — | 正常/已确认/已授权统一用 chip_bg + text_secondary |
 | warning | #B26A00 | #FBBF24 | 暂停 / 需注意 |
 | error | #C43D3D | #F87171 | 失败 |
 | hero-on | #16202E | #E8ECF8 | Hero 内文字 |
-| icon-green | #248A3D | #34C759 | 状态 / 运行 |
-| icon-blue | #007AFF | #0A84FF | 接入 / 通道 / 令牌 |
-| icon-orange | #B25000 | #FF9F0A | 模型 / 服务商 |
-| icon-pink | #D70015 | #FF375F | 日志 / 活动 |
-| icon-red | #C62828 | #FF453A | 诊断 / 权限 / 危险 |
-| icon-cyan | #0071A4 | #64D2FF | 隐私 / 局域网 |
-| icon-purple | #8944AB | #BF5AF2 | 配置 / 备份 |
-| icon-indigo | #3634A3 | #5E5CE6 | 关于 / 致谢 |
+| icon-accent | #3D4F8F | #4A5FA8 | 所有入口圆图标（统一强调色） |
+| icon-warning | #8A5200 | #8A5A16 | 需要提醒的入口/状态 |
+| icon-danger | #9E2B2B | #A84545 | 危险操作 |
 
-Hero 底色按状态：`已启用 = success 14% 透明`、`未配置 = surface`、`已暂停 = warning 14%`、`异常 = error 14%`。
-彩色圆图标统一 48dp 圆 + 26dp 白色图形；颜色只表达“是什么”，状态仍由徽章文字表达。
+Hero 底色按状态：`健康 = primary 10%`、`未配置/未确认 = 中性`、`等待 = warning 14%`、`异常 = error 14%`。
+彩色圆图标统一 48dp 圆 + 26dp 白色图形，且全站只用一个 `icon-accent`；
+`icon-warning`/`icon-danger` 只给需要提醒或破坏性的动作。
+
+### 2.1 配色使用规则（2026-11-10）
+
+| 场景 | 颜色 |
+|---|---|
+| 主按钮、文字按钮、选中 pill、链接、INFO 徽章 | primary（唯一强调色） |
+| 运行中 / 已确认 / 已授权 / 强令牌 / 已启用 | 中性：chip_bg + text_secondary（**不用绿色**） |
+| 等待 / 未上报 / 弱令牌 / 需要关注 | warning 琥珀 |
+| 失败 / 错误 / 危险操作 | error 红 |
+
+四维徽章同理：`READY/OK/UNKNOWN` 都是中性底，只有 `WAITING` 琥珀、`ERROR` 红。
 
 ## 3. 字体
 
@@ -154,7 +162,7 @@ launcher 使用 adaptive-icon（前景 108、安全区 66、monochrome 层），
 | PAUSED | 已暂停 | 配置已保留，打开上方开关即恢复 | warning |
 | ENABLED | 已启用 | 待校验 · 点按校验 / 密钥为空 | primary |
 | CHECKING | 校验中 | 正在校验端点与模型… | primary |
-| OK | 可用 | 响应 123ms · 点按重新校验 | success |
+| OK | 可用 | 响应 123ms · 点按重新校验 | text-secondary（中性） |
 | AUTH | 密钥无效 | 检查密钥是否属于该服务商 | error |
 | MODEL | 模型不存在 | 检查模型 ID 是否拼写正确 | error |
 | ENDPOINT | 端点不可达 | 检查地址、网络或账号配额 | warning |

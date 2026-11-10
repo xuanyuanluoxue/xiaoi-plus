@@ -207,7 +207,7 @@ fun AccessScreen(
                     subtitle = "8771/8770 只读详情",
                     onClick = { onNavigate("Bridge") },
                     icon = MiuixIcons.Link,
-                    iconTone = XiaoiIconTone.BLUE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -216,7 +216,7 @@ fun AccessScreen(
                     subtitle = "令牌掩码/生成、8771 与 8770 LAN",
                     onClick = { onNavigate("Token") },
                     icon = MiuixIcons.Lock,
-                    iconTone = XiaoiIconTone.CYAN,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -225,7 +225,7 @@ fun AccessScreen(
                     subtitle = "URL、adb forward、客户端 JSON 与 Skill",
                     onClick = { onNavigate("Connect") },
                     icon = MiuixIcons.WorldClock,
-                    iconTone = XiaoiIconTone.BLUE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -234,7 +234,7 @@ fun AccessScreen(
                     subtitle = "${CapabilityRegistry.all().size} 条能力 · 搜索/筛选/详情",
                     onClick = { onNavigate("Capabilities") },
                     icon = MiuixIcons.ListView,
-                    iconTone = XiaoiIconTone.GREEN,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -243,7 +243,7 @@ fun AccessScreen(
                     subtitle = "5 个动作 · 8771 8 个 · 8770 6 个",
                     onClick = { onNavigate("Tools") },
                     icon = MiuixIcons.Tasks,
-                    iconTone = XiaoiIconTone.ORANGE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -252,7 +252,7 @@ fun AccessScreen(
                     subtitle = "通知、精确闹钟、全屏、电池、usage、通知监听",
                     onClick = { onNavigate("Permissions") },
                     icon = MiuixIcons.Unlock,
-                    iconTone = XiaoiIconTone.RED,
+                    iconTone = XiaoiIconTone.DANGER,
                 )
             }
         }

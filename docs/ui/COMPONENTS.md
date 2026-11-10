@@ -27,7 +27,8 @@ fun XiaoiTheme(
 )
 ```
 
-- 用现有 19 个颜色令牌构造 light/dark `MiuixTheme`。
+- 用语义颜色令牌构造 light/dark `MiuixTheme`；配色规则见 `docs/design-system.md` §2.1：
+  一个强调色 + warning/error 两个状态色，正常态一律中性灰。
 - 提供 `XiaoiTheme.colors`、`.dimens`、`.typography`。
 - 不启用 Monet。
 

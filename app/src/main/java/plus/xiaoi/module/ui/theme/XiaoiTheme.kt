@@ -31,7 +31,7 @@ data class XiaoiColors(
     val onPrimary: Color,
     val chipBg: Color,
     val chipOkBg: Color,
-    val success: Color,
+    // 正常/成功状态不再单独上色：统一走 chipBg + textSecondary，强调色只给动作与 INFO。
     val warning: Color,
     val warningBg: Color,
     val error: Color,
@@ -41,7 +41,6 @@ data class XiaoiColors(
     val heroOn: Color,
     // 入口圆图标：全站统一一个强调色，红色只留给危险操作；状态仍由徽章文字表达。
     val iconAccent: Color,
-    val iconSuccess: Color,
     val iconWarning: Color,
     val iconDanger: Color,
     // 悬浮玻璃底栏（仅 ui/components/glass 使用）。
@@ -108,8 +107,7 @@ private val LightColors = XiaoiColors(
     onPrimary = Color(0xFFFFFFFF),
     chipBg = Color(0xFFE4EBF3),
     chipOkBg = Color(0xFFDCE9F7),
-    // 浅色状态色同时作为徽章文字：保证在各自 10–14% 淡色底上 ≥4.5:1。
-    success = Color(0xFF1B5E43),
+    // 状态色同时作为徽章文字：保证在各自 10–14% 淡色底上 ≥4.5:1。
     warning = Color(0xFF7A4A00),
     warningBg = Color(0xFFFFF3D6),
     error = Color(0xFF9E2B2B),
@@ -117,7 +115,6 @@ private val LightColors = XiaoiColors(
     iconTile = Color(0xFFDCE9F7),
     heroOn = Color(0xFF16202E),
     iconAccent = Color(0xFF3D4F8F),
-    iconSuccess = Color(0xFF1B5E43),
     iconWarning = Color(0xFF8A5200),
     iconDanger = Color(0xFF9E2B2B),
     glassFill = Color(0xFFFFFFFF).copy(alpha = 0.15f),
@@ -140,7 +137,6 @@ private val DarkColors = XiaoiColors(
     onPrimary = Color(0xFF1A1B1E),
     chipBg = Color(0xFF26262B),
     chipOkBg = Color(0xFF2E3444),
-    success = Color(0xFF4ADE80),
     warning = Color(0xFFFBBF24),
     warningBg = Color(0xFF2E2511),
     error = Color(0xFFF87171),
@@ -148,7 +144,6 @@ private val DarkColors = XiaoiColors(
     iconTile = Color(0xFF26262B),
     heroOn = Color(0xFFE8ECF8),
     iconAccent = Color(0xFF4A5FA8),
-    iconSuccess = Color(0xFF2E7D5B),
     iconWarning = Color(0xFF8A5A16),
     iconDanger = Color(0xFFA84545),
     glassFill = Color(0xFF161618).copy(alpha = 0.12f),

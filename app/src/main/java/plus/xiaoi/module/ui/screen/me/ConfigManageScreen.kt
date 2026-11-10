@@ -311,7 +311,7 @@ fun ConfigManageScreen(
                             subtitle = "${restore.name} · 校验通过后才原子写入",
                             onClick = { recovery = RecoveryKind.LEGACY },
                             icon = MiuixIcons.Backup,
-                            iconTone = XiaoiIconTone.PURPLE,
+                            iconTone = XiaoiIconTone.ACCENT,
                         )
                     }
                 } else {
@@ -328,7 +328,7 @@ fun ConfigManageScreen(
                         subtitle = "默认骨架 + 当前 prefs；损坏原文移入 .corrupt 备份",
                         onClick = { recovery = RecoveryKind.DEFAULTS },
                         icon = MiuixIcons.Refresh,
-                        iconTone = XiaoiIconTone.RED,
+                        iconTone = XiaoiIconTone.DANGER,
                         badge = "写入",
                         badgeTone = XiaoiTone.WARNING,
                     )
@@ -360,7 +360,7 @@ fun ConfigManageScreen(
                     )
                 },
                 icon = MiuixIcons.File,
-                iconTone = XiaoiIconTone.PURPLE,
+                iconTone = XiaoiIconTone.ACCENT,
             )
         }
 
@@ -372,7 +372,7 @@ fun ConfigManageScreen(
                     subtitle = "完整 JSON · 含明文 API Key 与 MCP Token",
                     onClick = { showFullBackupConfirm = true },
                     icon = MiuixIcons.Backup,
-                    iconTone = XiaoiIconTone.PURPLE,
+                    iconTone = XiaoiIconTone.ACCENT,
                     badge = "含密钥",
                     badgeTone = XiaoiTone.WARNING,
                 )
@@ -383,7 +383,7 @@ fun ConfigManageScreen(
                     subtitle = "选择 JSON；校验失败或脱敏文件不会写入",
                     onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
                     icon = MiuixIcons.Import,
-                    iconTone = XiaoiIconTone.RED,
+                    iconTone = XiaoiIconTone.DANGER,
                     badge = "覆盖",
                     badgeTone = XiaoiTone.WARNING,
                 )
@@ -397,7 +397,7 @@ fun ConfigManageScreen(
                         if (text == null) onMessage("剪贴板里没有可用的 JSON") else prepareImport(text)
                     },
                     icon = MiuixIcons.Paste,
-                    iconTone = XiaoiIconTone.RED,
+                    iconTone = XiaoiIconTone.DANGER,
                     badge = "覆盖",
                     badgeTone = XiaoiTone.WARNING,
                 )
@@ -415,7 +415,7 @@ fun ConfigManageScreen(
                         exportLauncher.launch("xiaoi-plus-config-masked.json")
                     },
                     icon = MiuixIcons.UploadCloud,
-                    iconTone = XiaoiIconTone.PURPLE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
             XiaoiPreferenceCard {
@@ -424,7 +424,7 @@ fun ConfigManageScreen(
                     subtitle = "通过系统分享；文件可能被转发或留存",
                     onClick = { shareMasked() },
                     icon = MiuixIcons.Share,
-                    iconTone = XiaoiIconTone.PURPLE,
+                    iconTone = XiaoiIconTone.ACCENT,
                 )
             }
         }
@@ -436,7 +436,7 @@ fun ConfigManageScreen(
                 subtitle = "读取当前生效的模型/端点；密钥沿用当前文件",
                 onClick = { showRuntimeImportConfirm = true },
                 icon = MiuixIcons.Refresh,
-                iconTone = XiaoiIconTone.ORANGE,
+                iconTone = XiaoiIconTone.ACCENT,
                 badge = "写入",
                 badgeTone = XiaoiTone.INFO,
             )

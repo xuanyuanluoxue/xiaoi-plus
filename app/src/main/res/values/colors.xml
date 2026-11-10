@@ -16,7 +16,7 @@
     <color name="chip_bg_pressed">#D6E0EC</color>
     <color name="chip_ok_bg">#DCE9F7</color>
 
-    <color name="success">#2E7D5B</color>
+    <color name="success">#2F4A6B</color>
     <color name="warning">#B26A00</color>
     <color name="warning_bg">#FFF3D6</color>
     <color name="error">#C43D3D</color>

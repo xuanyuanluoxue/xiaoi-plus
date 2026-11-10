@@ -270,7 +270,7 @@ internal fun ModelFormCard(
                 text = check.message,
                 color = when {
                     check.running -> colors.textSecondary
-                    check.ok -> colors.success
+                    check.ok -> colors.textSecondary
                     else -> colors.error
                 },
                 style = XiaoiTheme.typography.caption,

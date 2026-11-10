@@ -242,7 +242,7 @@ fun TokenScreen(
                             if (on) lanDialog = LanTarget.MCP else mcpLanDraft = false
                         },
                         icon = MiuixIcons.WorldClock,
-                        iconTone = XiaoiIconTone.CYAN,
+                        iconTone = XiaoiIconTone.ACCENT,
                     )
                     XiaoiValueRow(
                         "保存后将监听",
@@ -260,7 +260,7 @@ fun TokenScreen(
                             if (on) lanDialog = LanTarget.AGENT else agentLanDraft = false
                         },
                         icon = MiuixIcons.WorldClock,
-                        iconTone = XiaoiIconTone.CYAN,
+                        iconTone = XiaoiIconTone.ACCENT,
                     )
                     XiaoiValueRow(
                         "保存后将监听",

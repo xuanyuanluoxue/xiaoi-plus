@@ -50,19 +50,22 @@ fun StatusHero(
     modifier: Modifier = Modifier,
 ) {
     val colors = XiaoiTheme.colors
+    // 状态色只表达「要处理」：失败红、等待琥珀；健康时用强调色浅底而不是绿色。
     val tone: Color? = when {
-        dimensions.any { it.status == DimensionStatus.ERROR } -> colors.iconDanger
-        dimensions.any { it.status == DimensionStatus.WAITING } -> colors.iconWarning
+        dimensions.any { it.status == DimensionStatus.ERROR } -> colors.error
+        dimensions.any { it.status == DimensionStatus.WAITING } -> colors.warning
         dimensions.isNotEmpty() && dimensions.all {
             it.status == DimensionStatus.OK || it.status == DimensionStatus.READY
-        } -> colors.iconSuccess
+        } -> colors.primary
         else -> null
     }
-    val background = (tone ?: colors.textSecondary).copy(alpha = 0.14f)
+    val background = (tone ?: colors.textSecondary).copy(
+        alpha = if (tone == colors.primary) 0.10f else 0.14f,
+    )
     val iconTone = when {
-        dimensions.any { it.status == DimensionStatus.ERROR } -> XiaoiIconTone.RED
-        dimensions.any { it.status == DimensionStatus.WAITING } -> XiaoiIconTone.ORANGE
-        tone != null -> XiaoiIconTone.GREEN
+        dimensions.any { it.status == DimensionStatus.ERROR } -> XiaoiIconTone.DANGER
+        dimensions.any { it.status == DimensionStatus.WAITING } -> XiaoiIconTone.WARNING
+        tone != null -> XiaoiIconTone.ACCENT
         else -> XiaoiIconTone.NEUTRAL
     }
     Card(
