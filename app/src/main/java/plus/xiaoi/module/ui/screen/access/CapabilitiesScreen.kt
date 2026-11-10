@@ -3,6 +3,7 @@ package plus.xiaoi.module.ui.screen.access
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +31,8 @@ import plus.xiaoi.module.ui.components.SearchField
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
+import plus.xiaoi.module.ui.components.rememberXiaoiListState
+import plus.xiaoi.module.ui.components.xiaoiTopBarHeight
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -74,7 +77,11 @@ fun CapabilitiesScreen(
                 .focusRequester(initialFocus)
                 .focusable(),
         )
-        LazyColumn(Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = rememberXiaoiListState(),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = xiaoiTopBarHeight() + 8.dp, bottom = 112.dp),
+        ) {
             item {
                 SearchField(
                     value = query,

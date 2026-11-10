@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +36,8 @@ import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiPageActions
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
+import plus.xiaoi.module.ui.components.rememberXiaoiListState
+import plus.xiaoi.module.ui.components.xiaoiTopBarHeight
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -73,7 +74,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
     var follow by rememberSaveable { mutableStateOf(false) }
     var received by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
-    val listState = rememberLazyListState()
+    val listState = rememberXiaoiListState()
 
     val reload: () -> Unit = {
         val dump = BridgeControlService.logDump()
@@ -135,7 +136,12 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = XiaoiTheme.dimens.pagePad)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(top = xiaoiTopBarHeight() + 8.dp)
+            .padding(horizontal = XiaoiTheme.dimens.pagePad),
+    ) {
         Spacer(Modifier.height(4.dp))
         FilterChips(
             options = listOf("全部", "信息", "错误"),
@@ -173,7 +179,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = 112.dp),
         ) {
             if (shown.isEmpty()) {
                 item {
