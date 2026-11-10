@@ -9,6 +9,22 @@ import plus.xiaoi.module.core.StateModel
  * 「小爱是否正在用」(D4) 合并成一枚「小爱」，不再把「已应用 / 运行时」这种
  * 工程词暴露给用户。首页与小爱页共用本函数，保证两处措辞一致。</p>
  */
+/** Hero 的整体状态；决定图标与底色，不再从「任意一项 OK」推断。 */
+fun heroStatus(result: StateModel.Result): DimensionStatus = when {
+    result.d1 == StateModel.ConfigState.INVALID -> DimensionStatus.ERROR
+    result.d2 == StateModel.EndpointState.AUTH ||
+        result.d2 == StateModel.EndpointState.MODEL ||
+        result.d2 == StateModel.EndpointState.ENDPOINT -> DimensionStatus.ERROR
+    result.d4 == StateModel.RuntimeState.IN_USE -> DimensionStatus.OK
+    result.d1 == StateModel.ConfigState.PAUSED ||
+        result.d1 == StateModel.ConfigState.NOT_CONFIGURED -> DimensionStatus.WAITING
+    result.d2 == StateModel.EndpointState.CHECKING -> DimensionStatus.WAITING
+    result.d4 == StateModel.RuntimeState.MODEL_MISMATCH ||
+        result.d4 == StateModel.RuntimeState.DISABLED ||
+        result.d4 == StateModel.RuntimeState.NO_KEY -> DimensionStatus.WAITING
+    else -> DimensionStatus.UNKNOWN
+}
+
 fun userDimensions(result: StateModel.Result): List<DimensionState> = listOf(
     DimensionState("配置", configStatus(result.d1), configText(result.d1)),
     DimensionState("模型服务", endpointStatus(result.d2), endpointText(result.d2)),

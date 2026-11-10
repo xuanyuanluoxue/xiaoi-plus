@@ -94,6 +94,7 @@ fun HomeScreen(
         StatusHero(
             title = state.heroTitle,
             subtitle = state.heroSub,
+            status = state.heroStatus,
             dimensions = state.dimensions,
             primaryText = cta?.text,
             onPrimary = cta?.let { target -> { onNavigate(target.route) } },
@@ -130,8 +131,6 @@ fun HomeScreen(
                 tone = XiaoiIconTone.ACCENT,
                 title = "外部接入",
                 summary = "小爱任务 ${state.xiaoai.status} · 设备操作 ${state.agent.status}",
-                badge = state.agent.status,
-                badgeTone = state.agent.tone,
                 onClick = { onNavigate("Access") },
             )
             XiaoiEntryCard(

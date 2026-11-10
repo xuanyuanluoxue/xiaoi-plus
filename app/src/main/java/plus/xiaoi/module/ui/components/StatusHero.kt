@@ -2,6 +2,8 @@ package plus.xiaoi.module.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,8 +28,10 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.icon.extended.Pause
 
 /** 四维状态输入；与 DimensionBadge 一一对应。 */
 data class DimensionState(
@@ -39,10 +44,12 @@ data class DimensionState(
  * 首页状态 Hero：独立卡片 + 语义色圆图标（绿/黄/红/灰），保留四维徽章。
  * 只负责展示；CTA 由调用方决定。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StatusHero(
     title: String,
     subtitle: String,
+    status: DimensionStatus,
     dimensions: List<DimensionState>,
     primaryText: String?,
     onPrimary: (() -> Unit)?,
@@ -50,23 +57,26 @@ fun StatusHero(
     modifier: Modifier = Modifier,
 ) {
     val colors = XiaoiTheme.colors
-    // 状态色只表达「要处理」：失败红、等待琥珀；健康时用强调色浅底而不是绿色。
-    val tone: Color? = when {
-        dimensions.any { it.status == DimensionStatus.ERROR } -> colors.error
-        dimensions.any { it.status == DimensionStatus.WAITING } -> colors.warning
-        dimensions.isNotEmpty() && dimensions.all {
-            it.status == DimensionStatus.OK || it.status == DimensionStatus.READY
-        } -> colors.primary
-        else -> null
+    // 底色只在卡片色上做 6–8% 着色：状态交给图标和文字，不再铺一整块棕/红底。
+    val background = when (status) {
+        DimensionStatus.ERROR -> lerp(colors.surface2, colors.error, 0.08f)
+        DimensionStatus.WAITING -> lerp(colors.surface2, colors.warning, 0.08f)
+        DimensionStatus.OK, DimensionStatus.READY ->
+            lerp(colors.surface2, colors.primary, 0.06f)
+        DimensionStatus.UNKNOWN -> colors.surface2
     }
-    val background = (tone ?: colors.textSecondary).copy(
-        alpha = if (tone == colors.primary) 0.10f else 0.14f,
-    )
-    val iconTone = when {
-        dimensions.any { it.status == DimensionStatus.ERROR } -> XiaoiIconTone.DANGER
-        dimensions.any { it.status == DimensionStatus.WAITING } -> XiaoiIconTone.WARNING
-        tone != null -> XiaoiIconTone.ACCENT
-        else -> XiaoiIconTone.NEUTRAL
+    val iconTone = when (status) {
+        DimensionStatus.ERROR -> XiaoiIconTone.DANGER
+        DimensionStatus.WAITING -> XiaoiIconTone.WARNING
+        DimensionStatus.OK, DimensionStatus.READY -> XiaoiIconTone.ACCENT
+        DimensionStatus.UNKNOWN -> XiaoiIconTone.NEUTRAL
+    }
+    // 图标和状态一致：暂停/等待是 Pause，失败是 Close，健康才是 Ok。
+    val heroIcon = when (status) {
+        DimensionStatus.ERROR -> MiuixIcons.Close
+        DimensionStatus.WAITING -> MiuixIcons.Pause
+        DimensionStatus.OK, DimensionStatus.READY -> MiuixIcons.Ok
+        DimensionStatus.UNKNOWN -> MiuixIcons.Info
     }
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -76,10 +86,7 @@ fun StatusHero(
     ) {
         Column(Modifier.padding(XiaoiTheme.dimens.cardPad)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                XiaoiRowIcon(
-                    icon = if (iconTone == XiaoiIconTone.NEUTRAL) MiuixIcons.Info else MiuixIcons.Ok,
-                    tone = iconTone,
-                )
+                XiaoiRowIcon(icon = heroIcon, tone = iconTone)
                 Column(Modifier.weight(1f)) {
                     Text(
                         title,
@@ -99,19 +106,18 @@ fun StatusHero(
             }
             if (dimensions.isNotEmpty()) {
                 Spacer(Modifier.height(14.dp))
-                dimensions.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { state ->
-                            DimensionBadge(
-                                label = state.label,
-                                status = state.status,
-                                text = state.text,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                // 自然宽度 + 自动换行：三枚徽章一行放得下就一行，不会留下半行空白。
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    dimensions.forEach { state ->
+                        DimensionBadge(
+                            label = state.label,
+                            status = state.status,
+                            text = state.text,
+                        )
                     }
-                    Spacer(Modifier.height(6.dp))
                 }
             }
             if (onPrimary != null && primaryText != null) {

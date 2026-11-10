@@ -117,6 +117,7 @@ fun XiaoaiScreen(
         StatusHero(
             title = state.heroTitle,
             subtitle = state.heroSub,
+            status = state.heroStatus,
             dimensions = state.dimensions,
             primaryText = null,
             onPrimary = null,

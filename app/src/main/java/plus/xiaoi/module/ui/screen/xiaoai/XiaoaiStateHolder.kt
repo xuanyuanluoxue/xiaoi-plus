@@ -13,6 +13,8 @@ import plus.xiaoi.module.core.ActivityHub
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.ui.components.DimensionState
+import plus.xiaoi.module.ui.components.DimensionStatus
+import plus.xiaoi.module.ui.components.heroStatus
 import plus.xiaoi.module.ui.components.userDimensions
 
 /** 小爱一级页的只读投影；所有字段都是事实或“未确认”，不做乐观伪造。 */
@@ -28,6 +30,7 @@ internal data class XiaoaiUiState(
     val keySet: Boolean = false,
     val heroTitle: String = "未确认",
     val heroSub: String = "",
+    val heroStatus: DimensionStatus = DimensionStatus.UNKNOWN,
     val dimensions: List<DimensionState> = emptyList(),
     val bridgeLine: String = "未确认",
     val appliedLine: String = "未确认",
@@ -156,6 +159,7 @@ internal class XiaoaiStateHolder(private val context: Context) {
             keySet = cfg.apiKeyOfActive().isNotEmpty(),
             heroTitle = result.heroTitle(),
             heroSub = result.heroSub(),
+            heroStatus = heroStatus(result),
             dimensions = userDimensions(result),
             bridgeLine = when {
                 !snap.connected -> "小爱任务接口未连接（未确认）"

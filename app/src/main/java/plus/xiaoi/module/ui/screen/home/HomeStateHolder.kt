@@ -21,6 +21,8 @@ import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.core.PermissionProbe
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.ui.components.DimensionState
+import plus.xiaoi.module.ui.components.DimensionStatus
+import plus.xiaoi.module.ui.components.heroStatus
 import plus.xiaoi.module.ui.components.IssueSeverity
 import plus.xiaoi.module.ui.components.IssueUi
 import plus.xiaoi.module.ui.components.XiaoiTone
@@ -54,6 +56,7 @@ internal data class HomeUiState(
     val loading: Boolean = true,
     val heroTitle: String = "等待小爱",
     val heroSub: String = "正在读取本机配置与运行快照",
+    val heroStatus: DimensionStatus = DimensionStatus.UNKNOWN,
     val dimensions: List<DimensionState> = emptyList(),
     val cta: HomeCta? = null,
     val issues: List<HomeIssue> = emptyList(),
@@ -99,6 +102,7 @@ internal class HomeStateHolder(context: Context) {
                     loading = false,
                     heroTitle = "读取失败",
                     heroSub = "读取本机状态失败，请稍后重试",
+                    heroStatus = DimensionStatus.ERROR,
                     cta = HomeCta("查看诊断", "Diagnostics"),
                 )
             }
@@ -136,7 +140,7 @@ internal class HomeStateHolder(context: Context) {
         }
 
         val heroSub = if (bridge.updatedAt > 0) {
-            result.heroSub() + " · 最近上报 " + HomeFacts.clock(bridge.updatedAt)
+            result.heroSub() + " · " + HomeFacts.clock(bridge.updatedAt) + " 在线"
         } else {
             result.heroSub()
         }
@@ -179,6 +183,7 @@ internal class HomeStateHolder(context: Context) {
             loading = false,
             heroTitle = result.heroTitle(),
             heroSub = heroSub,
+            heroStatus = heroStatus(result),
             dimensions = HomeFacts.dimensions(result),
             cta = HomeFacts.cta(result),
             issues = issues,

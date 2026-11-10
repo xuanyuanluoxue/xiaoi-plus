@@ -32,11 +32,12 @@ fun DimensionBadge(
 ) {
     val colors = XiaoiTheme.colors
     // 正常/已确认 = 中性底（不再用绿色）；只有等待（琥珀）和失败（红）才着色。
+    // 半透明叠加：无论 Hero 卡片是什么底色，徽章都能看出边界（不再靠和卡片撞色的 chipBg）。
     val background = when (status) {
-        DimensionStatus.READY, DimensionStatus.OK,
-        DimensionStatus.UNKNOWN,
-        -> colors.chipBg
+        DimensionStatus.READY, DimensionStatus.OK ->
+            colors.textSecondary.copy(alpha = 0.16f)
 
+        DimensionStatus.UNKNOWN -> colors.textSecondary.copy(alpha = 0.10f)
         DimensionStatus.WAITING -> colors.warning.copy(alpha = 0.16f)
         DimensionStatus.ERROR -> colors.error.copy(alpha = 0.16f)
     }
