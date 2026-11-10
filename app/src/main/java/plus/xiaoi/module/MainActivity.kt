@@ -17,6 +17,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -303,25 +306,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     // BLUR 分支需要底栏在内容坐标系中的位置；FULL/SOLID 不使用。
     var contentCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Scaffold(
-        topBar = {
-            androidx.compose.foundation.layout.Box(
-                Modifier.drawBehind {
-                    drawRect(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            0.0f to colors.bg,
-                            0.70f to colors.bg.copy(alpha = 0.92f),
-                            1.0f to colors.bg.copy(alpha = 0f),
-                        ),
-                    )
-                },
-            ) {
-            XiaoiTopBar(
-                title = Routes.titleOf(key),
-                onBack = if (nav.isRoot()) null else ({ back() }),
-                actions = { pageActions.actions?.invoke(this) },
-            )
-            }
-        },
+        topBar = {},  // 顶栏改为内容区浮层（见下方 TopBlurScrim + XiaoiTopBar）
         // 底栏悬浮在内容之上：不占用 Scaffold bottomBar，避免把页面挤窄。
         snackbarHost = {
             Box(
@@ -338,7 +323,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
             Modifier
                 .fillMaxSize()
                 .padding(
-                    top = padding.calculateTopPadding(),
+                    top = 0.dp,
                     bottom = 0.dp, // 内容穿到小白条下方
                 ),
         ) {
@@ -472,10 +457,17 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                     }
                 }
             }
-            if (root && Build.VERSION.SDK_INT >= 33) {
+            if (Build.VERSION.SDK_INT >= 33) {
                 TopBlurScrim(
                     source = glassBackdrop,
                     modifier = Modifier.align(Alignment.TopCenter),
+                )
+            }
+            androidx.compose.foundation.layout.Box(Modifier.align(Alignment.TopCenter)) {
+                XiaoiTopBar(
+                    title = Routes.titleOf(key),
+                    onBack = if (nav.isRoot()) null else ({ back() }),
+                    actions = { pageActions.actions?.invoke(this) },
                 )
             }
             if (root) {
@@ -505,6 +497,8 @@ private fun TopBlurScrim(
     val backdrop = source.miuixBackdrop as? top.yukonga.miuix.kmp.blur.Backdrop ?: return
     val colors = plus.xiaoi.module.ui.theme.XiaoiTheme.colors
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val topInset = androidx.compose.foundation.layout.WindowInsets.statusBars
+        .asPaddingValues().calculateTopPadding()
     val radiusPx = with(density) { 22.dp.toPx() }
     val effect = androidx.compose.runtime.remember(radiusPx) {
         plus.xiaoi.module.ui.components.glass.GlassNativeBlur.effect(radiusPx)
@@ -512,7 +506,7 @@ private fun TopBlurScrim(
     androidx.compose.foundation.layout.Box(
         modifier
             .fillMaxWidth()
-            .height(96.dp)
+            .height(topInset + 96.dp)
             .topBlurBackdrop(backdrop, effect, colors.bg),
     )
 }
@@ -530,10 +524,21 @@ private fun androidx.compose.ui.Modifier.topBlurBackdrop(
             downscaleFactor = 1
         },
         onDrawSurface = {
+            // 1) 用竖直 alpha 渐变把模糊层本身掩掉：顶部满强度 → 底部透明（渐变式模糊的关键）
             drawRect(
-                androidx.compose.ui.graphics.Brush.verticalGradient(
-                    0.0f to bg.copy(alpha = 0.94f),
-                    0.5f to bg.copy(alpha = 0.6f),
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    0.0f to androidx.compose.ui.graphics.Color.Black,
+                    0.55f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.85f),
+                    0.82f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f),
+                    1.0f to androidx.compose.ui.graphics.Color.Transparent,
+                ),
+                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+            )
+            // 2) 极淡底色，保证标题可读
+            drawRect(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    0.0f to bg.copy(alpha = 0.42f),
+                    0.6f to bg.copy(alpha = 0.16f),
                     1.0f to bg.copy(alpha = 0f),
                 ),
             )
