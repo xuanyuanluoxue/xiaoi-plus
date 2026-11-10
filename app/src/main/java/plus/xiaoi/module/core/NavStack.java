@@ -49,6 +49,22 @@ public final class NavStack {
     }
 
     /**
+     * 从持久化快照恢复（Activity 重建用）。列表为旧到新的完整栈，
+     * 第一项必须是某个 tab 的根路由；为空或首项非法返回 null，由调用方回退默认栈。
+     * 未知二级路由照常保留，规则与 {@link #push(String)} 一致。
+     */
+    public static NavStack restore(List<String> routes) {
+        if (routes == null || routes.isEmpty()) return null;
+        MainTab root = tabOfRoot(routes.get(0));
+        if (root == null) return null;
+        NavStack nav = new NavStack(root);
+        for (int i = 1; i < routes.size(); i++) {
+            nav.push(routes.get(i));
+        }
+        return nav;
+    }
+
+    /**
      * 压入页面。根路由等同切 tab；null/空串忽略；与栈顶相同忽略（防双击）。
      */
     public void push(String route) {

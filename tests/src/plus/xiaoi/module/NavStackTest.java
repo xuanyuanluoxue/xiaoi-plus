@@ -98,6 +98,29 @@ public final class NavStackTest {
         NavStack nullInit = new NavStack(null);
         T.eq("null 初始 tab 回首页", "Home", nullInit.current());
 
+        // Activity 重建（外观页切玻璃底栏）后按快照恢复整条栈
+        NavStack appearance = new NavStack(MainTab.ME);
+        appearance.push("Appearance");
+        NavStack restored = NavStack.restore(appearance.snapshot());
+        T.ok("重建后恢复出导航栈", restored != null);
+        T.eq("重建后仍停在外观页", "Appearance", restored.current());
+        T.eq("重建后 tab 仍为我的", MainTab.ME, restored.tab());
+        T.eq("重建后栈深度不变", 2, restored.size());
+        T.ok("重建后外观页不是根页", !restored.isRoot());
+        T.eq("重建后返回我的页", "Me", restored.pop());
+
+        NavStack deep = new NavStack(MainTab.ACCESS);
+        deep.push("Capabilities");
+        deep.push("CapabilityDetail:demo");
+        NavStack deepRestored = NavStack.restore(deep.snapshot());
+        T.eq("多级栈恢复当前页", "CapabilityDetail:demo", deepRestored.current());
+        T.eq("多级栈恢复深度", 3, deepRestored.size());
+        T.eq("空快照不可恢复", null, NavStack.restore(null));
+        T.eq("空列表不可恢复", null,
+                NavStack.restore(java.util.Collections.<String>emptyList()));
+        T.eq("首项非根路由不可恢复", null,
+                NavStack.restore(java.util.Arrays.asList("Appearance")));
+
         return T.report("NavStackTest");
     }
 

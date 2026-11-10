@@ -19,6 +19,8 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -179,11 +181,20 @@ private object Routes {
     fun tabOf(key: String): NavStack.MainTab = table.getValue(key).tab
 }
 
+/**
+ * Activity 重建（外观页切换玻璃底栏、主题切换等）时保存/恢复整条导航栈。
+ * 保存的是旧到新的路由列表，首项即当前 tab 的根路由；非法状态回退默认首页。
+ */
+private val NavStackSaver = listSaver<NavStack, String>(
+    save = { ArrayList(it.snapshot()) },
+    restore = { NavStack.restore(it) },
+)
+
 @Composable
 private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val context = LocalContext.current
     val colors = XiaoiTheme.colors
-    val nav = remember {
+    val nav = rememberSaveable(saver = NavStackSaver) {
         val key = Routes.keyOf(initialRoute)
         if (key == null) {
             NavStack()
@@ -193,6 +204,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
             }
         }
     }
+    // 当前页由恢复后的栈顶派生，避免与 nav 各自保存而错位。
     var route by remember { mutableStateOf(nav.current()) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
