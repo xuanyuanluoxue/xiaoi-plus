@@ -11,6 +11,9 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
@@ -268,6 +271,25 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val glassBackdrop = rememberGlassBackdrop(glassMode, colors.bg)
     val barReserved = rememberGlassBarReservedHeight()
     val root = nav.isRoot()
+    val tabs = NavStack.MainTab.values()
+    val pagerState = rememberPagerState(
+        initialPage = tabs.indexOf(nav.tab()).coerceAtLeast(0),
+    ) { tabs.size }
+    LaunchedEffect(pagerState.currentPage, root) {
+        if (root) {
+            val t = tabs.getOrNull(pagerState.currentPage) ?: return@LaunchedEffect
+            if (nav.tab() != t) {
+                nav.switchTab(t)
+                route = nav.current()
+            }
+        }
+    }
+    LaunchedEffect(nav.tab(), root) {
+        if (root) {
+            val target = tabs.indexOf(nav.tab())
+            if (target >= 0 && pagerState.currentPage != target) pagerState.animateScrollToPage(target)
+        }
+    }
     // BLUR 分支需要底栏在内容坐标系中的位置；FULL/SOLID 不使用。
     var contentCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Scaffold(
@@ -308,30 +330,13 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                         scaleY = 1f - 0.06f * p
                         alpha = 1f - 0.18f * p
                     }
-                    .pointerInput(root, route) {
-                        if (!root) return@pointerInput
-                        var drag = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { drag = 0f },
-                            onDragEnd = {
-                                val threshold = 120f * density
-                                val tabs = NavStack.MainTab.values()
-                                val i = tabs.indexOf(nav.tab())
-                                if (drag < -threshold && i < tabs.size - 1) {
-                                    nav.switchTab(tabs[i + 1]); route = nav.current()
-                                } else if (drag > threshold && i > 0) {
-                                    nav.switchTab(tabs[i - 1]); route = nav.current()
-                                }
-                            },
-                        ) { _, amount -> drag += amount }
-                    }
                     .glassBackdropSource(glassBackdrop)
                     // 一级页内容底部预留玻璃条高度；二级页隐藏底栏后不留白。
                     .padding(bottom = 0.dp), // TEST: 让内容从玻璃底栏下穿过，验证折射
             ) {
                 CompositionLocalProvider(LocalXiaoiPageActions provides pageActions) {
-                    screenStates.SaveableStateProvider(route) {
-                        when (key) {
+                    val renderKey: @Composable (String) -> Unit = { _k ->
+                        when (_k) {
                             Routes.HOME -> HomeScreen(
                                 onNavigate = { navigate(it) },
                                 onMessage = { message(it) },
@@ -433,6 +438,15 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                                 note = "未知路由，返回首页。",
                             )
                         }
+                    
+                    }
+                    if (root) {
+                        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
+                            val pageTab = tabs[page]
+                            screenStates.SaveableStateProvider(pageTab.root!!) { renderKey(pageTab.root!!) }
+                        }
+                    } else {
+                        screenStates.SaveableStateProvider(key ?: Routes.HOME) { renderKey(key ?: Routes.HOME) }
                     }
                 }
             }
