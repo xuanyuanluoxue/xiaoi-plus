@@ -11,7 +11,9 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -100,14 +102,11 @@ class MainActivity : ComponentActivity() {
                 Configuration.UI_MODE_NIGHT_YES
         }
         val bg = if (dark) 0xFF0B0B0D.toInt() else 0xFFF7F8FA.toInt()
-        // 沉浸式：状态栏/导航栏透明，内容延伸到系统栏下方，避免底部出现一条遮挡的背景色
-        if (Build.VERSION.SDK_INT >= 21) {
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-        }
+        // 系统栏用页面底色填充：保留系统栏内边距，内容不会压到状态栏/小白条上
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
         if (Build.VERSION.SDK_INT >= 29) {
             window.isNavigationBarContrastEnforced = false
-            window.isStatusBarContrastEnforced = false
         }
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bg))
         var flags = window.decorView.systemUiVisibility
@@ -308,6 +307,23 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                         scaleX = 1f - 0.06f * p
                         scaleY = 1f - 0.06f * p
                         alpha = 1f - 0.18f * p
+                    }
+                    .pointerInput(root, route) {
+                        if (!root) return@pointerInput
+                        var drag = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { drag = 0f },
+                            onDragEnd = {
+                                val threshold = 120f * density
+                                val tabs = NavStack.MainTab.values()
+                                val i = tabs.indexOf(nav.tab())
+                                if (drag < -threshold && i < tabs.size - 1) {
+                                    nav.switchTab(tabs[i + 1]); route = nav.current()
+                                } else if (drag > threshold && i > 0) {
+                                    nav.switchTab(tabs[i - 1]); route = nav.current()
+                                }
+                            },
+                        ) { _, amount -> drag += amount }
                     }
                     .glassBackdropSource(glassBackdrop)
                     // 一级页内容底部预留玻璃条高度；二级页隐藏底栏后不留白。
