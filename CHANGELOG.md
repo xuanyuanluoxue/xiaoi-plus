@@ -21,6 +21,10 @@
 - **令牌**：`XiaoiColors` / `XiaoiDimens` 新增 `glass*` 令牌；Snackbar 随底栏高度上移。
 - **许可**：底栏实现改编自 GPL-3.0 的 LiquidTab，保留来源与许可说明；
   新增 `androidx.graphics:graphics-shapes`（Apache-2.0）。
+- **确定性待办**：8771 MCP 新增 `xiaoai_todo_create`（`title` 必填、`content` 可选）；
+  在 voiceassist 进程按 action 发现并绑定 `com.miui.notes` 的 `IAppToolProvider`，
+  直接发 `todo_create` JSON-RPC，不经 LLM；连接/调用各 5 秒超时，失败返回结构化错误，
+  并提示可用 `xiaoai_submit` 兜底。
 - 未新增权限；minSdk 仍为 26；targetSdk 升到 34（预测性返回）；版本号未改。
 - 已知：`miuix-blur` 的 AAR 声明 minSdk 33，本仓库用 `tools:overrideLibrary`
   放开清单合并，并只在 API 33+ 调用玻璃代码；低版本走实心回退。

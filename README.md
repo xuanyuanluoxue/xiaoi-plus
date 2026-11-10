@@ -205,6 +205,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 |---|---|---|
 | `xiaoai_status` | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` |
 | `xiaoai_submit` | `text`（必填）、`sessionId`（可选） | 让小爱执行一句话任务并返回回复；不传 sessionId 自动 `session.open` |
+| `xiaoai_todo_create` | `title`（必填）、`content`（可选） | 确定性创建小米笔记待办卡片，不经 LLM；content 留空自动生成 `- [ ] <title>`，失败建议改用 `xiaoai_submit` 兜底 |
 | `xiaoai_cli` | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
 | `xiaoai_config` | 无 | 读当前生效配置：model / baseUrl / marker / bridge / lan / 密钥是否已设 |
 | `xiaoai_switch_model` | `model`（必填）、`marker`（可选） | 热切换已有端点的模型；**拒绝** `baseUrl`/`apiKey`/`bridge`/`lan`（端点和密钥只能在手机 App 设置） |
@@ -254,6 +255,7 @@ adb forward tcp:8771 tcp:8771
 | 排障 | `xiaoai_logs`（按 `since` 增量拉） |
 | 看用量 | `xiaoai_stats`（或 `GET /stats?days=7`） |
 | 让小爱干活 | `xiaoai_submit` |
+| 确定性建待办 | `xiaoai_todo_create`（`title` + 可选 `content`） |
 | 确认活着 | `xiaoai_status` |
 
 配置写入小爱的 prefs 后，各进程按 mtime 每 800ms 重读一次，所以模型切换是热的。

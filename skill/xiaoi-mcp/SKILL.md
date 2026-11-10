@@ -17,6 +17,7 @@ xiaoi-plus 是手机上的 LSPosed 模块，把「超级小爱」包装成一个
 | 工具 | 用途 |
 |---|---|
 | `xiaoai_submit` | **让手机上的小爱执行一句话任务，返回回复文本** |
+| `xiaoai_todo_create` | **确定性创建小米笔记待办**（不经过 LLM；content 可省略） |
 | `xiaoai_status` | 探活：facade / CLI 是否就绪、端口、版本 |
 | `xiaoai_config` | 读当前模型、端点、enabled、marker、bridge/lan、密钥是否设置 |
 | `xiaoai_switch_model` | 热切换已有端点的 `model` / `marker`（不能改端点/密钥） |

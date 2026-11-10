@@ -17,7 +17,7 @@ Thanox、Hail（雹）、冰箱、黑洞、App Ops，以及 LSPosed 常见模块
 |---|---|---|
 | 运行位置 | LSPosed 注入 `com.miui.voiceassist`，作用域只有小爱 | 只能改小爱自己的行为；跨应用要另开作用域或走 helper |
 | 已有能力 | 模型重定向（`sm.a` getter）、provider 标识请求头（`sm.a.getModelProviderId`）、图片直通（`sm.f.getSupportsVision`）、本地桥 + MCP | 桥是天然的"动作入口" |
-| 桥 | `GET /health /logs /cli`、`POST /mcp /config /island`，`8771~8775`；默认 loopback，可显式开局域网，Bearer token | 已有 MCP 动作入口（8 个工具）；M1 的 `/action` 沿同一鉴权加 |
+| 桥 | `GET /health /logs /cli`、`POST /mcp /config /island`，`8771~8775`；默认 loopback，可显式开局域网，Bearer token | 已有 MCP 动作入口（9 个工具）；M1 的 `/action` 沿同一鉴权加 |
 | 权限 | 模块 APK 只有 `INTERNET`；小爱是 priv-app，继承其已授予权限 | **很多系统开关不用 Shizuku**，但需实测小爱权限清单 |
 | root | 设备为 KernelSU Next，`ksud` 可用 | 可做 root helper，但**不要给 voiceassist 的 UID 授权 root** |
 | 签名 | 模块自带签名，与小爱无关 | 不能调用小爱的 signature 级 API，只能走公开 API/反射 |

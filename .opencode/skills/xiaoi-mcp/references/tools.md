@@ -107,6 +107,35 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 - `ERR cli service not ready`
 - 其他 `isError=true` 文本
 
+### xiaoai_todo_create
+
+确定性创建一张小米笔记待办卡片，直接调用 Notes 的 `todo_create` AppTool，不经过 LLM。
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `title` | string | 是 | 待办清单标题 |
+| `content` | string | 否 | 每行 `- [ ] 文本`；留空自动生成 `- [ ] <title>` |
+
+```json
+{"name":"xiaoai_todo_create","arguments":{"title":"买牛奶"}}
+```
+
+```json
+{"name":"xiaoai_todo_create","arguments":{
+  "title":"购物","content":"- [ ] 牛奶\n- [ ] 鸡蛋"}}
+```
+
+成功时 `content[0].text` 原样返回 Notes 的结果文本（通常是含 `noteId` 的 JSON）。
+失败时 `isError=true`，`text` 是结构化错误：
+
+```json
+{"ok":false,"error":"CALL_TIMEOUT","message":"...","hint":"可改用 xiaoai_submit 兜底..."}
+```
+
+常见 `error`：`BIND_REJECTED` / `BIND_TIMEOUT` / `CALL_TIMEOUT` / `CALL_FAILED` /
+`PROVIDER_ERROR` / `INVALID_RESPONSE`。
+不要用 `xiaoai_submit` 替代确定性路径；只有失败时才按 `hint` 兜底。
+
 ### xiaoai_config
 
 参数：无。返回当前生效配置（JSON 字符串，放在 `content[0].text`）：

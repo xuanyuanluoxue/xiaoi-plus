@@ -59,8 +59,9 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
 
 - 传输：Streamable HTTP，只回 JSON（不提供 SSE，`GET /mcp` → 405）
 - 鉴权：与 `/cli` 相同，`Authorization: Bearer <TOKEN>`
-- 工具（8 个）：`xiaoai_status` / `xiaoai_submit` / `xiaoai_cli` / `xiaoai_config` /
-  `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats`，语义与 README 的 MCP 工具表一致
+- 工具（9 个）：`xiaoai_status` / `xiaoai_submit` / `xiaoai_todo_create` / `xiaoai_cli` /
+  `xiaoai_config` / `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats`，
+  语义与 README 的 MCP 工具表一致；`xiaoai_todo_create` 直接绑定 Notes provider，确定性建待办
 
 电脑上接入有两种方式：
 
