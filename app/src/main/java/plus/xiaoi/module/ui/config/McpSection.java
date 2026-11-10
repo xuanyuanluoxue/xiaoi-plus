@@ -15,7 +15,9 @@ import plus.xiaoi.module.BridgeClient;
 import plus.xiaoi.module.Lan;
 import plus.xiaoi.module.Mcp;
 import plus.xiaoi.module.R;
+import plus.xiaoi.module.agent.AgentHttpServer;
 import plus.xiaoi.module.agent.AgentLanPolicy;
+import plus.xiaoi.module.agent.AgentRuntimeStatus;
 import plus.xiaoi.module.core.BridgePolicy;
 
 /**
@@ -38,8 +40,18 @@ public final class McpSection {
     private final TextView tvMcpUrl, tvMcpJson;
     private final EditText etToken;
 
-    /** 8770 Agent 动作面（与 8771 控制面独立开关，但共用同一个 token）。 */
-    private static final int AGENT_PORT = 8770;
+    /**
+     * 8770 Agent 动作面（与 8771 控制面独立开关，但共用同一个 token）。
+     *
+     * <p>实际端口以 {@link AgentRuntimeStatus} 的上报为准：8770 被小爱 facade 等
+     * 进程占用时服务会顺延到 8771~8775，展示/复制不能再拼死 8770。</p>
+     */
+    private static int agentPort() {
+        AgentRuntimeStatus.Snapshot snapshot = AgentRuntimeStatus.get();
+        return snapshot.running && snapshot.port > 0
+                ? snapshot.port
+                : AgentHttpServer.DEFAULT_PORT;
+    }
 
     /** 实际桥端口（控制面未上报时保留 8771 提示值）；用于复制连接信息与 Skill。 */
     private volatile int bridgePort = Bridge.PORT_START;
@@ -126,18 +138,22 @@ public final class McpSection {
         return AgentLanPolicy.lanEffective(cfg.agentLan, cfg.mcpToken);
     }
 
-    private static String agentLocalUrl() {
-        return "http://127.0.0.1:" + AGENT_PORT + "/mcp";
+    private static String agentLocalUrl(int port) {
+        return "http://127.0.0.1:" + port + "/mcp";
     }
 
     /** 8770 复制/展示用地址：只有实际开放局域网且拿到 IP 时才用局域网地址。 */
-    private String agentUrl() {
+    private String agentUrl(int port) {
         AppConfig cfg = host.config();
         if (agentLanEffective(cfg)) {
-            String lan = Lan.mcpUrl(AGENT_PORT, true);
+            String lan = Lan.mcpUrl(port, true);
             if (!lan.contains("127.0.0.1")) return lan;
         }
-        return agentLocalUrl();
+        return agentLocalUrl(port);
+    }
+
+    private String agentUrl() {
+        return agentUrl(agentPort());
     }
 
     /** 8770 地址提示：明确区分「配置请求 LAN」与「实际绑定」。 */
@@ -145,19 +161,20 @@ public final class McpSection {
         AppConfig cfg = host.config();
         boolean requested = cfg.agentLan;
         boolean effective = agentLanEffective(cfg);
+        int port = agentPort();
         if (requested && !effective) {
             return "Agent: 令牌不足 32 位，当前实际仅本机\n"
-                    + "Agent 本机: " + agentLocalUrl() + "（需 adb forward）";
+                    + "Agent 本机: " + agentLocalUrl(port) + "（需 adb forward）";
         }
         if (effective) {
-            String lan = Lan.mcpUrl(AGENT_PORT, true);
+            String lan = Lan.mcpUrl(port, true);
             if (lan.contains("127.0.0.1")) {
                 return "Agent: 未检测到局域网 IPv4（连上 Wi-Fi 后重进本页）\n"
-                        + "Agent 本机: " + agentLocalUrl() + "（需 adb forward）";
+                        + "Agent 本机: " + agentLocalUrl(port) + "（需 adb forward）";
             }
-            return "Agent: " + lan + "\nAgent 本机: " + agentLocalUrl() + "（需 adb forward）";
+            return "Agent: " + lan + "\nAgent 本机: " + agentLocalUrl(port) + "（需 adb forward）";
         }
-        return "Agent: " + agentLocalUrl() + "（仅本机，需 adb forward）";
+        return "Agent: " + agentLocalUrl(port) + "（仅本机，需 adb forward）";
     }
 
     /** 展示用：局域网模式同时给出局域网与本机地址；没连 Wi-Fi 时明确提示。 */
@@ -219,8 +236,10 @@ public final class McpSection {
         boolean hasLanIp = !lanUrl.contains("127.0.0.1");
         String url = lanOn && hasLanIp ? lanUrl : local;
 
-        String agentUrl = agentUrl();
-        boolean agentHasLanIp = agentLanEffective(cfg) && !agentUrl.equals(agentLocalUrl());
+        int port = agentPort();
+        String agentLocal = agentLocalUrl(port);
+        String agentUrl = agentUrl(port);
+        boolean agentHasLanIp = agentLanEffective(cfg) && !agentUrl.equals(agentLocal);
 
         StringBuilder txt = new StringBuilder();
         txt.append("8771 MCP  : ").append(url).append('\n');
@@ -236,8 +255,8 @@ public final class McpSection {
         if (agentHasLanIp) {
             txt.append("8770 与电脑在同一 Wi-Fi，无需 adb forward");
         } else {
-            txt.append("adb forward tcp:").append(AGENT_PORT)
-                    .append(" tcp:").append(AGENT_PORT);
+            txt.append("adb forward tcp:").append(port)
+                    .append(" tcp:").append(port);
         }
         txt.append('\n');
         txt.append("Auth: Bearer ").append(token).append('\n');
@@ -263,10 +282,12 @@ public final class McpSection {
                 : "前置：adb forward tcp:" + bridgePort + " tcp:" + bridgePort + "\n";
 
         boolean agentLanOn = agentLanEffective(cfg);
-        String agentUrl = agentUrl();
-        String agentPre = agentLanOn && !agentUrl.equals(agentLocalUrl())
+        int port = agentPort();
+        String agentLocal = agentLocalUrl(port);
+        String agentUrl = agentUrl(port);
+        String agentPre = agentLanOn && !agentUrl.equals(agentLocal)
                 ? "前置：手机与电脑在同一 Wi-Fi，无需 adb forward\n"
-                : "前置：adb forward tcp:" + AGENT_PORT + " tcp:" + AGENT_PORT + "\n";
+                : "前置：adb forward tcp:" + port + " tcp:" + port + "\n";
 
         String skill = "# 小爱同学plus MCP\n\n"
                 + "## 8771 控制面（小爱）\n\n"

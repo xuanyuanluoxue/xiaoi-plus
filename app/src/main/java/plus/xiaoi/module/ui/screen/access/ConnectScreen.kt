@@ -58,6 +58,7 @@ fun ConnectScreen(
     val colors = XiaoiTheme.colors
     val loaded = rememberAccessConfig()
     val bridge = rememberBridgeSnapshot()
+    val agent = rememberAgentSnapshot()
     val facts = loaded.value
     var lanIp by remember { mutableStateOf("") }
 
@@ -83,7 +84,7 @@ fun ConnectScreen(
     val token = cfg?.mcpToken.orEmpty()
     val mcpEnabled = cfg?.mcpEnabled == true
     val bridgePort = bridge.port.takeIf { it > 0 } ?: Bridge.PORT_START
-    val agentPort = AgentHttpServer.PORT
+    val agentPort = agent.port.takeIf { it > 0 } ?: AgentHttpServer.DEFAULT_PORT
     val mcpLanEffective = mcpEnabled && BridgePolicy.bindHost(
         cfg?.mcpLan == true,
         mcpEnabled,
