@@ -260,6 +260,23 @@ public final class McpTest {
         call(h, 32, "xiaoai_todo_create", "{\"title\":\" 空白 \",\"content\":\"   \"}");
         eq("todo blank content defaults", "- [ ] 空白", h.todoContent);
 
+        StringBuilder longTitle = new StringBuilder();
+        for (int i = 0; i < Mcp.TODO_TITLE_MAX + 1; i++) longTitle.append('t');
+        int callsBeforeLongTitle = h.todoCalls;
+        ok("todo title length cap",
+                call(h, 36, "xiaoai_todo_create", "{\"title\":\"" + longTitle + "\"}")
+                        .contains("title too long"));
+        eq("todo title cap does not call host", callsBeforeLongTitle, h.todoCalls);
+
+        StringBuilder longContent = new StringBuilder();
+        for (int i = 0; i < Mcp.TODO_CONTENT_MAX + 1; i++) longContent.append('c');
+        int callsBeforeLongContent = h.todoCalls;
+        ok("todo content length cap",
+                call(h, 37, "xiaoai_todo_create",
+                        "{\"title\":\"x\",\"content\":\"" + longContent + "\"}")
+                        .contains("content too long"));
+        eq("todo content cap does not call host", callsBeforeLongContent, h.todoCalls);
+
         eq("todo missing title",
                 "{\"jsonrpc\":\"2.0\",\"id\":33,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: title\"}],\"isError\":true}}",

@@ -202,6 +202,10 @@ public final class Mcp {
     }
 
     /** 工具表（顺序：status / submit / todo_create / cli / config / island / switch_model / logs / stats）。 */
+    /** xiaoai_todo_create 的输入上限：防止超长文本穿过 binder/HTTP。 */
+    public static final int TODO_TITLE_MAX = 200;
+    public static final int TODO_CONTENT_MAX = 8192;
+
     public static Map<String, Object> toolsList() {
         List<Object> tools = Json.arr();
 
@@ -414,9 +418,15 @@ public final class Mcp {
             if ("xiaoai_todo_create".equals(name)) {
                 String title = Json.optString(args, "title", "").trim();
                 if (title.length() == 0) return toolText("missing argument: title", true);
+                if (title.length() > TODO_TITLE_MAX) {
+                    return toolText("title too long (max " + TODO_TITLE_MAX + ")", true);
+                }
                 String content = Json.optString(args, "content", "");
                 if (content.trim().length() == 0) {
                     content = AppToolProtocol.defaultContent(title);
+                }
+                if (content.length() > TODO_CONTENT_MAX) {
+                    return toolText("content too long (max " + TODO_CONTENT_MAX + ")", true);
                 }
                 AppToolProtocol.Result r;
                 try {
