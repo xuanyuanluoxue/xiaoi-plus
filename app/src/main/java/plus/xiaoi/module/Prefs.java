@@ -28,5 +28,8 @@ public final class Prefs {
      */
     public static final String KEY_GLASS_BOTTOM_BAR = "ui_glass_bottom_bar";
 
+    /** 界面偏好的独立存储：避开被污染的同名 prefs（实测读到幽灵 false）。 */
+    public static final String UI_PREFS = "xiaoi_ui";
+
     private Prefs() {}
 }

@@ -257,7 +257,8 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val key = Routes.keyOf(route)
     val dimensions = XiaoiTheme.dimens
     val glassMode = GlassSupport.rememberMode()
-    val glassBackdrop = rememberGlassBackdrop(glassMode)
+    // 采样层要带页面底色，否则底栏在空白带采到的是全透明层（只有半透明填充）。
+    val glassBackdrop = rememberGlassBackdrop(glassMode, colors.bg)
     val barReserved = rememberGlassBarReservedHeight()
     val root = nav.isRoot()
     // BLUR 分支需要底栏在内容坐标系中的位置；FULL/SOLID 不使用。

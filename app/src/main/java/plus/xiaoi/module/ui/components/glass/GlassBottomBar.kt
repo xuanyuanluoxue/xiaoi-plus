@@ -262,6 +262,7 @@ fun GlassBottomBar(
                         pillShape = pillShape,
                         fill = pillFill,
                         pressProgress = pressProgress,
+                        blurRadius = GlassDefaults.BlurRadius,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

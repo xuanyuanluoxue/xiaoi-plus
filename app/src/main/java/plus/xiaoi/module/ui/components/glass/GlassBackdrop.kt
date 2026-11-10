@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 
@@ -27,10 +28,15 @@ class GlassBackdropSource internal constructor(
     }
 }
 
-/** 按能力创建采样句柄；FULL 的 miuix 调用只在该分支执行。 */
+/**
+ * 按能力创建采样句柄；FULL 的 miuix 调用只在该分支执行。
+ *
+ * @param surfaceColor 内容面板的底色。FULL 会先把这层底色画进采样图层，
+ *   保证底栏采到的是「不透明的页面」而不是透明层（详见 [rememberFullGlassBackdrop]）。
+ */
 @Composable
-fun rememberGlassBackdrop(mode: GlassMode): GlassBackdropSource = when (mode) {
-    GlassMode.FULL -> rememberFullGlassBackdrop()
+fun rememberGlassBackdrop(mode: GlassMode, surfaceColor: Color): GlassBackdropSource = when (mode) {
+    GlassMode.FULL -> rememberFullGlassBackdrop(surfaceColor)
     GlassMode.BLUR -> GlassBackdropSource(
         mode = GlassMode.BLUR,
         miuixBackdrop = null,

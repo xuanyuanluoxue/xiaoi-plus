@@ -34,8 +34,16 @@ import kotlin.math.sqrt
  */
 
 @Composable
-internal fun rememberFullGlassBackdrop(): GlassBackdropSource {
-    val backdrop = rememberLayerBackdrop()
+internal fun rememberFullGlassBackdrop(surfaceColor: Color): GlassBackdropSource {
+    // 参考实现 MiuixUi.kt 的关键一步：采样层先铺一层面板底色，再记录页面内容。
+    // 只录内容时，底栏所在的空白带在图层里全透明；RenderEffect 对全透明像素做
+    // 高斯模糊只会得到透明，底栏于是退化成「半透明层」，直接把下面未经模糊的
+    // 真实内容透出来 —— 正是这次真机看到的症状。LiquidTab 的注释同样记录过：
+    // 透明场景层会被 RenderEffect 合成成死黑/空层。
+    val backdrop = rememberLayerBackdrop {
+        drawRect(surfaceColor)
+        drawContent()
+    }
     return remember(backdrop) {
         GlassBackdropSource(GlassMode.FULL, miuixBackdrop = backdrop, contentLayer = null)
     }
@@ -69,9 +77,14 @@ internal fun FullGlassBarSurface(
             effects = {
                 renderEffect = blurEffect
                 downscaleFactor = 1
+                // 采样层必须按模糊半径向外扩：padding=0 时离屏层正好等于面板矩形，
+                // 高斯核在四边被 CLAMP 截断，只剩一圈硬边（看起来像没模糊）。
+                // 3x 半径与参考实现 NativeBackdropBlur.padding 一致。
+                padding = GlassNativeBlur.padding(radiusPx, padding)
                 glassLens(
-                    refractionHeight = with(density) { 20.dp.toPx() },
-                    refractionAmount = with(density) { 16.dp.toPx() },
+                    // 条体折射参数对齐参考实现 ManagerGlassBottomBar：24dp / 24dp。
+                    refractionHeight = with(density) { 24.dp.toPx() },
+                    refractionAmount = with(density) { 24.dp.toPx() },
                 )
             },
             onDrawSurface = { drawRect(fill) },
@@ -80,8 +93,10 @@ internal fun FullGlassBarSurface(
 }
 
 /**
- * 选中 pill：按下/拖拽时折射增强并放大，静止时是稳定的半透明胶囊。
- * 背景采样直接取页面 backdrop，省掉参考实现里隐藏 tab 行二次采样的复杂度。
+ * 选中 pill：与条体同源采样（页面 backdrop）+ 同一档模糊，按下/拖拽时再叠加折射。
+ *
+ * 注意 pill 必须自己模糊：它画在条体之上，若只做半透明填充，就会从磨砂面里
+ * 露出一块"清晰"的页面（参考实现里 pill 也是自带 renderEffect 的）。
  */
 @RequiresApi(GlassSupport.FULL_MIN_SDK)
 @Composable
@@ -90,15 +105,23 @@ internal fun FullGlassPill(
     pillShape: Shape,
     fill: Color,
     pressProgress: Float,
+    blurRadius: Dp,
     modifier: Modifier = Modifier,
 ) {
     val backdrop = source.miuixBackdrop as? Backdrop ?: return
     val density = LocalDensity.current
+    val radiusPx = with(density) { blurRadius.toPx() }
+    val blurEffect = remember(radiusPx) {
+        GlassNativeBlur.effect(radiusPx).asComposeRenderEffect()
+    }
     Box(
         modifier.drawBackdrop(
             backdrop = backdrop,
             shape = { pillShape },
             effects = {
+                renderEffect = blurEffect
+                downscaleFactor = 1
+                padding = GlassNativeBlur.padding(radiusPx, padding)
                 if (pressProgress > 0.01f) {
                     glassLens(
                         refractionHeight = with(density) { 10.dp.toPx() } * pressProgress,
@@ -128,8 +151,10 @@ internal fun BackdropEffectScope.glassLens(
 ) {
     if (!GlassSupport.isRuntimeShaderSupported()) return
     if (refractionHeight <= 0f || refractionAmount <= 0f) return
-    // 0.9.4 的 BackdropEffectScope.padding 是只读的；模糊/折射按当前 padding
-    // 采样，边缘由离屏层裁剪兜底。
+    // 参考实现 ManagerLens：折射带会把采样点推到面板外，padding 不足时这些
+    // 采样点落在离屏层之外，整条边的折射都「消失」。0.9.3/0.9.4 的
+    // BackdropEffectScope.padding 都是可写 var。
+    if (padding < refractionAmount) padding = refractionAmount
     val cornerShape = shape as? androidx.compose.foundation.shape.CornerBasedShape ?: return
     val maxRadius = size.minDimension / 2f
     val isLtr = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr

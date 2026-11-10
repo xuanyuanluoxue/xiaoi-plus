@@ -43,8 +43,8 @@ fun AppearanceScreen(
     val context = LocalContext.current
     var glassEnabled by remember {
         mutableStateOf(
-            context.getSharedPreferences(Prefs.NAME, android.content.Context.MODE_PRIVATE)
-                .getBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, true),
+            context.getSharedPreferences(Prefs.UI_PREFS, android.content.Context.MODE_PRIVATE)
+                .getBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, false),
         )
     }
     val current = when (themeMode) {
@@ -106,7 +106,7 @@ fun AppearanceScreen(
                 checked = glassEnabled,
                 onCheckedChange = { on ->
                     glassEnabled = on
-                    context.getSharedPreferences(Prefs.NAME, android.content.Context.MODE_PRIVATE)
+                    context.getSharedPreferences(Prefs.UI_PREFS, android.content.Context.MODE_PRIVATE)
                         .edit().putBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, on).apply()
                     (context as? Activity)?.recreate()
                 },
