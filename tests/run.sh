@@ -39,6 +39,7 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentRuntimeStatus.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Http.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Mcp.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AppToolProtocol.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/AppConfig.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/ConfigCodec.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Logs.java" \

@@ -16,6 +16,12 @@ public final class TestMain {
             System.out.println("  FAIL HttpTest 套件异常: " + t);
         }
         failed += McpTest.run();
+        try {
+            failed += AppToolProtocolTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AppToolProtocolTest 套件异常: " + t);
+        }
         failed += LogsTest.run();
         failed += ModelValidatorTest.run();
         try {

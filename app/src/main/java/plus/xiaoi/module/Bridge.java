@@ -24,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
+import plus.xiaoi.module.agent.AppToolClient;
+import plus.xiaoi.module.agent.AppToolProtocol;
 import plus.xiaoi.module.bridge.BridgeControlClient;
 import plus.xiaoi.module.bridge.BridgeLifecycle;
 import plus.xiaoi.module.core.BridgePolicy;
@@ -138,6 +140,11 @@ public final class Bridge {
         @Override
         public String stats(int days) {
             return Usage.stats(days);
+        }
+
+        @Override
+        public AppToolProtocol.Result createTodo(String title, String content) {
+            return AppToolClient.createTodo(appContext(), title, content);
         }
     };
 

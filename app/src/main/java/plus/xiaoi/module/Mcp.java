@@ -3,6 +3,8 @@ package plus.xiaoi.module;
 import java.util.List;
 import java.util.Map;
 
+import plus.xiaoi.module.agent.AppToolProtocol;
+
 /**
  * MCP / JSON-RPC 2.0 协议层（纯 JVM，无 android 依赖）。
  *
@@ -49,6 +51,9 @@ public final class Mcp {
 
         /** 调用量统计 JSON（结构见 {@link UsageCounter#stats}）。 */
         String stats(int days);
+
+        /** 确定性创建 Notes 待办；失败时 Result.text 是结构化错误。 */
+        AppToolProtocol.Result createTodo(String title, String content);
     }
 
     /** 配置的只读快照（Config 的纯 JVM 投影）。 */
@@ -196,7 +201,7 @@ public final class Mcp {
         return r;
     }
 
-    /** 工具表（顺序：status / submit / cli / config / island / switch_model / logs / stats）。 */
+    /** 工具表（顺序：status / submit / todo_create / cli / config / island / switch_model / logs / stats）。 */
     public static Map<String, Object> toolsList() {
         List<Object> tools = Json.arr();
 
@@ -218,6 +223,22 @@ public final class Mcp {
         submitSchema.put("required", list("text"));
         submitSchema.put("additionalProperties", Boolean.FALSE);
         submit.put("inputSchema", submitSchema);
+
+        Map<String, Object> todo = Json.obj();
+        todo.put("name", "xiaoai_todo_create");
+        todo.put("description", "确定性创建一张独立的小米笔记待办卡片：直接调用 Notes 的 "
+                + "AppToolProvider（todo_create），不经过 LLM、不做语义改写。title 必填；"
+                + "content 可省略，省略时自动生成「- [ ] <title>」，否则每行一项、格式为 "
+                + "「- [ ] 文本」。失败返回结构化错误，可改用 xiaoai_submit 让小爱兜底。");
+        Map<String, Object> todoProps = Json.obj();
+        todoProps.put("title", prop("string", "待办清单标题，必填"));
+        todoProps.put("content", prop("string", "可选；每行「- [ ] 文本」，留空则由 title 生成一项"));
+        Map<String, Object> todoSchema = Json.obj();
+        todoSchema.put("type", "object");
+        todoSchema.put("properties", todoProps);
+        todoSchema.put("required", list("title"));
+        todoSchema.put("additionalProperties", Boolean.FALSE);
+        todo.put("inputSchema", todoSchema);
 
         Map<String, Object> cli = Json.obj();
         cli.put("name", "xiaoai_cli");
@@ -289,6 +310,7 @@ public final class Mcp {
 
         tools.add(status);
         tools.add(submit);
+        tools.add(todo);
         tools.add(cli);
         tools.add(cfg);
         tools.add(isl);
@@ -388,6 +410,25 @@ public final class Mcp {
                 String out = host.callCli(cliJson("agent.submit", p));
                 if (out == null) return toolText("ERR cli service not ready", true);
                 return toolText(out, false);
+            }
+            if ("xiaoai_todo_create".equals(name)) {
+                String title = Json.optString(args, "title", "").trim();
+                if (title.length() == 0) return toolText("missing argument: title", true);
+                String content = Json.optString(args, "content", "");
+                if (content.trim().length() == 0) {
+                    content = AppToolProtocol.defaultContent(title);
+                }
+                AppToolProtocol.Result r;
+                try {
+                    r = host.createTodo(title, content);
+                } catch (Throwable t) {
+                    r = AppToolProtocol.error("HOST_ERROR", "Notes 调用层异常", String.valueOf(t));
+                }
+                if (r == null) {
+                    return toolText(AppToolProtocol.errorJson("EMPTY_RESULT",
+                            "Notes 调用层返回空结果", ""), true);
+                }
+                return toolText(r.text, !r.ok);
             }
             if ("xiaoai_cli".equals(name)) {
                 String cmd = Json.optString(args, "cmd", "").trim();

@@ -5,6 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import plus.xiaoi.module.agent.AppToolProtocol;
+
 /**
  * MCP 协议层测试：FakeHost 覆盖全部方法与工具。
  * 黄金串断言锁定 v0.7 的逐字节输出（错误码、文案、字段顺序），
@@ -38,6 +40,11 @@ public final class McpTest {
         int logsLimit = -1;
         long logsSince = -1;
         int statsDays = -1;
+        AppToolProtocol.Result todoResult = AppToolProtocol.ok("{\"noteId\":\"n1\"}");
+        String todoTitle;
+        String todoContent;
+        int todoCalls;
+        boolean todoThrow;
 
         public boolean facadeReady() { return facade; }
         public boolean cliReady() { return cli; }
@@ -78,6 +85,14 @@ public final class McpTest {
         public String stats(int days) {
             statsDays = days;
             return "{\"days\":" + days + ",\"today\":{\"third\":2,\"official\":1}}";
+        }
+
+        public AppToolProtocol.Result createTodo(String title, String content) {
+            todoCalls++;
+            todoTitle = title;
+            todoContent = content;
+            if (todoThrow) throw new IllegalStateException("boom");
+            return todoResult;
         }
     }
 
@@ -136,8 +151,8 @@ public final class McpTest {
         eq("frame jsonrpc", "2.0", root.get("jsonrpc"));
         eq("frame id", Long.valueOf(3), root.get("id"));
         List<?> tools = (List<?>) ((Map<?, ?>) root.get("result")).get("tools");
-        eq("tool count", 8, tools.size());
-        eq("tool order", "xiaoai_status,xiaoai_submit,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats",
+        eq("tool count", 9, tools.size());
+        eq("tool order", "xiaoai_status,xiaoai_submit,xiaoai_todo_create,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats",
                 names(tools));
 
         Map<?, ?> submit = (Map<?, ?>) tools.get(1);
@@ -150,21 +165,33 @@ public final class McpTest {
         eq("submit props", "[text, sessionId]",
                 ((Map<?, ?>) submitSchema.get("properties")).keySet().toString());
 
-        Map<?, ?> sw = (Map<?, ?>) tools.get(5);
+        Map<?, ?> todo = (Map<?, ?>) tools.get(2);
+        ok("todo description says deterministic/no LLM",
+                ((String) todo.get("description")).contains("不经过 LLM"));
+        ok("todo description recommends submit fallback",
+                ((String) todo.get("description")).contains("xiaoai_submit"));
+        Map<?, ?> todoSchema = (Map<?, ?>) todo.get("inputSchema");
+        eq("todo required", "[title]", ((List<?>) todoSchema.get("required")).toString());
+        eq("todo props", "[title, content]",
+                ((Map<?, ?>) todoSchema.get("properties")).keySet().toString());
+        eq("todo additionalProperties", Boolean.FALSE, todoSchema.get("additionalProperties"));
+
+        Map<?, ?> sw = (Map<?, ?>) tools.get(6);
         Map<?, ?> swSchema = (Map<?, ?>) sw.get("inputSchema");
         eq("switch required", "[model]", ((List<?>) swSchema.get("required")).toString());
         eq("switch props", "[model, marker]",
                 ((Map<?, ?>) swSchema.get("properties")).keySet().toString());
 
-        Map<?, ?> lg = (Map<?, ?>) tools.get(6);
+        Map<?, ?> lg = (Map<?, ?>) tools.get(7);
         ok("logs schema has no required",
                 !((Map<?, ?>) lg.get("inputSchema")).containsKey("required"));
 
         String toolText = Mcp.toolListText();
         ok("工具清单含 xiaoai_stats", toolText.contains("xiaoai_stats"));
-        eq("工具清单行数", 8, toolText.split("\n").length);
+        ok("工具清单含 xiaoai_todo_create", toolText.contains("xiaoai_todo_create"));
+        eq("工具清单行数", 9, toolText.split("\n").length);
 
-        Map<?, ?> statsTool = (Map<?, ?>) tools.get(7);
+        Map<?, ?> statsTool = (Map<?, ?>) tools.get(8);
         eq("stats props", "[days]",
                 ((Map<?, ?>) ((Map<?, ?>) statsTool.get("inputSchema")).get("properties")).keySet().toString());
 
@@ -215,6 +242,40 @@ public final class McpTest {
                         + "\"text\":\"ERR cli service not ready\"}],\"isError\":true}}",
                 call(h, 7, "xiaoai_submit", "{\"text\":\"hi\",\"sessionId\":\"s\"}"));
         h.cli = true;
+
+        // ------------------------------------------------------------ tools/call：todo_create（确定性）
+        h.todoCalls = 0;
+        h.todoResult = AppToolProtocol.ok("{\"noteId\":\"n1\"}");
+        eq("xiaoai_todo_create default content",
+                "{\"jsonrpc\":\"2.0\",\"id\":30,\"result\":{\"content\":[{\"type\":\"text\","
+                        + "\"text\":\"{\\\"noteId\\\":\\\"n1\\\"}\"}],\"isError\":false}}",
+                call(h, 30, "xiaoai_todo_create", "{\"title\":\"买牛奶\"}"));
+        eq("todo title passed", "买牛奶", h.todoTitle);
+        eq("todo default content passed", "- [ ] 买牛奶", h.todoContent);
+
+        call(h, 31, "xiaoai_todo_create",
+                "{\"title\":\"购物\",\"content\":\"- [ ] 牛奶\\n- [ ] 鸡蛋\"}");
+        eq("todo explicit content preserved", "- [ ] 牛奶\n- [ ] 鸡蛋", h.todoContent);
+
+        call(h, 32, "xiaoai_todo_create", "{\"title\":\" 空白 \",\"content\":\"   \"}");
+        eq("todo blank content defaults", "- [ ] 空白", h.todoContent);
+
+        eq("todo missing title",
+                "{\"jsonrpc\":\"2.0\",\"id\":33,\"result\":{\"content\":[{\"type\":\"text\","
+                        + "\"text\":\"missing argument: title\"}],\"isError\":true}}",
+                call(h, 33, "xiaoai_todo_create", "{\"content\":\"- [ ] x\"}"));
+
+        h.todoResult = AppToolProtocol.error("CALL_TIMEOUT", "handleRequest 超过 5000ms");
+        String todoErr = call(h, 34, "xiaoai_todo_create", "{\"title\":\"超时\"}");
+        ok("todo provider error isError", todoErr.contains("\"isError\":true"));
+        ok("todo provider error structured", textOf(todoErr).contains("\"error\":\"CALL_TIMEOUT\""));
+
+        h.todoThrow = true;
+        String todoThrowOut = call(h, 35, "xiaoai_todo_create", "{\"title\":\"异常\"}");
+        ok("todo host exception isError", todoThrowOut.contains("\"isError\":true"));
+        ok("todo host exception structured", textOf(todoThrowOut).contains("\"error\":\"HOST_ERROR\""));
+        h.todoThrow = false;
+        h.todoResult = AppToolProtocol.ok("{\"noteId\":\"n1\"}");
 
         // ------------------------------------------------------------ tools/call：cli / logs / island
         h.cliResponses.put("auth.status", "AUTH-OK");

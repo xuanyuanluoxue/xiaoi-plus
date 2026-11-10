@@ -232,9 +232,9 @@ if [ -n "$PORT" ]; then
         save_or_check mcp_ping
 
         http_post /mcp '{"jsonrpc":"2.0","id":3,"method":"tools/list"}' "${A_HDR[@]}"
-        [ "$STATUS" = "200" ] && jq -e '(.result.tools|length)==8' "$TMP/body" >/dev/null \
-            && pass "tools/list 共 8 个工具" || fail "tools/list 工具数异常：$(cat "$TMP/body")"
-        jq -e '[.result.tools[].name] | sort == (["xiaoai_cli","xiaoai_config","xiaoai_island","xiaoai_logs","xiaoai_stats","xiaoai_status","xiaoai_submit","xiaoai_switch_model"] | sort)' "$TMP/body" >/dev/null \
+        [ "$STATUS" = "200" ] && jq -e '(.result.tools|length)==9' "$TMP/body" >/dev/null \
+            && pass "tools/list 共 9 个工具" || fail "tools/list 工具数异常：$(cat "$TMP/body")"
+        jq -e '[.result.tools[].name] | sort == (["xiaoai_cli","xiaoai_config","xiaoai_island","xiaoai_logs","xiaoai_stats","xiaoai_status","xiaoai_submit","xiaoai_switch_model","xiaoai_todo_create"] | sort)' "$TMP/body" >/dev/null \
             && pass "工具名单齐全" || fail "工具名单不齐：$(jq -r '.result.tools[].name' "$TMP/body" | tr '\n' ' ')"
         save_or_check mcp_tools_list
 
