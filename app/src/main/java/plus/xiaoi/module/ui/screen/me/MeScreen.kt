@@ -164,7 +164,7 @@ fun MeScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(top = plus.xiaoi.module.ui.components.xiaoiTopBarHeight())
+            .padding(top = plus.xiaoi.module.ui.components.xiaoiTopBarHeight() + 8.dp, bottom = 112.dp)
             .padding(horizontal = XiaoiTheme.dimens.pagePad)
             .padding(top = XiaoiTheme.dimens.pagePadTop, bottom = 24.dp),
     ) {
