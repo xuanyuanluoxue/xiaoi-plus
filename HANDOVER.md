@@ -1,14 +1,15 @@
 # 交接说明（2026-11-10）
 
-> 状态：**0.15.0-beta.1 已发布（2026-11-10，prerelease，versionCode 21）**
-> <https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.15.0-beta.1>
+> 状态：**0.15.0 已发布（2026-11-11，正式版，versionCode 22）**
+> <https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.15.0>
 >
 > 设置 App 已是单 Activity + Compose + Miuix 的 4 tab（首页/小爱/接入/我的），
 > 共 19 条路由。本版完成：渐变模糊顶栏（Miuix `SmallTopAppBar` + `progressiveBlur`）、
 > 玻璃底栏、配色收敛、用户视角文案（小爱任务/设备操作/第三方模型已生效）、
 > 底栏跳转修复、首页状态区显示修复。
 >
-> - 上一个已发布版本：`v0.14.1`（versionCode 20）。
+> - 上一个已发布版本：`v0.14.1`（versionCode 20）。本版新增：多档位日志、
+>   8771/8770 第三方 Agent 调用记录、赞助支持页（爱发电 + 微信）。
 > - 真机升级已验证：`v0.14.1 → 0.15.0-beta.1` 配置保留；`/health` 带 token 200 / 无 token 401；
 >   `POST /config` 410；MCP `initialize` 返回 `0.15.0-beta.1`，`tools/list` 9 个工具。
 > - 待补验收：浅色主题、预测性返回（API 34+）在更多 ROM 上的表现。
