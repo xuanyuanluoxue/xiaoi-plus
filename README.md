@@ -6,8 +6,8 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)。
 >
-> 📦 当前测试版：**v0.15.0-beta.1**（Compose + Miuix UI 收尾：渐变模糊顶栏 / 玻璃底栏 / 统一配色）·
-> [版本说明](docs/ui/RELEASE-0.14.1.md) ·
+> 📦 当前版本：**v0.15.0**（Compose + Miuix UI 收尾：渐变模糊顶栏 / 玻璃底栏 / 统一配色 / 多档位日志）·
+> [更新日志](CHANGELOG.md) ·
 > [下载 / 发布状态](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
