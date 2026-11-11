@@ -266,6 +266,26 @@ public final class AgentMcp {
 
     private Map<String, Object> toolsCall(Map<?, ?> params, ActionRegistry registry) {
         String name = params == null ? "" : Json.optString(params, "name", "");
+        Map<?, ?> logArgs = null;
+        if (params != null) {
+            Object a = params.get("arguments");
+            if (a instanceof Map) logArgs = (Map<?, ?>) a;
+        }
+        long started = System.currentTimeMillis();
+        Map<String, Object> out = toolsCallInner(params, registry);
+        try {
+            boolean ok = !Boolean.TRUE.equals(out.get("isError"));
+            AgentCallLog.add(ok ? "I" : "W", "agent",
+                    "tool=" + name + " ok=" + ok
+                            + " ms=" + (System.currentTimeMillis() - started)
+                            + " args=" + (logArgs == null ? 0 : logArgs.size()));
+        } catch (Throwable ignored) {
+        }
+        return out;
+    }
+
+    private Map<String, Object> toolsCallInner(Map<?, ?> params, ActionRegistry registry) {
+        String name = params == null ? "" : Json.optString(params, "name", "");
         Map<?, ?> arguments = null;
         if (params != null) {
             Object a = params.get("arguments");

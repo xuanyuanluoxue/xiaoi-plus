@@ -51,6 +51,10 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Hash.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/BridgeClient.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Lan.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/LogLevel.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/LogSettings.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/Redact.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentCallLog.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ControlKeys.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ConfigStore.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgePolicy.java" \

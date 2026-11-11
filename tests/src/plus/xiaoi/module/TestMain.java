@@ -16,6 +16,9 @@ public final class TestMain {
             System.out.println("  FAIL HttpTest 套件异常: " + t);
         }
         failed += McpTest.run();
+        failed += LogLevelTest.run();
+        failed += RedactTest.run();
+        failed += AgentCallLogTest.run();
         try {
             failed += AppToolProtocolTest.run();
         } catch (Throwable t) {

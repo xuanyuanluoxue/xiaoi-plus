@@ -3,6 +3,9 @@ package plus.xiaoi.module;
 import java.util.List;
 import java.util.Map;
 
+import plus.xiaoi.module.core.LogLevel;
+import plus.xiaoi.module.core.LogSettings;
+
 /** 环形缓冲与 dump 输出测试（依赖 XSharedPreferences/XposedBridge 桩为 no-op）。 */
 public final class LogsTest {
 
@@ -47,6 +50,23 @@ public final class LogsTest {
         root = (Map<?, ?>) Json.read(Logs.dump(1, 0));
         Map<?, ?> last = (Map<?, ?>) ((List<?>) root.get("lines")).get(0);
         eq("unicode msg round trip", "中文 \"引号\" 与\\反斜杠", last.get("msg"));
+
+        // 档位门控：off 丢 I/W、保留 E；standard 记录 [mcp] 元数据
+        int before = Logs.count();
+        LogSettings.set(LogLevel.OFF);
+        Logs.i("off-i");
+        Logs.w("off-w");
+        eq("off 丢弃 I/W", before, Logs.count());
+        Logs.e("off-e");
+        root = (Map<?, ?>) Json.read(Logs.dump(1, 0));
+        eq("off 保留 E", "off-e",
+                ((Map<?, ?>) ((List<?>) root.get("lines")).get(0)).get("msg"));
+        LogSettings.set(LogLevel.STANDARD);
+        Logs.event(LogLevel.STANDARD, "I", "mcp", "tool=test ok=true ms=1 args=0");
+        root = (Map<?, ?>) Json.read(Logs.dump(1, 0));
+        Map<?, ?> lastLine = (Map<?, ?>) ((List<?>) root.get("lines")).get(0);
+        ok("standard 记录工具元数据", ((String) lastLine.get("msg")).startsWith("[mcp] tool=test"));
+        LogSettings.reset();
 
         return T.report("LogsTest");
     }

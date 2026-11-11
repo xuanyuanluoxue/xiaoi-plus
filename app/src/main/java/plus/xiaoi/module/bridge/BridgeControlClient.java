@@ -30,6 +30,7 @@ import plus.xiaoi.module.Hook;
 import plus.xiaoi.module.Island;
 import plus.xiaoi.module.Json;
 import plus.xiaoi.module.Logs;
+import plus.xiaoi.module.core.LogSettings;
 import plus.xiaoi.module.core.ControlKeys;
 
 /**
@@ -357,6 +358,8 @@ public final class BridgeControlClient {
             Config c = Config.create(ac.baseUrl(), ac.apiKey(), ac.model(), ac.marker,
                     ac.mcpEnabled, ac.mcpToken, ac.markerTemplate, ac.enabled, ac.mcpLan,
                     ac.rev);
+            LogSettings.setWire(ac.logLevel);
+            Logs.setLevel(LogSettings.get());
             Hook.applyConfig(c);
             Bridge.updateAccess(c.lan(), c.bridge());
             sAppliedHash = hash;

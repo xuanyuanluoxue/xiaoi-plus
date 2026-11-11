@@ -10,6 +10,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 
+import plus.xiaoi.module.core.LogSettings;
+
 /**
  * config.json 即事实（v0.8.2）：监听文件改动并自动应用到小爱。
  *
@@ -148,11 +150,13 @@ public final class ConfigSync {
             if (apply) {
                 // applyToTarget 写 prefs 后请求控制面 reload；不再发 HTTP。
                 repo.applyToTarget(c);
+                LogSettings.setWire(c.logLevel);
                 Log.i(TAG, "config.json 变更已应用: model=" + c.model() + " enabled=" + c.enabled
                         + " hasKey=" + (c.apiKeyOfActive().length() > 0));
                 notifyChanged();
             } else {
                 repo.applyLocal(c);
+                LogSettings.setWire(c.logLevel);
                 Log.i(TAG, "启动对齐完成: model=" + c.model() + " enabled=" + c.enabled);
             }
         } catch (Throwable t) {

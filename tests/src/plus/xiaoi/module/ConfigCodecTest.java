@@ -10,6 +10,7 @@ public final class ConfigCodecTest {
 
     private static final String CANONICAL =
             "{\"version\":3,\"rev\":1,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
+            + "\"logLevel\":\"standard\","
             + "\"activeProviderId\":\"crazyai\",\"activeModelId\":\"your-model\","
             + "\"mcp\":{\"enabled\":true,\"lan\":false,\"agentLan\":false,\"token\":\"tok-123\"},"
             + "\"providers\":[{\"id\":\"crazyai\",\"name\":\"CrashMail\","

@@ -59,6 +59,11 @@ public final class AppConfig {
     public boolean marker = true;
     /** 输出前缀模板；空 = 不注入提示词前缀。支持 {model} 占位符。 */
     public String markerTemplate = "";
+    /**
+     * 日志档位：off/brief/standard/detailed/debug。默认 standard。
+     * 只影响记录粒度，不影响接口/模型；见 {@link plus.xiaoi.module.core.LogLevel}。
+     */
+    public String logLevel = "standard";
     public boolean mcpEnabled;
     /** true = 能力桥监听 0.0.0.0，同一局域网可用 Bearer token 直连；默认 false 仅本机。 */
     public boolean mcpLan;

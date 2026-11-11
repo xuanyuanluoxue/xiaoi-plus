@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import plus.xiaoi.module.core.LogLevel;
+import plus.xiaoi.module.core.LogSettings;
+
 /**
  * 模块运行日志：内存环形缓冲（最近 300 条）+ logcat + 滚动落盘。
  * 只记录 hook 成败、配置变更、端口、调用摘要；**绝不记录 apiKey / token / 对话正文**。
@@ -24,7 +27,6 @@ public final class Logs {
 
     private static final ArrayDeque<Entry> BUF = new ArrayDeque<Entry>();
     private static long sSeq;
-    private static long sLastWrite;
     private static File sFile;
 
     private Logs() {}
@@ -38,12 +40,40 @@ public final class Logs {
 
     public static synchronized int count() { return BUF.size(); }
 
+    /** 设置当前进程日志档位（由控制面配置/App 配置写入）。 */
+    public static void setLevel(LogLevel level) {
+        LogSettings.set(level);
+    }
+
     public static void i(String msg) {
-        add("I", msg);
+        event(LogLevel.BRIEF, "I", null, msg);
+    }
+
+    public static void w(String msg) {
+        event(LogLevel.BRIEF, "W", null, msg);
     }
 
     public static void e(String msg) {
-        add("E", msg);
+        event(LogLevel.OFF, "E", null, msg);
+    }
+
+    public static void d(String msg) {
+        event(LogLevel.DEBUG, "D", null, msg);
+    }
+
+    /**
+     * 按档位记录一条日志。
+     *
+     * @param needed   记录该事件所需的档位（E 级不受限制）
+     * @param severity I/W/E/D，供 UI 筛选
+     * @param tag      mcp/agent/http/ctl 等来源，写进 msg 前缀以便穿过 Binder 字符串协议
+     */
+    public static void event(LogLevel needed, String severity, String tag, String msg) {
+        String level = severity == null || severity.length() == 0 ? "I" : severity;
+        if (!"E".equals(level) && !LogSettings.allows(needed)) return;
+        String body = msg == null ? "" : msg;
+        if (tag != null && tag.length() > 0) body = "[" + tag + "] " + body;
+        add(level, body);
     }
 
     public static synchronized void add(String level, String msg) {
@@ -90,9 +120,6 @@ public final class Logs {
 
     private static void mirror(Entry e) {
         try {
-            long now = System.currentTimeMillis();
-            if ("I".equals(e.level) && now - sLastWrite < 500) return;
-            sLastWrite = now;
             File f = file();
             if (f == null) return;
             if (f.length() > FILE_MAX) {

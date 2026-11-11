@@ -54,6 +54,13 @@ public final class Mcp {
 
         /** 确定性创建 Notes 待办；失败时 Result.text 是结构化错误。 */
         AppToolProtocol.Result createTodo(String title, String content);
+
+        /**
+         * 单次 tools/call 的元数据回调（工具名/成败/耗时/参数个数），不含参数值。
+         * 默认空实现：桌面单测的 FakeHost 无需改动。
+         */
+        default void onToolCall(String tool, boolean ok, long elapsedMs, int argCount) {}
+
     }
 
     /** 配置的只读快照（Config 的纯 JVM 投影）。 */
@@ -142,7 +149,21 @@ public final class Mcp {
             if ("tools/call".equals(m)) {
                 Object p = req.get("params");
                 Map<?, ?> params = p instanceof Map ? (Map<?, ?>) p : null;
-                return rpcResult(id, toolsCall(params, host));
+                String tool = params == null ? "" : Json.optString(params, "name", "");
+                int argCount = 0;
+                if (params != null) {
+                    Object a = params.get("arguments");
+                    if (a instanceof Map) argCount = ((Map<?, ?>) a).size();
+                }
+                long started = System.currentTimeMillis();
+                Map<String, Object> result = toolsCall(params, host);
+                try {
+                    boolean ok = !Boolean.TRUE.equals(result.get("isError"));
+                    host.onToolCall(tool, ok, System.currentTimeMillis() - started, argCount);
+                } catch (Throwable ignored) {
+                    // 记录失败不能影响工具结果
+                }
+                return rpcResult(id, result);
             }
             return rpcError(id, -32601, "method not found: " + m);
         } catch (Throwable t) {

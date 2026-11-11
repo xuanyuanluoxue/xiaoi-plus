@@ -11,7 +11,11 @@ import android.os.Messenger;
 import android.os.RemoteException;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -24,6 +28,8 @@ import plus.xiaoi.module.Hash;
 import plus.xiaoi.module.core.ActivityFeed;
 import plus.xiaoi.module.core.ActivityHub;
 import plus.xiaoi.module.core.BridgeEndpoint;
+import plus.xiaoi.module.core.LogLevel;
+import plus.xiaoi.module.core.LogSettings;
 import plus.xiaoi.module.core.BridgeStatus;
 import plus.xiaoi.module.core.ControlKeys;
 
@@ -374,7 +380,21 @@ public final class BridgeControlService extends Service {
      * 格式来自 {@code BridgeControlClient.pushLogs}：{@code HH:mm:ss.SSS I msg}。
      */
     public static String logDump() {
-        return LOG_RING.dump();
+        String bridge = LOG_RING.dump();
+        String agent = plus.xiaoi.module.agent.AgentCallLog.dump();
+        if (agent.length() == 0) return bridge;
+        if (bridge.length() == 0) return agent;
+        // 两段都是 HH:mm:ss.SSS 开头，按字符串排序即可保持当天时间顺序。
+        List<String> all = new ArrayList<String>();
+        for (String line : bridge.split("\n")) if (line.length() > 0) all.add(line);
+        for (String line : agent.split("\n")) if (line.length() > 0) all.add(line);
+        java.util.Collections.sort(all);
+        StringBuilder sb = new StringBuilder();
+        for (String line : all) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(line);
+        }
+        return sb.toString();
     }
 
     /**
@@ -399,6 +419,7 @@ public final class BridgeControlService extends Service {
     /** 清空 App 内存里的日志镜像；不触碰小爱进程的落盘日志。 */
     public static void clearLogs() {
         LOG_RING.clear();
+        plus.xiaoi.module.agent.AgentCallLog.clear();
     }
 
     private void sendAll(int what, Bundle data) {

@@ -2,6 +2,8 @@ package plus.xiaoi.module;
 
 import java.io.InputStream;
 import java.util.List;
+
+import plus.xiaoi.module.core.LogLevel;
 import java.util.Map;
 
 /**
@@ -45,6 +47,7 @@ public final class ConfigCodec {
         c.enabled = Json.optBoolean(o, "enabled", false);
         c.marker = Json.optBoolean(o, "marker", true);
         c.markerTemplate = Json.optString(o, "markerTemplate", "");
+        c.logLevel = LogLevel.parse(Json.optString(o, "logLevel", "standard")).wire;
         c.activeProviderId = Json.optString(o, "activeProviderId", "");
         c.activeModelId = Json.optString(o, "activeModelId", "");
 
@@ -92,7 +95,7 @@ public final class ConfigCodec {
 
     private static boolean isKnownKey(String k) {
         return "version".equals(k) || "rev".equals(k) || "enabled".equals(k) || "marker".equals(k)
-                || "markerTemplate".equals(k)
+                || "markerTemplate".equals(k) || "logLevel".equals(k)
                 || "activeProviderId".equals(k) || "activeModelId".equals(k)
                 || "mcp".equals(k) || "providers".equals(k);
     }
@@ -179,6 +182,7 @@ public final class ConfigCodec {
         o.put("enabled", c.enabled);
         o.put("marker", c.marker);
         o.put("markerTemplate", c.markerTemplate == null ? "" : c.markerTemplate);
+        o.put("logLevel", LogLevel.parse(c.logLevel).wire);
         o.put("activeProviderId", c.activeProviderId == null ? "" : c.activeProviderId);
         o.put("activeModelId", c.activeModelId == null ? "" : c.activeModelId);
 

@@ -206,6 +206,7 @@ public final class AgentHttpServer {
                         }
                     });
                 } catch (RejectedExecutionException e) {
+                    AgentCallLog.add("W", "http", "503 busy");
                     respondQuietly(s, 503, "text/plain; charset=utf-8", "busy");
                     closeQuietly(s);
                 } catch (Throwable t) {
@@ -227,16 +228,19 @@ public final class AgentHttpServer {
             Http.Req req = Http.read(socket.getInputStream());
             if (req == null) return;
             if (req.method.length() == 0) {
+                logHttp(socket, "400 bad request");
                 respondQuietly(socket, 400, "text/plain; charset=utf-8", "bad request");
                 return;
             }
 
             if ("/mcp".equals(req.path)) {
                 if (!"POST".equals(req.method)) {
+                    logHttp(socket, "405 /mcp " + req.method);
                     respondQuietly(socket, 405, "text/plain; charset=utf-8", "only POST");
                     return;
                 }
                 if (!authorized(req)) {
+                    logHttp(socket, "401 /mcp unauthorized");
                     respondQuietly(socket, 401, "text/plain; charset=utf-8", "unauthorized");
                     return;
                 }
@@ -252,10 +256,12 @@ public final class AgentHttpServer {
 
             if ("/health".equals(req.path)) {
                 if (!"GET".equals(req.method)) {
+                    logHttp(socket, "405 /health " + req.method);
                     respondQuietly(socket, 405, "text/plain; charset=utf-8", "only GET");
                     return;
                 }
                 if (!authorized(req)) {
+                    logHttp(socket, "401 /health unauthorized");
                     respondQuietly(socket, 401, "text/plain; charset=utf-8", "unauthorized");
                     return;
                 }
@@ -267,12 +273,28 @@ public final class AgentHttpServer {
                 return;
             }
 
+            logHttp(socket, "404 " + req.path);
             respondQuietly(socket, 404, "text/plain; charset=utf-8", "not found");
         } catch (Throwable t) {
+            logHttp(socket, "500 internal error");
             respondQuietly(socket, 500, "text/plain; charset=utf-8", "internal error");
         } finally {
             closeQuietly(socket);
         }
+    }
+
+    /** 来源只分本机/局域网，不记录原始 IP。 */
+    private static String source(Socket s) {
+        try {
+            return s != null && s.getInetAddress() != null && s.getInetAddress().isLoopbackAddress()
+                    ? "loopback" : "lan";
+        } catch (Throwable t) {
+            return "unknown";
+        }
+    }
+
+    private static void logHttp(Socket s, String msg) {
+        AgentCallLog.add("W", "http", msg + " source=" + source(s));
     }
 
     private boolean authorized(Http.Req req) {

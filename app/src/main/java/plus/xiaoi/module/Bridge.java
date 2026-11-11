@@ -29,6 +29,7 @@ import plus.xiaoi.module.agent.AppToolProtocol;
 import plus.xiaoi.module.bridge.BridgeControlClient;
 import plus.xiaoi.module.bridge.BridgeLifecycle;
 import plus.xiaoi.module.core.BridgePolicy;
+import plus.xiaoi.module.core.LogLevel;
 import plus.xiaoi.module.core.RateLimiter;
 
 /**
@@ -130,6 +131,12 @@ public final class Bridge {
         @Override
         public boolean showIsland(String text, boolean force) {
             return Island.show(text, force);
+        }
+
+        @Override
+        public void onToolCall(String tool, boolean ok, long elapsedMs, int argCount) {
+            Logs.event(LogLevel.STANDARD, ok ? "I" : "W", "mcp",
+                    "tool=" + tool + " ok=" + ok + " ms=" + elapsedMs + " args=" + argCount);
         }
 
         @Override
@@ -646,6 +653,7 @@ public final class Bridge {
             Http.Req req = Http.read(in);
             if (req == null) return;
             if (req.method.length() == 0 || req.target.length() == 0) {
+                Logs.event(LogLevel.STANDARD, "W", "http", "400 bad request");
                 respondText(s, 400, "bad request");
                 return;
             }
@@ -653,6 +661,8 @@ public final class Bridge {
             // 低信任端点限流：每源 IP 每 10s 最多 30 次；/mcp 有 Bearer，不参与。
             if ("/health".equals(req.path) || "/island".equals(req.path)) {
                 if (!LOW_TRUST_RATE.allow(req.path + "|" + peerKey(s))) {
+                    Logs.event(LogLevel.STANDARD, "W", "http",
+                            "429 " + req.path + " source=" + (isLoopback(s) ? "loopback" : "lan"));
                     respondText(s, 429, "too many requests");
                     return;
                 }
@@ -747,15 +757,19 @@ public final class Bridge {
     private static void handleMcp(Socket s, Http.Req req) {
         try {
             if (!"POST".equals(req.method)) {
+                Logs.event(LogLevel.STANDARD, "W", "http", "405 /mcp " + req.method);
                 respondText(s, 405, "only POST");
                 return;
             }
             // 局域网模式只对 MCP 开放；即使绑了 0.0.0.0，也要 token 正确（见下）。
             if (!isLoopback(s) && !sBoundLan) {
+                Logs.event(LogLevel.STANDARD, "W", "http", "403 /mcp loopback only");
                 respondText(s, 403, "loopback only");
                 return;
             }
             if (!authorized(req.headers)) {
+                Logs.event(LogLevel.STANDARD, "W", "http",
+                        "401 /mcp unauthorized source=" + (isLoopback(s) ? "loopback" : "lan"));
                 respondText(s, 401, "unauthorized");
                 return;
             }

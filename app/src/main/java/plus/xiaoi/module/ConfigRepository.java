@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.List;
 
+import plus.xiaoi.module.core.LogSettings;
 import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.ConfigStore;
 
@@ -223,6 +224,7 @@ public final class ConfigRepository {
             corruptStamp = Long.MIN_VALUE;
             corruptBackedUp = false;
             skeletonFlag = false;
+            LogSettings.setWire(c.logLevel);
             return c;
         } catch (Throwable t) {
             return corrupt(raw, "配置文件损坏（无法解析）");
@@ -359,6 +361,7 @@ public final class ConfigRepository {
 
     private void writePrefs(AppConfig c) {
         try {
+            LogSettings.setWire(c.logLevel);
             // 用 commit 而不是 apply：写完紧接着要通知控制面 reload，prefs 必须已落盘。
             boolean ok = ctx.getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE).edit()
                     .putString(Config.KEY_BASE_URL, c.baseUrl())

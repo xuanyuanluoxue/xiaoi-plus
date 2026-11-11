@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigRepository;
+import plus.xiaoi.module.core.LogSettings;
 import plus.xiaoi.module.HomeActivity;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.R;
@@ -186,6 +187,7 @@ public final class AgentService extends Service {
 
     private void startOrStop() {
         AppConfig c = ConfigRepository.get(this).load();
+        LogSettings.setWire(c.logLevel);
         String token = c.mcpToken == null ? "" : c.mcpToken.trim();
         if (!c.mcpEnabled || token.length() == 0) {
             Logs.i("AgentService: MCP 未启用或 token 为空，停止 8770");

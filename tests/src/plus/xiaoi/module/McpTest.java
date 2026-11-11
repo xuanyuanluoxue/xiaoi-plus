@@ -45,6 +45,19 @@ public final class McpTest {
         String todoContent;
         int todoCalls;
         boolean todoThrow;
+        int toolCalls;
+        String lastTool = "";
+        boolean lastOk;
+        int lastArgs = -1;
+        long lastElapsed = -1;
+
+        public void onToolCall(String tool, boolean ok, long elapsedMs, int argCount) {
+            toolCalls++;
+            lastTool = tool;
+            lastOk = ok;
+            lastArgs = argCount;
+            lastElapsed = elapsedMs;
+        }
 
         public boolean facadeReady() { return facade; }
         public boolean cliReady() { return cli; }
@@ -418,6 +431,18 @@ public final class McpTest {
         ok("rejectedSwitchArg baseUrl",
                 Mcp.rejectedSwitchArg((Map<?, ?>) Json.read("{\"baseUrl\":\"x\"}"))
                         .contains("端点和密钥只能在手机 App 设置"));
+
+        // tools/call 元数据回调（不含参数值）
+        h.toolCalls = 0;
+        call(h, 98, "xiaoai_status", null);
+        eq("onToolCall count", 1, h.toolCalls);
+        eq("onToolCall tool", "xiaoai_status", h.lastTool);
+        ok("onToolCall ok", h.lastOk);
+        eq("onToolCall args", 0, h.lastArgs);
+        ok("onToolCall elapsed >= 0", h.lastElapsed >= 0);
+        call(h, 99, "no_such_tool", null);
+        eq("onToolCall failure count", 2, h.toolCalls);
+        ok("onToolCall failure ok=false", !h.lastOk);
 
         return T.report("McpTest");
     }

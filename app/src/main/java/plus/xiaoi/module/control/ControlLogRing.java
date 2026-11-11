@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import plus.xiaoi.module.core.Redact;
+
 /**
  * 控制面日志环形缓冲（纯 JVM，无 android 依赖）。
  *
@@ -16,11 +18,6 @@ public final class ControlLogRing {
 
     public static final int MAX_LINES = 200;
     public static final int MAX_LINE_CHARS = 512;
-
-    private static final Pattern KEY_VALUE = Pattern.compile(
-            "(?i)(api[_-]?key|token|authorization)(\\s*[\"']?\\s*[:=]\\s*[\"']?)([^\\s\"',}&;]+)");
-
-    private static final Pattern BEARER = Pattern.compile("(?i)(Bearer)\\s+[^\\s\"',}&;]+");
 
     private final ArrayDeque<String> lines = new ArrayDeque<String>();
 
@@ -58,13 +55,8 @@ public final class ControlLogRing {
         lines.clear();
     }
 
-    /** 秘密脱敏：apiKey/token/authorization 的键值对与 Bearer 头。 */
+    /** 秘密脱敏：委托 {@link Redact}，行为与历史实现保持一致。 */
     public static String redact(String line) {
-        if (line == null) return "";
-        // 先处理 Bearer：否则 "Authorization: Bearer xxx" 会先被键值规则吃掉 Bearer 这个词，
-        // 把真正的 token 留在后面。
-        String out = BEARER.matcher(line).replaceAll("$1 ***");
-        out = KEY_VALUE.matcher(out).replaceAll("$1$2***");
-        return out;
+        return Redact.redact(line);
     }
 }
