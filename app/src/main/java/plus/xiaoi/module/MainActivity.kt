@@ -69,6 +69,7 @@ import plus.xiaoi.module.ui.screen.me.LegacyScreen
 import plus.xiaoi.module.ui.screen.me.LicensesScreen
 import plus.xiaoi.module.ui.screen.me.LogsScreen
 import plus.xiaoi.module.ui.screen.me.MeScreen
+import plus.xiaoi.module.ui.screen.me.SponsorScreen
 import plus.xiaoi.module.ui.screen.xiaoai.ModelScreen
 import plus.xiaoi.module.ui.screen.xiaoai.XiaoaiScreen
 import plus.xiaoi.module.ui.theme.XiaoiTheme
@@ -136,7 +137,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** SCREENS.md §0 的 19 个路由；tab 决定底栏归属，一级/二级由 [NavStack.isRootRoute] 判断。 */
+/** SCREENS.md §0 的 20 个路由；tab 决定底栏归属，一级/二级由 [NavStack.isRootRoute] 判断。 */
 private data class XiaoiRoute(
     val title: String,
     val tab: NavStack.MainTab,
@@ -162,6 +163,7 @@ private object Routes {
     const val ABOUT = "About"
     const val LICENSES = "Licenses"
     const val LEGACY = "Legacy"
+    const val SPONSOR = "Sponsor"
 
     private val table: Map<String, XiaoiRoute> = mapOf(
         HOME to XiaoiRoute("首页", NavStack.MainTab.HOME),
@@ -183,6 +185,7 @@ private object Routes {
         ABOUT to XiaoiRoute("关于", NavStack.MainTab.ME),
         LICENSES to XiaoiRoute("开源许可", NavStack.MainTab.ME),
         LEGACY to XiaoiRoute("兼容模式", NavStack.MainTab.ME),
+        SPONSOR to XiaoiRoute("赞助支持", NavStack.MainTab.ME),
     )
 
     /** 路由名允许 `Name:arg` 形式（仅能力详情使用），冒号前必须是白名单。 */
@@ -400,6 +403,8 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                                 onOpenLegacyConfig = { openLegacy(ConfigActivity::class.java) },
                                 onMessage = { message(it) },
                             )
+
+                            Routes.SPONSOR -> SponsorScreen(onMessage = { message(it) })
 
                             Routes.APPEARANCE -> AppearanceScreen(
                                 themeMode = ThemeManager.get(context),

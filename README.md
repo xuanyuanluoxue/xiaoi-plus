@@ -338,6 +338,17 @@ APK 从 8.4 MiB 降到 **1.6 MiB**（实测）。版本号单一来源是
 | [docs/remote-debug.md](docs/remote-debug.md) | 远程调试与排障 |
 | [CHANGELOG.md](CHANGELOG.md) | 更新日志 |
 
+## 赞助
+
+如果这个项目帮到了你，可以请我喝杯咖啡：
+
+- **爱发电**（推荐，一次性 / 包月）：<https://afdian.com/a/chatxavier>
+- **微信**：扫一扫或长按识别
+
+![微信收款码](app/src/main/res/drawable-nodpi/sponsor_wechat.png)
+
+赞助不影响任何功能，也不会写入配置。
+
 ## 免责声明
 
 - 本项目与小米公司无关，不含任何小米代码或资源

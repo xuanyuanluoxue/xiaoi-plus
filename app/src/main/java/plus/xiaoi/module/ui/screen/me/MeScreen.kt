@@ -230,10 +230,8 @@ fun MeScreen(
             XiaoiPreferenceCard {
                 XiaoiInfoRow(
                     title = "赞助支持",
-                    subtitle = "方式尚未配置 · 可在 GitHub Issues 联系作者",
-                    onClick = {
-                        onMessage("赞助方式尚未配置，可在 GitHub Issues 联系作者")
-                    },
+                    subtitle = "爱发电 / 微信收款码",
+                    onClick = { onNavigate("Sponsor") },
                     icon = MiuixIcons.Promotions,
                     iconTone = XiaoiIconTone.ACCENT,
                 )
