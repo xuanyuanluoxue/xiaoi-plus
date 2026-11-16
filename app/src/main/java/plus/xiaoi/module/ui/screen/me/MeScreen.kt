@@ -24,11 +24,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.ThemeMode
 import plus.xiaoi.module.agent.AgentService
+import plus.xiaoi.module.core.config.ConfigGateway
 import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.core.BridgeStatus
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
 import plus.xiaoi.module.ui.components.XiaoiButtonStyle
@@ -74,6 +75,7 @@ fun MeScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val colors = XiaoiTheme.colors
     val scope = rememberCoroutineScope()
     val version = MeSupport.versionName(context)
@@ -116,17 +118,17 @@ fun MeScreen(
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 try {
-                    val repo = ConfigRepository.get(context)
-                    if (repo.isReadOnly()) {
+                    val loaded = configGateway.loadState()
+                    if (loaded.readOnly) {
                         return@withContext StopResult(false, "配置处于只读态，未执行任何写入")
                     }
-                    val cfg = repo.load()
-                    if (repo.isSkeleton()) {
+                    if (loaded.skeleton) {
                         return@withContext StopResult(
                             true,
                             "配置尚未初始化，当前没有可停用的对外能力（未写入文件）",
                         )
                     }
+                    val cfg = loaded.config
                     if (!cfg.enabled && !cfg.mcpEnabled && !cfg.mcpLan && !cfg.agentLan) {
                         return@withContext StopResult(
                             true,
@@ -137,10 +139,16 @@ fun MeScreen(
                     cfg.mcpEnabled = false
                     cfg.mcpLan = false
                     cfg.agentLan = false
-                    repo.save(cfg)
+                    val saved = configGateway.saveIfRev(cfg, cfg.rev)
+                    if (saved.conflict()) {
+                        return@withContext StopResult(false, "配置已被其他页面修改，未执行停用；请刷新后重试")
+                    }
+                    if (!saved.ok()) {
+                        return@withContext StopResult(false, "停用失败：${saved.error}")
+                    }
                     AgentService.startIfEnabled(context)
                     // 以重新读取的文件为准验证，而不是相信内存草稿。
-                    val check = repo.load()
+                    val check = configGateway.loadState().config
                     val ok = !check.enabled && !check.mcpEnabled &&
                         !check.mcpLan && !check.agentLan
                     if (ok) {

@@ -17,11 +17,11 @@ import java.io.OutputStream;
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigCodec;
-import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.ConfigSync;
 import plus.xiaoi.module.R;
 import plus.xiaoi.module.ShareProvider;
 import plus.xiaoi.module.core.ErrorCatalog;
+import plus.xiaoi.module.core.config.ConfigGateway;
 
 /**
  * 配置编辑板块：从运行中小爱导入、脱敏导出、完整备份、从文件还原、分享。
@@ -53,12 +53,14 @@ public final class EditSection {
 
     private final Context ctx;
     private final Host host;
+    private final ConfigGateway configGateway;
     /** 导出（脱敏）：只用于分享/排障，不能用于恢复。 */
     private boolean exportMasked = true;
 
-    public EditSection(Context ctx, Host host) {
+    public EditSection(Context ctx, Host host, ConfigGateway configGateway) {
         this.ctx = ctx;
         this.host = host;
+        this.configGateway = configGateway;
     }
 
     /** 从运行中的小爱导入真实生效配置到 config.json（文件优先，手动触发）。 */
@@ -71,7 +73,7 @@ public final class EditSection {
                     public void run() {
                         if (!host.alive()) return;
                         if (ok) {
-                            host.setConfig(ConfigRepository.get(ctx).load());
+                            host.setConfig(configGateway.loadState().config);
                             host.render();
                             host.hideRuntimeConflict();
                             host.toast("已导入到 config.json（密钥需确认）");
@@ -137,7 +139,7 @@ public final class EditSection {
                         : "已导出（含明文密钥，请用完立即删除）");
             } else if (req == REQ_IMPORT) {
                 InputStream in = host.resolver().openInputStream(uri);
-                AppConfig c = ConfigRepository.parse(in);
+                AppConfig c = ConfigCodec.fromStream(in);
                 in.close();
                 // 脱敏文件（密钥被写成 ***）不能用于恢复：直接阻断，避免把 *** 写成有效 key
                 if (ConfigCodec.containsMaskedSecrets(c)) {
@@ -219,7 +221,7 @@ public final class EditSection {
     }
 
     private String exportJson(boolean mask) throws Exception {
-        JSONObject o = ConfigRepository.toJson(host.config());
+        JSONObject o = new JSONObject(ConfigCodec.toJson(host.config()));
         if (mask) {
             JSONArray arr = o.getJSONArray("providers");
             for (int i = 0; i < arr.length(); i++) {

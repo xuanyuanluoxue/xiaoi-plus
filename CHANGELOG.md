@@ -1,5 +1,17 @@
 # 更新日志
 
+## 未发布
+
+**内部重构（无用户可见行为变化）**
+
+- **分层边界门禁（WP0）**：新增 `scripts/check-layering.sh` + 基线，
+  把「domain/application/core 不依赖 Android、UI 不直连配置仓库」变成 CI 检查；
+  只拦新增违规，基线只减不增，接入 `check-consistency.sh`。
+- **配置端口（WP1a）**：新增 `ConfigGateway` 与 `ConfigLoadResult/ConfigSaveResult`，
+  `ConfigRepository` 实现该端口；Compose 页面与 StateHolder 改为注入端口，
+  不再调用 `ConfigRepository.get(context)`；保存增加 rev 校验（冲突显式返回）。
+  文件格式、prefs 镜像、损坏/只读/rev 公式不变。
+
 ## 0.15.0 — 2026-11-11
 
 **UI 收尾**

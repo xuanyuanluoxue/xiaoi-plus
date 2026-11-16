@@ -21,9 +21,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ConfigActivity
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.HomeActivity
-import plus.xiaoi.module.core.ConfigStore
+import plus.xiaoi.module.core.config.ConfigBackupInfo
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiCodeBlock
@@ -36,7 +36,6 @@ import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Text
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -54,34 +53,32 @@ fun LegacyScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val colors = XiaoiTheme.colors
     var snapshot by remember { mutableStateOf<LegacySnapshot?>(null) }
     var showJson by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         snapshot = withContext(Dispatchers.IO) {
-            val repo = ConfigRepository.get(context)
-            val cfg = runCatching { repo.load() }.getOrNull()
-            val file = repo.configFile()
-            val store = ConfigStore(context.filesDir)
-            val corrupt = runCatching { store.list("config.json.corrupt.") }.getOrDefault(emptyList())
-            val legacy = runCatching { repo.legacyBackups() }.getOrDefault(emptyList())
-            val exists = file.isFile
+            val loaded = runCatching { configGateway.loadState() }.getOrNull()
+            val cfg = loaded?.config
+            val info = configGateway.storage()
+            val corrupt = runCatching { configGateway.corruptInfos() }.getOrDefault(emptyList())
+            val legacy = runCatching { configGateway.backupInfos() }.getOrDefault(emptyList())
             LegacySnapshot(
                 cfg = cfg,
-                readOnly = repo.isReadOnly(),
-                loadError = repo.loadError(),
-                path = file.absolutePath,
-                exists = exists,
-                modifiedAt = if (exists) file.lastModified() else 0L,
-                size = if (exists) file.length() else 0L,
+                readOnly = loaded?.readOnly ?: true,
+                loadError = loaded?.error ?: "配置读取失败",
+                path = info.path,
+                exists = info.exists,
+                modifiedAt = info.lastModified,
+                size = info.size,
                 legacy = legacy,
                 corrupt = corrupt,
                 maskedJson = when {
-                    repo.isReadOnly() -> "（配置损坏，内容已隐藏；请回「配置管理 > 损坏恢复」）"
-                    !exists -> "（config.json 尚未创建，当前只是默认骨架）"
-                    cfg == null -> "（无法读取配置）"
-                    else -> MeSupport.maskedForDisplay(cfg)
+                    loaded == null || loaded.readOnly -> "（配置损坏，内容已隐藏；请回「配置管理 > 损坏恢复」）"
+                    !info.exists -> "（config.json 尚未创建，当前只是默认骨架）"
+                    else -> MeSupport.maskedForDisplay(cfg!!)
                 },
             )
         }
@@ -219,7 +216,7 @@ fun LegacyScreen(
                 snap.legacy.take(5).forEach { file ->
                     XiaoiInfoRow(
                         title = file.name,
-                        subtitle = "${formatTime(file.lastModified())} · ${file.length()} 字节",
+                        subtitle = "${formatTime(file.lastModified)} · ${file.size} 字节",
                     )
                 }
             }
@@ -236,7 +233,7 @@ fun LegacyScreen(
                 snap.corrupt.take(3).forEach { file ->
                     XiaoiInfoRow(
                         title = file.name,
-                        subtitle = "${formatTime(file.lastModified())} · ${file.length()} 字节",
+                        subtitle = "${formatTime(file.lastModified)} · ${file.size} 字节",
                     )
                 }
             }
@@ -274,8 +271,8 @@ private data class LegacySnapshot(
     val exists: Boolean,
     val modifiedAt: Long,
     val size: Long,
-    val legacy: List<File>,
-    val corrupt: List<File>,
+    val legacy: List<ConfigBackupInfo>,
+    val corrupt: List<ConfigBackupInfo>,
     val maskedJson: String,
 )
 

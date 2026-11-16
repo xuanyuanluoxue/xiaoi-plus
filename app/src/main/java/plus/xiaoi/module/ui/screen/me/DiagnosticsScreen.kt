@@ -26,7 +26,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
@@ -37,6 +36,8 @@ import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.core.PermissionProbe
 import plus.xiaoi.module.core.PermissionSnapshot
 import plus.xiaoi.module.core.StateModel
+import plus.xiaoi.module.core.config.ConfigGateway
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.PermissionRow
 import plus.xiaoi.module.ui.components.PermissionStatus
 import plus.xiaoi.module.ui.components.XiaoiBadge
@@ -73,6 +74,7 @@ fun DiagnosticsScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val colors = XiaoiTheme.colors
     val scope = rememberCoroutineScope()
     val version = MeSupport.versionName(context)
@@ -86,7 +88,7 @@ fun DiagnosticsScreen(
     LaunchedEffect(refresh) {
         // 冷启动时 8770 可能比页面晚 1–3 秒起来；定时重采，避免与接入页结论不一致。
         while (true) {
-            snapshot = withContext(Dispatchers.IO) { capture(context) }
+            snapshot = withContext(Dispatchers.IO) { capture(context, configGateway) }
             delay(3000)
         }
     }
@@ -341,10 +343,10 @@ private data class DiagSnapshot(
     val errorLines: Int,
 )
 
-private fun capture(context: android.content.Context): DiagSnapshot {
-    val repo = ConfigRepository.get(context)
-    val cfg = runCatching { repo.load() }.getOrNull()
-    val readOnly = repo.isReadOnly()
+private fun capture(context: android.content.Context, configGateway: ConfigGateway): DiagSnapshot {
+    val loaded = runCatching { configGateway.loadState() }.getOrNull()
+    val cfg = loaded?.config
+    val readOnly = loaded?.readOnly ?: true
     val bridge = BridgeStatus.get()
     val agent = AgentRuntimeStatus.get()
     val permissions = PermissionProbe.capture(context)
@@ -364,7 +366,7 @@ private fun capture(context: android.content.Context): DiagSnapshot {
     return DiagSnapshot(
         cfg = cfg,
         readOnly = readOnly,
-        loadError = repo.loadError(),
+        loadError = loaded?.error ?: "配置读取失败",
         d1 = input.d1,
         d2 = input.d2,
         d3 = input.d3,

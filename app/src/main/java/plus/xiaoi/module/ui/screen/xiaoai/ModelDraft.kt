@@ -97,7 +97,7 @@ internal fun slugProviderId(cfg: AppConfig, name: String): String {
  * - 模型 ID 非空、同一服务商内不重名
  * - 启用时必须填写 API Key；暂停允许保存不完整草稿
  *
- * 这里只给出“具体哪一项错了”，完整语义仍以 ConfigRepository.validate 为准。
+ * 这里只给出“具体哪一项错了”，完整语义仍以 ConfigCodec.validate 为准。
  */
 internal fun validateDraft(cfg: AppConfig): ModelErrors {
     val provider = cfg.activeProvider()

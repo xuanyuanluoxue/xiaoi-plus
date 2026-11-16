@@ -57,6 +57,12 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/agent/AgentCallLog.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ControlKeys.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ConfigStore.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigGateway.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigLoadResult.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigSaveResult.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigBackupInfo.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigStorageInfo.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigRevRules.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgePolicy.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ErrorCatalog.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgeEndpoint.java" \

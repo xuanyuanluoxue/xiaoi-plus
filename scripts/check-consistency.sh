@@ -5,7 +5,8 @@
 #   1) 版本号 / minSdk / targetSdk 在 manifest 与 Gradle 元数据之间一致
 #   2) 业务代码不再使用运行时 getIdentifier（资源改名必须编译期报错）
 #   3) 后台任务/HTTP 客户端没有各自为政
-#   4) layout / drawable 没有无人引用的死文件
+#   4) 分层边界：domain/application 不依赖 Android，UI 不直连配置仓库
+#   5) layout / drawable 没有无人引用的死文件
 #
 # 用法：scripts/check-consistency.sh
 set -uo pipefail
@@ -104,7 +105,15 @@ else
     echo "$TOAST" | sed 's/^/      /'
 fi
 
-# ---------------------------------------------------------------- 4) 死资源
+# ---------------------------------------------------------------- 4) 分层边界
+if LAYER_OUT="$("$ROOT/scripts/check-layering.sh" 2>&1)"; then
+    pass "分层边界检查（domain/application/core/ui）"
+else
+    fail "分层边界检查失败（见 scripts/check-layering.sh）"
+    echo "$LAYER_OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------- 5) 死资源
 dead=0
 for f in app/src/main/res/layout/*.xml; do
     [ -e "$f" ] || continue

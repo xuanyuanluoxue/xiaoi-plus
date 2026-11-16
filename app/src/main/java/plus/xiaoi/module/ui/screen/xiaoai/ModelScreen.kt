@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.ui.components.ConfirmCard
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiDirtyBar
@@ -40,7 +41,7 @@ import top.yukonga.miuix.kmp.basic.Text
 /**
  * 模型与服务商：0.14 唯一可编辑的模型表单。
  *
- * - 只改内存草稿；「保存」才写 [plus.xiaoi.module.ConfigRepository]
+ * - 只改内存草稿；「保存」才写 [plus.xiaoi.module.core.config.ConfigGateway]
  * - 保存前比对文件 rev，冲突必须显式选择“载入最新 / 覆盖保存”
  * - 只读（配置损坏）时整页禁用，不提供保存
  * - 密钥只展示掩码，不复制、不写日志、不进 Snackbar
@@ -52,7 +53,8 @@ fun ModelScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? ComponentActivity
-    val holder = remember { ModelStateHolder(context) }
+    val configGateway = LocalConfigGateway.current
+    val holder = remember(configGateway) { ModelStateHolder(context, configGateway) }
     val scope = rememberCoroutineScope()
     val editable = !holder.readOnly
 

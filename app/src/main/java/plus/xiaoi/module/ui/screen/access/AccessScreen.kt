@@ -22,13 +22,13 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.CapabilityRegistry
 import plus.xiaoi.module.core.IssueResolver
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.PortRow
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
@@ -67,6 +67,7 @@ fun AccessScreen(
 ) {
     val colors = XiaoiTheme.colors
     val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val scope = rememberCoroutineScope()
     var saving by remember { mutableStateOf(false) }
     val loaded = rememberAccessConfig()
@@ -154,10 +155,17 @@ fun AccessScreen(
                         scope.launch {
                             val result = withContext(Dispatchers.IO) {
                                 runCatching {
-                                    val repo = ConfigRepository.get(context)
-                                    val fresh = repo.loadForUi()
+                                    val loaded = configGateway.loadState()
+                                    if (loaded.readOnly) {
+                                        throw IllegalStateException("配置只读，已拒绝写入")
+                                    }
+                                    val fresh = loaded.config
                                     fresh.mcpEnabled = on
-                                    repo.save(fresh)
+                                    val saved = configGateway.saveIfRev(fresh, fresh.rev)
+                                    when {
+                                        saved.conflict() -> throw IllegalStateException("配置已被其他页面修改，请重试")
+                                        !saved.ok() -> throw IllegalStateException(saved.error)
+                                    }
                                     AgentService.startIfEnabled(context)
                                 }
                             }

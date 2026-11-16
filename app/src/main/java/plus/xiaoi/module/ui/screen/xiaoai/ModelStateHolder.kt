@@ -6,11 +6,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ConfigCodec
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.ModelValidator
 import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentService
+import plus.xiaoi.module.core.config.ConfigGateway
 
 /**
  * 进程内草稿缓存：顶栏返回由壳直接 pop，页面无法拦截，所以把草稿留在内存里，
@@ -29,11 +29,14 @@ private object ModelDraftCache {
 /**
  * 模型与服务商页状态。
  *
- * 事实源只有 [ConfigRepository]：draft 是内存副本，显式保存才写盘；
+ * 事实源只有 [ConfigGateway]：draft 是内存副本，显式保存才写盘；
  * 保存前比对文件 rev，冲突时回到 UI 让用户选择“载入最新 / 覆盖保存”，
  * 不做静默覆盖。校验只更新 [StatusCache]（D2），不改运行态。
  */
-internal class ModelStateHolder(private val context: Context) {
+internal class ModelStateHolder(
+    private val context: Context,
+    private val configGateway: ConfigGateway,
+) {
 
     var loading by mutableStateOf(true)
         private set
@@ -68,13 +71,9 @@ internal class ModelStateHolder(private val context: Context) {
     suspend fun load() {
         loading = true
         val loaded = runCatching {
-            xiaoaiIo {
-                val repo = ConfigRepository.get(context)
-                val cfg = repo.loadForUi()
-                Triple(cfg, repo.isReadOnly(), repo.loadError())
-            }
+            xiaoaiIo { configGateway.loadState() }
         }.getOrNull()
-        if (loaded != null) applyLoaded(loaded.first, loaded.second, loaded.third)
+        if (loaded != null) applyLoaded(loaded.config, loaded.readOnly, loaded.error)
         loading = false
     }
 
@@ -296,36 +295,47 @@ internal class ModelStateHolder(private val context: Context) {
         }
         saving = true
         return try {
-            val repo = ConfigRepository.get(context)
-            val latest = xiaoaiIo { repo.load() }
-            if (repo.isReadOnly) {
+            val latest = xiaoaiIo { configGateway.loadState() }
+            if (latest.readOnly) {
                 readOnly = true
-                loadError = repo.loadError()
+                loadError = latest.error
                 SaveOutcome.ReadOnly
-            } else if (!force && !latest.skeleton && latest.rev != baseRev) {
-                conflictRev = latest.rev
+            } else if (!force && !latest.skeleton && latest.config.rev != baseRev) {
+                conflictRev = latest.config.rev
                 SaveOutcome.Conflict
             } else {
-                val invalid = repo.validate(cfg)
+                val invalid = configGateway.validate(cfg)
                 if (invalid != null) {
                     errors = errors.copy(general = invalid)
                     SaveOutcome.Invalid(invalid)
                 } else {
-                    val saved = xiaoaiIo {
-                        repo.save(cfg)
-                        repo.load()
+                    val result = xiaoaiIo {
+                        configGateway.saveIfRev(cfg, if (force) -1L else baseRev)
                     }
-                    val copy = copyConfig(saved)
-                    draft = copy
-                    draftJson = json(copy)
-                    baselineJson = draftJson
-                    baseRev = saved.rev
-                    conflictRev = null
-                    check = CheckUi()
-                    ModelDraftCache.clear()
-                    // 与旧配置页一致：保存后按配置对齐 8770（本页不改 MCP 开关）。
-                    AgentService.startIfEnabled(context)
-                    SaveOutcome.Saved
+                    when {
+                        result.conflict() -> {
+                            conflictRev = result.conflictRev
+                            SaveOutcome.Conflict
+                        }
+                        !result.ok() -> {
+                            errors = errors.copy(general = result.error)
+                            SaveOutcome.Invalid(result.error)
+                        }
+                        else -> {
+                            val saved = result.saved
+                            val copy = copyConfig(saved)
+                            draft = copy
+                            draftJson = json(copy)
+                            baselineJson = draftJson
+                            baseRev = saved.rev
+                            conflictRev = null
+                            check = CheckUi()
+                            ModelDraftCache.clear()
+                            // 与旧配置页一致：保存后按配置对齐 8770（本页不改 MCP 开关）。
+                            AgentService.startIfEnabled(context)
+                            SaveOutcome.Saved
+                        }
+                    }
                 }
             }
         } catch (t: Throwable) {

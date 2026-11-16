@@ -26,11 +26,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.agent.AgentLanPolicy
 import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.core.IssueResolver
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
 import plus.xiaoi.module.ui.components.XiaoiButtonStyle
@@ -65,6 +65,7 @@ fun TokenScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val colors = XiaoiTheme.colors
     val loaded = rememberAccessConfig()
     val bridge = rememberBridgeSnapshot()
@@ -129,12 +130,19 @@ fun TokenScreen(
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val repo = ConfigRepository.get(context)
-                    val fresh = repo.loadForUi()
+                    val loaded = configGateway.loadState()
+                    if (loaded.readOnly) {
+                        throw IllegalStateException("配置只读，已拒绝写入")
+                    }
+                    val fresh = loaded.config
                     fresh.mcpToken = token
                     fresh.mcpLan = mcpLan
                     fresh.agentLan = agentLan
-                    repo.save(fresh)
+                    val saved = configGateway.saveIfRev(fresh, fresh.rev)
+                    when {
+                        saved.conflict() -> throw IllegalStateException("配置已被其他页面修改，请重试")
+                        !saved.ok() -> throw IllegalStateException(saved.error)
+                    }
                     // 保存后按新配置重绑设备操作接口；小爱任务接口由小爱重新加载配置后生效。
                     AgentService.startIfEnabled(context)
                 }

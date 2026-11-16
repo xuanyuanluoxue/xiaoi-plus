@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import org.json.JSONObject
 import plus.xiaoi.module.AppConfig
-import plus.xiaoi.module.ConfigRepository
+import plus.xiaoi.module.ConfigCodec
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
 import java.io.File
@@ -14,7 +14,7 @@ import java.io.File
 /**
  * 我的域的纯工具：版本、脱敏、摘要、复制、Root 检测。
  *
- * 约束：这里不读取/写入 config.json（读写只由 [ConfigRepository] 负责），
+ * 约束：这里不读取/写入 config.json（读写只由 ConfigGateway 负责），
  * 不输出 apiKey / mcpToken，不把完整 URL 的 query、userinfo 带进界面或剪贴板。
  */
 internal object MeSupport {
@@ -64,7 +64,7 @@ internal object MeSupport {
 
     private fun mask(c: AppConfig, forceTokenMask: Boolean): String {
         return try {
-            val o = ConfigRepository.toJson(c)
+            val o = JSONObject(ConfigCodec.toJson(c))
             val providers = o.optJSONArray("providers")
             if (providers != null) {
                 for (i in 0 until providers.length()) {

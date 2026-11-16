@@ -26,11 +26,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ConfigCodec
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.ConfigSync
 import plus.xiaoi.module.ShareProvider
 import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.ErrorCatalog
+import plus.xiaoi.module.core.config.ConfigBackupInfo
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiCardGroup
@@ -51,12 +52,13 @@ import top.yukonga.miuix.kmp.icon.extended.Paste
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.icon.extended.UploadCloud
+import org.json.JSONObject
 import java.io.File
 
 /**
  * 配置管理（SCREENS.md §11）。
  *
- * 所有写操作都先校验再 [ConfigRepository] 原子写入：
+ * 所有写操作都先校验再 [plus.xiaoi.module.core.config.ConfigGateway] 原子写入：
  * - 还原失败（解析/校验/写入）不覆盖现有 config.json
  * - 脱敏副本（apiKey/token = ***）拒绝还原
  * - 配置损坏时本页只显示恢复入口，不提供覆盖式保存
@@ -68,6 +70,7 @@ fun ConfigManageScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val colors = XiaoiTheme.colors
     val scope = rememberCoroutineScope()
 
@@ -87,13 +90,12 @@ fun ConfigManageScreen(
 
     LaunchedEffect(refresh) {
         snapshot = withContext(Dispatchers.IO) {
-            val repo = ConfigRepository.get(context)
-            val cfg = runCatching { repo.load() }.getOrNull()
+            val loaded = runCatching { configGateway.loadState() }.getOrNull()
             ConfigSnapshot(
-                cfg = cfg,
-                readOnly = repo.isReadOnly(),
-                loadError = repo.loadError(),
-                legacyBackups = runCatching { repo.legacyBackups() }.getOrDefault(emptyList()),
+                cfg = loaded?.config,
+                readOnly = loaded?.readOnly ?: true,
+                loadError = loaded?.error ?: "配置读取失败",
+                legacyBackups = runCatching { configGateway.backupInfos() }.getOrDefault(emptyList()),
             )
         }
     }
@@ -108,13 +110,13 @@ fun ConfigManageScreen(
         scope.launch {
             val error = withContext(Dispatchers.IO) {
                 runCatching {
-                    val repo = ConfigRepository.get(context)
-                    if (repo.isReadOnly()) throw IllegalStateException("配置只读，已取消导出")
-                    val cfg = repo.load()
+                    val loaded = configGateway.loadState()
+                    if (loaded.readOnly) throw IllegalStateException("配置只读，已取消导出")
+                    val cfg = loaded.config
                     val text = if (masked) {
                         MeSupport.maskedForExport(cfg)
                     } else {
-                        ConfigRepository.toJson(cfg).toString(2)
+                        JSONObject(ConfigCodec.toJson(cfg)).toString(2)
                     }
                     val out = context.contentResolver.openOutputStream(uri)
                         ?: throw IllegalStateException("无法打开目标文件")
@@ -180,13 +182,19 @@ fun ConfigManageScreen(
         scope.launch {
             val message = withContext(Dispatchers.IO) {
                 try {
-                    val repo = ConfigRepository.get(context)
-                    if (repo.isReadOnly()) {
+                    val loaded = configGateway.loadState()
+                    if (loaded.readOnly) {
                         "配置处于只读态，已拒绝写入；请先用下方「损坏恢复」"
                     } else {
-                        repo.save(pending.config)
-                        AgentService.startIfEnabled(context)
-                        "已还原并应用（rev 已递增，等待小爱重新加载）"
+                        val saved = configGateway.saveIfRev(pending.config, -1)
+                        if (saved.conflict()) {
+                            "导入被冲突阻止：配置已被其他页面修改，请刷新后重试"
+                        } else if (!saved.ok()) {
+                            "还原失败：${saved.error}（现有配置未改动）"
+                        } else {
+                            AgentService.startIfEnabled(context)
+                            "已还原并应用（rev 已递增，等待小爱重新加载）"
+                        }
                     }
                 } catch (t: Throwable) {
                     "还原失败：${t.message ?: t.javaClass.simpleName}（现有配置未改动）"
@@ -204,18 +212,17 @@ fun ConfigManageScreen(
         scope.launch {
             val message = withContext(Dispatchers.IO) {
                 try {
-                    val repo = ConfigRepository.get(context)
                     when (kind) {
                         RecoveryKind.LEGACY -> {
-                            val backup = repo.legacyBackups().firstOrNull()
+                            val backup = configGateway.backupInfos().firstOrNull()
                                 ?: throw IllegalStateException("没有可恢复的旧配置")
-                            repo.restoreLegacy(backup)
+                            configGateway.restore(backup)
                             AgentService.startIfEnabled(context)
                             "已从 ${backup.name} 恢复"
                         }
 
                         RecoveryKind.DEFAULTS -> {
-                            repo.resetToDefaultsAfterCorruption()
+                            configGateway.resetAfterCorruption()
                             AgentService.startIfEnabled(context)
                             "已重建默认配置；损坏原文保留为 .corrupt 备份"
                         }
@@ -234,9 +241,9 @@ fun ConfigManageScreen(
         scope.launch {
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
-                    val repo = ConfigRepository.get(context)
-                    if (repo.isReadOnly()) throw IllegalStateException("配置只读，已取消分享")
-                    val cfg = repo.load()
+                    val loaded = configGateway.loadState()
+                    if (loaded.readOnly) throw IllegalStateException("配置只读，已取消分享")
+                    val cfg = loaded.config
                     val base = context.getExternalFilesDir(null)
                         ?: throw IllegalStateException("外部文件目录不可用")
                     val dir = File(base, "exports")
@@ -510,7 +517,7 @@ private data class ConfigSnapshot(
     val cfg: AppConfig?,
     val readOnly: Boolean,
     val loadError: String,
-    val legacyBackups: List<File>,
+    val legacyBackups: List<ConfigBackupInfo>,
 )
 
 private data class PendingImport(val config: AppConfig, val source: String)
@@ -606,4 +613,4 @@ private fun RecoveryDialogs(
     )
 }
 
-// 页面只读 config.json，不直接操作文件；所有写入都经 ConfigRepository。
+// 页面只读 config.json，不直接操作文件；所有写入都经 ConfigGateway。

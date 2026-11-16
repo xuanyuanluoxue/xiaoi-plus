@@ -87,6 +87,13 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
 锁文件只写 pid/进程名等诊断信息，**不写 token/apiKey**；文件本身永不删除
 （删除被锁文件会导致两个进程各自锁住不同 inode）。
 
+## 分层与依赖方向
+
+当前代码是「按技术关注点分包 + 局部端口化」：agent 动作面已有
+`ActionExecutor` / `AskHost` / `NotifyHost` 端口，但配置与 Hook 仍依赖具体类
+和全局静态状态。目标层、依赖规则、端口清单与增量迁移计划见
+[refactor/LAYERING.md](refactor/LAYERING.md)（提案，未开始执行）。
+
 ## 为什么不用改包
 
 小爱是 priv-app，能力建立在平台签名上。重打包会失去所有 signature 权限，

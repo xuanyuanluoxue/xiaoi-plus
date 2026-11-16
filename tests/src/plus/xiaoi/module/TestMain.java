@@ -219,6 +219,12 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL NavStackTest 套件异常: " + t);
         }
+        try {
+            failed += ConfigGatewayRulesTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ConfigGatewayRulesTest 套件异常: " + t);
+        }
         System.out.println();
         if (failed == 0) {
             System.out.println("==> 全部通过");

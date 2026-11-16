@@ -8,16 +8,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -49,19 +48,18 @@ internal class AccessConfigHolder(
 /** 在 IO 线程读配置，避免主线程文件 I/O；失败按“不可写”处理，不伪造默认值。 */
 @Composable
 internal fun rememberAccessConfig(): AccessConfigHolder {
-    val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val state = remember { mutableStateOf<AccessConfig?>(null) }
     val trigger = remember { mutableStateOf(0) }
     LaunchedEffect(trigger.value) {
         state.value = withContext(Dispatchers.IO) {
             runCatching {
-                val repo = ConfigRepository.get(context)
-                val cfg = repo.loadForUi()
+                val loaded = configGateway.loadState()
                 AccessConfig(
-                    config = cfg,
-                    readOnly = repo.isReadOnly(),
-                    loadError = repo.loadError(),
-                    skeleton = repo.isSkeleton(),
+                    config = loaded.config,
+                    readOnly = loaded.readOnly,
+                    loadError = loaded.error,
+                    skeleton = loaded.skeleton,
                 )
             }.getOrElse {
                 AccessConfig(null, true, "配置读取失败", true)

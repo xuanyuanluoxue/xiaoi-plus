@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import plus.xiaoi.module.ui.components.IssueRow
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.StatusHero
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
@@ -60,7 +61,8 @@ fun HomeScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val holder = remember { HomeStateHolder(context) }
+    val configGateway = LocalConfigGateway.current
+    val holder = remember(configGateway) { HomeStateHolder(context, configGateway) }
     val state = holder.state
     val lifecycleOwner = LocalLifecycleOwner.current
 

@@ -34,11 +34,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.core.LogLevel
 import plus.xiaoi.module.core.LogSettings
 import plus.xiaoi.module.ui.components.FilterChips
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
 import plus.xiaoi.module.ui.components.XiaoiIconTone
@@ -103,6 +103,7 @@ private fun parseLine(line: String): LogLine {
 @Composable
 fun LogsScreen(onMessage: (String) -> Unit) {
     val context = LocalContext.current
+    val configGateway = LocalConfigGateway.current
     val colors = XiaoiTheme.colors
     var lines by remember { mutableStateOf<List<LogLine>>(emptyList()) }
     var filter by rememberSaveable { mutableStateOf(0) } // 0 全部 / 1 信息 / 2 警告 / 3 错误 / 4 调试
@@ -127,13 +128,13 @@ fun LogsScreen(onMessage: (String) -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        val cfg = withContext(Dispatchers.IO) {
-            runCatching { ConfigRepository.get(context).loadForUi() }.getOrNull()
+        val loaded = withContext(Dispatchers.IO) {
+            runCatching { configGateway.loadState() }.getOrNull()
         }
-        if (cfg != null) {
-            val loaded = LogLevel.parse(cfg.logLevel)
-            level = loaded
-            LogSettings.set(loaded)
+        if (loaded != null) {
+            val level0 = LogLevel.parse(loaded.config.logLevel)
+            level = level0
+            LogSettings.set(level0)
         }
         reload()
     }
@@ -144,10 +145,15 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val repo = ConfigRepository.get(context)
-                    val cfg = repo.loadForUi()
+                    val loaded = configGateway.loadState()
+                    if (loaded.readOnly) throw IllegalStateException("配置只读，已拒绝写入")
+                    val cfg = loaded.config
                     cfg.logLevel = next.wire
-                    repo.save(cfg)
+                    val saved = configGateway.saveIfRev(cfg, cfg.rev)
+                    when {
+                        saved.conflict() -> throw IllegalStateException("配置已被其他页面修改，请重试")
+                        !saved.ok() -> throw IllegalStateException(saved.error)
+                    }
                 }
             }
             levelSaving = false

@@ -11,6 +11,12 @@ import java.util.List;
 import plus.xiaoi.module.core.LogSettings;
 import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.ConfigStore;
+import plus.xiaoi.module.core.config.ConfigBackupInfo;
+import plus.xiaoi.module.core.config.ConfigGateway;
+import plus.xiaoi.module.core.config.ConfigLoadResult;
+import plus.xiaoi.module.core.config.ConfigRevRules;
+import plus.xiaoi.module.core.config.ConfigSaveResult;
+import plus.xiaoi.module.core.config.ConfigStorageInfo;
 
 /**
  * 配置的唯一读写入口（WP2）。
@@ -24,7 +30,7 @@ import plus.xiaoi.module.core.ConfigStore;
  * WP4 起保存/应用配置后只调用 {@link BridgeEndpoint#requestReload()}（控制面在运行才生效），
  * 不再扫描端口、不再 POST /config、不再维护「上次推送 token / pending 重试」。
  */
-public final class ConfigRepository {
+public final class ConfigRepository implements ConfigGateway {
 
     private static final String FILE = ConfigStore.FILE_NAME;
     private static ConfigRepository sInstance;
@@ -140,6 +146,95 @@ public final class ConfigRepository {
     /** 当前内存配置是否是默认骨架（文件不存在 / 损坏后）。 */
     public boolean isSkeleton() {
         return skeletonFlag;
+    }
+
+    // ------------------------------------------------------------- ConfigGateway（WP1a）
+
+    @Override
+    public synchronized ConfigLoadResult loadState() {
+        AppConfig c = load();
+        return new ConfigLoadResult(c, readOnly, loadError(), skeletonFlag);
+    }
+
+    @Override
+    public ConfigSaveResult saveIfRev(AppConfig next, long expectedRev) {
+        return saveChecked(next, expectedRev, true);
+    }
+
+    @Override
+    public ConfigSaveResult saveIfRevQuiet(AppConfig next, long expectedRev) {
+        return saveChecked(next, expectedRev, false);
+    }
+
+    /**
+     * 先比对文件 rev 再写入。整个检查+写入在同一把锁内，避免 UI 的“先 load 再 save”
+     * 在两步之间被同进程其他写者插队（跨进程写者仍由 App 单写者约束）。
+     */
+    private synchronized ConfigSaveResult saveChecked(AppConfig next, long expectedRev, boolean mark) {
+        if (next == null) return ConfigSaveResult.failure("配置为空");
+        if (readOnly) return ConfigSaveResult.failure("配置处于只读态，已拒绝写入");
+        try {
+            long current = readFileRev();
+            if (ConfigRevRules.conflict(expectedRev, current)) {
+                return ConfigSaveResult.conflict(current);
+            }
+            if (mark) {
+                save(next);
+            } else {
+                saveQuiet(next);
+            }
+            return ConfigSaveResult.success(next);
+        } catch (Throwable t) {
+            String msg = t.getMessage();
+            return ConfigSaveResult.failure(msg == null || msg.length() == 0 ? "保存失败" : msg);
+        }
+    }
+
+    @Override
+    public List<ConfigBackupInfo> backupInfos() {
+        return toBackupInfos(legacyBackups(), true);
+    }
+
+    @Override
+    public List<ConfigBackupInfo> corruptInfos() {
+        return toBackupInfos(store.list(ConfigStore.CORRUPT_PREFIX), false);
+    }
+
+    @Override
+    public ConfigStorageInfo storage() {
+        File f = configFile();
+        boolean exists = f.isFile();
+        return new ConfigStorageInfo(
+                f.getAbsolutePath(),
+                exists,
+                exists ? f.length() : 0L,
+                exists ? f.lastModified() : 0L);
+    }
+
+    @Override
+    public AppConfig restore(ConfigBackupInfo backup) throws Exception {
+        if (backup == null || !backup.restorable) {
+            throw new IllegalArgumentException("该备份不可恢复");
+        }
+        if (!backup.name.startsWith(ConfigStore.LEGACY_PREFIX)) {
+            throw new IllegalArgumentException("不是 legacy 备份");
+        }
+        File f = ConfigStore.resolve(ctx.getFilesDir(), backup.name);
+        if (!f.isFile()) throw new java.io.IOException("备份文件不存在");
+        return restoreLegacy(f);
+    }
+
+    @Override
+    public AppConfig resetAfterCorruption() throws Exception {
+        return resetToDefaultsAfterCorruption();
+    }
+
+    private static List<ConfigBackupInfo> toBackupInfos(List<File> files, boolean restorable) {
+        List<ConfigBackupInfo> out = new java.util.ArrayList<ConfigBackupInfo>();
+        for (File f : files) {
+            out.add(new ConfigBackupInfo(f.getName(), f.lastModified(), f.length(), restorable));
+        }
+        return out;
     }
 
     /**
@@ -332,16 +427,16 @@ public final class ConfigRepository {
     /** 每次 App 保存：rev = max(内存 rev, 文件 rev, 1) + 1。 */
     private void writeWithRev(AppConfig c) throws Exception {
         long fileRev = readFileRev();
-        long base = Math.max(Math.max(c.rev, fileRev), 1L);
-        c.rev = base + 1;
+        c.rev = ConfigRevRules.nextRev(c.rev, fileRev);
         writeFile(c);
     }
 
     private long readFileRev() throws Exception {
         String raw = store.read();
-        if (raw == null) return 0L;
+        if (raw == null) return ConfigRevRules.normalizeFileRev(0L, false);
         try {
-            return ConfigCodec.fromJson(raw).rev;
+            // 已存在的文件视为已初始化：v2 无 rev / rev=0 在内存里按 1 处理。
+            return ConfigRevRules.normalizeFileRev(ConfigCodec.fromJson(raw).rev, true);
         } catch (Throwable t) {
             // 文件存在但无法解析：绝不能当成 0 然后覆盖。
             readOnly = true;

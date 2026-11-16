@@ -9,7 +9,7 @@
 
 1. 装 JDK 21 + Android SDK（`android-actions/setup-android`，SDK 37 / build-tools 37.0.0）
 2. **JVM 单测**（`tests/run.sh`，测试红则不构建）
-3. `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/死资源）
+3. `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/死资源）
 4. `./gradlew :app:assembleRelease`（0.14 起 R8 + 资源收缩，Gradle wrapper 固定 9.9.0）
 5. 无 `KEYSTORE_PASSWORD` 时产出未签名 APK；有 `KEYSTORE_BASE64` 时由
    `scripts/ci-sign.sh` 签名，否则警告 + 临时签名
@@ -33,7 +33,7 @@ scripts/check-all.sh --no-device  # 跳过设备契约
 
 | 层 | 内容 | 失败即中止 |
 |---|---|---|
-| 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/死资源） | ✅ |
+| 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/死资源） | ✅ |
 | JVM 单测 | `tests/run.sh`（全部断言） | ✅ |
 | APK 签名门禁 | `scripts/verify-apk.sh`（已签名/包名/versionCode/固定指纹；`--self-test` 覆盖负向用例） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |

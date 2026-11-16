@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.AppExecutors
 import plus.xiaoi.module.BridgeClient
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.Json
 import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
@@ -20,6 +19,7 @@ import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.core.PermissionProbe
 import plus.xiaoi.module.core.StateModel
+import plus.xiaoi.module.core.config.ConfigGateway
 import plus.xiaoi.module.ui.components.DimensionState
 import plus.xiaoi.module.ui.components.DimensionStatus
 import plus.xiaoi.module.ui.components.heroStatus
@@ -84,7 +84,10 @@ internal data class HomeUiState(
  * StateModel / IssueInputFactory / IssueResolver。未知事实保持“未确认/—”，
  * 不把 0 当成离线，也不把旧快照当成在线。</p>
  */
-internal class HomeStateHolder(context: Context) {
+internal class HomeStateHolder(
+    context: Context,
+    private val configGateway: ConfigGateway,
+) {
 
     private val app: Context = context.applicationContext ?: context
     private val busy = AtomicBoolean(false)
@@ -114,9 +117,9 @@ internal class HomeStateHolder(context: Context) {
     }
 
     private fun read(): HomeUiState {
-        val repo = ConfigRepository.get(app)
-        val config = repo.load()
-        val readOnly = repo.isReadOnly()
+        val loaded = configGateway.loadState()
+        val config = loaded.config
+        val readOnly = loaded.readOnly
         val now = System.currentTimeMillis()
         val bridge = BridgeStatus.get()
         val agent = AgentRuntimeStatus.get()

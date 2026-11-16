@@ -40,6 +40,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.core.NavStack
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.LocalXiaoiPageActions
 import plus.xiaoi.module.ui.components.LocalXiaoiTopBarInset
 import plus.xiaoi.module.ui.components.XiaoiBottomBar
@@ -213,6 +214,8 @@ private val NavStackSaver = listSaver<NavStack, String>(
 @Composable
 private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
     val context = LocalContext.current
+    // 进程级配置端口：Activity recreate（主题切换）后仍复用同一个 repository 实例。
+    val configGateway = remember(context) { ConfigRepository.get(context) }
     val colors = XiaoiTheme.colors
     val nav = rememberSaveable(saver = NavStackSaver) {
         val key = Routes.keyOf(initialRoute)
@@ -331,6 +334,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 .glassBackdropSource(glassBackdrop),
         ) {
             CompositionLocalProvider(
+                LocalConfigGateway provides configGateway,
                 LocalXiaoiPageActions provides pageActions,
                 // 页面把它当滚动内容内部的顶部留白，滚动时内容从顶栏下穿过。
                 LocalXiaoiTopBarInset provides topBarInset,

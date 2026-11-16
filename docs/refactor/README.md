@@ -91,6 +91,7 @@
 |---|---|
 | [PLAN.md](PLAN.md) | **权威计划**：最终决策、目标架构、工作包、迁移、验收 |
 | [WORKPACKAGES.md](WORKPACKAGES.md) | 8 个工作包的详细范围、验收、测试、子 Agent 指令模板 |
+| [LAYERING.md](LAYERING.md) | 分层与依赖倒置改造提案（WP0~WP5，未开始执行） |
 | [drafts/](drafts/) | 被否决的 v1 草案（HMAC/Provider/配对码），仅作讨论记录 |
 
 ## 8. 当前决策

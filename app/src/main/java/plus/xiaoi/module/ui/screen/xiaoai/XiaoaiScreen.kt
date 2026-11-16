@@ -27,6 +27,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.StatusHero
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
@@ -62,7 +63,8 @@ fun XiaoaiScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val holder = remember { XiaoaiStateHolder(context) }
+    val configGateway = LocalConfigGateway.current
+    val holder = remember(configGateway) { XiaoaiStateHolder(context, configGateway) }
     val scope = rememberCoroutineScope()
     val state = holder.state
     val lifecycleOwner = context as? LifecycleOwner

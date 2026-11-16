@@ -160,7 +160,7 @@ public class ConfigActivity extends BaseActivity {
             public void checkModelNow() { ConfigActivity.this.checkModelNow(true); }
             public ConfigDialogs dialogs() { return dialogs; }
             public boolean dirty() { return ConfigActivity.this.dirty; }
-        });
+        }, ConfigRepository.get(this));
         mcpSection = new McpSection(this, root, new McpSection.Host() {
             public AppConfig config() { return cfg; }
             public boolean alive() { return !isFinishing(); }

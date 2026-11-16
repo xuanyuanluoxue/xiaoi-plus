@@ -29,7 +29,7 @@ public final class ConfigStore {
 
     public static final String FILE_NAME = "config.json";
     private static final String TMP_NAME = FILE_NAME + ".tmp";
-    private static final String CORRUPT_PREFIX = FILE_NAME + ".corrupt.";
+    public static final String CORRUPT_PREFIX = FILE_NAME + ".corrupt.";
     public static final String LEGACY_PREFIX = FILE_NAME + ".legacy.";
 
     private final File dir;

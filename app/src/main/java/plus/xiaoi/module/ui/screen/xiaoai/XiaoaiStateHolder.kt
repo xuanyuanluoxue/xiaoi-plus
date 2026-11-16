@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import plus.xiaoi.module.ConfigRepository
 import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
@@ -12,6 +11,7 @@ import plus.xiaoi.module.core.ActivityFeed
 import plus.xiaoi.module.core.ActivityHub
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.StateModel
+import plus.xiaoi.module.core.config.ConfigGateway
 import plus.xiaoi.module.ui.components.DimensionState
 import plus.xiaoi.module.ui.components.DimensionStatus
 import plus.xiaoi.module.ui.components.heroStatus
@@ -41,10 +41,13 @@ internal data class XiaoaiUiState(
 )
 
 /**
- * 小爱页状态：读 [ConfigRepository] + [StateModel] + [BridgeStatus]，写只做「启用/暂停」。
+ * 小爱页状态：读 [ConfigGateway] + [StateModel] + [BridgeStatus]，写只做「启用/暂停」。
  * 主开关即时保存；失败回滚到文件事实并用 Snackbar 说明。
  */
-internal class XiaoaiStateHolder(private val context: Context) {
+internal class XiaoaiStateHolder(
+    private val context: Context,
+    private val configGateway: ConfigGateway,
+) {
 
     var state by mutableStateOf(XiaoaiUiState())
         private set
@@ -66,20 +69,20 @@ internal class XiaoaiStateHolder(private val context: Context) {
         state = state.copy(enabled = enable, saving = true)
         val result = runCatching {
             xiaoaiIo {
-                val repo = ConfigRepository.get(context)
-                val cfg = repo.load()
-                if (repo.isReadOnly()) {
+                val loaded = configGateway.loadState()
+                if (loaded.readOnly) {
                     return@xiaoaiIo "配置已损坏，保存被阻止"
                 }
+                val cfg = loaded.config
                 if (cfg.enabled == enable) return@xiaoaiIo ""
                 cfg.enabled = enable
-                val invalid = repo.validate(cfg)
+                val invalid = configGateway.validate(cfg)
                 if (invalid != null) return@xiaoaiIo "未保存：$invalid"
-                try {
-                    repo.save(cfg)
-                    ""
-                } catch (t: Throwable) {
-                    "保存失败，已回滚"
+                val saved = configGateway.saveIfRev(cfg, cfg.rev)
+                when {
+                    saved.conflict() -> "配置已被其他页面修改，已回滚"
+                    !saved.ok() -> "保存失败，已回滚"
+                    else -> ""
                 }
             }
         }
@@ -96,10 +99,10 @@ internal class XiaoaiStateHolder(private val context: Context) {
     }
 
     private fun read(): XiaoaiUiState {
-        val repo = ConfigRepository.get(context)
-        val cfg = repo.load()
-        val readOnly = repo.isReadOnly()
-        val loadError = repo.loadError()
+        val loaded = configGateway.loadState()
+        val cfg = loaded.config
+        val readOnly = loaded.readOnly
+        val loadError = loaded.error
         val now = System.currentTimeMillis()
         val snap = BridgeStatus.get()
         val agent = AgentRuntimeStatus.get()
