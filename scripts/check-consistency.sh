@@ -146,6 +146,21 @@ else
     echo "$CLIENT_LEAK" | sed 's/^/      /'
 fi
 
+# H3：BridgeLifecycle 只依赖 BridgeRuntime，不直接调用 Bridge
+LIFECYCLE_FILE="app/src/main/java/plus/xiaoi/module/bridge/BridgeLifecycle.java"
+LIFECYCLE_LEAK=""
+if [ -f "$LIFECYCLE_FILE" ]; then
+    LIFECYCLE_LEAK="$(strip_line_comments "$LIFECYCLE_FILE" \
+        | grep -nE '(^|[^A-Za-z0-9_])Bridge\.|plus\.xiaoi\.module\.Bridge\.|import[[:space:]]+(static[[:space:]]+)?(plus\.xiaoi\.module\.)?Bridge(;|[[:space:]]|\.)' \
+        || true)"
+fi
+if [ -z "$LIFECYCLE_LEAK" ]; then
+    pass "BridgeLifecycle 不依赖 Bridge（只依赖 BridgeRuntime 端口）"
+else
+    fail "BridgeLifecycle 仍直接依赖 Bridge（应走 BridgeRuntime）："
+    echo "$LIFECYCLE_LEAK" | sed 's/^/      /'
+fi
+
 # ---------------------------------------------------------------- 5) 死资源
 dead=0
 for f in app/src/main/res/layout/*.xml; do

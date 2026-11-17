@@ -28,9 +28,11 @@ import plus.xiaoi.module.agent.AppToolClient;
 import plus.xiaoi.module.agent.AppToolProtocol;
 import plus.xiaoi.module.bridge.BridgeControlClient;
 import plus.xiaoi.module.bridge.BridgeLifecycle;
+import plus.xiaoi.module.bridge.BridgeRuntime;
 import plus.xiaoi.module.core.BridgePolicy;
 import plus.xiaoi.module.core.LogLevel;
 import plus.xiaoi.module.core.RateLimiter;
+import plus.xiaoi.module.core.bridge.BridgeHttpPolicy;
 
 /**
  * 本地能力桥（可选）：默认只绑 127.0.0.1，开启「局域网访问」且 token 强到
@@ -90,8 +92,14 @@ public final class Bridge {
     /** /health、/island 每源 IP 限流；/mcp 有 Bearer，不参与。 */
     private static final RateLimiter LOW_TRUST_RATE = new RateLimiter(30, 10_000L);
 
-    /** 工具执行的 Android 侧后端；Mcp 层通过它访问一切非纯逻辑能力。 */
-    private static final Mcp.Host HOST = new Mcp.Host() {
+    /** 工具执行的 Android 侧后端（WP3：五个小端口，由同一实现填充）。 */
+    private static final McpHostsImpl MCP_HOSTS = new McpHostsImpl();
+    private static final Mcp.Hosts HOSTS = new Mcp.Hosts(
+            MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS);
+
+    private static final class McpHostsImpl implements Mcp.RuntimePort, Mcp.ConfigPort,
+            Mcp.CliPort, Mcp.IslandPort, Mcp.TelemetryPort {
+
         @Override
         public boolean facadeReady() { return sFacade != null; }
 
@@ -157,9 +165,90 @@ public final class Bridge {
         public AppToolProtocol.Result createTodo(String title, String content) {
             return AppToolClient.createTodo(appContext(), title, content);
         }
-    };
+    }
 
     private Bridge() {}
+
+    /**
+     * 生命周期运行时适配器（WP3）：把静态 Bridge 操作暴露给
+     * {@link BridgeLifecycle}，使生命周期不再 import Bridge。
+     */
+    private static final BridgeRuntime RUNTIME = new BridgeRuntime() {
+        @Override
+        public android.content.Context appContext() {
+            return Bridge.appContext();
+        }
+
+        @Override
+        public String processName() {
+            return Bridge.processName();
+        }
+
+        @Override
+        public void refreshPolicyFromConfig() {
+            Bridge.refreshPolicyFromConfig();
+        }
+
+        @Override
+        public void ensureCliBinding() {
+            Bridge.ensureCliBinding();
+        }
+
+        @Override
+        public boolean shouldListen() {
+            return Bridge.shouldListen();
+        }
+
+        @Override
+        public boolean hasFacade() {
+            return Bridge.hasFacade();
+        }
+
+        @Override
+        public boolean hasCli() {
+            return Bridge.hasCli();
+        }
+
+        @Override
+        public boolean isServerRunning() {
+            return Bridge.isServerRunning();
+        }
+
+        @Override
+        public void stopServer() {
+            Bridge.stopServer();
+        }
+
+        @Override
+        public boolean isBoundLan() {
+            return Bridge.isBoundLan();
+        }
+
+        @Override
+        public boolean bindsLan() {
+            return Bridge.bindsLan();
+        }
+
+        @Override
+        public boolean startServerIfLeader() {
+            return Bridge.startServerIfLeader();
+        }
+
+        @Override
+        public int port() {
+            return Bridge.port();
+        }
+
+        @Override
+        public void controlRefresh() {
+            BridgeControlClient.refresh();
+        }
+
+        @Override
+        public void controlOnBridgeStarted() {
+            BridgeControlClient.onBridgeStarted();
+        }
+    };
 
     /**
      * 由 Hook 在抓到 OsbotFacadeImpl 实例后调用；幂等，可重复调用。
@@ -225,7 +314,7 @@ public final class Bridge {
                 sBridge = config.bridge();
             }
             startControlPlane();
-            BridgeLifecycle.start(appContext());
+            BridgeLifecycle.start(appContext(), RUNTIME);
             log("能力桥进程已就绪 pid=" + android.os.Process.myPid()
                     + " process=" + processName()
                     + " mcp=" + sBridge
@@ -374,7 +463,7 @@ public final class Bridge {
     public static void updateToken(String token) {
         try {
             sToken = BridgePolicy.normalize(token);
-            BridgeLifecycle.apply();
+            BridgeLifecycle.apply(RUNTIME);
         } catch (Throwable ignored) {
         }
     }
@@ -383,7 +472,7 @@ public final class Bridge {
     public static void updateAccess(boolean lan, boolean bridge) {
         sLan = lan;
         sBridge = bridge;
-        BridgeLifecycle.apply();
+        BridgeLifecycle.apply(RUNTIME);
     }
 
     // ------------------------------------------------------------- hook 与 CLI 绑定
@@ -683,7 +772,7 @@ public final class Bridge {
             }
 
             // 低信任端点限流：每源 IP 每 10s 最多 30 次；/mcp 有 Bearer，不参与。
-            if ("/health".equals(req.path) || "/island".equals(req.path)) {
+            if (BridgeHttpPolicy.isLowTrust(req.path)) {
                 if (!LOW_TRUST_RATE.allow(req.path + "|" + peerKey(s))) {
                     Logs.event(LogLevel.STANDARD, "W", "http",
                             "429 " + req.path + " source=" + (isLoopback(s) ? "loopback" : "lan"));
@@ -693,17 +782,17 @@ public final class Bridge {
             }
 
             // MCP：标准 JSON-RPC over HTTP，只接受 POST（GET 返回 405）。
-            if ("/mcp".equals(req.path)) {
+            if (BridgeHttpPolicy.isMcp(req.path)) {
                 handleMcp(s, req);
                 return;
             }
             // 手动触发一次超级岛（设置页按钮用）
-            if ("/island".equals(req.path)) {
+            if (BridgeHttpPolicy.isLoopbackOnly(req.path)) {
                 handleIsland(s, req);
                 return;
             }
             // WP4：配置只由手机 App 写；旧 HTTP 推送固定 410，不读 body、不写 prefs。
-            if ("/config".equals(req.path)) {
+            if (BridgeHttpPolicy.isConfig(req.path)) {
                 handleConfig(s, req);
                 return;
             }
@@ -730,7 +819,7 @@ public final class Bridge {
                 long since = 0;
                 try { limit = Integer.parseInt(req.query.get("limit")); } catch (Throwable ignored) {}
                 try { since = Long.parseLong(req.query.get("since")); } catch (Throwable ignored) {}
-                if (limit <= 0 || limit > 300) limit = 80;
+                limit = BridgeHttpPolicy.clampLogLimit(limit);
                 respondJson(s, 200, Logs.dump(limit, since));
                 return;
             }
@@ -738,7 +827,7 @@ public final class Bridge {
             if ("/stats".equals(req.path)) {
                 int days = 7;
                 try { days = Integer.parseInt(req.query.get("days")); } catch (Throwable ignored) {}
-                if (days <= 0 || days > 90) days = 7;
+                days = BridgeHttpPolicy.clampStatsDays(days);
                 respondJson(s, 200, Usage.stats(days));
                 return;
             }
@@ -797,7 +886,7 @@ public final class Bridge {
                 respondText(s, 401, "unauthorized");
                 return;
             }
-            String out = Mcp.handle(req.body, HOST);
+            String out = Mcp.handle(req.body, HOSTS);
             if (out == null) {
                 Http.respondAccepted(s.getOutputStream());
                 return;

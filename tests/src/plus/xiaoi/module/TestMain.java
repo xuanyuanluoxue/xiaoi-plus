@@ -237,6 +237,18 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL XiaoiHookPolicyTest 套件异常: " + t);
         }
+        try {
+            failed += BridgeServiceTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL BridgeServiceTest 套件异常: " + t);
+        }
+        try {
+            failed += BridgeHttpPolicyTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL BridgeHttpPolicyTest 套件异常: " + t);
+        }
         System.out.println();
         if (failed == 0) {
             System.out.println("==> 全部通过");

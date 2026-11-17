@@ -18,7 +18,7 @@ public final class McpTest {
 
     // ------------------------------------------------------------ FakeHost
 
-    private static final class FakeHost implements Mcp.Host {
+    private static final class FakeHost implements Mcp.RuntimePort, Mcp.ConfigPort, Mcp.CliPort, Mcp.IslandPort, Mcp.TelemetryPort {
         String version = "9.9.9";
         boolean facade = true;
         boolean cli = true;
@@ -107,12 +107,18 @@ public final class McpTest {
             if (todoThrow) throw new IllegalStateException("boom");
             return todoResult;
         }
+
+        /** 同一实例填入五个端口，保持 telemetry 计数与 CLI 响应共享。 */
+        Mcp.Hosts hosts() {
+            return new Mcp.Hosts(this, this, this, this, this);
+        }
     }
 
     // ------------------------------------------------------------ 测试
 
     public static int run() {
         FakeHost h = new FakeHost();
+        Mcp.Hosts hs = h.hosts();
         h.cliResponses.put("session.open", "{\"id\":\"mcp\",\"result\":{\"sessionId\":\"sid-1\"}}");
         h.cliResponses.put("agent.submit", "好的，收到");
 
@@ -123,42 +129,42 @@ public final class McpTest {
                         + "\"instructions\":\"小爱同学（手机端）能力桥：xiaoai_submit 让小爱执行一句话任务，"
                         + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，xiaoai_stats 看三方/官方模型调用量。"
                         + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。\"}}",
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", hs));
 
         eq("ping", "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}",
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"ping\"}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"ping\"}", hs));
 
         eq("ping string id", "{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"result\":{}}",
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"method\":\"ping\"}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"method\":\"ping\"}", hs));
 
         eq("empty body", "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"empty body\"}}",
-                Mcp.handle("", h));
+                Mcp.handle("", hs));
 
         eq("parse error", "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"parse error\"}}",
-                Mcp.handle("this is not json", h));
+                Mcp.handle("this is not json", hs));
 
         eq("non-object body is parse error",
                 "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"parse error\"}}",
-                Mcp.handle("[1,2]", h));
+                Mcp.handle("[1,2]", hs));
 
         eq("missing method", "{\"jsonrpc\":\"2.0\",\"id\":9,\"error\":{\"code\":-32600,\"message\":\"missing method\"}}",
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":9}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":9}", hs));
 
         eq("unknown method", "{\"jsonrpc\":\"2.0\",\"id\":8,\"error\":{\"code\":-32601,\"message\":\"method not found: no/such/method\"}}",
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"no/such/method\"}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"no/such/method\"}", hs));
 
         eq("notification returns null", null,
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}", hs));
 
         eq("explicit null id is notification", null,
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":null,\"method\":\"notifications/initialized\"}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":null,\"method\":\"notifications/initialized\"}", hs));
 
         eq("missing method before notification check",
                 "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32600,\"message\":\"missing method\"}}",
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":null}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":null}", hs));
 
         // ------------------------------------------------------------ tools/list（结构 + 独立转录的描述）
-        String out = Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/list\"}", h);
+        String out = Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/list\"}", hs);
         Object v = Json.read(out);
         Map<?, ?> root = (Map<?, ?>) v;
         eq("frame jsonrpc", "2.0", root.get("jsonrpc"));
@@ -216,14 +222,14 @@ public final class McpTest {
         eq("xiaoai_status",
                 "{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"facade=true cli=true port=8771 version=9.9.9\"}],\"isError\":false}}",
-                call(h, 4, "xiaoai_status", null));
+                call(hs, 4, "xiaoai_status", null));
 
         // ------------------------------------------------------------ tools/call：submit（自动开会话）
         h.cliCalls.clear();
         eq("xiaoai_submit",
                 "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"好的，收到\"}],\"isError\":false}}",
-                call(h, 7, "xiaoai_submit", "{\"text\":\"打开支付宝\"}"));
+                call(hs, 7, "xiaoai_submit", "{\"text\":\"打开支付宝\"}"));
         eq("submit calls session.open", "{\"id\":\"mcp\",\"method\":\"session.open\",\"params\":{}}",
                 h.cliCalls.get(0));
         eq("submit calls agent.submit",
@@ -232,28 +238,28 @@ public final class McpTest {
 
         // sessionId 透传则不再开新会话
         h.cliCalls.clear();
-        call(h, 7, "xiaoai_submit", "{\"text\":\"再说一次\",\"sessionId\":\"sid-9\"}");
+        call(hs, 7, "xiaoai_submit", "{\"text\":\"再说一次\",\"sessionId\":\"sid-9\"}");
         eq("submit reuses session", "{\"id\":\"mcp\",\"method\":\"agent.submit\",\"params\":{\"sessionId\":\"sid-9\",\"text\":\"再说一次\"}}",
                 h.cliCalls.get(0));
 
         eq("submit missing text",
                 "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: text\"}],\"isError\":true}}",
-                call(h, 7, "xiaoai_submit", null));
+                call(hs, 7, "xiaoai_submit", null));
 
         // session.open 失败 → 错误并带摘要
         h.cliResponses.put("session.open", "ERR boom");
         eq("submit session.open failed",
                 "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"session.open failed: ERR boom\"}],\"isError\":true}}",
-                call(h, 7, "xiaoai_submit", "{\"text\":\"hi\"}"));
+                call(hs, 7, "xiaoai_submit", "{\"text\":\"hi\"}"));
 
         // CLI 未就绪
         h.cli = false;
         eq("submit cli not ready",
                 "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"ERR cli service not ready\"}],\"isError\":true}}",
-                call(h, 7, "xiaoai_submit", "{\"text\":\"hi\",\"sessionId\":\"s\"}"));
+                call(hs, 7, "xiaoai_submit", "{\"text\":\"hi\",\"sessionId\":\"s\"}"));
         h.cli = true;
 
         // ------------------------------------------------------------ tools/call：todo_create（确定性）
@@ -262,22 +268,22 @@ public final class McpTest {
         eq("xiaoai_todo_create default content",
                 "{\"jsonrpc\":\"2.0\",\"id\":30,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"{\\\"noteId\\\":\\\"n1\\\"}\"}],\"isError\":false}}",
-                call(h, 30, "xiaoai_todo_create", "{\"title\":\"买牛奶\"}"));
+                call(hs, 30, "xiaoai_todo_create", "{\"title\":\"买牛奶\"}"));
         eq("todo title passed", "买牛奶", h.todoTitle);
         eq("todo default content passed", "- [ ] 买牛奶", h.todoContent);
 
-        call(h, 31, "xiaoai_todo_create",
+        call(hs, 31, "xiaoai_todo_create",
                 "{\"title\":\"购物\",\"content\":\"- [ ] 牛奶\\n- [ ] 鸡蛋\"}");
         eq("todo explicit content preserved", "- [ ] 牛奶\n- [ ] 鸡蛋", h.todoContent);
 
-        call(h, 32, "xiaoai_todo_create", "{\"title\":\" 空白 \",\"content\":\"   \"}");
+        call(hs, 32, "xiaoai_todo_create", "{\"title\":\" 空白 \",\"content\":\"   \"}");
         eq("todo blank content defaults", "- [ ] 空白", h.todoContent);
 
         StringBuilder longTitle = new StringBuilder();
         for (int i = 0; i < Mcp.TODO_TITLE_MAX + 1; i++) longTitle.append('t');
         int callsBeforeLongTitle = h.todoCalls;
         ok("todo title length cap",
-                call(h, 36, "xiaoai_todo_create", "{\"title\":\"" + longTitle + "\"}")
+                call(hs, 36, "xiaoai_todo_create", "{\"title\":\"" + longTitle + "\"}")
                         .contains("title too long"));
         eq("todo title cap does not call host", callsBeforeLongTitle, h.todoCalls);
 
@@ -285,7 +291,7 @@ public final class McpTest {
         for (int i = 0; i < Mcp.TODO_CONTENT_MAX + 1; i++) longContent.append('c');
         int callsBeforeLongContent = h.todoCalls;
         ok("todo content length cap",
-                call(h, 37, "xiaoai_todo_create",
+                call(hs, 37, "xiaoai_todo_create",
                         "{\"title\":\"x\",\"content\":\"" + longContent + "\"}")
                         .contains("content too long"));
         eq("todo content cap does not call host", callsBeforeLongContent, h.todoCalls);
@@ -293,15 +299,15 @@ public final class McpTest {
         eq("todo missing title",
                 "{\"jsonrpc\":\"2.0\",\"id\":33,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: title\"}],\"isError\":true}}",
-                call(h, 33, "xiaoai_todo_create", "{\"content\":\"- [ ] x\"}"));
+                call(hs, 33, "xiaoai_todo_create", "{\"content\":\"- [ ] x\"}"));
 
         h.todoResult = AppToolProtocol.error("CALL_TIMEOUT", "handleRequest 超过 5000ms");
-        String todoErr = call(h, 34, "xiaoai_todo_create", "{\"title\":\"超时\"}");
+        String todoErr = call(hs, 34, "xiaoai_todo_create", "{\"title\":\"超时\"}");
         ok("todo provider error isError", todoErr.contains("\"isError\":true"));
         ok("todo provider error structured", textOf(todoErr).contains("\"error\":\"CALL_TIMEOUT\""));
 
         h.todoThrow = true;
-        String todoThrowOut = call(h, 35, "xiaoai_todo_create", "{\"title\":\"异常\"}");
+        String todoThrowOut = call(hs, 35, "xiaoai_todo_create", "{\"title\":\"异常\"}");
         ok("todo host exception isError", todoThrowOut.contains("\"isError\":true"));
         ok("todo host exception structured", textOf(todoThrowOut).contains("\"error\":\"HOST_ERROR\""));
         h.todoThrow = false;
@@ -312,28 +318,28 @@ public final class McpTest {
         eq("xiaoai_cli",
                 "{\"jsonrpc\":\"2.0\",\"id\":11,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"AUTH-OK\"}],\"isError\":false}}",
-                call(h, 11, "xiaoai_cli", "{\"cmd\":\"{\\\"id\\\":\\\"1\\\",\\\"method\\\":\\\"auth.status\\\"}\"}"));
+                call(hs, 11, "xiaoai_cli", "{\"cmd\":\"{\\\"id\\\":\\\"1\\\",\\\"method\\\":\\\"auth.status\\\"}\"}"));
 
-        call(h, 12, "xiaoai_logs", "{\"limit\":5,\"since\":100}");
+        call(hs, 12, "xiaoai_logs", "{\"limit\":5,\"since\":100}");
         eq("xiaoai_logs passes limit", 5, h.logsLimit);
         eq("xiaoai_logs passes since", 100L, h.logsSince);
-        call(h, 12, "xiaoai_logs", null);
+        call(hs, 12, "xiaoai_logs", null);
         eq("xiaoai_logs default limit", 80, h.logsLimit);
         eq("xiaoai_logs default since", 0L, h.logsSince);
 
-        call(h, 14, "xiaoai_stats", null);
+        call(hs, 14, "xiaoai_stats", null);
         eq("xiaoai_stats default days", 7, h.statsDays);
-        ok("xiaoai_stats returns today buckets", textOf(call(h, 14, "xiaoai_stats", null))
+        ok("xiaoai_stats returns today buckets", textOf(call(hs, 14, "xiaoai_stats", null))
                 .contains("\"today\":{\"third\":2,\"official\":1}"));
-        call(h, 14, "xiaoai_stats", "{\"days\":3}");
+        call(hs, 14, "xiaoai_stats", "{\"days\":3}");
         eq("xiaoai_stats honors days", 3, h.statsDays);
-        call(h, 14, "xiaoai_stats", "{\"days\":999}");
+        call(hs, 14, "xiaoai_stats", "{\"days\":999}");
         eq("xiaoai_stats clamps days", 7, h.statsDays);
 
-        call(h, 13, "xiaoai_island", null);
+        call(hs, 13, "xiaoai_island", null);
         eq("island default text", "deepseek-chat", h.islandText);
         eq("island default force", true, h.islandForce);
-        call(h, 13, "xiaoai_island", "{\"text\":\"自定义\",\"force\":false}");
+        call(hs, 13, "xiaoai_island", "{\"text\":\"自定义\",\"force\":false}");
         eq("island custom text", "自定义", h.islandText);
         eq("island custom force", false, h.islandForce);
 
@@ -343,19 +349,19 @@ public final class McpTest {
                         + "\"text\":\"{\\\"model\\\":\\\"deepseek-chat\\\",\\\"baseUrl\\\":\\\"https://api.deepseek.com/v1\\\","
                         + "\\\"enabled\\\":true,\\\"marker\\\":true,\\\"markerTemplate\\\":\\\"\\\",\\\"bridge\\\":true,\\\"lan\\\":false,\\\"apiKeySet\\\":true,\\\"tokenSet\\\":true,"
                         + "\\\"port\\\":8771,\\\"version\\\":\\\"9.9.9\\\"}\"}],\"isError\":false}}",
-                call(h, 5, "xiaoai_config", null));
+                call(hs, 5, "xiaoai_config", null));
 
         // ------------------------------------------------------------ tools/call：switch_model
         eq("switch_model model only",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"{\\\"ok\\\":true,\\\"model\\\":\\\"m2\\\",\\\"baseUrl\\\":\\\"https://api.deepseek.com/v1\\\","
                         + "\\\"apiKeySet\\\":true,\\\"changed\\\":true}\"}],\"isError\":false}}",
-                call(h, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
+                call(hs, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
         eq("switch_model keeps baseUrl", "https://api.deepseek.com/v1", h.written.baseUrl);
         eq("switch_model keeps apiKey", "sk-test", h.written.apiKey);
         eq("switch_model keeps token", "tok-1", h.written.token);
 
-        String swOut = call(h, 10, "xiaoai_switch_model", "{\"model\":\"deepseek-chat\"}");
+        String swOut = call(hs, 10, "xiaoai_switch_model", "{\"model\":\"deepseek-chat\"}");
         String swText = textOf(swOut);
         eq("switch_model same values changed=false", Boolean.FALSE,
                 ((Map<?, ?>) Json.read(swText)).get("changed"));
@@ -365,14 +371,14 @@ public final class McpTest {
         eq("switch_model rejects baseUrl",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"端点和密钥只能在手机 App 设置；xiaoai_switch_model 只接受 model / marker（baseUrl 已拒绝）\"}],\"isError\":true}}",
-                call(h, 10, "xiaoai_switch_model",
+                call(hs, 10, "xiaoai_switch_model",
                         "{\"model\":\"m2\",\"baseUrl\":\"https://x/\",\"apiKey\":\"k2\",\"marker\":false,\"bridge\":false}"));
         ok("switch_model 拒绝后未写配置", h.written == null);
 
         String[] banned = {"apiKey", "bridge", "lan", "token", "enabled", "markerTemplate"};
         for (String key : banned) {
             h.written = null;
-            String rejOut = call(h, 10, "xiaoai_switch_model",
+            String rejOut = call(hs, 10, "xiaoai_switch_model",
                     "{\"model\":\"m2\",\"" + key + "\":\"x\"}");
             ok("switch_model 拒绝 " + key, textOf(rejOut).contains("isError")
                     || rejOut.contains("\"isError\":true"));
@@ -381,7 +387,7 @@ public final class McpTest {
 
         // marker 是允许的
         h.written = null;
-        call(h, 10, "xiaoai_switch_model", "{\"model\":\"m2\",\"marker\":false}");
+        call(hs, 10, "xiaoai_switch_model", "{\"model\":\"m2\",\"marker\":false}");
         ok("switch_model 允许 marker", h.written != null && !h.written.marker);
         eq("switch_model 保留 baseUrl", "https://api.deepseek.com/v1", h.written.baseUrl);
         eq("switch_model 保留 apiKey", "sk-test", h.written.apiKey);
@@ -391,38 +397,38 @@ public final class McpTest {
         eq("switch_model no model",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: model\"}],\"isError\":true}}",
-                call(h, 10, "xiaoai_switch_model", "{\"marker\":false}"));
+                call(hs, 10, "xiaoai_switch_model", "{\"marker\":false}"));
 
         h.cfgBase = "";
         eq("switch_model no endpoint",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: baseUrl（当前没有可用端点，请在手机 App 设置）\"}],\"isError\":true}}",
-                call(h, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
+                call(hs, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
         h.cfgBase = "https://api.deepseek.com/v1";
 
         h.writeOk = false;
         eq("switch_model write failed",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"write prefs failed\"}],\"isError\":true}}",
-                call(h, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
+                call(hs, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
         h.writeOk = true;
 
         // ------------------------------------------------------------ 未知工具与参数形态
         eq("unknown tool",
                 "{\"jsonrpc\":\"2.0\",\"id\":20,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"unknown tool: zzz\"}],\"isError\":true}}",
-                call(h, 20, "zzz", null));
+                call(hs, 20, "zzz", null));
 
         eq("tools/call without params",
                 "{\"jsonrpc\":\"2.0\",\"id\":21,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"unknown tool: \"}],\"isError\":true}}",
-                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"tools/call\"}", h));
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"tools/call\"}", hs));
 
         eq("tools/call non-object arguments",
                 "{\"jsonrpc\":\"2.0\",\"id\":22,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: text\"}],\"isError\":true}}",
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":22,\"method\":\"tools/call\","
-                        + "\"params\":{\"name\":\"xiaoai_submit\",\"arguments\":\"x\"}}", h));
+                        + "\"params\":{\"name\":\"xiaoai_submit\",\"arguments\":\"x\"}}", hs));
 
         // ------------------------------------------------------------ 参数白名单
         ok("rejectedSwitchArg null", Mcp.rejectedSwitchArg(null) == null);
@@ -434,13 +440,13 @@ public final class McpTest {
 
         // tools/call 元数据回调（不含参数值）
         h.toolCalls = 0;
-        call(h, 98, "xiaoai_status", null);
+        call(hs, 98, "xiaoai_status", null);
         eq("onToolCall count", 1, h.toolCalls);
         eq("onToolCall tool", "xiaoai_status", h.lastTool);
         ok("onToolCall ok", h.lastOk);
         eq("onToolCall args", 0, h.lastArgs);
         ok("onToolCall elapsed >= 0", h.lastElapsed >= 0);
-        call(h, 99, "no_such_tool", null);
+        call(hs, 99, "no_such_tool", null);
         eq("onToolCall failure count", 2, h.toolCalls);
         ok("onToolCall failure ok=false", !h.lastOk);
 
@@ -448,7 +454,7 @@ public final class McpTest {
     }
 
     /** 便捷：构造 tools/call 报文并取响应。arguments 为 null 时不带 arguments 字段。 */
-    private static String call(Mcp.Host h, int id, String name, String argsJson) {
+    private static String call(Mcp.Hosts hosts, int id, String name, String argsJson) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"jsonrpc\":\"2.0\",\"id\":").append(id)
                 .append(",\"method\":\"tools/call\",\"params\":{\"name\":\"").append(name).append("\"");
@@ -456,7 +462,7 @@ public final class McpTest {
             sb.append(",\"arguments\":").append(argsJson);
         }
         sb.append("}}");
-        return Mcp.handle(sb.toString(), h);
+        return Mcp.handle(sb.toString(), hosts);
     }
 
     /** 取 tools/call 响应里 content[0].text（text 内嵌 JSON）。 */

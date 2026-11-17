@@ -24,10 +24,10 @@ public final class Mcp {
     public static final String PROTOCOL = "2025-03-26";
     public static final String SERVER = "xiaoi-plus";
 
-    // ------------------------------------------------------------- 后端接口
+    // ------------------------------------------------------------- 后端端口（WP3）
 
-    /** 工具执行后端；由 Bridge 提供 Android 侧实现，测试用 FakeHost。 */
-    public interface Host {
+    /** 运行时状态：facade/CLI/端口/版本。 */
+    public interface RuntimePort {
         boolean facadeReady();
 
         boolean cliReady();
@@ -35,18 +35,28 @@ public final class Mcp {
         int port();
 
         String versionName();
+    }
 
-        /** 执行一条小爱 CLI JSON；服务未就绪返回 null。 */
-        String callCli(String cmd);
-
-        /** 当前生效配置快照。 */
+    /** 配置读写：只读快照 + 受限写入（远程只能改 model/marker）。 */
+    public interface ConfigPort {
         Snapshot config();
 
-        /** 写入 prefs 并热更新；失败返回 false（工具层转成错误文案）。 */
         boolean writeConfig(Snapshot next);
+    }
 
+    /** 小爱 CLI 透传。 */
+    public interface CliPort {
+        /** 执行一条小爱 CLI JSON；服务未就绪返回 null。 */
+        String callCli(String cmd);
+    }
+
+    /** 超级岛。 */
+    public interface IslandPort {
         boolean showIsland(String text, boolean force);
+    }
 
+    /** 日志/统计/待办/单次调用元数据。 */
+    public interface TelemetryPort {
         String logs(int limit, long since);
 
         /** 调用量统计 JSON（结构见 {@link UsageCounter#stats}）。 */
@@ -55,12 +65,33 @@ public final class Mcp {
         /** 确定性创建 Notes 待办；失败时 Result.text 是结构化错误。 */
         AppToolProtocol.Result createTodo(String title, String content);
 
-        /**
-         * 单次 tools/call 的元数据回调（工具名/成败/耗时/参数个数），不含参数值。
-         * 默认空实现：桌面单测的 FakeHost 无需改动。
-         */
+        /** 单次 tools/call 的元数据回调；不含参数值。 */
         default void onToolCall(String tool, boolean ok, long elapsedMs, int argCount) {}
+    }
 
+    /**
+     * 8771 工具后端（WP3）：把原 11 方法 god 接口拆成 5 个能力端口。
+     * Bridge 用同一实现填满五个槽位；测试可分别注入。
+     */
+    public static final class Hosts {
+        public final RuntimePort runtime;
+        public final ConfigPort config;
+        public final CliPort cli;
+        public final IslandPort island;
+        public final TelemetryPort telemetry;
+
+        public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
+                     IslandPort island, TelemetryPort telemetry) {
+            if (runtime == null || config == null || cli == null
+                    || island == null || telemetry == null) {
+                throw new IllegalArgumentException("Mcp.Hosts 端口不能为空");
+            }
+            this.runtime = runtime;
+            this.config = config;
+            this.cli = cli;
+            this.island = island;
+            this.telemetry = telemetry;
+        }
     }
 
     /** 配置的只读快照（Config 的纯 JVM 投影）。 */
@@ -115,7 +146,7 @@ public final class Mcp {
      *
      * @return 响应体；通知（无 id）返回 null，调用方应回 202 空体
      */
-    public static String handle(String body, Host host) {
+    public static String handle(String body, Hosts hosts) {
         try {
             if (body == null || body.length() == 0) {
                 return rpcError(null, -32700, "empty body");
@@ -138,7 +169,7 @@ public final class Mcp {
             if (id == null) return null;
 
             if ("initialize".equals(m)) {
-                return rpcResult(id, initializeResult(host.versionName()));
+                return rpcResult(id, initializeResult(hosts.runtime.versionName()));
             }
             if ("ping".equals(m)) {
                 return rpcResult(id, Json.obj());
@@ -156,10 +187,10 @@ public final class Mcp {
                     if (a instanceof Map) argCount = ((Map<?, ?>) a).size();
                 }
                 long started = System.currentTimeMillis();
-                Map<String, Object> result = toolsCall(params, host);
+                Map<String, Object> result = toolsCall(params, hosts);
                 try {
                     boolean ok = !Boolean.TRUE.equals(result.get("isError"));
-                    host.onToolCall(tool, ok, System.currentTimeMillis() - started, argCount);
+                    hosts.telemetry.onToolCall(tool, ok, System.currentTimeMillis() - started, argCount);
                 } catch (Throwable ignored) {
                     // 记录失败不能影响工具结果
                 }
@@ -405,7 +436,7 @@ public final class Mcp {
 
     // ------------------------------------------------------------- 工具执行
 
-    static Map<String, Object> toolsCall(Map<?, ?> params, Host host) {
+    static Map<String, Object> toolsCall(Map<?, ?> params, Hosts hosts) {
         String name = params == null ? "" : Json.optString(params, "name", "");
         Map<?, ?> args = null;
         if (params != null) {
@@ -414,10 +445,10 @@ public final class Mcp {
         }
         try {
             if ("xiaoai_status".equals(name)) {
-                String t = "facade=" + host.facadeReady()
-                        + " cli=" + host.cliReady()
-                        + " port=" + host.port()
-                        + " version=" + host.versionName();
+                String t = "facade=" + hosts.runtime.facadeReady()
+                        + " cli=" + hosts.runtime.cliReady()
+                        + " port=" + hosts.runtime.port()
+                        + " version=" + hosts.runtime.versionName();
                 return toolText(t, false);
             }
             if ("xiaoai_submit".equals(name)) {
@@ -425,14 +456,14 @@ public final class Mcp {
                 if (text.length() == 0) return toolText("missing argument: text", true);
                 String sid = Json.optString(args, "sessionId", "").trim();
                 if (sid.length() == 0) {
-                    String open = host.callCli(cliJson("session.open", Json.obj()));
+                    String open = hosts.cli.callCli(cliJson("session.open", Json.obj()));
                     sid = extractSessionId(open);
                     if (sid == null) return toolText("session.open failed: " + brief(open), true);
                 }
                 Map<String, Object> p = Json.obj();
                 p.put("sessionId", sid);
                 p.put("text", text);
-                String out = host.callCli(cliJson("agent.submit", p));
+                String out = hosts.cli.callCli(cliJson("agent.submit", p));
                 if (out == null) return toolText("ERR cli service not ready", true);
                 return toolText(out, false);
             }
@@ -451,7 +482,7 @@ public final class Mcp {
                 }
                 AppToolProtocol.Result r;
                 try {
-                    r = host.createTodo(title, content);
+                    r = hosts.telemetry.createTodo(title, content);
                 } catch (Throwable t) {
                     r = AppToolProtocol.error("HOST_ERROR", "Notes 调用层异常", String.valueOf(t));
                 }
@@ -464,12 +495,12 @@ public final class Mcp {
             if ("xiaoai_cli".equals(name)) {
                 String cmd = Json.optString(args, "cmd", "").trim();
                 if (cmd.length() == 0) return toolText("missing argument: cmd", true);
-                String out = host.callCli(cmd);
+                String out = hosts.cli.callCli(cmd);
                 if (out == null) return toolText("ERR cli service not ready", true);
                 return toolText(out, false);
             }
             if ("xiaoai_config".equals(name)) {
-                Snapshot c = host.config();
+                Snapshot c = hosts.config.config();
                 Map<String, Object> r = Json.obj();
                 r.put("model", c.model);
                 r.put("baseUrl", c.baseUrl);
@@ -480,12 +511,12 @@ public final class Mcp {
                 r.put("lan", c.lan);
                 r.put("apiKeySet", c.apiKey.length() > 0);
                 r.put("tokenSet", c.token.length() > 0);
-                r.put("port", (long) host.port());
-                r.put("version", host.versionName());
+                r.put("port", (long) hosts.runtime.port());
+                r.put("version", hosts.runtime.versionName());
                 return toolText(Json.write(r), false);
             }
             if ("xiaoai_switch_model".equals(name)) {
-                Snapshot cur = host.config();
+                Snapshot cur = hosts.config.config();
                 // WP4 D10：远程只能改 model/marker；端点和密钥只能在手机 App 设置。
                 String rejected = rejectedSwitchArg(args);
                 if (rejected != null) return toolText(rejected, true);
@@ -498,7 +529,7 @@ public final class Mcp {
                 }
                 Snapshot next = new Snapshot(cur.baseUrl, cur.apiKey, model, marker,
                         cur.bridge, cur.token, cur.markerTemplate, cur.enabled, cur.lan);
-                if (!host.writeConfig(next)) return toolText("write prefs failed", true);
+                if (!hosts.config.writeConfig(next)) return toolText("write prefs failed", true);
                 Map<String, Object> r = Json.obj();
                 r.put("ok", true);
                 r.put("model", model);
@@ -508,10 +539,10 @@ public final class Mcp {
                 return toolText(Json.write(r), false);
             }
             if ("xiaoai_island".equals(name)) {
-                Snapshot c = host.config();
+                Snapshot c = hosts.config.config();
                 String t = Json.optString(args, "text", "").trim();
                 String model = t.length() > 0 ? t : c.model;
-                boolean ok = host.showIsland(model, Json.optBoolean(args, "force", true));
+                boolean ok = hosts.island.showIsland(model, Json.optBoolean(args, "force", true));
                 Map<String, Object> r = Json.obj();
                 r.put("ok", ok);
                 r.put("alreadyShown", !ok);
@@ -522,12 +553,12 @@ public final class Mcp {
                 int limit = (int) Json.optLong(args, "limit", 80);
                 if (limit <= 0) limit = 80;
                 long since = Json.optLong(args, "since", 0);
-                return toolText(host.logs(limit, since), false);
+                return toolText(hosts.telemetry.logs(limit, since), false);
             }
             if ("xiaoai_stats".equals(name)) {
                 int days = (int) Json.optLong(args, "days", 7);
                 if (days <= 0 || days > 90) days = 7;
-                return toolText(host.stats(days), false);
+                return toolText(hosts.telemetry.stats(days), false);
             }
             return toolText("unknown tool: " + name, true);
         } catch (Throwable t) {

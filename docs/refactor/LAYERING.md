@@ -1,6 +1,6 @@
 # 分层与依赖倒置改造：执行计划
 
-> 状态：**WP0、WP1a、WP1b、WP2 已完成；WP3 待开始**
+> 状态：**WP0、WP1a、WP1b、WP2、WP3 已完成；WP4 待开始**
 > 基线：`v0.15.0`（versionCode 22，2026-11-11），HEAD `d753fb4`
 > 日期：2026-11-16
 > 相关：[architecture.md](../architecture.md) · [refactor/PLAN.md](PLAN.md) · [agent/PLAN.md](../agent/PLAN.md)
@@ -362,12 +362,16 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
   root↔bridge 包级依赖，留给 WP3。
 - 详细计划与执行记录：[WP2-HOOK.md](WP2-HOOK.md)。
 
-## 8. WP3：桥/动作应用服务（后续）
+## 8. WP3：桥/动作应用服务（已实现）
 
-- `BridgeService` 承接策略与生命周期编排；`Bridge` 只保留 socket/Binder/反射/线程池。
-- `Mcp.Host` 拆为 `ConfigPort` / `CliPort` / `IslandPort` / `TelemetryPort`。
-- `StatusService` 统一四维状态组装。
-- 验收：路由/鉴权/限流/LAN/410 纯 JVM 测试；45 项契约不变。
+- `BridgeService`（纯 JVM）承接生命周期决策树；`BridgeLifecycle` 只依赖
+  `BridgeRuntime` 端口，不再 import `Bridge`。
+- `Mcp.Host` 删除，拆为 `RuntimePort` / `ConfigPort` / `CliPort` /
+  `IslandPort` / `TelemetryPort` + `Mcp.Hosts`。
+- `BridgeHttpPolicy`（纯 JVM）承接 HTTP 路径与 limit/days clamp。
+- 新增 H3 门禁（BridgeLifecycle 不依赖 Bridge），并做负例验证。
+- `StatusService`/四维状态组装**未在本 WP 实施**，留给 WP4 或独立任务。
+- 详细计划与执行记录：[WP3-BRIDGE.md](WP3-BRIDGE.md)。
 
 ## 9. WP4：剩余 UI Context 清理（后续）
 
@@ -458,3 +462,4 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 | 2026-11-16 | WP1a | `ConfigGateway` + 结果对象 + UI 注入 + rev 校验 + 23 条纯规则用例 | UI 静态调用 19/12 → 0；基线 37 → 12 行；单测/一致性/assembleRelease/APK 校验全绿 |
 | 2026-11-17 | WP1b | `ConfigService` + prefs/effects/log 端口 + reset/restore rev 修复 + Compose watcher | 52 条配置用例；单测/一致性/分层/构建/APK 校验全绿 |
 | 2026-11-17 | WP2 | 纯策略 + 死代码清理 + `XiaoiProcessHost` + H1/H2 门禁 | Hook 565→482；16 条策略用例；双负例；单测/一致性/分层/构建/APK 全绿 |
+| 2026-11-17 | WP3 | `Mcp.Hosts` 拆分 + `BridgeRuntime` + `BridgeService` + `BridgeHttpPolicy` | 11+20 条新用例；H3 负例；单测/一致性/分层/构建/APK 全绿 |

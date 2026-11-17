@@ -17,6 +17,7 @@
 | [refactor/WORKPACKAGES.md](refactor/WORKPACKAGES.md) | 重构工作包与子 Agent 指令 |
 | [refactor/LAYERING.md](refactor/LAYERING.md) | 分层与依赖倒置改造提案：目标层、端口、WP0~WP5、验收指标 |
 | [refactor/WP2-HOOK.md](refactor/WP2-HOOK.md) | WP2 执行计划与记录：Hook 策略、进程宿主、双负例门禁 |
+| [refactor/WP3-BRIDGE.md](refactor/WP3-BRIDGE.md) | WP3 执行计划与记录：Mcp 端口拆分、BridgeRuntime、生命周期决策 |
 | [agent/PLAN.md](agent/PLAN.md) | D1 Agent 能力层与记忆系统：8770 动作面、root/Shizuku、记忆读写 |
 | [agent/PHASE0.md](agent/PHASE0.md) | Phase 0 侦察计划（已完成） |
 | [agent/PHASE0-REPORT.md](agent/PHASE0-REPORT.md) | Phase 0 侦察报告：CLI/岛/权限/记忆结论 |

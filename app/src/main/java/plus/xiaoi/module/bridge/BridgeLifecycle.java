@@ -8,26 +8,27 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-import plus.xiaoi.module.Bridge;
 import plus.xiaoi.module.Logs;
+import plus.xiaoi.module.application.bridge.BridgeService;
 
 /**
- * 数据面生命周期（WP3）。
+ * 数据面生命周期调度器（WP3）。
  *
- * 小爱每个进程都可以调用 {@link #start(Context)}；只有拿到
- * {@code files/xiaoi_bridge.lock} 的进程才会调用 {@link Bridge#startServerIfLeader()}。
- * 其他进程仍然正常 hook、拉配置，只是不监听任何端口。
+ * <p>只依赖 {@link BridgeRuntime} 接口与纯决策 {@link BridgeService}；
+ * 不再 import/调用 {@code Bridge} 静态方法，因此
+ * {@code Bridge ↔ BridgeLifecycle} 的类型级双向依赖被切断。</p>
  *
- * 状态机（每 {@link #RETRY_MS} 毫秒跑一次，配置变化时也会立即 {@link #apply()}）：
+ * <p>状态机（每 {@link #RETRY_MS} 毫秒跑一次，配置变化时也会立即
+ * {@link #apply(BridgeRuntime)}）：</p>
  * <pre>
- *   shouldListen=false → Bridge.stopServer() + 释放 leader 锁
- *   没有 facade/CLI     → 不接管数据面（避免端口能连但工具不可用）
+ *   shouldListen=false → 关闭 server + 释放 leader 锁
+ *   没有 facade/CLI     → 不接管数据面
  *   shouldListen=true, 非 leader → acquireIfPossible()，失败等下一轮
  *   shouldListen=true, leader   → 确保 server 在监听
  * </pre>
  *
- * 失败即降级：Context 未就绪、文件锁不可用都只写日志并重试，不抛到小爱主流程。
- * 本类不使用裸 {@code new Thread}，重试线程是 daemon 的 ScheduledExecutorService。
+ * <p>失败即降级：Context 未就绪、文件锁不可用都只写日志并重试。
+ * 重试线程是 daemon 的 ScheduledExecutorService。</p>
  */
 public final class BridgeLifecycle {
 
@@ -36,8 +37,7 @@ public final class BridgeLifecycle {
 
     /**
      * 没有 facade 的进程（典型是 :core）先等这么久，让有 facade 的进程优先成为 leader：
-     * /health 的 facade=true、MCP 工具能力更完整。宽限期过后仍允许接管，
-     * 保证 leader 死亡后 :core 也能在 10~30s 内补上。
+     * /health 的 facade=true、MCP 工具能力更完整。宽限期过后仍允许接管。
      */
     public static final long FACADE_GRACE_MS = 30_000L;
 
@@ -50,6 +50,7 @@ public final class BridgeLifecycle {
     private static volatile Context sApp;
     private static volatile ScheduledExecutorService sScheduler;
     private static volatile LeaderElection sLeader;
+    private static volatile BridgeRuntime sRuntime;
     private static volatile String sLastAcquireError = "";
     private static volatile boolean sLoggedStopped;
     private static volatile boolean sLoggedFacadeWait;
@@ -59,10 +60,16 @@ public final class BridgeLifecycle {
     private BridgeLifecycle() {}
 
     /**
-     * 幂等启动。Context 可以为 null（Bridge.install 早期）：后台任务会继续尝试
-     * {@link Bridge#appContext()}，拿到后再建立 leader 锁。
+     * 幂等启动。Context 可以为 null；runtime 必须非空（由 Bridge 注入）。
+     * 若 runtime 为空只记日志，等后续 {@link #apply(BridgeRuntime)} 再启动。
      */
-    public static void start(Context ctx) {
+    public static void start(Context ctx, BridgeRuntime runtime) {
+        if (runtime != null) sRuntime = runtime;
+        BridgeRuntime rt = sRuntime;
+        if (rt == null) {
+            Logs.i("数据面生命周期未启动：runtime 为空");
+            return;
+        }
         if (ctx != null) sApp = ctx.getApplicationContext();
         boolean first;
         synchronized (LOCK) {
@@ -75,16 +82,27 @@ public final class BridgeLifecycle {
         }
         if (first) {
             Logs.i("数据面生命周期启动 pid=" + android.os.Process.myPid()
-                    + " process=" + Bridge.processName());
+                    + " process=" + rt.processName());
             scheduleTick();
         }
-        apply();
+        apply(rt);
     }
 
-    /** 配置变化后调用：立即按当前 Bridge 配置重算 leader/监听状态。 */
+    /** 兼容无参调用：使用已注入的 runtime；未注入则什么都不做。 */
     public static void apply() {
+        apply(sRuntime);
+    }
+
+    /**
+     * 配置变化/手动触发：立即按当前 runtime 重算。
+     * runtime 非空时先更新静态引用；未启动则先 start。
+     */
+    public static void apply(BridgeRuntime runtime) {
+        if (runtime != null) sRuntime = runtime;
+        BridgeRuntime rt = sRuntime;
+        if (rt == null) return;
         if (!sStarted) {
-            start(Bridge.appContext());
+            start(null, rt);
             return;
         }
         tick();
@@ -95,7 +113,7 @@ public final class BridgeLifecycle {
         ScheduledExecutorService scheduler;
         synchronized (LOCK) {
             sStarted = false;
-            stopServerAndReleaseLock("生命周期 stop");
+            stopServerAndReleaseLock(sRuntime, "生命周期 stop");
             scheduler = sScheduler;
             sScheduler = null;
         }
@@ -107,7 +125,7 @@ public final class BridgeLifecycle {
         }
     }
 
-    /** 当前进程是否持有 leader 锁。非 leader 的 {@link Bridge#port()} 返回 0。 */
+    /** 当前进程是否持有 leader 锁。 */
     public static boolean isLeader() {
         LeaderElection leader = sLeader;
         return leader != null && leader.isLeader();
@@ -117,74 +135,92 @@ public final class BridgeLifecycle {
 
     private static void tick() {
         synchronized (LOCK) {
-            if (!ensureLeader()) return;
+            BridgeRuntime rt = sRuntime;
+            if (rt == null) return;
+            if (!ensureLeader(rt)) return;
 
             // 每轮都从共享配置刷新一次：旧推送写 target prefs，非 leader 也能看到关闭。
             // 同时经控制面主动拉一次，保证 MCP 关闭期间 App 重新开启也能生效。
-            BridgeControlClient.refresh();
-            Bridge.refreshPolicyFromConfig();
-            Bridge.ensureCliBinding();
+            // 顺序不可变：刷新/拉取必须在计算 State 之前。
+            rt.controlRefresh();
+            rt.refreshPolicyFromConfig();
+            rt.ensureCliBinding();
 
-            final boolean listen = Bridge.shouldListen();
-            if (!listen) {
-                stopServerAndReleaseLock("MCP 关闭或 token 为空");
-                return;
-            }
-            sLoggedStopped = false;
+            BridgeService.State state = new BridgeService.State();
+            state.shouldListen = rt.shouldListen();
+            state.hasFacade = rt.hasFacade();
+            state.hasCli = rt.hasCli();
+            state.leader = sLeader.isLeader();
+            state.facadeGraceElapsed =
+                    System.currentTimeMillis() - sStartedAt >= FACADE_GRACE_MS;
+            state.serverRunning = rt.isServerRunning();
+            state.boundLan = rt.isBoundLan();
+            state.bindsLan = rt.bindsLan();
 
-            // WP4：没有 facade 也没有 CLI 的进程不允许接管数据面，
-            // 否则外部能连上端口但所有工具都不可用。
-            if (!Bridge.hasFacade() && !Bridge.hasCli()) {
-                stopServerAndReleaseLock("本进程没有 facade/CLI");
-                if (!sLoggedNoCapability) {
-                    sLoggedNoCapability = true;
-                    Logs.i("本进程没有 facade/CLI，不接管数据面 pid="
-                            + android.os.Process.myPid()
-                            + " process=" + Bridge.processName());
+            BridgeService.Decision decision = BridgeService.next(state);
+            if (state.shouldListen) sLoggedStopped = false;
+
+            if (decision.action == BridgeService.Action.ACQUIRE_LEADER) {
+                // 非 leader 若有残留监听，先停掉；失败只记录并等下一轮，不得继续 START。
+                if (state.serverRunning) {
+                    rt.stopServer();
+                    state.serverRunning = false;
                 }
-                return;
-            }
-            sLoggedNoCapability = false;
-
-            if (!sLeader.isLeader()) {
-                // 没有 facade 的进程先让位，避免 :core 抢在带 CLI/facade 的主进程之前监听。
-                if (!Bridge.hasFacade()
-                        && System.currentTimeMillis() - sStartedAt < FACADE_GRACE_MS) {
-                    if (!sLoggedFacadeWait) {
-                        sLoggedFacadeWait = true;
-                        Logs.i("本进程暂无 facade，先等待有 facade 的进程成为 leader（"
-                                + FACADE_GRACE_MS + "ms 后允许接管）pid="
-                                + android.os.Process.myPid()
-                                + " process=" + Bridge.processName());
-                    }
-                    return;
-                }
-                // 理论上非 leader 不会有 server；这里兜底清掉残留监听。
-                if (Bridge.isServerRunning()) Bridge.stopServer();
                 if (!sLeader.acquireIfPossible()) {
                     logAcquireFailure(sLeader.lastError());
                     return;
                 }
                 sLastAcquireError = "";
                 Logs.i("已获得数据面 leader 锁 pid=" + android.os.Process.myPid()
-                        + " process=" + Bridge.processName());
+                        + " process=" + rt.processName());
+                state.leader = true;
+                decision = BridgeService.next(state);
             }
 
-            // 局域网开关/token 强度变化后需要重新绑定：弱 token 回退 loopback，
-            // 换成 32 hex 后再切回 0.0.0.0（端口保持不变优先）。
-            if (Bridge.isServerRunning() && Bridge.isBoundLan() != Bridge.bindsLan()) {
+            if (decision.action == BridgeService.Action.CLOSE) {
+                boolean noCapability = !state.hasFacade && !state.hasCli;
+                stopServerAndReleaseLock(rt, decision.reason);
+                if (noCapability) {
+                    if (!sLoggedNoCapability) {
+                        sLoggedNoCapability = true;
+                        Logs.i("本进程没有 facade/CLI，不接管数据面 pid="
+                                + android.os.Process.myPid()
+                                + " process=" + rt.processName());
+                    }
+                } else {
+                    sLoggedNoCapability = false;
+                }
+                return;
+            }
+
+            if (decision.action == BridgeService.Action.WAIT_FACADE) {
+                if (!sLoggedFacadeWait) {
+                    sLoggedFacadeWait = true;
+                    Logs.i("本进程暂无 facade，先等待有 facade 的进程成为 leader（"
+                            + FACADE_GRACE_MS + "ms 后允许接管）pid="
+                            + android.os.Process.myPid()
+                            + " process=" + rt.processName());
+                }
+                return;
+            }
+            sLoggedNoCapability = false;
+            sLoggedFacadeWait = false;
+
+            if (decision.action == BridgeService.Action.REBIND) {
                 Logs.i("数据面绑定模式变化，重新绑定 pid=" + android.os.Process.myPid()
-                        + " process=" + Bridge.processName());
-                Bridge.stopServer();
-                BridgeControlClient.onBridgeStarted();
+                        + " process=" + rt.processName());
+                rt.stopServer();
+                rt.controlOnBridgeStarted();
+                // stop 后立即在同一个 tick 内尝试按新策略启动（与原实现一致）。
+                decision = new BridgeService.Decision(BridgeService.Action.START, "");
             }
 
-            if (!Bridge.isServerRunning()) {
-                if (Bridge.startServerIfLeader()) {
-                    Logs.i("数据面 leader 已监听 port=" + Bridge.port()
-                            + " process=" + Bridge.processName());
+            if (decision.action == BridgeService.Action.START) {
+                if (rt.startServerIfLeader()) {
+                    Logs.i("数据面 leader 已监听 port=" + rt.port()
+                            + " process=" + rt.processName());
                     // 接管/首次启动后让控制面刷新端口。
-                    BridgeControlClient.onBridgeStarted();
+                    rt.controlOnBridgeStarted();
                 } else {
                     // 端口被占/上下文未就绪：保持 leader 身份，下一轮重试绑定。
                     Logs.i("leader 暂未监听，10s 后重试 pid=" + android.os.Process.myPid());
@@ -194,30 +230,32 @@ public final class BridgeLifecycle {
     }
 
     /** 关闭监听并释放锁（仅在需要时记录一次）。 */
-    private static void stopServerAndReleaseLock(String reason) {
-        boolean wasRunning = Bridge.isServerRunning();
+    private static void stopServerAndReleaseLock(BridgeRuntime rt, String reason) {
+        boolean wasRunning = rt != null && rt.isServerRunning();
         boolean wasLeader = sLeader != null && sLeader.isLeader();
         if (wasRunning) {
-            Bridge.stopServer();
-            BridgeControlClient.onBridgeStarted();
+            rt.stopServer();
+            rt.controlOnBridgeStarted();
         }
         if (wasLeader) {
             sLeader.release();
             Logs.i("已释放数据面 leader 锁（" + reason + "）pid="
-                    + android.os.Process.myPid() + " process=" + Bridge.processName());
+                    + android.os.Process.myPid()
+                    + " process=" + (rt == null ? "" : rt.processName()));
         }
         if ((wasRunning || wasLeader) && !sLoggedStopped) {
             sLoggedStopped = true;
-            Logs.i("数据面已关闭（" + reason + "）：server=" + Bridge.isServerRunning()
-                    + " port=" + Bridge.port());
+            Logs.i("数据面已关闭（" + reason + "）：server="
+                    + (rt != null && rt.isServerRunning())
+                    + " port=" + (rt == null ? 0 : rt.port()));
         }
     }
 
-    private static boolean ensureLeader() {
+    private static boolean ensureLeader(BridgeRuntime rt) {
         if (sLeader != null) return true;
         Context ctx = sApp;
         if (ctx == null) {
-            ctx = Bridge.appContext();
+            ctx = rt.appContext();
             if (ctx != null) sApp = ctx.getApplicationContext();
         }
         if (ctx == null) return false;
@@ -226,7 +264,7 @@ public final class BridgeLifecycle {
             if (dir == null) return false;
             sLeader = new LeaderElection(new File(dir, LOCK_FILE),
                     "pid=" + android.os.Process.myPid()
-                            + " process=" + Bridge.processName());
+                            + " process=" + rt.processName());
             return true;
         } catch (Throwable t) {
             Logs.i("leader 锁初始化失败（10s 后重试）: " + t.getClass().getSimpleName());

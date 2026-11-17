@@ -19,6 +19,10 @@
   与 `XiaoiProcessHost` 端口；`Hook` 与控制面客户端不再直接依赖 Bridge/Island，
   删除已被 `supportsVision` 取代的图片回退死代码（Hook 565→482 行）。
   新增 H1/H2 依赖方向门禁与 16 条策略用例；控制面强制超级岛语义保持不变。
+- **桥/动作端口化（WP3）**：`Mcp.Host` 拆为 Runtime/Config/Cli/Island/Telemetry
+  五个端口；`BridgeLifecycle` 改为只依赖 `BridgeRuntime`，生命周期决策抽成纯 JVM
+  `BridgeService`，HTTP 路径/limit 抽成 `BridgeHttpPolicy`。新增 H3 门禁与 31 条
+  决策/路由用例；8771 工具表、报文与 LAN/410 语义不变。
 
 ## 0.15.0 — 2026-11-11
 
