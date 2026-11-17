@@ -33,7 +33,7 @@ scripts/check-all.sh --no-device  # 跳过设备契约
 
 | 层 | 内容 | 失败即中止 |
 |---|---|---|
-| 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/死资源） | ✅ |
+| 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/Hook-Bridge 依赖方向/死资源） | ✅ |
 | JVM 单测 | `tests/run.sh`（全部断言） | ✅ |
 | APK 签名门禁 | `scripts/verify-apk.sh`（已签名/包名/versionCode/固定指纹；`--self-test` 覆盖负向用例） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |
