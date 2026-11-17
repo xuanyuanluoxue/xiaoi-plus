@@ -84,6 +84,8 @@ import top.yukonga.miuix.kmp.basic.SnackbarHostState
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Compose-only 入口也必须启动文件监听；旧实现只在 ConfigActivity/HomeActivity 启动。
+        ConfigSync.start(this)
         applySystemBars(ThemeManager.get(this))
         setContent {
             XiaoiTheme(mode = ThemeManager.get(this)) {

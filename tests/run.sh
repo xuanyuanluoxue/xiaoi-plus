@@ -63,6 +63,11 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigBackupInfo.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigStorageInfo.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/config/ConfigRevRules.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigDefaults.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigPrefsPort.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigEffectsPort.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigLogPort.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigService.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgePolicy.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/ErrorCatalog.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/BridgeEndpoint.java" \

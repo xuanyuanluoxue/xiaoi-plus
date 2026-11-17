@@ -225,6 +225,12 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL ConfigGatewayRulesTest 套件异常: " + t);
         }
+        try {
+            failed += ConfigServiceTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ConfigServiceTest 套件异常: " + t);
+        }
         System.out.println();
         if (failed == 0) {
             System.out.println("==> 全部通过");

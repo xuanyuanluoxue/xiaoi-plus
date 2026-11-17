@@ -1,6 +1,6 @@
 # 分层与依赖倒置改造：执行计划
 
-> 状态：**WP0、WP1a 已完成；WP1b 待开始**
+> 状态：**WP0、WP1a、WP1b 已完成；WP2 待开始**
 > 基线：`v0.15.0`（versionCode 22，2026-11-11），HEAD `d753fb4`
 > 日期：2026-11-16
 > 相关：[architecture.md](../architecture.md) · [refactor/PLAN.md](PLAN.md) · [agent/PLAN.md](../agent/PLAN.md)
@@ -323,15 +323,31 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 - 基线从 37 行收缩到 12 行（仅剩 `core/PermissionProbe`、`core/IssueInputFactory`
   与 UI 对 `control.BridgeControlService` 的 3 处依赖）。
 
-## 6. WP1b：配置规则上移（后续）
+## 6. WP1b：配置规则上移（已实现）
 
-- 新增 `application/ConfigService`：校验 → rev CAS → 原子写 → prefs 镜像 → reload。
-- `ConfigRepository` 降为 `ConfigFileAdapter`：只做文件/prefs；规则与状态在 service。
-- 修复：`resetToDefaultsAfterCorruption` rev 单调（不能写 1）。
-- 修复：`save`/`saveQuiet` 的 `markApplied` 语义统一，watcher 去环由 adapter 负责。
-- 修复：Compose 入口启动 watcher（Application 或 MainActivity），外部改文件可刷新。
-- 用临时目录 + fake prefs 端口补 `ConfigService` 单测（加载/损坏/迁移/冲突/恢复）。
-- 验收：上述 6 个已知坑各有 1 条测试；`ConfigRepository` 不再被 UI/应用层直接引用。
+- 新增 `application/config/ConfigService`（纯 JVM）：校验 → rev CAS → 原子写 →
+  prefs 镜像 → 回填已应用 → reload。
+- 端口：`ConfigPrefsPort`（默认值/镜像写）、`ConfigEffectsPort`（markApplied/reload）、
+  `ConfigLogPort`（日志），Android 实现全部收在 `ConfigRepository` 内。
+- `ConfigRepository` 降为组装点 + 旧签名门面；旧调用方
+  （ConfigActivity / ConfigSync / BridgeControlService / AgentService）不变。
+- 修复：`resetAfterCorruption` 的 rev 从 prefs 记录的上一次 rev 前进，不再硬编码 1。
+- 修复：`restoreLegacy` 的 rev 同时参考恢复前文件 rev/prefs rev，避免恢复旧备份导致 rev 回退。
+- 修复：Compose 入口 `MainActivity.onCreate` 启动 `ConfigSync`，外部改文件可刷新。
+- `save` = 文件 + prefs + 回填哈希 + reload；`saveQuiet` = 文件 + prefs + reload（不回填）。
+- 测试：`ConfigServiceTest` 覆盖骨架/保存/冲突/强制/静默/损坏/迁移/恢复/重置/
+  applyLocal/applyToTarget/storage/v2 rev=0，共 52 条断言。
+
+验收：上述场景有纯 JVM 测试；`ConfigRepository` 不再承载规则；单测/一致性/构建全绿。
+
+### 6.1 落地差异与遗留
+
+- `ConfigService` 仍是单进程内同步对象；跨进程写者由“App 唯一写者”约束保证。
+- `legacyExternalFile` 在 `ConfigRepository` 构造时解析一次；若极端情况下外部目录
+  当时不可用，本次进程内不会再次尝试迁移（原实现每次 load 重算）。后续可用
+  `LegacyFilePort` 消除，暂不影响常规设备。
+- `resetAfterCorruption` 的 rev 下限来自 prefs 的 `cfg_rev`；如果 prefs 写失败且
+  文件被外部改坏，极端情况下仍可能回退，WP2 可把 rev 落盘到独立的小文件。
 
 ## 7. WP2：Hook 翻译器 + 进程宿主（后续）
 
@@ -437,3 +453,4 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 | 2026-11-16 | 计划 | 本文档 | 一致性检查通过（文档阶段） |
 | 2026-11-16 | WP0 | `check-layering.sh` + 基线 + 一致性接入 + 负例/自测 | 一致性、`--strict`、`--self-test` 全绿 |
 | 2026-11-16 | WP1a | `ConfigGateway` + 结果对象 + UI 注入 + rev 校验 + 23 条纯规则用例 | UI 静态调用 19/12 → 0；基线 37 → 12 行；单测/一致性/assembleRelease/APK 校验全绿 |
+| 2026-11-17 | WP1b | `ConfigService` + prefs/effects/log 端口 + reset/restore rev 修复 + Compose watcher | 52 条配置用例；单测/一致性/分层/构建/APK 校验全绿 |

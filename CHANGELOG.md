@@ -11,6 +11,10 @@
   `ConfigRepository` 实现该端口；Compose 页面与 StateHolder 改为注入端口，
   不再调用 `ConfigRepository.get(context)`；保存增加 rev 校验（冲突显式返回）。
   文件格式、prefs 镜像、损坏/只读/rev 公式不变。
+- **配置规则上移（WP1b）**：新增纯 JVM `application.config.ConfigService`，
+  承接加载/迁移/损坏只读/rev CAS/恢复/重置；`ConfigRepository` 降为 Android 组装点。
+  修复损坏重置 rev 硬编码为 1、恢复旧备份 rev 回退；Compose 入口启动配置文件监听。
+  新增 52 条配置用例（临时目录 + fake prefs）。
 
 ## 0.15.0 — 2026-11-11
 
