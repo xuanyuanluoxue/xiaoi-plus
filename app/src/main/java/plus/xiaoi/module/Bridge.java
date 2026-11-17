@@ -79,6 +79,8 @@ public final class Bridge {
     private static volatile boolean sLan;
     /** 用户配置：MCP 桥开关；关闭时即使 lan=true 也只绑 loopback。 */
     private static volatile boolean sBridge;
+    /** WP2：进程宿主（BridgeControlClient / remote writeConfig 只通过它回调）。 */
+    private static volatile XiaoiProcessHost sHost;
     /** 当前 socket 实际绑定的模式：true = 0.0.0.0，false = 127.0.0.1。 */
     private static volatile boolean sBoundLan;
     private static volatile ServerSocket sServer;
@@ -121,9 +123,11 @@ public final class Bridge {
             Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker,
                     cur.bridge(), cur.token(), n.markerTemplate, n.enabled, cur.lan(),
                     cur.cfgRev());
+            XiaoiProcessHost host = sHost;
+            if (host == null) return false;
             if (!writeTargetPrefs(c)) return false;
             Config.setCurrent(c);
-            Hook.applyConfig(c);
+            host.onConfigReload(c);
             updateAccess(cur.lan(), cur.bridge());
             return true;
         }
@@ -164,7 +168,17 @@ public final class Bridge {
      * 再由 {@link BridgeLifecycle} 决定本进程是否能成为数据面 leader。
      */
     public static void install(ClassLoader cl, Object facade) {
+        install(cl, facade, XiaoiProcess.host());
+    }
+
+    /** WP2：由进程宿主注入；host 为空时只记日志，不启动控制面。 */
+    public static void install(ClassLoader cl, Object facade, XiaoiProcessHost host) {
         if (cl == null) return;
+        if (host == null) {
+            log("进程宿主未就绪，忽略能力桥安装");
+            return;
+        }
+        sHost = host;
         sFacade = facade;
         boolean first;
         synchronized (LOCK) {
@@ -174,7 +188,7 @@ public final class Bridge {
         try {
             ensureDataPlaneHooks(cl);
             // WP1 控制面先起（拉配置/上报），再由 WP3 生命周期决定是否监听。
-            onProcessStart(null, cl);
+            onProcessStart(null, cl, host);
             if (first && sBridge && sToken.length() == 0) {
                 log("MCP 开启但未配置 token，数据面保持关闭（控制面仍可拉取配置）");
             }
@@ -191,11 +205,16 @@ public final class Bridge {
      * Context 可能为空：控制面与生命周期都会在后台重试，不会抛到主流程。
      */
     public static void onProcessStart(Config config) {
-        onProcessStart(config, null);
+        onProcessStart(config, null, XiaoiProcess.host());
     }
 
     public static void onProcessStart(Config config, ClassLoader cl) {
+        onProcessStart(config, cl, XiaoiProcess.host());
+    }
+
+    public static void onProcessStart(Config config, ClassLoader cl, XiaoiProcessHost host) {
         try {
+            if (host != null) sHost = host;
             if (cl != null) ensureDataPlaneHooks(cl);
             if (config == null) {
                 // install 时以「控制面内存配置 vs target prefs」按 rev 取新，避免把旧值写回。
@@ -327,7 +346,12 @@ public final class Bridge {
                 info("控制面已通过 feature flag 关闭");
                 return;
             }
-            BridgeControlClient.start(appContext());
+            XiaoiProcessHost host = sHost;
+            if (host == null) {
+                log("控制面未启动：进程宿主为空");
+                return;
+            }
+            BridgeControlClient.start(appContext(), host);
             BridgeControlClient.onBridgeStarted();
         } catch (Throwable t) {
             log("控制面启动失败（已忽略）: " + t);

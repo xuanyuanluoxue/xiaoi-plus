@@ -8,6 +8,9 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
+import plus.xiaoi.module.core.hook.UsageSignal;
+import plus.xiaoi.module.core.hook.XiaoiOverridePolicy;
+
 /**
  * 模块入口。全部 hook 包 try/catch，失败只记日志，不影响小爱主流程。
  */
@@ -31,10 +34,22 @@ public class Hook implements IXposedHookLoadPackage {
     private static volatile boolean sProviderLogged;
     /** 请求头 X-Model-Provider-Id：用接口字段声明"当前走第三方 provider"，不碰提示词 */
     private static final String PROVIDER_ID = "xiaoi-plus";
-    /** 小爱未被覆盖前的模型名：首次调用 getModel 时捕获，供带图请求回退。 */
-    private static volatile String sOriginalModel;
-    private static volatile boolean sImageLogged;
-    private static volatile boolean sTextLogged;
+
+    /**
+     * 进程宿主：首次调用时注入；Hook 不再直接依赖 Bridge/Island。
+     * 配置热更新的回调仍然回到 {@link #applyConfig(Config)}。
+     */
+    private static XiaoiProcessHost host() {
+        XiaoiProcessHost current = XiaoiProcess.host();
+        if (current != null) return current;
+        return XiaoiProcess.installIfAbsent(new XiaoiProcessHostImpl(
+                new XiaoiProcessHostImpl.ConfigReloader() {
+                    @Override
+                    public void reload(Config config) {
+                        Hook.applyConfig(config);
+                    }
+                }));
+    }
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lp) {
@@ -51,7 +66,7 @@ public class Hook implements IXposedHookLoadPackage {
             }
             // WP3：每个小爱进程都参与控制面 + leader 选举（不依赖「主进程」命名）。
             // 是否监听端口由 BridgePolicy 决定；非 leader 仍然只 hook / 拉配置。
-            Bridge.onProcessStart(sConfig, lp.classLoader);
+            host().onProcessStart(sConfig, lp.classLoader);
 
             hookConfigObject(lp.classLoader);
             hookProviderId(lp.classLoader);
@@ -86,7 +101,7 @@ public class Hook implements IXposedHookLoadPackage {
                 // hookResponsePrefix 暂禁用，同上
                 hookFacade(cl);
             }
-            Bridge.updateToken(c.token());
+            host().updateToken(c.token());
             Logs.i("配置已热更新 model=" + c.model()
                     + " marker=" + c.marker() + " bridge=" + c.bridge());
         } catch (Throwable t) {
@@ -125,7 +140,8 @@ public class Hook implements IXposedHookLoadPackage {
             XposedBridge.hookMethod(f.getMethod("getSupportsVision"), new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
-                    if (Config.current().enabled()) {
+                    Config c = Config.current();
+                    if (c != null && XiaoiOverridePolicy.supportsVision(c.enabled())) {
                         param.setResult(Boolean.TRUE);
                     }
                 }
@@ -264,12 +280,12 @@ public class Hook implements IXposedHookLoadPackage {
         try {
             int messages = sizeOf(args, 0);
             int tools = sizeOf(args, 1);
-            String model = modelOf(args, 2);
-            if (model.length() == 0) {
-                Config c = Config.current();
-                model = c == null ? "" : c.model();
-            }
-            boolean main = UsageCounter.mainCall(messages, tools);
+            String reported = modelOf(args, 2);
+            String fallback = "";
+            Config c = Config.current();
+            if (c != null) fallback = c.model();
+            String model = UsageSignal.modelOrFallback(reported, fallback);
+            boolean main = UsageSignal.mainCall(messages, tools);
             Usage.record(third, main, model);
         } catch (Throwable ignored) {
         }
@@ -374,104 +390,6 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
     /**
-     * 图文条件分流：请求体含图时把 model 换回小爱原模型，纯文本保持第三方。
-     * 任何异常只返回 false，不影响请求。
-     */
-    private static boolean routeByImage(org.json.JSONObject o, boolean responses, Config c) {
-        // 已改用 supportsVision 方案：让图片正常发给第三方模型，不再回退模型名
-        if (true) return false;
-        try {
-            boolean image = responses ? hasResponseImage(o) : hasChatImage(o);
-            String orig = sOriginalModel;
-            if (!image) {
-                if (!sTextLogged) {
-                    sTextLogged = true;
-                    Logs.i("纯文本，使用第三方 " + c.model());
-                }
-                return false;
-            }
-            if (orig == null || orig.length() == 0) return false;
-            if (!o.has("model")) return false;
-            if (!sImageLogged) {
-                sImageLogged = true;
-                Logs.i("图文分流：检测到图像，回退原模型 " + orig);
-            }
-            if (orig.equals(o.optString("model", ""))) return false;
-            o.put("model", orig);
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    /** Responses：input[].content[].type == input_image */
-    private static boolean hasResponseImage(org.json.JSONObject o) {
-        org.json.JSONArray input = o.optJSONArray("input");
-        if (input == null) return false;
-        for (int i = 0; i < input.length(); i++) {
-            org.json.JSONObject item = input.optJSONObject(i);
-            if (item == null) continue;
-            if (isImagePart(item)) return true;
-            org.json.JSONArray content = item.optJSONArray("content");
-            if (content == null) continue;
-            for (int j = 0; j < content.length(); j++) {
-                org.json.JSONObject part = content.optJSONObject(j);
-                if (part != null && isImagePart(part)) return true;
-            }
-        }
-        return false;
-    }
-
-    /** Chat：messages[].content[].type == image_url */
-    private static boolean hasChatImage(org.json.JSONObject o) {
-        org.json.JSONArray msgs = o.optJSONArray("messages");
-        if (msgs == null) return false;
-        for (int i = 0; i < msgs.length(); i++) {
-            org.json.JSONObject msg = msgs.optJSONObject(i);
-            if (msg == null) continue;
-            org.json.JSONArray content = msg.optJSONArray("content");
-            if (content == null) continue;
-            for (int j = 0; j < content.length(); j++) {
-                org.json.JSONObject part = content.optJSONObject(j);
-                if (part != null && isImagePart(part)) return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isImagePart(org.json.JSONObject part) {
-        String type = part.optString("type", "");
-        if ("input_image".equals(type) || "image_url".equals(type)) return true;
-        return part.opt("image_url") != null || part.opt("image") != null;
-    }
-
-    /** 首次 getModel 调用时记录未覆盖前的返回值。 */
-    private static void captureOriginalModel(Object r) {
-        try {
-            if (sOriginalModel != null || !(r instanceof String)) return;
-            String s = (String) r;
-            if (s.length() == 0) return;
-            sOriginalModel = s;
-            Logs.i("已记录小爱原模型 " + s);
-        } catch (Throwable ignored) {}
-    }
-
-    /** 用应用内 Json 实例把字符串解析回 JsonElement；失败返回 null。 */
-    private static Object toJsonElement(String s) {
-        Class<?> jc = null;
-        try {
-            if (sCl != null) jc = Class.forName("s92.b", false, sCl);
-        } catch (Throwable ignored) {}
-        try {
-            if (jc == null) jc = Class.forName("s92.b");
-            Object json = jc.getField("d").get(null);
-            return json.getClass().getMethod("parseToJsonElement", String.class).invoke(json, s);
-        } catch (Throwable t) {
-            return null;
-        }
-    }
-
-    /**
      * 抓 OsbotFacadeImpl 实例。无论是否已配置都挂 ctor：首次推送配置需要桥先起来；
      * 桥自身只启动一次，token 与安装流程由其内部判断，失败只记日志。
      */
@@ -486,7 +404,7 @@ public class Hook implements IXposedHookLoadPackage {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) {
                             try {
-                                Bridge.install(cl, param.thisObject);
+                                host().onFacadeReady(cl, param.thisObject);
                             } catch (Throwable t) {
                                 Logs.i("能力桥启动失败（已忽略）: " + t);
                             }
@@ -517,12 +435,14 @@ public class Hook implements IXposedHookLoadPackage {
                 protected void afterHookedMethod(MethodHookParam param) {
                     try {
                         Config c = Config.current();
-                        if (c == null || !c.enabled() || !c.marker()) return;
-                        param.setResult(PROVIDER_ID);
+                        if (c == null) return;
+                        String id = XiaoiOverridePolicy.providerId(c.enabled(), c.marker(), PROVIDER_ID);
+                        if (id == null) return;
+                        param.setResult(id);
                         if (!sProviderLogged) {
                             sProviderLogged = true;
                             Logs.i("模型标识已改走请求头 X-Model-Provider-Id=" + PROVIDER_ID);
-                            Island.showOnce(c.model());
+                            host().showIsland(c.model(), false);
                         }
                     } catch (Throwable ignored) {
                     }
@@ -543,16 +463,13 @@ public class Hook implements IXposedHookLoadPackage {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
                     try {
-                        if (kind == Kind.MODEL) captureOriginalModel(param.getResult());
                         Config c = Config.current();
-                        // 暂停（enabled=false）或未配置时不改写：请求回到小爱官方模型。
-                        // 这与配置页「关闭后小爱使用原生模型，配置全部保留」的承诺一致，
-                        // 也是调用量统计能区分三方/官方的判据（否则暂停后仍会走三方）。
-                        if (c == null || !c.enabled()) return;
+                        if (c == null) return;
                         String v = kind == Kind.BASE ? c.baseUrl()
                                  : kind == Kind.KEY ? c.apiKey()
                                  : c.model();
-                        if (v != null && v.length() > 0) param.setResult(v);
+                        String applied = XiaoiOverridePolicy.override(c.enabled(), v);
+                        if (applied != null) param.setResult(applied);
                     } catch (Throwable t) {
                         Logs.i("hook " + method + " 处理失败: " + t);
                     }

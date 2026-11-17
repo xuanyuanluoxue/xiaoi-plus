@@ -1,6 +1,6 @@
 # 分层与依赖倒置改造：执行计划
 
-> 状态：**WP0、WP1a、WP1b 已完成；WP2 待开始**
+> 状态：**WP0、WP1a、WP1b、WP2 已完成；WP3 待开始**
 > 基线：`v0.15.0`（versionCode 22，2026-11-11），HEAD `d753fb4`
 > 日期：2026-11-16
 > 相关：[architecture.md](../architecture.md) · [refactor/PLAN.md](PLAN.md) · [agent/PLAN.md](../agent/PLAN.md)
@@ -37,7 +37,7 @@
 | 写配置调用 | UI 6 文件 8 处 + `ConfigActivity` 3 处 + `ConfigSync` 3 处 | 见 §1.2 |
 | 中心环 | `Hook → Bridge → BridgeLifecycle`；`BridgeControlClient → Hook/Bridge` | §4.3 |
 | `Mcp.Host` | 11 方法 / 5 类职责 | `Mcp.java:30-65` |
-| `Hook.java` | 565 行，含 `org.json` 业务改写与死代码 `routeByImage` | `Hook.java:380` |
+| `Hook.java` | 482 行；无 `org.json` 业务改写；图片回退死代码已删 | `Hook.java` |
 | 纯层门禁 | `tests/run.sh` 手写 62 个文件列表 | `tests/run.sh:16-77` |
 | Gradle module | 1（`:app`） | `settings.gradle.kts:24` |
 | `ConfigRepository` 单测 | **0**（`tests/run.sh` 不编译它） | `tests/run.sh` |
@@ -349,15 +349,18 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 - `resetAfterCorruption` 的 rev 下限来自 prefs 的 `cfg_rev`；如果 prefs 写失败且
   文件被外部改坏，极端情况下仍可能回退，WP2 可把 rev 落盘到独立的小文件。
 
-## 7. WP2：Hook 翻译器 + 进程宿主（后续）
+## 7. WP2：Hook 策略抽取 + 进程宿主（已实现）
 
-- 新增 `core/translate/RequestTranslator`（纯 JVM）：
-  `translateChat(String body, TranslateOptions)` / `translateResponses(...)`，
-  `VisionPolicy` 图片检测，golden case 单测。
-- 新增 `XiaoiProcessHost` 端口（`applyConfig` / `bridgeStart` / `log`），
-  `Hook` 构造注入；切断 `Hook ↔ Bridge ↔ BridgeControlClient`。
-- 删除 `routeByImage` 死分支；hook 安装顺序与幂等标志不变。
-- 验收：`Hook` 无业务 JSON 改写；翻译 golden case；版本白名单/暂停统计行为不变。
+- 现实核对后取消“请求体翻译器”：请求 hook 实际为空，图片回退是死代码。
+- 新增纯策略 `core/hook/XiaoiOverridePolicy` / `UsageSignal`（16 条断言）。
+- 新增 `XiaoiProcessHost` / `XiaoiProcess` / `XiaoiProcessHostImpl`；
+  `BridgeControlClient` 只依赖 host，`Bridge` 不再 import Hook。
+- 删除图片回退死代码与 3 个状态字段；`Hook` 565 → 482 行。
+- 新增 H1/H2 门禁（Hook 不依赖 Bridge/Island；控制面客户端不依赖 Hook/Bridge/Island），
+  双负例验证。
+- 明确保留：`Bridge → BridgeControlClient` 单向、`Bridge ↔ BridgeLifecycle`、
+  root↔bridge 包级依赖，留给 WP3。
+- 详细计划与执行记录：[WP2-HOOK.md](WP2-HOOK.md)。
 
 ## 8. WP3：桥/动作应用服务（后续）
 
@@ -454,3 +457,4 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 | 2026-11-16 | WP0 | `check-layering.sh` + 基线 + 一致性接入 + 负例/自测 | 一致性、`--strict`、`--self-test` 全绿 |
 | 2026-11-16 | WP1a | `ConfigGateway` + 结果对象 + UI 注入 + rev 校验 + 23 条纯规则用例 | UI 静态调用 19/12 → 0；基线 37 → 12 行；单测/一致性/assembleRelease/APK 校验全绿 |
 | 2026-11-17 | WP1b | `ConfigService` + prefs/effects/log 端口 + reset/restore rev 修复 + Compose watcher | 52 条配置用例；单测/一致性/分层/构建/APK 校验全绿 |
+| 2026-11-17 | WP2 | 纯策略 + 死代码清理 + `XiaoiProcessHost` + H1/H2 门禁 | Hook 565→482；16 条策略用例；双负例；单测/一致性/分层/构建/APK 全绿 |

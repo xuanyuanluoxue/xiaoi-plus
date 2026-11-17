@@ -15,6 +15,10 @@
   承接加载/迁移/损坏只读/rev CAS/恢复/重置；`ConfigRepository` 降为 Android 组装点。
   修复损坏重置 rev 硬编码为 1、恢复旧备份 rev 回退；Compose 入口启动配置文件监听。
   新增 52 条配置用例（临时目录 + fake prefs）。
+- **Hook 策略与进程宿主（WP2）**：新增 `XiaoiOverridePolicy`/`UsageSignal` 纯策略
+  与 `XiaoiProcessHost` 端口；`Hook` 与控制面客户端不再直接依赖 Bridge/Island，
+  删除已被 `supportsVision` 取代的图片回退死代码（Hook 565→482 行）。
+  新增 H1/H2 依赖方向门禁与 16 条策略用例；控制面强制超级岛语义保持不变。
 
 ## 0.15.0 — 2026-11-11
 

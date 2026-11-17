@@ -6,6 +6,7 @@
 #   2) 业务代码不再使用运行时 getIdentifier（资源改名必须编译期报错）
 #   3) 后台任务/HTTP 客户端没有各自为政
 #   4) 分层边界：domain/application 不依赖 Android，UI 不直连配置仓库
+#   4.1) Hook/控制面通过进程宿主端口解耦（WP2）
 #   5) layout / drawable 没有无人引用的死文件
 #
 # 用法：scripts/check-consistency.sh
@@ -111,6 +112,38 @@ if LAYER_OUT="$("$ROOT/scripts/check-layering.sh" 2>&1)"; then
 else
     fail "分层边界检查失败（见 scripts/check-layering.sh）"
     echo "$LAYER_OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------- 4.1) Hook/控制面依赖方向（WP2）
+strip_line_comments() { sed -E 's://.*$::' "$1" 2>/dev/null; }
+
+HOOK_FILE="app/src/main/java/plus/xiaoi/module/Hook.java"
+CLIENT_FILE="app/src/main/java/plus/xiaoi/module/bridge/BridgeControlClient.java"
+
+HOOK_LEAK=""
+if [ -f "$HOOK_FILE" ]; then
+    HOOK_LEAK="$(strip_line_comments "$HOOK_FILE" \
+        | grep -nE '(^|[^A-Za-z0-9_])(Bridge|Island)\.|plus\.xiaoi\.module\.(Bridge|Island)\.|import[[:space:]]+(plus\.xiaoi\.module\.)?(Bridge|Island)(;|[[:space:]])' \
+        || true)"
+fi
+if [ -z "$HOOK_LEAK" ]; then
+    pass "Hook 不依赖 Bridge/Island（只依赖进程宿主端口）"
+else
+    fail "Hook 仍直接依赖 Bridge/Island（应走 XiaoiProcessHost）："
+    echo "$HOOK_LEAK" | sed 's/^/      /'
+fi
+
+CLIENT_LEAK=""
+if [ -f "$CLIENT_FILE" ]; then
+    CLIENT_LEAK="$(strip_line_comments "$CLIENT_FILE" \
+        | grep -nE '(^|[^A-Za-z0-9_])(Hook|Bridge|Island)\.|plus\.xiaoi\.module\.(Hook|Bridge|Island)\.|import[[:space:]]+(plus\.xiaoi\.module\.)?(Hook|Bridge|Island)(;|[[:space:]])' \
+        || true)"
+fi
+if [ -z "$CLIENT_LEAK" ]; then
+    pass "控制面客户端不依赖 Hook/Bridge/Island（只依赖进程宿主端口）"
+else
+    fail "BridgeControlClient 仍直接依赖 Hook/Bridge/Island（应走 XiaoiProcessHost）："
+    echo "$CLIENT_LEAK" | sed 's/^/      /'
 fi
 
 # ---------------------------------------------------------------- 5) 死资源

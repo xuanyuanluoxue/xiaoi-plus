@@ -22,14 +22,13 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import plus.xiaoi.module.AppConfig;
-import plus.xiaoi.module.Bridge;
 import plus.xiaoi.module.Config;
 import plus.xiaoi.module.ConfigCodec;
 import plus.xiaoi.module.Hash;
-import plus.xiaoi.module.Hook;
-import plus.xiaoi.module.Island;
 import plus.xiaoi.module.Json;
 import plus.xiaoi.module.Logs;
+import plus.xiaoi.module.XiaoiProcess;
+import plus.xiaoi.module.XiaoiProcessHost;
 import plus.xiaoi.module.core.LogSettings;
 import plus.xiaoi.module.core.ControlKeys;
 
@@ -53,6 +52,8 @@ public final class BridgeControlClient {
 
     private static ScheduledExecutorService sScheduler;
     private static volatile Context sApp;
+    /** WP2：进程宿主；控制面不直接依赖 Hook/Bridge/Island。 */
+    private static volatile XiaoiProcessHost sHost;
 
     private static volatile boolean sStarted;
     /** 已发出 bindService 且尚未断开。 */
@@ -81,6 +82,16 @@ public final class BridgeControlClient {
      * 幂等启动：只创建一次调度器/绑定一次。Context 为空时由内部退避任务继续等待。
      */
     public static void start(Context ctx) {
+        start(ctx, XiaoiProcess.host());
+    }
+
+    /** WP2：由进程宿主注入；host 为空时只记日志，不绑定服务。 */
+    public static void start(Context ctx, XiaoiProcessHost host) {
+        if (host == null) {
+            Logs.i("控制面未启动：进程宿主为空");
+            return;
+        }
+        sHost = host;
         if (ctx != null) sApp = ctx.getApplicationContext();
         boolean first;
         synchronized (LOCK) {
@@ -97,7 +108,7 @@ public final class BridgeControlClient {
     /** Bridge 开始监听后调用（可能早于控制面连接，未连接时静默忽略）。 */
     public static void onBridgeStarted() {
         final IBinder b = sRemote;
-        if (b == null) return;
+        if (b == null || sHost == null) return;
         runAsync(new Runnable() {
             @Override
             public void run() {
@@ -134,7 +145,8 @@ public final class BridgeControlClient {
                 sAttempt = 0;
                 sLogSeq = 0;
             }
-            Logs.i("控制面已连接 pid=" + Process.myPid() + " port=" + Bridge.port());
+            Logs.i("控制面已连接 pid=" + Process.myPid() + " port="
+                    + (sHost == null ? 0 : sHost.port()));
             runAsync(PULL);
         }
 
@@ -156,9 +168,9 @@ public final class BridgeControlClient {
             ctx = sApp;
         }
         if (ctx == null) {
-            // Bridge.install 早期可能还拿不到 Application；每次重试都再试一次，
+            // 宿主安装早期可能还拿不到 Application；每次重试都再试一次，
             // 不能只等调用方再次 start()。
-            ctx = Bridge.appContext();
+            ctx = hostContext();
             if (ctx != null) {
                 ctx = ctx.getApplicationContext();
                 sApp = ctx;
@@ -347,11 +359,16 @@ public final class BridgeControlClient {
         }
     }
 
-    /** 同一 JSON 只应用一次；Hook.applyConfig 内部已捕获异常。 */
+    /** 同一 JSON 只应用一次；host.onConfigReload 内部已捕获异常。 */
     private static void applyIfChanged(String json) {
         String hash = Hash.sha256Hex(json);
         if (hash.length() == 0) hash = json;
         if (hash.equals(sAppliedHash)) return;
+        XiaoiProcessHost host = sHost;
+        if (host == null) {
+            Logs.e("控制面配置应用失败：进程宿主为空");
+            return;
+        }
 
         try {
             AppConfig ac = ConfigCodec.fromJson(json);
@@ -360,8 +377,8 @@ public final class BridgeControlClient {
                     ac.rev);
             LogSettings.setWire(ac.logLevel);
             Logs.setLevel(LogSettings.get());
-            Hook.applyConfig(c);
-            Bridge.updateAccess(c.lan(), c.bridge());
+            host.onConfigReload(c);
+            host.updateAccess(c.lan(), c.bridge());
             sAppliedHash = hash;
             Logs.i("控制面已应用配置 model=" + c.model()
                     + " enabled=" + c.enabled()
@@ -378,7 +395,7 @@ public final class BridgeControlClient {
         info.putBinder(ControlKeys.KEY_CALLBACK, callback().getBinder());
         info.putInt(ControlKeys.KEY_PID, Process.myPid());
         info.putString(ControlKeys.KEY_PROCESS, processName());
-        int port = Bridge.port();
+        int port = sHost == null ? 0 : sHost.port();
         info.putInt(ControlKeys.KEY_PORT, port);
         putBindInfo(info, port);
         info.putString(ControlKeys.KEY_LEGACY_JSON, legacyJson());
@@ -396,7 +413,7 @@ public final class BridgeControlClient {
         st.putString(ControlKeys.KEY_MODEL, c.model());
         st.putBoolean(ControlKeys.KEY_ENABLED, c.enabled());
         st.putBoolean(ControlKeys.KEY_HAS_KEY, c.apiKey().length() > 0);
-        int port = Bridge.port();
+        int port = sHost == null ? 0 : sHost.port();
         st.putInt(ControlKeys.KEY_PORT, port);
         putBindInfo(st, port);
         st.putString(ControlKeys.KEY_VERSION, versionName());
@@ -469,7 +486,8 @@ public final class BridgeControlClient {
                                 runAsync(PULL);
                                 return true;
                             case ControlKeys.S2C_SHOW_ISLAND:
-                                Island.show(Config.current().model(), true);
+                                XiaoiProcessHost host = sHost;
+                                if (host != null) host.showIsland(Config.current().model(), true);
                                 return true;
                             case ControlKeys.S2C_CLEAR_SAFE_MODE:
                                 Logs.i("控制面 clearSafeMode：WP1 尚未实现安全模式");
@@ -560,7 +578,7 @@ public final class BridgeControlClient {
      */
     private static void putBindInfo(Bundle b, int port) {
         if (b == null || port <= 0) return;
-        boolean lan = Bridge.isBoundLan();
+        boolean lan = sHost != null && sHost.isBoundLan();
         b.putString(ControlKeys.KEY_BIND_HOST, lan ? "0.0.0.0" : "127.0.0.1");
         b.putBoolean(ControlKeys.KEY_LAN_ENABLED, lan);
     }
@@ -584,11 +602,23 @@ public final class BridgeControlClient {
         return name;
     }
 
+    /** 从宿主取 Application；宿主或早期 Context 不可用时返回 null。 */
+    private static Context hostContext() {
+        XiaoiProcessHost host = sHost;
+        if (host == null) return null;
+        try {
+            Object ctx = host.appContext();
+            return ctx instanceof Context ? (Context) ctx : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     private static String versionName() {
         String cached = sVersionName;
         if (cached.length() > 0) return cached;
         try {
-            String v = Bridge.versionName();
+            String v = sHost == null ? "" : sHost.versionName();
             if (v != null && v.length() > 0) sVersionName = v;
         } catch (Throwable ignored) {
         }
