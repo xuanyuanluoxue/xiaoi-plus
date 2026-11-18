@@ -83,3 +83,25 @@ adb forward tcp:8771 tcp:8771
 手机直连时不要在公共 Wi-Fi 上长期开启；不用时把开关关掉即可立即回到 loopback。
 
 手机上可直接 `curl -d @payload.json`（见上一节）。
+
+## 5. 本机测试脚本
+
+| 脚本 | 用途 |
+|---|---|
+| `scripts/contract-test.sh --check` | 47 项回归：鉴权、MCP 形状、免鉴权 401/405/410、`/island`、工具表；会重启小爱并对比基线 |
+| `scripts/mcp-call.sh` | 手工调单个工具：端口发现（自动排除 8770 Agent 面）+ `adb forward` + Bearer 鉴权 |
+
+```bash
+bash scripts/mcp-call.sh health                    # GET /health，自证端口
+bash scripts/mcp-call.sh init                      # initialize + ping
+bash scripts/mcp-call.sh tools                     # 9 个工具名
+bash scripts/mcp-call.sh call xiaoai_status
+bash scripts/mcp-call.sh call xiaoai_logs '{"limit":5}'
+bash scripts/mcp-call.sh raw '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+```
+
+多设备用 `ANDROID_SERIAL=<serial>`；token 默认读 `~/.config/xiaoi/token`；
+`XIAOI_PORT=8771` 可跳过端口发现。args 必须是合法 JSON（shell 里用单引号包住）。
+
+默认不调用会花额度或改状态的工具（`xiaoai_submit` / `xiaoai_switch_model` /
+`xiaoai_todo_create` / `xiaoai_island`），需要时显式用 `call` 发起。
