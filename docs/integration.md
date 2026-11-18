@@ -78,6 +78,10 @@ adb forward tcp:8771 tcp:8771
 
 局域网模式要求 32 位十六进制 Token；短 token 会自动回退 loopback。
 `/island` 裸端点仍只接受手机本机请求（远端返回 403）；`/config` 已停用（固定 410）。
+
+**可选：本机免鉴权**（设置页「允许本机免令牌调用」，默认关）。打开后 127.0.0.1 /
+adb forward 不再要求 `Authorization`，局域网来源仍然 401；关闭后 1~2 秒恢复。
+风险与边界见 [security.md §3.1](security.md)。
 `/mcp` 的 `xiaoai_island` 工具在局域网下可用（需 Bearer token）；
 `xiaoai_switch_model` 只能改 model/marker，端点/密钥/开关必须在小爱同学+ App 修改。
 手机直连时不要在公共 Wi-Fi 上长期开启；不用时把开关关掉即可立即回到 loopback。

@@ -81,6 +81,8 @@ public final class Bridge {
     private static volatile boolean sLan;
     /** 用户配置：MCP 桥开关；关闭时即使 lan=true 也只绑 loopback。 */
     private static volatile boolean sBridge;
+    /** 本机回环免鉴权（可选）；局域网仍要求 token。 */
+    private static volatile boolean sNoAuth;
     /** WP2：进程宿主（BridgeControlClient / remote writeConfig 只通过它回调）。 */
     private static volatile XiaoiProcessHost sHost;
     /** 当前 socket 实际绑定的模式：true = 0.0.0.0，false = 127.0.0.1。 */
@@ -120,7 +122,7 @@ public final class Bridge {
             Config c = Config.current();
             return new Mcp.Snapshot(c.baseUrl(), c.apiKey(), c.model(),
                     c.marker(), c.bridge(), c.token(), c.markerTemplate(), c.enabledFlag(),
-                    c.lan());
+                    c.lan(), c.noAuth());
         }
 
         @Override
@@ -130,13 +132,14 @@ public final class Bridge {
             Config cur = Config.current();
             Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker,
                     cur.bridge(), cur.token(), n.markerTemplate, n.enabled, cur.lan(),
-                    cur.cfgRev());
+                    cur.cfgRev(), cur.noAuth());
             XiaoiProcessHost host = sHost;
             if (host == null) return false;
             if (!writeTargetPrefs(c)) return false;
             Config.setCurrent(c);
             host.onConfigReload(c);
             updateAccess(cur.lan(), cur.bridge());
+            updateNoAuth(cur.noAuth());
             return true;
         }
 
@@ -312,14 +315,16 @@ public final class Bridge {
                 sToken = BridgePolicy.normalize(config.token());
                 sLan = config.lan();
                 sBridge = config.bridge();
+                sNoAuth = config.noAuth();
             }
             startControlPlane();
             BridgeLifecycle.start(appContext(), RUNTIME);
             log("能力桥进程已就绪 pid=" + android.os.Process.myPid()
                     + " process=" + processName()
                     + " mcp=" + sBridge
+                    + " noAuth=" + sNoAuth
                     + " hasToken=" + (sToken.length() > 0)
-                    + " shouldListen=" + BridgePolicy.shouldListen(sBridge, sToken)
+                    + " shouldListen=" + BridgePolicy.shouldListen(sBridge, sToken, sNoAuth)
                     + " leader=" + BridgeLifecycle.isLeader()
                     + " port=" + port());
         } catch (Throwable t) {
@@ -375,12 +380,12 @@ public final class Bridge {
 
     /** 当前配置是否允许本进程监听数据面（纯策略，见 {@link BridgePolicy}）。 */
     public static boolean shouldListen() {
-        return BridgePolicy.shouldListen(sBridge, sToken);
+        return BridgePolicy.shouldListen(sBridge, sToken, sNoAuth);
     }
 
     /** 当前配置下是否应绑 0.0.0.0（LAN 且 token 为 32 hex）。 */
     public static boolean bindsLan() {
-        return "0.0.0.0".equals(BridgePolicy.bindHost(sLan, sBridge, sToken));
+        return "0.0.0.0".equals(BridgePolicy.bindHost(sLan, sBridge, sToken, sNoAuth));
     }
 
     /** 当前 socket 是否真的绑在 0.0.0.0（弱 token 回退 loopback 时为 false）。 */
@@ -404,6 +409,7 @@ public final class Bridge {
             sToken = BridgePolicy.normalize(c.token());
             sLan = c.lan();
             sBridge = c.bridge();
+            sNoAuth = c.noAuth();
         } catch (Throwable ignored) {
         }
     }
@@ -631,13 +637,13 @@ public final class Bridge {
 
     private static boolean startServer(int preferred) {
         if (sStarted) return true;
-        if (!BridgePolicy.shouldListen(sBridge, sToken)) {
-            info("MCP 关闭或 token 为空，不启动监听");
+        if (!BridgePolicy.shouldListen(sBridge, sToken, sNoAuth)) {
+            info("MCP 关闭或既无 token 也未开本机免鉴权，不启动监听");
             return false;
         }
         synchronized (LOCK) {
             if (sStarted) return true;
-            final String host = BridgePolicy.bindHost(sLan, sBridge, sToken);
+            final String host = BridgePolicy.bindHost(sLan, sBridge, sToken, sNoAuth);
             final boolean lan = "0.0.0.0".equals(host);
             if (sLan && !lan) {
                 // 只说明策略，不输出 token 内容。
@@ -802,14 +808,14 @@ public final class Bridge {
             }
             // /health 只接受 Bearer；不再回退模块 prefs 的旧 token。
             if ("/health".equals(req.path)) {
-                if (!authorized(req.headers)) {
+                if (!authorized(s, req.headers)) {
                     respondText(s, 401, "unauthorized");
                     return;
                 }
                 respondText(s, 200, "ok facade=" + (sFacade != null) + " port=" + sPort);
                 return;
             }
-            if (!authorized(req.headers)) {
+            if (!authorized(s, req.headers)) {
                 respondText(s, 401, "unauthorized");
                 return;
             }
@@ -880,7 +886,7 @@ public final class Bridge {
                 respondText(s, 403, "loopback only");
                 return;
             }
-            if (!authorized(req.headers)) {
+            if (!authorized(s, req.headers)) {
                 Logs.event(LogLevel.STANDARD, "W", "http",
                         "401 /mcp unauthorized source=" + (isLoopback(s) ? "loopback" : "lan"));
                 respondText(s, 401, "unauthorized");
@@ -949,14 +955,27 @@ public final class Bridge {
 
     // ------------------------------------------------------------- 鉴权策略
 
-    private static boolean authorized(Map<String, String> headers) {
+    /**
+     * 鉴权闸：默认只认 Bearer token。
+     *
+     * <p>用户显式打开「本机免鉴权」时，只有 loopback 来源可跳过校验；
+     * 局域网来源即使开了开关也必须带 token（见 {@link BridgePolicy#allowsAnonymous}）。</p>
+     */
+    private static boolean authorized(Socket s, Map<String, String> headers) {
         try {
+            if (BridgePolicy.allowsAnonymous(sNoAuth, isLoopback(s))) return true;
             String token = sToken;
             if (token == null || token.length() == 0) return false;
             return Http.bearerMatchesAny(headers, token);
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    /** 配置热更新后同步「本机免鉴权」开关。 */
+    public static void updateNoAuth(boolean noAuth) {
+        sNoAuth = noAuth;
+        BridgeLifecycle.apply(RUNTIME);
     }
 
     /** 限流 key：来源地址；拿不到时用固定串（等价全局限流，仍是有界的）。 */

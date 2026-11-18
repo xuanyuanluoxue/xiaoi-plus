@@ -27,6 +27,9 @@ public interface XiaoiProcessHost {
     /** 配置热更新后同步局域网/MCP 开关。 */
     void updateAccess(boolean lan, boolean bridge);
 
+    /** 配置热更新后同步「本机回环免鉴权」开关。 */
+    void updateNoAuth(boolean noAuth);
+
     /** 超级岛：force=true 时不受“每进程一次”限制（控制面按钮使用）。 */
     void showIsland(String text, boolean force);
 

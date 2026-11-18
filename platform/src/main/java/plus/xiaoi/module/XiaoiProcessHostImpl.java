@@ -46,6 +46,11 @@ public final class XiaoiProcessHostImpl implements XiaoiProcessHost {
     }
 
     @Override
+    public void updateNoAuth(boolean noAuth) {
+        Bridge.updateNoAuth(noAuth);
+    }
+
+    @Override
     public void showIsland(String text, boolean force) {
         Island.show(text, force);
     }

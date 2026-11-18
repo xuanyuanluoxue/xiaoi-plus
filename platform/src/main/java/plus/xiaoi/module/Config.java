@@ -19,6 +19,8 @@ public final class Config {
     public static final String KEY_ENABLED = "enabled";
     public static final String KEY_BRIDGE = "bridge";
     public static final String KEY_MCP_LAN = "mcp_lan";
+    /** 本机回环免鉴权（可选）；局域网仍要求 token。 */
+    public static final String KEY_MCP_NO_AUTH = "mcp_no_auth";
     public static final String KEY_TOKEN = "tok" + "en";
     /** 配置版本（降级缓存；事实源是私有 config.json 的 rev）。 */
     public static final String KEY_CFG_REV = "cfg_rev";
@@ -34,6 +36,8 @@ public final class Config {
     private final boolean bridge;
     /** true = 能力桥监听 0.0.0.0（局域网可访问）；仍需非空 token。 */
     private final boolean lan;
+    /** true = 本机回环免鉴权（可选）；局域网仍要求 token。 */
+    private final boolean noAuth;
     private final String token;
     /** 配置版本（仅缓存/诊断；解析失败按 0）。 */
     private final long cfgRev;
@@ -64,16 +68,31 @@ public final class Config {
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
                                 boolean bridge, String token, String markerTemplate,
                                 boolean enabled, boolean lan, long cfgRev) {
-        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, cfgRev);
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate,
+                enabled, lan, cfgRev, false);
+    }
+
+    /** 带「本机免鉴权」开关的完整构造（可选，默认 false）。 */
+    public static Config create(String baseUrl, String apiKey, String model, boolean marker,
+                                boolean bridge, String token, String markerTemplate,
+                                boolean enabled, boolean lan, long cfgRev, boolean noAuth) {
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate,
+                enabled, lan, cfgRev, noAuth);
     }
 
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
                    String token, String markerTemplate, boolean enabled, boolean lan) {
-        this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, 0L);
+        this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, 0L, false);
     }
 
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
                    String token, String markerTemplate, boolean enabled, boolean lan, long cfgRev) {
+        this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, cfgRev, false);
+    }
+
+    private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
+                   String token, String markerTemplate, boolean enabled, boolean lan, long cfgRev,
+                   boolean noAuth) {
         this.baseUrl = baseUrl == null ? "" : baseUrl;
         this.apiKey = apiKey == null ? "" : apiKey;
         this.model = model == null ? "" : model;
@@ -83,6 +102,7 @@ public final class Config {
         this.markerTemplate = markerTemplate == null ? "" : markerTemplate;
         this.enabled = enabled;
         this.lan = lan;
+        this.noAuth = noAuth;
         this.cfgRev = cfgRev < 0 ? 0L : cfgRev;
     }
 
@@ -137,7 +157,8 @@ public final class Config {
                 p.getString(KEY_MODEL, ""), p.getBoolean(KEY_MARKER, true),
                 p.getBoolean(KEY_BRIDGE, false), p.getString(KEY_TOKEN, ""),
                 p.getString(KEY_MARKER_TPL, ""), parseFlag(p.getString(KEY_ENABLED, "1")),
-                p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L));
+                p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L),
+                p.getBoolean(KEY_MCP_NO_AUTH, false));
     }
 
     public static Config forTarget() {
@@ -157,7 +178,7 @@ public final class Config {
             if (log) android.util.Log.i("xiaoi+", "配置来源：小爱 prefs");
             return new Config(t[0], t[1], t[2],
                     flag(t[7], true), flag(t[8], false), t[3], t[4], parseFlag(t[5]),
-                    flag(t[6], false), parseLong(t[9]));
+                    flag(t[6], false), parseLong(t[9]), flag(t[10], false));
         }
         // 2) 次选：模块自己的 prefs（XSharedPreferences，可能被 SELinux 拦）
         try {
@@ -175,7 +196,8 @@ public final class Config {
                         p.getBoolean(KEY_MARKER, true), p.getBoolean(KEY_BRIDGE, false),
                         p.getString(KEY_TOKEN, ""), p.getString(KEY_MARKER_TPL, ""),
                         parseFlag(p.getString(KEY_ENABLED, "1")),
-                        p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L));
+                        p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L),
+                        p.getBoolean(KEY_MCP_NO_AUTH, false));
             }
         } catch (Throwable ignored) {}
         if (log) android.util.Log.w("xiaoi+", "没有可用配置");
@@ -184,8 +206,8 @@ public final class Config {
 
     /**
      * 解析小爱 prefs XML，失败/没有任何配置键返回 null。
-     * 返回 10 个槽位：base, apiKey, model, token, markerTpl, enabled,
-     * lan, marker, bridge, cfgRev。缺失键用空串表示，由调用方补默认值。
+     * 返回 11 个槽位：base, apiKey, model, token, markerTpl, enabled,
+     * lan, marker, bridge, cfgRev, noAuth。缺失键用空串表示，由调用方补默认值。
      */
     private static String[] parsePrefs(String path) {
         java.io.FileInputStream in = null;
@@ -204,7 +226,8 @@ public final class Config {
                     pick(xml, KEY_MODEL), pick(xml, KEY_TOKEN),
                     pick(xml, KEY_MARKER_TPL), pick(xml, KEY_ENABLED),
                     pickBoolean(xml, KEY_MCP_LAN), pickBoolean(xml, KEY_MARKER),
-                    pickBoolean(xml, KEY_BRIDGE), pickLong(xml, KEY_CFG_REV)};
+                    pickBoolean(xml, KEY_BRIDGE), pickLong(xml, KEY_CFG_REV),
+                    pickBoolean(xml, KEY_MCP_NO_AUTH)};
         } catch (Throwable t) {
             android.util.Log.w("xiaoi+", "解析 prefs 失败: " + t);
             return null;
@@ -271,6 +294,9 @@ public final class Config {
 
     /** true = 允许同一局域网访问能力桥（仍要求非空 Bearer token）。 */
     public boolean lan() { return lan; }
+
+    /** true = 本机回环免鉴权（可选）；局域网仍要求 Bearer token。 */
+    public boolean noAuth() { return noAuth; }
 
     /** 能力桥的 Bearer token；为空表示拒绝所有桥请求 */
     public String token() { return token; }

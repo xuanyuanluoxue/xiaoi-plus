@@ -52,7 +52,7 @@ public final class BridgeService {
     public static Decision next(State s) {
         if (s == null) return new Decision(Action.CLOSE, "状态为空");
         if (!s.shouldListen) {
-            return new Decision(Action.CLOSE, "MCP 关闭或 token 为空");
+            return new Decision(Action.CLOSE, "MCP 关闭或既无 token 也未开免鉴权");
         }
         if (!s.hasFacade && !s.hasCli) {
             return new Decision(Action.CLOSE, "本进程没有 facade/CLI");

@@ -38,6 +38,20 @@ import plus.xiaoi.module.core.BridgePolicy;
                 BridgePolicy.bindHost(true, true, ""));
         T.eq("lan 但 token 为 null → loopback", "127.0.0.1",
                 BridgePolicy.bindHost(true, true, null));
+
+        // 免鉴权（noAuth）：只让本机回环免 token，不放宽局域网
+        T.ok("开启 + 空 token + noAuth → 仍监听", BridgePolicy.shouldListen(true, "", true));
+        T.ok("开启 + 空 token 且 noAuth=false → 不监听", !BridgePolicy.shouldListen(true, "", false));
+        T.ok("关闭 + noAuth → 不监听", !BridgePolicy.shouldListen(false, "", true));
+        T.eq("lan + noAuth 但无 token → 仍 loopback", "127.0.0.1",
+                BridgePolicy.bindHost(true, true, "", true));
+        T.eq("lan + noAuth + 强 token → 仍可 0.0.0.0（但 LAN 要令牌）", "0.0.0.0",
+                BridgePolicy.bindHost(true, true, "0123456789abcdef0123456789abcdef", true));
+        T.ok("allowsAnonymous 仅 loopback",
+                BridgePolicy.allowsAnonymous(true, true)
+                        && !BridgePolicy.allowsAnonymous(true, false)
+                        && !BridgePolicy.allowsAnonymous(false, true));
+        T.ok("token 为 null 且 noAuth 也可监听", BridgePolicy.shouldListen(true, null, true));
         T.eq("关闭 + 非 lan → loopback", "127.0.0.1",
                 BridgePolicy.bindHost(false, false, ""));
 

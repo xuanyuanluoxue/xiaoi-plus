@@ -51,6 +51,7 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Unlock
 import top.yukonga.miuix.kmp.icon.extended.WorldClock
 import java.security.SecureRandom
 
@@ -78,8 +79,10 @@ fun TokenScreen(
     var tokenDraft by remember { mutableStateOf<String?>(null) }
     var mcpLanDraft by remember { mutableStateOf<Boolean?>(null) }
     var agentLanDraft by remember { mutableStateOf<Boolean?>(null) }
+    var noAuthDraft by remember { mutableStateOf<Boolean?>(null) }
     var revealed by remember { mutableStateOf(false) }
     var rotateDialog by remember { mutableStateOf(false) }
+    var noAuthDialog by remember { mutableStateOf(false) }
     var lanDialog by remember { mutableStateOf<LanTarget?>(null) }
     var saving by remember { mutableStateOf(false) }
 
@@ -103,11 +106,13 @@ fun TokenScreen(
     val strength = tokenStrengthOf(token)
     val mcpLan = mcpLanDraft ?: cfg?.mcpLan ?: false
     val agentLan = agentLanDraft ?: cfg?.agentLan ?: false
+    val noAuth = noAuthDraft ?: cfg?.mcpNoAuth ?: false
     val mcpEnabled = cfg?.mcpEnabled == true
     val writable = cfg != null && !facts.readOnly && !facts.skeleton
     val dirty = tokenDraft != null ||
         (mcpLanDraft != null && mcpLanDraft != cfg?.mcpLan) ||
-        (agentLanDraft != null && agentLanDraft != cfg?.agentLan)
+        (agentLanDraft != null && agentLanDraft != cfg?.agentLan) ||
+        (noAuthDraft != null && noAuthDraft != cfg?.mcpNoAuth)
 
     fun copyToken() {
         if (token.isEmpty()) {
@@ -140,6 +145,7 @@ fun TokenScreen(
                     fresh.mcpToken = token
                     fresh.mcpLan = mcpLan
                     fresh.agentLan = agentLan
+                    fresh.mcpNoAuth = noAuth
                     val saved = configGateway.saveIfRev(fresh, fresh.rev)
                     when {
                         saved.conflict() -> throw IllegalStateException("配置已被其他页面修改，请重试")
@@ -154,6 +160,7 @@ fun TokenScreen(
                 tokenDraft = null
                 mcpLanDraft = null
                 agentLanDraft = null
+                noAuthDraft = null
                 loaded.reload()
                 onMessage("已保存：设备操作接口会重连，小爱任务接口等待小爱重新加载")
             }.onFailure {
@@ -240,6 +247,30 @@ fun TokenScreen(
                 }
             }
 
+            XiaoiGroupHeader("本机免鉴权（可选）")
+            XiaoiPreferenceCard {
+                XiaoiSwitchRow(
+                    title = "允许本机免令牌调用",
+                    subtitle = "仅 127.0.0.1 / adb forward 跳过 Bearer；局域网仍需令牌",
+                    checked = noAuth,
+                    enabled = writable,
+                    onCheckedChange = { on ->
+                        if (on) noAuthDialog = true else noAuthDraft = false
+                    },
+                    icon = MiuixIcons.Unlock,
+                    iconTone = XiaoiIconTone.DANGER,
+                )
+                if (noAuth) {
+                    Text(
+                        "已开启：本机任何应用都能无令牌调用 8771（/health、/mcp、/logs、/stats、/cli）。" +
+                            "局域网来源仍要求令牌。",
+                        color = colors.warning,
+                        style = XiaoiTheme.typography.caption,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
             XiaoiGroupHeader("局域网")
             XiaoiCardGroup {
                 XiaoiPreferenceCard {
@@ -292,7 +323,11 @@ fun TokenScreen(
                 if (strength == IssueResolver.TokenStrength.NONE) {
                     XiaoiCard {
                         Text(
-                            "没有令牌：小爱任务接口不会启动，局域网也不会生效。",
+                            if (noAuth) {
+                                "没有令牌：仅本机免鉴权可用，局域网不会生效。"
+                            } else {
+                                "没有令牌：小爱任务接口不会启动，局域网也不会生效。"
+                            },
                             color = colors.warning,
                             style = XiaoiTheme.typography.caption,
                         )
@@ -342,6 +377,7 @@ fun TokenScreen(
                 tokenDraft = null
                 mcpLanDraft = null
                 agentLanDraft = null
+                noAuthDraft = null
                 revealed = false
                 onMessage("已放弃修改")
             },
@@ -361,6 +397,23 @@ fun TokenScreen(
         },
         onDismiss = { rotateDialog = false },
         secondaryNote = "新令牌为 32 位十六进制（128 bit），可安全用于局域网。",
+    )
+
+    XiaoiConfirmDialog(
+        show = noAuthDialog,
+        title = "允许本机免令牌调用？",
+        message = "开启后，手机上的任何应用（以及 adb forward）都能不带令牌调用 8771 的" +
+            "全部能力：读配置、读日志、切换模型、让小爱执行任务。\n" +
+            "局域网来源仍要求令牌，但本机应用不再受保护。",
+        confirmText = "开启",
+        danger = true,
+        secondaryNote = "只影响 127.0.0.1；可随时关闭。",
+        onConfirm = {
+            noAuthDialog = false
+            noAuthDraft = true
+            onMessage("已开启本机免鉴权，保存后生效")
+        },
+        onDismiss = { noAuthDialog = false },
     )
 
     val lanTarget = lanDialog

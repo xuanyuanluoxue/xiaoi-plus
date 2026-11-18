@@ -17,18 +17,39 @@ public final class BridgePolicy {
 
     private BridgePolicy() {}
 
-    /** 是否允许启动/保留 HTTP 数据面：MCP 开启且 token 非空。 */
+    /** 是否允许启动/保留 HTTP 数据面：MCP 开启，且 token 非空**或**开了本机免鉴权。 */
     public static boolean shouldListen(boolean mcpEnabled, String token) {
-        return mcpEnabled && normalize(token).length() > 0;
+        return shouldListen(mcpEnabled, token, false);
+    }
+
+    /** @param noAuth 本机免鉴权开关（只影响 loopback，见 {@link #allowsAnonymous}） */
+    public static boolean shouldListen(boolean mcpEnabled, String token, boolean noAuth) {
+        return mcpEnabled && (normalize(token).length() > 0 || noAuth);
     }
 
     /**
      * 监听地址：只有 lan、MCP 开启、token 非空且 token 强到可以开放局域网时
      * 才绑 0.0.0.0；否则一律 loopback（弱 token 不阻断本机 MCP）。
+     *
+     * <p>免鉴权**不会**让局域网变成无鉴权：LAN 仍要求 32 hex token。</p>
      */
     public static String bindHost(boolean lan, boolean mcpEnabled, String token) {
-        return lan && shouldListen(mcpEnabled, token) && tokenStrongEnoughForLan(token)
+        return bindHost(lan, mcpEnabled, token, false);
+    }
+
+    public static String bindHost(boolean lan, boolean mcpEnabled, String token, boolean noAuth) {
+        return lan && shouldListen(mcpEnabled, token, noAuth) && tokenStrongEnoughForLan(token)
                 ? "0.0.0.0" : "127.0.0.1";
+    }
+
+    /**
+     * 本次请求是否可跳过 Bearer 校验。
+     *
+     * <p>只有「用户显式开了免鉴权」且「来源是本机回环」时才成立；
+     * 局域网来源永远要求 token。</p>
+     */
+    public static boolean allowsAnonymous(boolean noAuth, boolean loopback) {
+        return noAuth && loopback;
     }
 
     /** token 是否强到可以开放局域网（恰好 32 个十六进制字符）。 */

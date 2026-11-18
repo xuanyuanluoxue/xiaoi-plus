@@ -48,7 +48,15 @@ App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/co
   **32 位十六进制（128 bit）**时，才监听 `0.0.0.0:8771~8775`，同一 Wi-Fi 的电脑可直连。
   短 token / 非 hex token 不阻断本机 MCP，但只绑 loopback（不会把弱 token 暴露到局域网）。
 - **Bearer token 鉴权**：每个请求必须带 `Authorization: Bearer <token>`，token 在设置页填写；
-  **留空 = 拒绝所有请求（401）**，不存在「默认无鉴权」的窗口。`/health` 也只接受 Bearer。
+  **留空 = 拒绝所有请求（401）**。`/health` 也只接受 Bearer。
+  **唯一例外**是用户显式打开的「本机免鉴权」（见 §3.1），默认关闭。
+- **本机免鉴权（可选，默认关闭）**：设置页「接入 › 令牌与局域网 › 允许本机免令牌调用」。
+  打开后**只有 loopback 来源**（127.0.0.1 / adb forward）跳过 Bearer；局域网来源即使
+  打开本项也仍然要求 token，`0.0.0.0` 监听依旧只认 32 hex token。
+  代价：手机上的**任何应用**都能无令牌调用 8771 的全部能力（读配置/日志、切模型、
+  驱动小爱）；因此默认关闭、打开需二次确认、可随时关闭（保存后 1~2 秒生效）。
+  验证方式：`curl http://127.0.0.1:8771/health` 无 header 返回 200 即已生效；
+  从电脑经局域网访问仍应返回 401。
 - **配置只能由 App 写**：`POST /config` 自 0.12.0 起固定返回 `410 Gone`，不解析 body、
   不写 prefs；`/island` 仍只接受 loopback。MCP 的 `xiaoai_switch_model` 只允许
   `model`/`marker`，远程传入 `baseUrl`/`apiKey`/`bridge`/`lan` 会得到 `isError=true`，
@@ -63,7 +71,7 @@ App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/co
 - 关闭开关 → 保存 → 立即重绑；重启小爱后端口不再监听。
 
 **注意**：loopback 对手机上的**所有应用**可见；局域网模式下同一 Wi-Fi 的**所有设备**都能尝试连接。
-Token 是唯一的门禁，请用设置页「生成」产出的 128 位随机串，不要复用别的服务密码。
+Token 是唯一的门禁（除非你主动打开本机免鉴权），请用设置页「生成」产出的 128 位随机串，不要复用别的服务密码。
 局域网模式要求 32 位十六进制 token；短 token 只允许本机访问。
 公共 Wi-Fi、公司网络、宿舍共享网络建议保持局域网关闭，改用 adb 隧道。
 发现异常时用 `adb shell ss -ltn | grep 8771~8775` 确认监听地址与进程。
@@ -73,6 +81,20 @@ Token 是唯一的门禁，请用设置页「生成」产出的 128 位随机串
 curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8771~8775/health
 # ok facade=true
 ```
+
+### 3.1 可选：本机免鉴权（默认关闭）
+
+| 项 | 行为 |
+|---|---|
+| 开关位置 | 接入 › 令牌与局域网 › **允许本机免令牌调用**（打开需二次确认） |
+| 生效范围 | **仅 127.0.0.1 / adb forward**；局域网来源仍必须带 Bearer |
+| 生效内容 | 8771 的 `/health`、`/mcp`、`/logs`、`/stats`、`/cli` 无 token 可调用 |
+| 不生效 | 8770（设备操作）仍需 token；LAN 绑定仍要求 32 hex token |
+| 关闭后 | 保存后 1~2 秒内恢复 401，不需要重启小爱 |
+| 代价 | 手机上的**任何应用**都能驱动小爱、读日志与配置摘要；仅适合个人设备 + 受控环境 |
+
+实现要点：`BridgePolicy.allowsAnonymous(noAuth, loopback)` 是唯一放行条件，
+配置字段 `mcp.noAuth`（缺省 false，旧配置自动按 false 读取）。
 
 ## 4. 回滚
 
