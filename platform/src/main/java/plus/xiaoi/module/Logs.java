@@ -1,7 +1,6 @@
 package plus.xiaoi.module;
 
 import de.robv.android.xposed.XposedBridge;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
@@ -11,9 +10,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 import plus.xiaoi.module.core.LogLevel;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 
 /**
  * 模块运行日志：内存环形缓冲（最近 300 条）+ logcat + 滚动落盘。

@@ -1,5 +1,6 @@
 package plus.xiaoi.module.ui.screen.access
 
+import plus.xiaoi.module.core.BridgeSnapshot
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -26,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.agent.AgentLanPolicy
+import plus.xiaoi.module.core.AgentLanPolicy
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.ui.components.LocalAppRuntime
@@ -404,12 +405,12 @@ private fun effectiveBindText(requested: Boolean, mcpEnabled: Boolean, token: St
     }
 }
 
-private fun actualBridgeBind(snapshot: plus.xiaoi.module.core.BridgeStatus.Snapshot): String {
+private fun actualBridgeBind(snapshot: plus.xiaoi.module.core.BridgeSnapshot): String {
     if (snapshot.port <= 0) return "未确认"
     return bindDetail(snapshot.bindHost, snapshot.lanEnabled)
 }
 
-private fun actualAgentBind(snapshot: plus.xiaoi.module.agent.AgentRuntimeStatus.Snapshot): String {
+private fun actualAgentBind(snapshot: plus.xiaoi.module.core.AgentRuntimeSnapshot): String {
     if (!snapshot.known()) return "未确认"
     return bindDetail(snapshot.bindHost, snapshot.bindHost == "0.0.0.0")
 }

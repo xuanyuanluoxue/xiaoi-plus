@@ -55,6 +55,8 @@ RULES=(
     'domain_no_orgjson|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'
     'domain_no_io|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+java\.(io|net|nio)\.'
     'domain_no_concurrent|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+java\.util\.concurrent\.'
+    'core_no_agent|domain/src/main/java/plus/xiaoi/module/core|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.agent\.'
+    'agent_no_core|domain/src/main/java/plus/xiaoi/module/agent|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.core\.'
     'application_no_android|application/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
     'application_no_xposed|application/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
     'application_no_orgjson|application/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'

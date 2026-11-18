@@ -77,13 +77,15 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 - Android 适配器在 `:app`，UI 只依赖端口。
 - 验收：`scripts/layering-baseline.tsv` 只剩 `PermissionProbe` 8 行。
 
-### P3：domain 内部整理
+### P3：domain 内部整理 — ✅ 环与静态已清零（WP13）；包级重命名推迟
 
-- `core -> agent`、`agent -> core` 包级环消除：
-  `domain/model`、`domain/policy`、`domain/protocol`、`domain/registry`。
-- 进程级可变注册表（`BridgeEndpoint` 的 `Runnable`、`LogSettings`、`AgentRuntimeStatus`）
-  移到 `:application`/`:infra` 或改为显式端口。
-- 验收：domain 包级无环；domain-only javac 仍通过。
+- `core ↔ agent` 包级环已消除（`AgentLanPolicy` → `core`；`IssueInputFactory` 改用
+  同包的 `AgentRuntimeSnapshot`），由 `core_no_agent` / `agent_no_core` 两条门禁守住。
+- 进程级可变注册表已移出 domain：`BridgeEndpoint` → `:infra`；`LogSettings` →
+  `:application.log`；`AgentRuntimeStatus` / `BridgeStatus` → `:application`（快照留在 domain）。
+- **未做**：`domain/model|policy|protocol|registry` 包重命名——要动 234 处 import、
+  零行为收益，等有测试机时作为纯机械重构单独做。
+- 验收：domain 包级无环 ✅；domain-only javac 仍通过 ✅；`static volatile` = 0 ✅。
 
 ### P4：Bridge 拆分
 

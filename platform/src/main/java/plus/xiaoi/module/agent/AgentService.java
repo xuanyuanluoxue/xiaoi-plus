@@ -1,5 +1,7 @@
 package plus.xiaoi.module.agent;
 
+import plus.xiaoi.module.core.AgentLanPolicy;
+import plus.xiaoi.module.core.AgentRuntimeSnapshot;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,18 +11,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppLaunch;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigRepository;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.platform.R;
 import plus.xiaoi.module.core.ActivityFeed;
@@ -256,7 +256,7 @@ public final class AgentService extends Service {
     /** 只在运行事实变化时写快照/活动，避免每次 onStartCommand 都产生"刚启动"。 */
     private static void markRunning(AgentHttpServer s) {
         if (s == null || !s.isRunning()) return;
-        AgentRuntimeStatus.Snapshot prev = AgentRuntimeStatus.get();
+        AgentRuntimeSnapshot prev = AgentRuntimeStatus.get();
         if (prev.running && prev.port == s.port() && prev.bindHost.equals(s.bindHost())) {
             return;
         }

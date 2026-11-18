@@ -161,7 +161,23 @@ else
     echo "$LIFECYCLE_LEAK" | sed 's/^/      /'
 fi
 
-# ---------------------------------------------------------------- 5) 分享 authority 单一来源
+# ---------------------------------------------------------------- 5) 领域层无进程级可变状态
+DOMAIN_STATE=""
+for f in \
+    core/BridgeEndpoint.java \
+    core/LogSettings.java \
+    core/BridgeStatus.java \
+    agent/AgentRuntimeStatus.java ; do
+    [ -e "domain/src/main/java/plus/xiaoi/module/$f" ] && DOMAIN_STATE="$DOMAIN_STATE $f"
+done
+STATIC_STATE="$(grep -rnE 'static[[:space:]]+volatile' domain/src/main/java 2>/dev/null || true)"
+if [ -z "$DOMAIN_STATE" ] && [ -z "$STATIC_STATE" ]; then
+    pass "领域层无进程级可变状态（快照留在 domain，持有者在上层）"
+else
+    fail "领域层出现进程级可变状态：${DOMAIN_STATE}${STATIC_STATE}"
+fi
+
+# ---------------------------------------------------------------- 6) 分享 authority 单一来源
 AUTH_SRC="$(grep -oE 'AUTHORITY = "[^"]+"' application/src/main/java/plus/xiaoi/module/application/runtime/FileShare.java 2>/dev/null | head -1 | sed 's/.*"\(.*\)"/\1/')"
 AUTH_MAN="$(grep -oE 'android:authorities="[^"]+"' app/src/main/AndroidManifest.xml 2>/dev/null | head -1 | sed 's/.*"\(.*\)"/\1/')"
 if [ -n "$AUTH_SRC" ] && [ "$AUTH_SRC" = "$AUTH_MAN" ]; then

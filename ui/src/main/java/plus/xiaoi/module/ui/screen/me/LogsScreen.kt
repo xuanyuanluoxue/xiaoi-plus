@@ -35,7 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.core.LogLevel
-import plus.xiaoi.module.core.LogSettings
+import plus.xiaoi.module.application.log.LogSettings
 import plus.xiaoi.module.ui.components.FilterChips
 import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway

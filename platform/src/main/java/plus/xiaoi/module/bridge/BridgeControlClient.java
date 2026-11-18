@@ -12,7 +12,6 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.Parcel;
 import android.os.Process;
-
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +19,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.Config;
 import plus.xiaoi.module.ConfigCodec;
@@ -29,7 +27,7 @@ import plus.xiaoi.module.Json;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.XiaoiProcess;
 import plus.xiaoi.module.XiaoiProcessHost;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 import plus.xiaoi.module.core.ControlKeys;
 
 /**

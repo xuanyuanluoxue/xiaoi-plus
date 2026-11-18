@@ -1,6 +1,5 @@
-package plus.xiaoi.module.agent;
+package plus.xiaoi.module.core;
 
-import plus.xiaoi.module.core.BridgePolicy;
 
 /**
  * 8770 Agent 动作面的监听策略（纯 JVM，无 android 依赖）。

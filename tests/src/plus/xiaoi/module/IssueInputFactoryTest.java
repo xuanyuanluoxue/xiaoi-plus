@@ -1,10 +1,11 @@
 package plus.xiaoi.module;
 
+import plus.xiaoi.module.core.BridgeSnapshot;
+import plus.xiaoi.module.application.bridge.BridgeStatus;
+import plus.xiaoi.module.core.AgentRuntimeSnapshot;
 import java.util.ArrayList;
 import java.util.List;
-
 import plus.xiaoi.module.agent.AgentRuntimeStatus;
-import plus.xiaoi.module.core.BridgeStatus;
 import plus.xiaoi.module.core.IssueInputFactory;
 import plus.xiaoi.module.core.IssueResolver;
 import plus.xiaoi.module.core.PermissionSnapshot;
@@ -37,7 +38,7 @@ public final class IssueInputFactoryTest {
         return f;
     }
 
-    private static BridgeStatus.Snapshot healthyBridge() {
+    private static BridgeSnapshot healthyBridge() {
         BridgeStatus.set(8771, "deepseek-chat", true, true, 5L, NOW, true,
                 "127.0.0.1", Boolean.FALSE, NOW, 0L);
         return BridgeStatus.get();
@@ -53,9 +54,9 @@ public final class IssueInputFactoryTest {
         AgentRuntimeStatus.clear();
 
         IssueInputFactory.ConfigFacts f = healthyFacts();
-        BridgeStatus.Snapshot bridge = healthyBridge();
+        BridgeSnapshot bridge = healthyBridge();
         AgentRuntimeStatus.setRunning(8770, "127.0.0.1", false);
-        AgentRuntimeStatus.Snapshot agent = AgentRuntimeStatus.get();
+        AgentRuntimeSnapshot agent = AgentRuntimeStatus.get();
 
         IssueResolver.Input in = IssueInputFactory.from(
                 f, bridge, agent, PermissionSnapshot.unknown(), NOW);

@@ -71,6 +71,13 @@
   删除 `GlassSupport.userEnabled` 死代码；`glassBackdropSource` 改为 public。
   **分层基线清零（0 行）**，新增 `ui_no_infra` / `ui_no_bridge_pkg` 与
   「分享 authority 单一来源」一致性检查。
+- **领域层去静态化 + 消包环（WP13）**：领域层不再持有进程级可变状态——
+  不可变快照留在 `:domain`（`AgentRuntimeSnapshot` / `BridgeSnapshot`），
+  「最新快照」上移到 `:application`（`AgentRuntimeStatus` / `BridgeStatus` / `LogSettings`），
+  `BridgeEndpoint`（端口 + reload 回调）移到 `:infra` 与 `BridgeClient` 同模块。
+  `AgentLanPolicy` 归入 `core`、`IssueInputFactory` 改用同包快照 →
+  `core ↔ agent` 包环清零。新增 `core_no_agent` / `agent_no_core` 门禁与
+  「领域层无进程级可变状态」检查。包级重命名（model/policy/port/…）本轮不做。
 - **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
   已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
   下一阶段优化见 `docs/refactor/NEXT.md`。

@@ -2,9 +2,8 @@ package plus.xiaoi.module;
 
 import java.util.List;
 import java.util.Map;
-
 import plus.xiaoi.module.core.LogLevel;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 
 /** 环形缓冲与 dump 输出测试（依赖 XSharedPreferences/XposedBridge 桩为 no-op）。 */
 public final class LogsTest {

@@ -5,12 +5,9 @@ import android.os.FileObserver;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
 import org.json.JSONObject;
-
 import java.io.File;
-
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 
 /**
  * config.json 即事实（v0.8.2）：监听文件改动并自动应用到小爱。

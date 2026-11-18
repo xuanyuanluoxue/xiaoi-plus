@@ -2,10 +2,9 @@ package plus.xiaoi.module.application.config;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.ConfigCodec;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 import plus.xiaoi.module.core.config.ConfigBackupInfo;
 import plus.xiaoi.module.core.config.ConfigGateway;
 import plus.xiaoi.module.core.config.ConfigLoadResult;

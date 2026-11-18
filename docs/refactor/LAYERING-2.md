@@ -297,36 +297,39 @@ bash scripts/ui-screenshot.sh --route Home --review   # 6 条一级路由视觉�
 
 ---
 
-### WP13：domain 内部分层 + 去静态化
+### WP13：domain 内部分层 + 去静态化 —— ✅ 去静态化 + 消环已完成（2026-11-18）
 
 **目标**：`core ↔ agent` 包环消除；domain 内无 `static` 可变字段。
 
-**拆分**
+**落地结果（与计划不同的地方照实记）**
 
-```
-domain/model      AppConfig · AppStatus · BridgeStatus · AgentRuntimeStatus.Snapshot
-                  InstanceRecord · PermissionSnapshot · ConfigLoadResult/SaveResult
-domain/policy     BridgePolicy · AgentLanPolicy · StateModel · IssueResolver
-                  ConfigRevRules · RateLimiter · Redact · ErrorCatalog
-                  XiaoiOverridePolicy · ControlKeys · AlarmTimes · CanonicalArgs
-domain/port       ConfigGateway · ActionExecutor · AskHost · NotifyHost · UidGuard
-domain/protocol   AppToolProtocol · ActionDescriptor/Request/Result · Mcp 的线格式
-domain/registry   CapabilityRegistry · Actions · BridgeRegistry · ControlLogRing
-```
+计划里说「3 处静态」，实际排查出 **4 处**（漏了 `BridgeStatus`），做法统一为
+**「不可变快照留在 domain，最新快照的持有者上移到应用层」**：
 
-**去静态化（3 处）**
-
-| 类 | 现状 | 改法 |
+| 原位置 | 快照（domain，纯数据） | 持有者（上层，进程状态） |
 |---|---|---|
-| `BridgeEndpoint` | `static int sPort` + `static Runnable sReloadAction` | 改为实例，由 `BridgeControlService` 持有并在组装根注入 `ConfigRepository` |
-| `LogSettings` | `static volatile LogLevel` | 改为 `LogSettings` 实例随 `AppConfig` 走，`Logs` 持有引用 |
-| `AgentRuntimeStatus` | `static volatile Snapshot` | 改为实例，`AgentService` 持有，UI 经 `AppRuntime` 读 |
+| `BridgeEndpoint` | —（无快照） | 端口/Reload 回调整体移到 `:infra` 的 `core.BridgeEndpoint`（与 `BridgeClient` 同模块） |
+| `LogSettings` | —（纯档位枚举） | 移到 `:application` 的 `application.log.LogSettings` |
+| `AgentRuntimeStatus.Snapshot` | `core.AgentRuntimeSnapshot` | `application.agent.AgentRuntimeStatus` |
+| `BridgeStatus.Snapshot` | `core.BridgeSnapshot` | `application.bridge.BridgeStatus` |
 
-**门禁**：新增「domain 内不允许 `static` 非 final 字段」与「domain 内部包依赖白名单」两条。
+**消环（2 条边，均为单点）**
 
-**验收**：`tests/run.sh`（1989 断言）全绿 + `check-layering --strict` + 空 classpath 单编 domain。
+- `core → agent`：`IssueInputFactory` 改成接收 `core.AgentRuntimeSnapshot`（同包），不再 import `agent`
+- `agent → core`：`AgentLanPolicy` 移到 `core`（它与 `BridgePolicy` 共用同一套令牌强度规则）
 
-**风险最高（面广）**：建议最后一个做，且每个子步骤单独 commit；`AgentRuntimeStatus` 被 8765/UI/契约测试间接依赖，先补断言再改。
+结果：`core → agent = 0`、`agent → core = 0`，domain 内 `static volatile` = 0。
+
+**门禁**：`core_no_agent` / `agent_no_core`（两条 import 规则，基线必须 0）+ 一致性检查
+「领域层无进程级可变状态」（同时断言 4 个类不许回到 domain）。
+
+**包重组（`model/policy/port/protocol/registry`）——本轮不做**
+
+理由：只改包名要动 **234 处 import**，零行为收益，而当前没有测试机可做回归；
+包环已经由上面两条规则**在结构上**挡死。等有设备时再作为纯机械重构单独做。
+
+**验收**：`tests/run.sh` 2030 断言全绿、`check-layering --strict`（0 基线）、
+一致性、六模块构建、`verify-apk` 全绿。
 
 ## 5. 每个 WP 的完成定义（DoD）
 
@@ -379,3 +382,4 @@ domain/registry   CapabilityRegistry · Actions · BridgeRegistry · ControlLogR
 | 2026-11-18 | WP9 | 删旧 Java 页面（`ConfigActivity` 1049 行 / `HomeActivity` / `AboutActivity` / `LogsActivity` / `BaseActivity` / `Nav` / `ui/config` 6 文件 / `SpikeActivity` / `LegacyScreen`，约 -1.5k 行）；4 处「打开 App」改指 `MainActivity`；删 6 布局 + 22 drawable + `dimens.xml` + `Widget.*`/`Dialog` 样式，`strings.xml` 只留 `app_name`；路由 20 → 19；版本 `0.15.1` (23) | 单测 2017 断言；一致性（死资源清零）、分层 `--strict`、构建、`verify-apk`（versionCode 23）全绿；真机：4 个 tab 正常、`我的` 无「兼容模式」、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP10 | 新建 `:platform` Android library（namespace `.platform`），搬 30 个适配器（配置/桥/控制面/8770/通知/执行器/`PermissionProbe`/`ShareProvider`/`ThemeManager`/`Logs`）；`:app` 只剩清单+资源+`MainActivity`+`Hook`；Xposed 桩改由 `:platform` 产出；新增 `AppLaunch` 替代 `MainActivity` 直接引用；新增 `platform_no_compose`/`platform_no_miuix`/`platform_no_ui` 门禁，基线 11 → **3 行** | 单测 2017 断言；分层 `--strict`、一致性、五模块构建、`verify-apk` PASS；真机：启动 328ms、`我的` 页正常、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP11 | 新增 `:ui` Android library（namespace `.ui`），搬 62 个 Compose 文件 + `sponsor_wechat`；`:app` 只剩 `MainActivity.kt` + `Hook.java` + 清单 + 资源；前置把 7 处 platform/infra 耦合端口化（`ControlLogStore`/`UiPrefs`/`BackgroundTasks`/`NetworkInfo`/`UsageStats`/`ModelProbe`/`FileShare.AUTHORITY`），`AppRuntime` 6 → **11 端口**；删 `GlassSupport.userEnabled` 死代码；新增 `ui_no_infra`/`ui_no_bridge_pkg` 与 authority 一致性检查，**基线清零（0 行）** | 单测 2017+ 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS；真机：启动 104ms、进程存活、契约 **47/47**、无崩溃 |
+| 2026-11-18 | WP13 | domain 去静态化 + 消环：`BridgeEndpoint` → `:infra`；`LogSettings` → `:application`；`AgentRuntimeStatus`/`BridgeStatus` 拆成「domain 不可变快照 + application 持有者」；`AgentLanPolicy` → `core`、`IssueInputFactory` 改用同包快照 → `core↔agent` 边清零；新增 `core_no_agent`/`agent_no_core` 门禁与「领域层无进程级可变状态」检查（包重组按记录推迟） | 单测 2030 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS |

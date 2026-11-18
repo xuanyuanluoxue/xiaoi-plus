@@ -1,5 +1,6 @@
 package plus.xiaoi.module;
 
+import plus.xiaoi.module.core.AgentRuntimeSnapshot;
 import plus.xiaoi.module.agent.AgentRuntimeStatus;
 
 /** 8770 只读快照：未知/启动/重复上报保留启动时间/停止/错误/清理。 */
@@ -9,7 +10,7 @@ public final class AgentRuntimeStatusTest {
 
     public static int run() {
         AgentRuntimeStatus.clear();
-        AgentRuntimeStatus.Snapshot empty = AgentRuntimeStatus.get();
+        AgentRuntimeSnapshot empty = AgentRuntimeStatus.get();
         T.ok("空快照不运行", !empty.running);
         T.eq("空快照端口 0", 0, empty.port);
         T.eq("空快照 bindHost 未知", "", empty.bindHost);
@@ -21,7 +22,7 @@ public final class AgentRuntimeStatusTest {
         T.ok("空快照 failed=false", !empty.failed());
 
         AgentRuntimeStatus.setRunning(8770, "127.0.0.1", false);
-        AgentRuntimeStatus.Snapshot local = AgentRuntimeStatus.get();
+        AgentRuntimeSnapshot local = AgentRuntimeStatus.get();
         T.ok("启动后 running", local.running);
         T.eq("启动后端口", 8770, local.port);
         T.eq("启动后 bindHost", "127.0.0.1", local.bindHost);
@@ -37,13 +38,13 @@ public final class AgentRuntimeStatusTest {
                 AgentRuntimeStatus.get().startedAt);
 
         AgentRuntimeStatus.setRunning(8770, "0.0.0.0", true);
-        AgentRuntimeStatus.Snapshot lan = AgentRuntimeStatus.get();
+        AgentRuntimeSnapshot lan = AgentRuntimeStatus.get();
         T.eq("LAN 地址", "0.0.0.0", lan.bindHost);
         T.ok("LAN 开启", lan.lanEnabled);
         T.ok("地址变化视为新启动", lan.startedAt >= firstStart);
 
         AgentRuntimeStatus.setError("绑定 0.0.0.0:8770 失败：BindException\n第二行");
-        AgentRuntimeStatus.Snapshot failed = AgentRuntimeStatus.get();
+        AgentRuntimeSnapshot failed = AgentRuntimeStatus.get();
         T.ok("错误后不运行", !failed.running);
         T.eq("错误后端口 0", 0, failed.port);
         T.eq("错误后 bindHost 未知", "", failed.bindHost);
@@ -52,7 +53,7 @@ public final class AgentRuntimeStatusTest {
         T.ok("错误后 failed=true", failed.failed());
 
         AgentRuntimeStatus.setStopped();
-        AgentRuntimeStatus.Snapshot stopped = AgentRuntimeStatus.get();
+        AgentRuntimeSnapshot stopped = AgentRuntimeStatus.get();
         T.ok("停止后不运行", !stopped.running);
         T.eq("停止后端口 0", 0, stopped.port);
         T.eq("停止后清空错误", "", stopped.lastError);

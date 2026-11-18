@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.Mcp
-import plus.xiaoi.module.agent.AgentLanPolicy
+import plus.xiaoi.module.core.AgentLanPolicy
 import plus.xiaoi.module.agent.AgentMcp
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.ui.components.LocalAppRuntime

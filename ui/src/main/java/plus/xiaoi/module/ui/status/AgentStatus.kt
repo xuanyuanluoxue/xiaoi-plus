@@ -1,12 +1,13 @@
 package plus.xiaoi.module.ui.status
 
+import plus.xiaoi.module.core.AgentRuntimeSnapshot
 import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.ui.components.XiaoiTone
 
 /**
  * 设备操作接口（8770）状态的唯一 UI 判定：Access / Bridge / Diagnostics 共用。
  *
- * 只读 [AgentRuntimeStatus.get] 的快照与 [AgentRuntimeStatus.Snapshot.known]，
+ * 只读 [AgentRuntimeStatus.get] 的快照与 [AgentRuntimeSnapshot.known]，
  * 不扫端口、不猜 loopback；未知状态统一显示「未确认」。
  */
 enum class AgentPortState { RUNNING, STOPPED, FAILED, DISABLED, UNKNOWN }
@@ -19,7 +20,7 @@ data class AgentPortUi(
 
 fun agentPortUi(
     mcpEnabled: Boolean,
-    snapshot: AgentRuntimeStatus.Snapshot,
+    snapshot: AgentRuntimeSnapshot,
 ): AgentPortUi {
     val state = when {
         !mcpEnabled -> AgentPortState.DISABLED

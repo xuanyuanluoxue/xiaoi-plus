@@ -1,5 +1,7 @@
 package plus.xiaoi.module.ui.screen.access
 
+import plus.xiaoi.module.core.BridgeSnapshot
+import plus.xiaoi.module.core.AgentRuntimeSnapshot
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +25,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.core.BridgePolicy
-import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.CapabilityRegistry
 import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.ui.components.LocalAppRuntime
@@ -372,12 +373,12 @@ private fun lanFallback(token: String, requested: Boolean): Boolean {
     return t.isNotEmpty() && !BridgePolicy.tokenStrongEnoughForLan(t)
 }
 
-private fun bridgeBindText(snapshot: BridgeStatus.Snapshot): String {
+private fun bridgeBindText(snapshot: BridgeSnapshot): String {
     if (snapshot.port <= 0) return "未确认"
     return bindDetail(snapshot.bindHost, snapshot.lanEnabled)
 }
 
-private fun agentBindText(snapshot: AgentRuntimeStatus.Snapshot): String {
+private fun agentBindText(snapshot: AgentRuntimeSnapshot): String {
     if (!snapshot.known()) return "未确认"
     return bindDetail(snapshot.bindHost, snapshot.bindHost == "0.0.0.0")
 }

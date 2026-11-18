@@ -6,9 +6,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-
 import plus.xiaoi.module.core.LogLevel;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 
 /**
  * App 进程内的 8770 调用日志（纯 JVM 环形缓冲，不落盘）。

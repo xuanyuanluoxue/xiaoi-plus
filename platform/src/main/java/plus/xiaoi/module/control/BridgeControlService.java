@@ -1,5 +1,7 @@
 package plus.xiaoi.module.control;
 
+import plus.xiaoi.module.core.BridgeSnapshot;
+import plus.xiaoi.module.application.bridge.BridgeStatus;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,7 +11,6 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -20,7 +21,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.ConfigCodec;
 import plus.xiaoi.module.ConfigRepository;
@@ -29,8 +29,7 @@ import plus.xiaoi.module.core.ActivityFeed;
 import plus.xiaoi.module.core.ActivityHub;
 import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.LogLevel;
-import plus.xiaoi.module.core.LogSettings;
-import plus.xiaoi.module.core.BridgeStatus;
+import plus.xiaoi.module.application.log.LogSettings;
 import plus.xiaoi.module.core.ControlKeys;
 
 /**

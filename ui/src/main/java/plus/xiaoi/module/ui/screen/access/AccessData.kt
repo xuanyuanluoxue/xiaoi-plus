@@ -1,5 +1,8 @@
 package plus.xiaoi.module.ui.screen.access
 
+import plus.xiaoi.module.core.BridgeSnapshot
+import plus.xiaoi.module.application.bridge.BridgeStatus
+import plus.xiaoi.module.core.AgentRuntimeSnapshot
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -13,7 +16,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.agent.AgentRuntimeStatus
-import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.ui.components.LocalConfigGateway
@@ -71,7 +73,7 @@ internal fun rememberAccessConfig(): AccessConfigHolder {
 
 /** 8771 快照是进程内静态事实；页面可见时轮询，不触发网络请求。 */
 @Composable
-internal fun rememberBridgeSnapshot(): BridgeStatus.Snapshot {
+internal fun rememberBridgeSnapshot(): BridgeSnapshot {
     var snapshot by remember { mutableStateOf(BridgeStatus.get()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -84,7 +86,7 @@ internal fun rememberBridgeSnapshot(): BridgeStatus.Snapshot {
 
 /** 8770 快照同上；与服务生命周期一致，App 被杀后自然回到未知。 */
 @Composable
-internal fun rememberAgentSnapshot(): AgentRuntimeStatus.Snapshot {
+internal fun rememberAgentSnapshot(): AgentRuntimeSnapshot {
     var snapshot by remember { mutableStateOf(AgentRuntimeStatus.get()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -134,7 +136,7 @@ internal fun bindDetail(host: String?, lan: Boolean?): String {
 /** 8771 状态：只看 8771 自己的快照与 MCP 开关，不从 8770 推断。 */
 internal fun bridgeStateText(
     mcpEnabled: Boolean,
-    snapshot: BridgeStatus.Snapshot,
+    snapshot: BridgeSnapshot,
     now: Long,
 ): String = when {
     !mcpEnabled -> "未开启"

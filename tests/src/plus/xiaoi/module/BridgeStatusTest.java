@@ -1,6 +1,7 @@
 package plus.xiaoi.module;
 
-import plus.xiaoi.module.core.BridgeStatus;
+import plus.xiaoi.module.core.BridgeSnapshot;
+import plus.xiaoi.module.application.bridge.BridgeStatus;
 import plus.xiaoi.module.core.StateModel;
 
 /** 控制面快照：默认断开、set/get、30s 新鲜度、rev/运行态、clear。 */
@@ -10,7 +11,7 @@ public final class BridgeStatusTest {
 
     public static int run() {
         BridgeStatus.clear();
-        BridgeStatus.Snapshot empty = BridgeStatus.get();
+        BridgeSnapshot empty = BridgeStatus.get();
         T.ok("初始未连接", !empty.connected);
         T.eq("初始端口 0", 0, empty.port);
         T.ok("初始不新鲜", !empty.fresh(1_000L));
@@ -20,7 +21,7 @@ public final class BridgeStatusTest {
         T.eq("新增 lastDisconnectedAt 默认未知", 0L, empty.lastDisconnectedAt);
 
         BridgeStatus.set(8771, "deepseek-chat", true, true, 12L, 1_000L, true);
-        BridgeStatus.Snapshot s = BridgeStatus.get();
+        BridgeSnapshot s = BridgeStatus.get();
         T.ok("set 后已连接", s.connected);
         T.eq("端口", 8771, s.port);
         T.eq("模型", "deepseek-chat", s.model);
@@ -36,7 +37,7 @@ public final class BridgeStatusTest {
 
         BridgeStatus.set(8771, "deepseek-chat", true, true, 12L, 1_500L, true,
                 "0.0.0.0", Boolean.TRUE, 900L, 800L);
-        BridgeStatus.Snapshot bound = BridgeStatus.get();
+        BridgeSnapshot bound = BridgeStatus.get();
         T.eq("扩展 set 保留 bindHost", "0.0.0.0", bound.bindHost);
         T.eq("扩展 set 保留 lanEnabled", Boolean.TRUE, bound.lanEnabled);
         T.eq("扩展 set 保留连接时间", 900L, bound.lastConnectedAt);
@@ -44,12 +45,12 @@ public final class BridgeStatusTest {
 
         BridgeStatus.set(8771, "deepseek-chat", true, true, 12L, 1_600L, true,
                 "127.0.0.1", Boolean.FALSE, 900L, 0L);
-        BridgeStatus.Snapshot loopback = BridgeStatus.get();
+        BridgeSnapshot loopback = BridgeStatus.get();
         T.eq("弱令牌回退 loopback", "127.0.0.1", loopback.bindHost);
         T.eq("弱令牌 LAN=false", Boolean.FALSE, loopback.lanEnabled);
 
         BridgeStatus.set(8772, "", false, false, 0L, 2_000L, false);
-        BridgeStatus.Snapshot registeredOnly = BridgeStatus.get();
+        BridgeSnapshot registeredOnly = BridgeStatus.get();
         T.ok("register-only 仍连接", registeredOnly.connected);
         T.ok("register-only 运行态未知", !registeredOnly.runtimeKnown);
         T.eq("register-only 端口", 8772, registeredOnly.port);

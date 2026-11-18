@@ -1,5 +1,8 @@
 package plus.xiaoi.module.ui.screen.me
 
+import plus.xiaoi.module.core.BridgeSnapshot
+import plus.xiaoi.module.application.bridge.BridgeStatus
+import plus.xiaoi.module.core.AgentRuntimeSnapshot
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -29,7 +32,6 @@ import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.application.runtime.AppRuntime
-import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.core.PermissionSnapshot
@@ -337,8 +339,8 @@ private data class DiagSnapshot(
     val d3: StateModel.AppliedState,
     val d4: StateModel.RuntimeState,
     val bridge8771: IssueResolver.PortState,
-    val bridge: BridgeStatus.Snapshot,
-    val agent: AgentRuntimeStatus.Snapshot,
+    val bridge: BridgeSnapshot,
+    val agent: AgentRuntimeSnapshot,
     val permissions: PermissionSnapshot,
     val errorLines: Int,
 )
@@ -472,7 +474,7 @@ private fun portTone(s: IssueResolver.PortState) = when (s) {
     else -> XiaoiTone.NEUTRAL
 }
 
-private fun bridgeDetail(b: BridgeStatus.Snapshot, mcpEnabled: Boolean): String {
+private fun bridgeDetail(b: BridgeSnapshot, mcpEnabled: Boolean): String {
     if (!b.connected || b.port <= 0) {
         return if (mcpEnabled) "等待小爱上报；未知端口不做猜测"
         else "外部接入关闭或未设置令牌，小爱任务接口不启动"
@@ -486,7 +488,7 @@ private fun bridgeDetail(b: BridgeStatus.Snapshot, mcpEnabled: Boolean): String 
     return "端口 ${b.port} · $bind · rev ${b.appliedRev}"
 }
 
-private fun agentDetail(a: AgentRuntimeStatus.Snapshot, mcpEnabled: Boolean): String {
+private fun agentDetail(a: AgentRuntimeSnapshot, mcpEnabled: Boolean): String {
     if (!a.known()) {
         return if (mcpEnabled) "未收到设备操作接口上报；不下结论" else "外部接入关闭，设备操作接口不启动"
     }

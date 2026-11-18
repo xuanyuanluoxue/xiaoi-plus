@@ -1,9 +1,9 @@
 package plus.xiaoi.module.ui.screen.home
 
+import plus.xiaoi.module.core.BridgeSnapshot
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.ui.components.DimensionState
@@ -23,7 +23,7 @@ internal object HomeFacts {
 
     fun resolve(
         facts: IssueInputFactory.ConfigFacts,
-        bridge: BridgeStatus.Snapshot,
+        bridge: BridgeSnapshot,
         now: Long,
     ): StateModel.Result {
         val connected = bridge.connected && bridge.port > 0

@@ -1,6 +1,6 @@
 package plus.xiaoi.module;
 
-import plus.xiaoi.module.agent.AgentLanPolicy;
+import plus.xiaoi.module.core.AgentLanPolicy;
 
 /**
  * 8770 Agent 动作面监听策略测试（纯 JVM）。

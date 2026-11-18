@@ -3,12 +3,11 @@ package plus.xiaoi.module.core;
 import java.util.List;
 
 import plus.xiaoi.module.AppConfig;
-import plus.xiaoi.module.agent.AgentRuntimeStatus;
 
 /**
  * 把现有只读事实适配成 {@link IssueResolver.Input}（纯 JVM，无 android 依赖）。
  *
- * <p>页面只需传入配置标志、{@link BridgeStatus} 快照、{@link AgentRuntimeStatus}
+ * <p>页面只需传入配置标志、{@link BridgeStatus} 快照、{@link AgentRuntimeSnapshot}
  * 快照与权限快照；本类不读文件、不联网、不持 Context，也不重新探测端口。
  * 未知输入保持 UNKNOWN/OFF 等安全默认，不伪造"已连接/已启动"。</p>
  *
@@ -76,8 +75,8 @@ public final class IssueInputFactory {
 
     /** 全部输入显式传入；null 快照按"没有事实"处理。 */
     public static IssueResolver.Input from(ConfigFacts facts,
-                                           BridgeStatus.Snapshot bridge,
-                                           AgentRuntimeStatus.Snapshot agent,
+                                           BridgeSnapshot bridge,
+                                           AgentRuntimeSnapshot agent,
                                            PermissionSnapshot permissions,
                                            long now) {
         ConfigFacts f = facts == null ? new ConfigFacts() : facts;
@@ -121,24 +120,24 @@ public final class IssueInputFactory {
     }
 
     public static IssueResolver.Input from(ConfigFacts facts,
-                                           BridgeStatus.Snapshot bridge,
-                                           AgentRuntimeStatus.Snapshot agent,
+                                           BridgeSnapshot bridge,
+                                           AgentRuntimeSnapshot agent,
                                            PermissionSnapshot permissions) {
         return from(facts, bridge, agent, permissions, System.currentTimeMillis());
     }
 
     /** 便捷入口：直接得到按优先级排序的待处理项。 */
     public static List<IssueResolver.Issue> issues(ConfigFacts facts,
-                                                   BridgeStatus.Snapshot bridge,
-                                                   AgentRuntimeStatus.Snapshot agent,
+                                                   BridgeSnapshot bridge,
+                                                   AgentRuntimeSnapshot agent,
                                                    PermissionSnapshot permissions,
                                                    long now) {
         return IssueResolver.resolve(from(facts, bridge, agent, permissions, now));
     }
 
     public static List<IssueResolver.Issue> issues(ConfigFacts facts,
-                                                   BridgeStatus.Snapshot bridge,
-                                                   AgentRuntimeStatus.Snapshot agent,
+                                                   BridgeSnapshot bridge,
+                                                   AgentRuntimeSnapshot agent,
                                                    PermissionSnapshot permissions) {
         return issues(facts, bridge, agent, permissions, System.currentTimeMillis());
     }
@@ -147,7 +146,7 @@ public final class IssueInputFactory {
      * 8771：有新鲜 leader 才算 RUNNING；连接过但超过 30s 算 WAITING。
      * 没有快照时，MCP 开启为 WAITING（等 leader），关闭为 OFF；不猜 FAILED。
      */
-    public static IssueResolver.PortState bridgePort(BridgeStatus.Snapshot bridge,
+    public static IssueResolver.PortState bridgePort(BridgeSnapshot bridge,
                                                      boolean mcpEnabled, long now) {
         if (bridge != null && bridge.connected && bridge.port > 0) {
             return bridge.fresh(now)
@@ -161,7 +160,7 @@ public final class IssueInputFactory {
      * 8770：运行中 → RUNNING；有错误 → FAILED；已知停止 → OFF；
      * 从未收到事实 → UNKNOWN（MCP 关闭时按用户选择记 OFF）。
      */
-    public static IssueResolver.PortState agentPort(AgentRuntimeStatus.Snapshot agent,
+    public static IssueResolver.PortState agentPort(AgentRuntimeSnapshot agent,
                                                     boolean mcpEnabled) {
         if (agent != null && agent.running) return IssueResolver.PortState.RUNNING;
         if (agent != null && agent.lastError.length() > 0) {

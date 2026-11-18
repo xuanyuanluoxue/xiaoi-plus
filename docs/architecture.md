@@ -108,6 +108,9 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
 - 打开设置页走 `AppLaunch.intent(ctx)`（按包名拼 `MainActivity`），
   下层不引用上层 Activity 类。
 - 分层基线已清零：`scripts/layering-baseline.tsv` 只剩表头。
+- 领域层只放**不可变**数据结构与纯策略：进程级可变状态（最新快照、日志档位、
+  桥端口登记）全部在 `:application` / `:infra`，由 `core_no_agent` / `agent_no_core`
+  与「领域层无进程级可变状态」两条检查守住。
 - `tests/run.sh` 先用空 classpath 单独编译 `:domain`，以此证明它不依赖上层。
 - `:application` 的 `java.io|net|nio` 由门禁锁死（`application_no_io`），
   所有字节读写只经端口（`ConfigStorePort` 等）由 `:infra` 实现。

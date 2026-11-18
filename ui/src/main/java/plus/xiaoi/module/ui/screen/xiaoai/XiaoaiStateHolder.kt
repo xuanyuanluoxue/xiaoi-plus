@@ -1,5 +1,7 @@
 package plus.xiaoi.module.ui.screen.xiaoai
 
+import plus.xiaoi.module.core.BridgeSnapshot
+import plus.xiaoi.module.application.bridge.BridgeStatus
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -8,7 +10,6 @@ import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.core.ActivityFeed
 import plus.xiaoi.module.core.ActivityHub
-import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.core.config.ConfigGateway
 import plus.xiaoi.module.ui.components.DimensionState
@@ -179,7 +180,7 @@ internal class XiaoaiStateHolder(
         )
     }
 
-    private fun runtimeModelLine(snap: BridgeStatus.Snapshot, fileModel: String): String {
+    private fun runtimeModelLine(snap: BridgeSnapshot, fileModel: String): String {
         if (!snap.connected) return "未确认（小爱未连接）"
         if (!snap.runtimeKnown) return "等待小爱上报运行模型"
         if (snap.model.isEmpty()) return "小爱未上报运行模型"

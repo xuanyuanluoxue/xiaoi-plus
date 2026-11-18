@@ -1,8 +1,13 @@
-package plus.xiaoi.module.core;
+package plus.xiaoi.module.application.log;
+
+import plus.xiaoi.module.core.LogLevel;
 
 /**
- * 进程内日志档位（纯 JVM）。两个进程各自持有一份：
- * App 进程由 ConfigRepository/ConfigSync 写入，小爱进程由 BridgeControlClient 写入。
+ * 进程内日志档位（纯 JVM，WP13 从领域层移到应用层）。
+ *
+ * <p>它描述的是「当前进程的日志噪音级别」，不是领域规则，因此不该放在
+ * {@code :domain}。两个进程各自持有一份：App 进程由 {@code ConfigRepository}/
+ * {@code ConfigSync} 写入，小爱进程由 {@code BridgeControlClient} 写入。</p>
  */
 public final class LogSettings {
 

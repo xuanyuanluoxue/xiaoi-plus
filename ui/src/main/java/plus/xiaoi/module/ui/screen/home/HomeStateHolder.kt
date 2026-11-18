@@ -1,5 +1,7 @@
 package plus.xiaoi.module.ui.screen.home
 
+import plus.xiaoi.module.core.BridgeSnapshot
+import plus.xiaoi.module.application.bridge.BridgeStatus
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,7 +13,6 @@ import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.core.ActivityFeed
 import plus.xiaoi.module.core.ActivityHub
-import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.core.StateModel
@@ -244,7 +245,7 @@ internal class HomeStateHolder(
     }
 
     /** 今日调用量：只查本机 8771；失败/未配置保持 null，首页显示“未确认”。 */
-    private fun readUsage(config: AppConfig, bridge: BridgeStatus.Snapshot): Pair<Long?, Long?> {
+    private fun readUsage(config: AppConfig, bridge: BridgeSnapshot): Pair<Long?, Long?> {
         if (!config.mcpEnabled) return null to null
         val token = config.mcpToken.orEmpty().trim()
         if (token.isEmpty() || bridge.port <= 0) return null to null

@@ -1,5 +1,6 @@
 package plus.xiaoi.module.ui.screen.me
 
+import plus.xiaoi.module.application.bridge.BridgeStatus
 import android.os.Build
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +27,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.ThemeMode
 import plus.xiaoi.module.core.config.ConfigGateway
-import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge

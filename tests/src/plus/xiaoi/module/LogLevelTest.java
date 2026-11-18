@@ -1,7 +1,7 @@
 package plus.xiaoi.module;
 
 import plus.xiaoi.module.core.LogLevel;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 
 /** 日志档位：解析、回落、粒度判断。 */
 public final class LogLevelTest {

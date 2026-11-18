@@ -1,5 +1,6 @@
 package plus.xiaoi.module.ui.screen.access
 
+import plus.xiaoi.module.core.BridgeSnapshot
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -178,14 +179,14 @@ fun BridgeScreen(
     }
 }
 
-private fun bridgeLanText(snapshot: plus.xiaoi.module.core.BridgeStatus.Snapshot): String =
+private fun bridgeLanText(snapshot: plus.xiaoi.module.core.BridgeSnapshot): String =
     when (snapshot.lanEnabled) {
         true -> "局域网"
         false -> "仅本机"
         null -> "未确认"
     }
 
-private fun freshnessText(snapshot: plus.xiaoi.module.core.BridgeStatus.Snapshot, now: Long): String {
+private fun freshnessText(snapshot: plus.xiaoi.module.core.BridgeSnapshot, now: Long): String {
     if (snapshot.port <= 0 || snapshot.updatedAt <= 0L) return "—"
     return if (snapshot.fresh(now)) "30 秒内" else "超过 ${StateModel.STALE_MS / 1000} 秒未上报"
 }

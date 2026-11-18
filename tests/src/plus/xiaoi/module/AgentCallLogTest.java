@@ -1,10 +1,9 @@
 package plus.xiaoi.module;
 
 import java.util.List;
-
 import plus.xiaoi.module.agent.AgentCallLog;
 import plus.xiaoi.module.core.LogLevel;
-import plus.xiaoi.module.core.LogSettings;
+import plus.xiaoi.module.application.log.LogSettings;
 
 /** 8770 调用日志：格式、档位门控、清空。 */
 public final class AgentCallLogTest {
