@@ -61,6 +61,10 @@ normalize() {
         -e 's/\\"version\\":\\"[^"\\]*\\"/\\"version\\":\\"V\\"/g' \
         -e 's/"lan":\(true\|false\)/"lan":L/g' \
         -e 's/\\"lan\\":\(true\|false\)/\\"lan\\":L/g' \
+        -e 's/"noAuth":\(true\|false\)/"noAuth":B/g' \
+        -e 's/\\"noAuth\\":\(true\|false\)/\\"noAuth\\":B/g' \
+        -e 's/"weakToken":\(true\|false\)/"weakToken":B/g' \
+        -e 's/\\"weakToken\\":\(true\|false\)/\\"weakToken\\":B/g' \
         -e 's/"port":[0-9][0-9]*/"port":P/g' \
         -e 's/\\"port\\":[0-9][0-9]*/\\"port\\":P/g' \
         -e 's/"baseUrl":"[^"]*"/"baseUrl":"B"/g' \
@@ -191,21 +195,35 @@ if [ -n "$PORT" ]; then
     fi
 
     # ------------------------------------------------------------ 3) 免鉴权行为
-    echo "==> 免鉴权请求（不依赖 token）"
-    http_get /health
-    [ "$STATUS" = "401" ] && pass "GET /health 无 token → 401" || fail "GET /health 无 token → 期望 401，实际 $STATUS"
-    save_or_check health_no_token
+    # 「免鉴权」开关打开时，无 token 不再是 401；本组按当前配置调整，不算失败。
+    NO_AUTH=""
+    if [ -n "${XIAOI_TOKEN:-}" ]; then
+        CFG_JSON=$(curl -s -m 3 -X POST "$BASE/mcp" -H "Authorization: Bearer $XIAOI_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"xiaoai_config","arguments":{}}}' 2>/dev/null || true)
+        NO_AUTH=$(printf '%s' "$CFG_JSON" | jq -r '.result.content[0].text | fromjson | .noAuth' 2>/dev/null || true)
+    fi
+    echo "==> 免鉴权请求（不依赖 token）$([ "$NO_AUTH" = "true" ] && echo '· 已开免鉴权，跳过 401 断言')"
+    if [ "$NO_AUTH" = "true" ]; then
+        note "当前配置 noAuth=true：无 token 的请求是设计允许的"
+    else
+        http_get /health
+        [ "$STATUS" = "401" ] && pass "GET /health 无 token → 401" || fail "GET /health 无 token → 期望 401，实际 $STATUS"
+        save_or_check health_no_token
+    fi
 
     http_get /mcp
     [ "$STATUS" = "405" ] && pass "GET /mcp → 405" || fail "GET /mcp → 期望 405，实际 $STATUS"
     save_or_check mcp_get_405
 
-    http_post /mcp '{"jsonrpc":"2.0","id":1,"method":"ping"}'
-    [ "$STATUS" = "401" ] && pass "POST /mcp 无 token → 401" || fail "POST /mcp 无 token → 期望 401，实际 $STATUS"
+    if [ "$NO_AUTH" != "true" ]; then
+        http_post /mcp '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+        [ "$STATUS" = "401" ] && pass "POST /mcp 无 token → 401" || fail "POST /mcp 无 token → 期望 401，实际 $STATUS"
 
-    # /stats 与其他 GET 端点同一条鉴权线
-    http_get "/stats?days=1"
-    [ "$STATUS" = "401" ] && pass "GET /stats 无 token → 401" || fail "GET /stats 无 token → 期望 401，实际 $STATUS"
+        # /stats 与其他 GET 端点同一条鉴权线
+        http_get "/stats?days=1"
+        [ "$STATUS" = "401" ] && pass "GET /stats 无 token → 401" || fail "GET /stats 无 token → 期望 401，实际 $STATUS"
+    fi
 
     # WP4：/config 固定 410，即使没有 token 也不解析 body / 不写 prefs
     http_post /config 'not json at all'

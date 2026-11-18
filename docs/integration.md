@@ -97,8 +97,7 @@ adb forward tcp:8771 tcp:8771
 | `scripts/mcp-call.sh` | 手工调单个工具：端口发现（自动排除 8770 Agent 面）+ `adb forward` + Bearer 鉴权 |
 
 ```bash
-bash scripts/mcp-call.sh health                    # GET /health，自证端口
-bash scripts/mcp-call.sh init                      # initialize + ping
+bash scripts/mcp-call.sh health                    # GET /health，自证端口bash scripts/mcp-call.sh init                      # initialize + ping
 bash scripts/mcp-call.sh tools                     # 9 个工具名
 bash scripts/mcp-call.sh call xiaoai_status
 bash scripts/mcp-call.sh call xiaoai_logs '{"limit":5}'

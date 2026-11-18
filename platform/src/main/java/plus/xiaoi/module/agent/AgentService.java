@@ -50,12 +50,15 @@ public final class AgentService extends Service {
     private static final String TEXT_RUNNING_LOCAL = "8770 运行中（仅本机）· 点击打开";
     private static final String TEXT_RUNNING_LAN = "8770 运行中（局域网）· 点击打开";
     private static final String TEXT_RUNNING_FALLBACK =
-            "8770 运行中（仅本机：局域网需要 32 位令牌）· 点击打开";
+            "8770 运行中（仅本机：局域网需要令牌，或开弱密码/免鉴权）· 点击打开";
     private static final String TEXT_FAILED = "Agent 端口启动失败 · 点击打开";
 
     private final AtomicBoolean bootstrapping = new AtomicBoolean(false);
     private volatile AgentHttpServer server;
     private volatile String runningToken = "";
+    /** 上次启动时的免鉴权 / 弱密码开关；用于配置变化时正确重启。 */
+    private volatile boolean runningNoAuth;
+    private volatile boolean runningWeak;
 
     /** 幂等缓存文件：App 私有目录，不需要 chmod。 */
     static final String IDEMPOTENCY_FILE = "agent_idempotency.json";
@@ -201,7 +204,8 @@ public final class AgentService extends Service {
         AgentHttpServer current = server;
         boolean lanEffective = AgentLanPolicy.lanEffective(c.agentLan, token, c.mcpWeakToken, c.mcpNoAuth);
         if (current != null && current.isRunning() && token.equals(runningToken)
-                && current.isLan() == lanEffective) {
+                && current.isLan() == lanEffective
+                && runningNoAuth == c.mcpNoAuth && runningWeak == c.mcpWeakToken) {
             updateNotification(runningText(c.agentLan, current));
             markRunning(current);
             return;
@@ -243,6 +247,8 @@ public final class AgentService extends Service {
         }
         server = next;
         runningToken = token;
+        runningNoAuth = c.mcpNoAuth;
+        runningWeak = c.mcpWeakToken;
         Logs.i("AgentService: 8770 已启动（" + (next.isLan() ? "局域网 " : "仅本机 ")
                 + next.bindHost() + "）");
         markRunning(next);
