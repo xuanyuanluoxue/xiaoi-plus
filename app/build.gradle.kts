@@ -17,8 +17,16 @@ fun manifestAttr(name: String): String =
         ?: error("AndroidManifest.xml 缺少 android:$name")
 
 val keystoreFile = rootProject.file("keystore/xiaoi.keystore")
+/** 口令来源：环境变量 → 项目内 .secrets/keystore_pass（0.16.0 起）→ 旧 ~/.config/xiaoi/keystore_pass。 */
+fun secretFile(name: String): String? =
+    rootProject.file(".secrets/$name")
+        .takeIf { it.isFile }
+        ?.readText()
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
 val keystorePass: String? = System.getenv("KEYSTORE_PASSWORD")
     ?: System.getenv("KEYSTORE_PASS")
+    ?: secretFile("keystore_pass")
     ?: File(System.getProperty("user.home"), ".config/xiaoi/keystore_pass")
         .takeIf { it.isFile }
         ?.readText()

@@ -42,7 +42,7 @@
 | 构建产物、契约日志、发布 APK | `artifacts/YYYY-MM-DD/{apk,logs,configs,releases}/` |
 | UI 截图（`scripts/ui-screenshot.sh`） | `artifacts/ui/{tmp,review}/YYYY-MM-DD/`（`--clean` 清 7 天前） |
 | 一次性脚本 / 中间文件 / `mktemp` 父目录 | `tmp/`（脚本先 `mkdir -p <repo>/tmp`，再 `mktemp -d <repo>/tmp/...`） |
-| 令牌、keystore 口令等凭据 | `.secrets/`（如 `.secrets/xiaoi-token`；**绝不入库**） |
+| 令牌、keystore 口令等凭据 | `.secrets/`（`.secrets/xiaoi-token`、`.secrets/keystore_pass`；**绝不入库**） |
 | 单测产物 | `tests/.build/`（`run.sh` 每次重建） |
 
 - `artifacts/`、`tmp/`、`.secrets/`、`dist/` 已在 `.gitignore`。
