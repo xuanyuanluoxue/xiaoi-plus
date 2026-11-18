@@ -26,13 +26,8 @@ public final class Contract {
 
     // ------------------------------------------------------------- 端口
 
-    /** 能力桥（小爱进程）的首选端口；被占用时顺延。 */
+    /** 能力桥（小爱进程）的首选端口；被占用时顺延。0.16.0 起这是**唯一的** MCP 端口。 */
     public static final int BRIDGE_PORT = 8771;
-
-    /** 动作面（App 进程）的首选端口；8770 常被小爱自身占用，会顺延。 */
-    public static final int AGENT_PORT = 8770;
-    public static final int AGENT_PORT_MIN = 8770;
-    public static final int AGENT_PORT_MAX = 8779;
 
     // ------------------------------------------------------------- 工具参数上限
 
@@ -69,9 +64,4 @@ public final class Contract {
 
     public static final long ASK_TIMEOUT_DEFAULT_MS = 120_000L;
     public static final long ASK_TIMEOUT_MAX_MS = 180_000L;
-
-    /** 单端口路由转发给对端进程的超时。 */
-    public static final long PROXY_TIMEOUT_MS = 30_000L;
-    /** 转发 xiaoai_ask 时在调用方 timeoutMs 之上额外留的余量。 */
-    public static final long PROXY_TIMEOUT_SLACK_MS = 5_000L;
 }

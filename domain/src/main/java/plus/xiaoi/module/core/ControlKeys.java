@@ -37,6 +37,10 @@ public final class ControlKeys {
     public static final int C2S_REPORT_STATE = 3;
     /** 追加一段（已由桥侧裁剪的）运行日志；只进 App 内存环形缓冲。 */
     public static final int C2S_APPEND_LOGS = 4;
+    /** 0.16.0 单端口：取动作面工具表；回复见 KEY_AGENT_TOOLS_JSON。 */
+    public static final int C2S_AGENT_TOOLS = 5;
+    /** 0.16.0 单端口：执行动作面工具；请求 KEY_AGENT_TOOL + KEY_AGENT_ARGS_JSON。 */
+    public static final int C2S_AGENT_CALL = 6;
 
     // ------------------------------------------------------------- S2C（回调）
     /** 配置可能已变化：桥重新 pull（内容相同则幂等跳过）。 */
@@ -74,4 +78,13 @@ public final class ControlKeys {
 
     public static final String KEY_LOGS = "logs";
     public static final String KEY_TEXT = "text";
+
+    /** 动作面工具表（JSON 数组）。 */
+    public static final String KEY_AGENT_TOOLS_JSON = "agent_tools_json";
+    /** 动作面工具名。 */
+    public static final String KEY_AGENT_TOOL = "agent_tool";
+    /** 动作面工具参数（JSON 对象字符串）。 */
+    public static final String KEY_AGENT_ARGS_JSON = "agent_args_json";
+    /** 动作面工具结果（与 MCP tools/call 的 result 同构）。 */
+    public static final String KEY_AGENT_RESULT_JSON = "agent_result_json";
 }

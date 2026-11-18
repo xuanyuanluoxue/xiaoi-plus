@@ -123,7 +123,7 @@ fun AppearanceScreen(
             Text(
                 "· 不写入 config.json\n" +
                     "· 不参与备份、脱敏导出或分享\n" +
-                    "· 不影响模型、MCP 令牌或 8771/8770 通道",
+                    "· 不影响模型、MCP 令牌或 8771 通道",
                 color = colors.textHint,
                 style = XiaoiTheme.typography.caption,
             )

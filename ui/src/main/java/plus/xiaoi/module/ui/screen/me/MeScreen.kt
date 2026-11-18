@@ -286,7 +286,7 @@ fun MeScreen(
             XiaoiPreferenceCard {
                 XiaoiInfoRow(
                     title = "诊断",
-                    subtitle = "四维状态、8771/8770、权限矩阵、配置完整性",
+                    subtitle = "四维状态、8771、权限矩阵、配置完整性",
                     onClick = { onNavigate("Diagnostics") },
                     icon = MiuixIcons.Info,
                     iconTone = XiaoiIconTone.DANGER,
@@ -351,7 +351,7 @@ fun MeScreen(
                 DangerLine("关闭模型重定向（小爱恢复官方模型）")
                 DangerLine("关闭小爱任务接口（外部 AI 无法调用小爱）")
                 DangerLine("关闭设备操作接口（外部 AI 无法操作手机）")
-                DangerLine("关闭 8771 / 8770 局域网监听")
+                DangerLine("关闭 8771 局域网监听")
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "令牌会保留；重新开启任一通道时无需重新配对。旧配置和日志不会被删除。",
@@ -367,7 +367,7 @@ fun MeScreen(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(r.text, color = colors.textSecondary, style = XiaoiTheme.typography.body)
-                    XiaoiTextButton("到诊断页核对 8771/8770") { onNavigate("Diagnostics") }
+                    XiaoiTextButton("到诊断页核对 8771") { onNavigate("Diagnostics") }
                 }
                 Spacer(Modifier.height(12.dp))
                 XiaoiButton(

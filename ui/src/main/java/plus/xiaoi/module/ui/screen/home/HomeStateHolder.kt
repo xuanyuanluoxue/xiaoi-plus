@@ -24,7 +24,7 @@ import plus.xiaoi.module.ui.components.IssueSeverity
 import plus.xiaoi.module.ui.components.IssueUi
 import plus.xiaoi.module.ui.components.XiaoiTone
 
-/** 两个接口的入口卡：小爱任务（8771）与设备操作（8770）各自一份。 */
+/** 两个入口卡：小爱任务（8771）与设备操作（同端口）。 */
 internal data class DomainCardUi(
     val title: String,
     val route: String,
@@ -63,7 +63,7 @@ internal data class HomeUiState(
         tone = XiaoiTone.NEUTRAL, port = "—", bind = "未确认", note = "",
     ),
     val agent: DomainCardUi = DomainCardUi(
-        title = "设备操作 · 8770", route = "Bridge", status = "未确认",
+        title = "设备操作", route = "Bridge", status = "未确认",
         tone = XiaoiTone.NEUTRAL, port = "—", bind = "未确认", note = "",
     ),
     val bridgeRows: List<ValueUi> = emptyList(),
@@ -197,7 +197,7 @@ internal class HomeStateHolder(
                 note = xiaoaiNote,
             ),
             agent = DomainCardUi(
-                title = "设备操作 · 8770",
+                title = "设备操作",
                 route = "Bridge",
                 status = agentStatus.first,
                 tone = agentStatus.second,

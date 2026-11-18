@@ -80,7 +80,7 @@ normalize() {
         -e 's/auth=\(off\|weak\|token\)/auth=A/g' \
         -e 's/\\"authMode\\":\\"[a-z]*\\"/\\"authMode\\":\\"A\\"/g' \
         -e 's/"authMode":"[a-z]*"/"authMode":"A"/g' \
-        -e 's/agent=[0-9][0-9]*/agent=P/g' \
+        -e 's/agent=[A-Za-z0-9]*/agent=A/g' \
         -e 's/ tools=[0-9][0-9]*/ tools=N/g'
 }
 

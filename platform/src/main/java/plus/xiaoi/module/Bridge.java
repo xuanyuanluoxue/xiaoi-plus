@@ -98,42 +98,43 @@ public final class Bridge {
 
     /** 工具执行的 Android 侧后端（WP3：五个小端口，由同一实现填充）。 */
     private static final McpHostsImpl MCP_HOSTS = new McpHostsImpl();
-    /** 0.16.0 单端口统一：8772（App 进程动作面）的转发端口。 */
+    /** 0.16.0 单端口统一：动作面（App 进程）的工具经控制面 Binder 转发。 */
     private static final Mcp.AgentPort MCP_AGENT = new Mcp.AgentPort() {
         @Override
         public Object tools() {
-            Map<String, Object> r = agentClient().tools();
-            return r == null ? null : r.get("tools");
+            String json = BridgeControlClient.agentToolsJson();
+            if (json.length() == 0) return null;
+            try {
+                Object v = Json.read(json);
+                return v instanceof java.util.List ? v : null;
+            } catch (Throwable t) {
+                return null;
+            }
         }
 
         @Override
         public Map<String, Object> callTool(String name, Map<?, ?> arguments) {
-            return agentClient().callTool(name, arguments);
+            String args;
+            try {
+                args = arguments == null ? "{}" : Json.write(arguments);
+            } catch (Throwable t) {
+                args = "{}";
+            }
+            String json = BridgeControlClient.callAgentTool(name, args);
+            if (json.length() == 0) return null;
+            try {
+                Object v = Json.read(json);
+                if (!(v instanceof Map)) return null;
+                @SuppressWarnings("unchecked")
+                Map<String, Object> out = (Map<String, Object>) v;
+                return out;
+            } catch (Throwable t) {
+                return null;
+            }
         }
     };
     private static final Mcp.Hosts HOSTS = new Mcp.Hosts(
             MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_AGENT);
-
-    /** 8770~8779 里按 /health 自证身份找动作面；找不到返回 null（不阻塞本机能力）。 */
-    private static volatile LoopbackMcpClient sAgentClient;
-
-    private static LoopbackMcpClient agentClient() {
-        LoopbackMcpClient c = sAgentClient;
-        if (c == null) {
-            c = new LoopbackMcpClient(sToken, "ok agent=true", agentCandidates());
-            sAgentClient = c;
-        }
-        c.setToken(sToken);
-        return c;
-    }
-
-    private static int[] agentCandidates() {
-        int from = plus.xiaoi.module.core.Contract.AGENT_PORT_MIN;
-        int to = plus.xiaoi.module.core.Contract.AGENT_PORT_MAX;
-        int[] out = new int[to - from + 1];
-        for (int i = 0; i < out.length; i++) out[i] = from + i;
-        return out;
-    }
 
     /** /health 里的 tools 数：本进程自己提供的工具数（不触发对端探测）。 */
     private static int bridgeToolCount() {
@@ -872,7 +873,7 @@ public final class Bridge {
                 respondText(s, 200, "ok facade=" + (sFacade != null) + " port=" + sPort
                         + " auth=" + BridgePolicy.authMode(sNoAuth, sWeakToken)
                         + " tools=" + bridgeToolCount()
-                        + " agent=" + agentClient().port()
+                        + " agent=" + (BridgeControlClient.isConnected() ? "ipc" : "down")
                         + " version=" + versionName());
                 return;
             }

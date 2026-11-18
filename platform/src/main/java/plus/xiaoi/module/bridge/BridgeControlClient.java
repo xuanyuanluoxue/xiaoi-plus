@@ -508,6 +508,40 @@ public final class BridgeControlClient {
 
     // ------------------------------------------------------------- 协议 / 工具
 
+    // ------------------------------------------------------------- 单端口：动作面 IPC
+
+    /** 控制面是否已连上 App 进程（动作面工具是否能被转发过去）。 */
+    public static boolean isConnected() {
+        return sConnected && sRemote != null;
+    }
+
+    /** 取动作面工具表（JSON 数组文本）；App 未就绪返回空串。 */
+    public static String agentToolsJson() {
+        IBinder b = sRemote;
+        if (b == null) return "";
+        Bundle out = transact(b, ControlKeys.C2S_AGENT_TOOLS, new Bundle());
+        if (out == null || !out.getBoolean(ControlKeys.KEY_OK, false)) return "";
+        String json = out.getString(ControlKeys.KEY_AGENT_TOOLS_JSON, "");
+        return json == null ? "" : json;
+    }
+
+    /**
+     * 执行一个动作面工具（JSON 入 / JSON 出）；App 未就绪返回空串。
+     *
+     * <p>结果与 MCP {@code tools/call} 的 result 同构，桥可直接放进 JSON-RPC 响应。</p>
+     */
+    public static String callAgentTool(String tool, String argsJson) {
+        IBinder b = sRemote;
+        if (b == null) return "";
+        Bundle req = new Bundle();
+        req.putString(ControlKeys.KEY_AGENT_TOOL, tool == null ? "" : tool);
+        req.putString(ControlKeys.KEY_AGENT_ARGS_JSON, argsJson == null ? "" : argsJson);
+        Bundle out = transact(b, ControlKeys.C2S_AGENT_CALL, req);
+        if (out == null || !out.getBoolean(ControlKeys.KEY_OK, false)) return "";
+        String json = out.getString(ControlKeys.KEY_AGENT_RESULT_JSON, "");
+        return json == null ? "" : json;
+    }
+
     private static Bundle transact(IBinder b, int code, Bundle req) {
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();

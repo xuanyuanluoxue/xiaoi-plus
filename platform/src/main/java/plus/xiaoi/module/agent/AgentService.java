@@ -1,7 +1,7 @@
 package plus.xiaoi.module.agent;
 
-import plus.xiaoi.module.core.AgentLanPolicy;
 import plus.xiaoi.module.core.AgentRuntimeSnapshot;
+import plus.xiaoi.module.core.BridgeSnapshot;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -21,7 +21,8 @@ import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppLaunch;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigRepository;
-import plus.xiaoi.module.LoopbackMcpClient;
+import plus.xiaoi.module.Json;
+import plus.xiaoi.module.application.bridge.BridgeStatus;
 import plus.xiaoi.module.application.log.LogSettings;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.platform.R;
@@ -31,9 +32,12 @@ import plus.xiaoi.module.core.ActivityHub;
 /**
  * App 进程内的 Agent 前台服务。
  *
- * <p>WP1.2a 负责生命周期与 8770 的挂载：配置 {@code mcpEnabled=true} 且
- * {@code mcpToken} 非空时监听 loopback；否则不监听并 stopSelf。服务本身不执行
- * 动作，动作由 {@link AndroidExecutor} / {@link RootExecutor} 与
+ * <p>0.16.0 起是**单端口**：本服务不再监听任何端口。配置 {@code mcpEnabled=true} 且
+ * {@code mcpToken} 非空（或开了免鉴权）时，只把工具实现准备就绪；8771（小爱进程）
+ * 通过控制面 Binder（{@code C2S_AGENT_TOOLS} / {@code C2S_AGENT_CALL}）调用
+ * {@link #toolsJson()} 与 {@link #callJson}，对外仍只有一个 MCP 端点。</p>
+ *
+ * <p>服务本身不执行动作，动作由 {@link AndroidExecutor} / {@link RootExecutor} 与
  * {@link ActionRegistry} 提供。WP1.2b 注册全部 5 个动作，其中 app.open 与
  * media.control 使用 {@link FallbackExecutor}（android 优先，NOT_AVAILABLE 才回退 root）。
  * WP1.3b 注入 {@link AndroidNotifyHost}（超级岛优先，失败降级通知）与
@@ -45,22 +49,21 @@ import plus.xiaoi.module.core.ActivityHub;
 public final class AgentService extends Service {
 
     public static final String CHANNEL = "agent_service";
-    public static final int PORT = AgentHttpServer.PORT;
+    /** 对外唯一端口 = 8771（0.16.0 单端口）；保留常量供旧引用编译。 */
+    public static final int PORT = plus.xiaoi.module.core.Contract.BRIDGE_PORT;
 
     private static final String CHANNEL_NAME = "Agent 能力";
     private static final int NOTIF_ID = 0x4147454e; // "AGEN"
-    private static final String TEXT_RUNNING_LOCAL = "8770 运行中（仅本机）· 点击打开";
-    private static final String TEXT_RUNNING_LAN = "8770 运行中（局域网）· 点击打开";
-    private static final String TEXT_RUNNING_FALLBACK =
-            "8770 运行中（仅本机：局域网需要令牌，或开弱密码/免鉴权）· 点击打开";
-    private static final String TEXT_FAILED = "Agent 端口启动失败 · 点击打开";
+    private static final String TEXT_RUNNING = "设备操作已就绪（经 8771 MCP）· 点击打开";
+    private static final String TEXT_FAILED = "设备操作接口启动失败 · 点击打开";
 
     private final AtomicBoolean bootstrapping = new AtomicBoolean(false);
-    private volatile AgentHttpServer server;
-    private volatile String runningToken = "";
-    /** 上次启动时的免鉴权 / 弱密码开关；用于配置变化时正确重启。 */
-    private volatile boolean runningNoAuth;
-    private volatile boolean runningWeak;
+    /** 上次构建时的「token + 开关」指纹；变化才重建 AgentMcp（不重开端口）。 */
+    private volatile String runningKey = "";
+
+    /** 单端口：8771 进程通过控制面 IPC 调用这两个入口。 */
+    private static volatile AgentMcp sMcp;
+    private static volatile ActionRegistry sRegistry;
 
     /** 幂等缓存文件：App 私有目录，不需要 chmod。 */
     static final String IDEMPOTENCY_FILE = "agent_idempotency.json";
@@ -73,7 +76,7 @@ public final class AgentService extends Service {
     // - 审计仍为内存环形缓冲，轮转落盘留给后续工作包。
     private final ConfirmationManager confirmations = new ConfirmationManager();
     private final AuditLog audit = new AuditLog();
-    /** 在 IO 线程首次创建并恢复；重绑 8770 时复用同一实例，不清空。 */
+    /** 在 IO 线程首次创建并恢复；重建工具时复用同一实例，不清空。 */
     private volatile IdempotencyStore idempotency;
 
     // ------------------------------------------------------------- 静态入口
@@ -135,7 +138,7 @@ public final class AgentService extends Service {
         super.onCreate();
         try {
             ensureChannel();
-            startForeground(NOTIF_ID, buildNotification(TEXT_RUNNING_LOCAL));
+            startForeground(NOTIF_ID, buildNotification(TEXT_RUNNING));
         } catch (Throwable t) {
             Logs.e("AgentService startForeground 失败: " + t.getClass().getSimpleName());
         }
@@ -155,10 +158,9 @@ public final class AgentService extends Service {
 
     @Override
     public void onDestroy() {
-        AgentHttpServer s = server;
-        server = null;
-        runningToken = "";
-        if (s != null) s.stop();
+        sMcp = null;
+        sRegistry = null;
+        runningKey = "";
         AgentRuntimeStatus.setStopped();
         try {
             stopForeground(true);
@@ -167,6 +169,49 @@ public final class AgentService extends Service {
         Logs.i("AgentService 已停止");
         ActivityHub.info(ActivityFeed.Domain.AGENT, "Agent 服务已停止");
         super.onDestroy();
+    }
+
+    // ------------------------------------------------------------- 单端口 IPC 入口
+
+    /**
+     * 动作面工具表（JSON 数组）；服务未就绪返回空串。
+     *
+     * <p>由控制面 {@code C2S_AGENT_TOOLS} 在 Binder 线程调用，只读内存快照。</p>
+     */
+    public static String toolsJson() {
+        AgentMcp m = sMcp;
+        if (m == null) return "";
+        try {
+            Map<String, Object> list = m.toolsList();
+            Object tools = list.get("tools");
+            return Json.write(tools == null ? Json.arr() : tools);
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
+    /**
+     * 执行一个动作面工具（JSON 入 / JSON 出）；服务未就绪返回空串。
+     *
+     * <p>由控制面 {@code C2S_AGENT_CALL} 调用；结果与 MCP tools/call 的 result 同构。</p>
+     */
+    public static String callJson(String name, String argsJson) {
+        AgentMcp m = sMcp;
+        ActionRegistry registry = sRegistry;
+        if (m == null || registry == null) return "";
+        Map<?, ?> args = null;
+        if (argsJson != null && argsJson.trim().length() > 0) {
+            try {
+                Object parsed = Json.read(argsJson);
+                if (parsed instanceof Map) args = (Map<?, ?>) parsed;
+            } catch (Throwable ignored) {
+            }
+        }
+        try {
+            return Json.write(m.callTool(name, args, registry));
+        } catch (Throwable t) {
+            return "";
+        }
     }
 
     // ------------------------------------------------------------- 启动/停止
@@ -182,7 +227,7 @@ public final class AgentService extends Service {
                     Logs.e("AgentService 启动流程失败: " + t.getClass().getSimpleName());
                     updateNotification(TEXT_FAILED);
                     AgentRuntimeStatus.setError("启动流程失败：" + t.getClass().getSimpleName());
-                    ActivityHub.error(ActivityFeed.Domain.AGENT, "8770 启动流程失败");
+                    ActivityHub.error(ActivityFeed.Domain.AGENT, "设备操作接口启动流程失败");
                 } finally {
                     bootstrapping.set(false);
                 }
@@ -195,27 +240,23 @@ public final class AgentService extends Service {
         LogSettings.setWire(c.logLevel);
         String token = c.mcpToken == null ? "" : c.mcpToken.trim();
         if (!c.mcpEnabled || (token.length() == 0 && !c.mcpNoAuth)) {
-            Logs.i("AgentService: MCP 未启用或既无 token 也未开免鉴权，停止 8770");
+            Logs.i("AgentService: MCP 未启用或既无 token 也未开免鉴权，停止动作面");
+            sMcp = null;
+            sRegistry = null;
+            runningKey = "";
             AgentRuntimeStatus.setStopped();
             ActivityHub.info(ActivityFeed.Domain.AGENT,
-                    "8770 未启动（MCP 关闭或既无令牌也未开免鉴权）");
+                    "设备操作接口未启动（MCP 关闭或既无令牌也未开免鉴权）");
             stopSelf();
             return;
         }
 
-        AgentHttpServer current = server;
-        boolean lanEffective = AgentLanPolicy.lanEffective(c.agentLan, token, c.mcpWeakToken, c.mcpNoAuth);
-        if (current != null && current.isRunning() && token.equals(runningToken)
-                && current.isLan() == lanEffective
-                && runningNoAuth == c.mcpNoAuth && runningWeak == c.mcpWeakToken) {
-            updateNotification(runningText(c.agentLan, current));
-            markRunning(current);
+        // 单端口（0.16.0）：不再监听任何端口，只重建内存里的工具实现。
+        String key = token + "|" + c.mcpNoAuth + "|" + c.mcpWeakToken;
+        if (key.equals(runningKey) && sMcp != null) {
+            updateNotification(TEXT_RUNNING);
+            markServedBy();
             return;
-        }
-        if (current != null) {
-            current.stop();
-            server = null;
-            runningToken = "";
         }
 
         ActionRegistry registry = new ActionRegistry();
@@ -234,83 +275,33 @@ public final class AgentService extends Service {
 
         // 启动顺序：读文件 → restoreJson → 再挂持久化回调，避免刚恢复就回写一遍。
         IdempotencyStore idempotencyStore = idempotencyStore();
-        AgentHttpServer next = new AgentHttpServer(token,
-                new AgentMcp(versionName(), confirmations, idempotencyStore, audit,
-                        new AndroidNotifyHost(this, token),
-                        new BridgeAskHost(token),
-                        bridgePort(token, c.mcpNoAuth)), registry, c.agentLan,
-                c.mcpNoAuth, c.mcpWeakToken);
-        String err = next.start();
-        if (err.length() > 0) {
-            Logs.e("AgentService: " + err);
-            updateNotification(TEXT_FAILED);
-            AgentRuntimeStatus.setError(err);
-            ActivityHub.error(ActivityFeed.Domain.AGENT, "Agent 端口启动失败");
-            return;
-        }
-        server = next;
-        runningToken = token;
-        runningNoAuth = c.mcpNoAuth;
-        runningWeak = c.mcpWeakToken;
-        Logs.i("AgentService: 8770 已启动（" + (next.isLan() ? "局域网 " : "仅本机 ")
-                + next.bindHost() + "）");
-        markRunning(next);
-        // 请求了局域网但令牌不足：绑定已回退 loopback，日志/通知如实说明，不打印令牌。
-        if (next.lastError().length() > 0) {
-            Logs.i("AgentService: " + next.lastError());
-            ActivityHub.warn(ActivityFeed.Domain.AGENT, next.lastError());
-        }
-        updateNotification(runningText(c.agentLan, next));
+        AgentMcp mcp = new AgentMcp(versionName(), confirmations, idempotencyStore, audit,
+                new AndroidNotifyHost(this, token), new BridgeAskHost(token));
+        sRegistry = registry;
+        sMcp = mcp;
+        runningKey = key;
+        Logs.i("AgentService: 动作面已就绪（单端口，经 8771 暴露）");
+        markServedBy();
+        updateNotification(TEXT_RUNNING);
     }
 
     /**
-     * 0.16.0 单端口统一：8771 能力桥的工具从本端点也能看到/调用。
+     * 把「动作面挂在 8771 上」写进快照。
      *
-     * <p>用与 8771 相同的 token（免鉴权时索性不带头）；端口按 {@code /health}
-     * 自证身份探测，所以 8771 被占用顺延后也能找到。</p>
+     * <p>端口/绑定优先取桥的实时快照；桥还没上报时用首选端口 8771，
+     * 不猜 bind 地址（空串 = 未知，由 UI 显示未确认）。</p>
      */
-    private static AgentMcp.BridgePort bridgePort(final String token, final boolean noAuth) {
-        final LoopbackMcpClient client = new LoopbackMcpClient(
-                noAuth ? "" : token, "ok facade=", bridgeCandidates());
-        return new AgentMcp.BridgePort() {
-            @Override
-            public Object tools() {
-                Map<String, Object> r = client.tools();
-                return r == null ? null : r.get("tools");
-            }
-
-            @Override
-            public Map<String, Object> callTool(String name, Map<?, ?> arguments) {
-                return client.callTool(name, arguments);
-            }
-        };
-    }
-
-    private static int[] bridgeCandidates() {
-        int[] out = new int[9];
-        for (int i = 0; i < out.length; i++) {
-            out[i] = plus.xiaoi.module.core.Contract.BRIDGE_PORT + i;
-        }
-        return out;
-    }
-
-    /** 只在运行事实变化时写快照/活动，避免每次 onStartCommand 都产生"刚启动"。 */
-    private static void markRunning(AgentHttpServer s) {
-        if (s == null || !s.isRunning()) return;
+    private static void markServedBy() {
+        BridgeSnapshot b = BridgeStatus.get();
+        int port = b != null && b.port > 0 ? b.port : plus.xiaoi.module.core.Contract.BRIDGE_PORT;
+        String host = b == null || b.bindHost == null ? "" : b.bindHost;
+        boolean lan = b != null && Boolean.TRUE.equals(b.lanEnabled);
         AgentRuntimeSnapshot prev = AgentRuntimeStatus.get();
-        if (prev.running && prev.port == s.port() && prev.bindHost.equals(s.bindHost())) {
+        if (prev.running && prev.port == port && prev.bindHost.equals(host)) {
             return;
         }
-        AgentRuntimeStatus.setRunning(s.port(), s.bindHost(), s.isLan());
-        ActivityHub.info(ActivityFeed.Domain.AGENT,
-                "8770 已启动（" + (s.isLan() ? "局域网 " : "仅本机 ") + s.bindHost() + "）");
-    }
-
-    private static String runningText(boolean requestedLan, AgentHttpServer s) {
-        if (s.isLan()) return TEXT_RUNNING_LAN;
-        // 请求过 LAN 但弱令牌回退：明确告诉用户当前实际仍是仅本机。
-        if (requestedLan) return TEXT_RUNNING_FALLBACK;
-        return TEXT_RUNNING_LOCAL;
+        AgentRuntimeStatus.setServedBy(port, host, lan);
+        ActivityHub.info(ActivityFeed.Domain.AGENT, "设备操作面就绪（经 " + port + " MCP）");
     }
 
     // ------------------------------------------------------------- 幂等持久化

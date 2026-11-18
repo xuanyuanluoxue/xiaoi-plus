@@ -49,7 +49,7 @@ private data class ToolGroupUi(
 )
 
 /**
- * 工具清单：5 个动作 + 8771 8 个工具 + 8770 6 个工具。
+ * 工具清单：5 个动作 + 桥 9 个工具 + 设备动作 6 个工具。
  * 名称/描述/参数从现有注册表生成，只读；没有风险元数据的工具显示“未声明”。
  */
 @Composable
@@ -78,7 +78,7 @@ fun ToolsScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "动作来自 Actions.builtins()，MCP 工具来自 8771/8770 的 tools/list。",
+                    "动作来自 Actions.builtins()，MCP 工具来自 8771 的 tools/list。",
                     color = colors.textSecondary,
                     style = XiaoiTheme.typography.body,
                 )

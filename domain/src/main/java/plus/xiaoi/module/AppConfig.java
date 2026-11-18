@@ -68,17 +68,17 @@ public final class AppConfig {
     /** true = 能力桥监听 0.0.0.0，同一局域网可用 Bearer token 直连；默认 false 仅本机。 */
     public boolean mcpLan;
     /**
-     * true = 8770 Agent 动作面也监听 0.0.0.0；默认 false 仅本机。
-     * 与 {@link #mcpLan}（8771）相互独立，令牌仍共用 {@link #mcpToken}；
-     * 弱令牌即使打开也只回退 loopback（见 AgentLanPolicy）。
+     * 0.16.0 起已无独立端口：设备操作与 MCP 共用 8771，局域网由 {@link #mcpLan} 控制。
+     *
+     * <p>字段保留只为兼容旧 config.json（读写都保留原值），不再影响监听。</p>
      */
     public boolean agentLan;
     /**
-     * true = 8771 能力桥接受**本机回环**来源的免鉴权请求（可选，默认 false）。
+     * true = 8771 免鉴权（可选，默认 false）。
      *
-     * <p>只影响 loopback：局域网来源即使打开本项也仍然要求 Bearer token，
-     * 否则同一 Wi-Fi 的任何人就能驱动小爱/执行动作。打开后 8771 的
-     * `/health`、`/mcp`、`/logs`、`/stats`、`/cli` 均可无 token 调用。</p>
+     * <p>0.16.0 起本机与局域网都不再校验 Bearer；这是测试便利选项。
+     * 打开后 8771 的 `/health`、`/mcp`、`/logs`、`/stats`、`/cli` 以及转发到
+     * App 进程的设备动作全部可无 token 调用。</p>
      */
     public boolean mcpNoAuth;
     /**

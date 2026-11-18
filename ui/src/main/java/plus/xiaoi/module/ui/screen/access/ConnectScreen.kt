@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.Mcp
-import plus.xiaoi.module.core.AgentLanPolicy
 import plus.xiaoi.module.agent.AgentMcp
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.ui.components.LocalAppRuntime
@@ -45,7 +44,7 @@ import plus.xiaoi.module.Json
 import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 
 /**
- * 连接信息：8771/8770 的 loopback / 局域网地址、adb forward、客户端 JSON 与 Skill 文本。
+ * 连接信息：8771 的 loopback / 局域网地址、adb forward、客户端 JSON 与 Skill 文本。
  * 内容可能包含令牌，页面明确提示“勿截图外传”；复制提示不包含令牌本身。
  */
 @Composable
@@ -58,7 +57,6 @@ fun ConnectScreen(
     val colors = XiaoiTheme.colors
     val loaded = rememberAccessConfig()
     val bridge = rememberBridgeSnapshot()
-    val agent = rememberAgentSnapshot()
     val facts = loaded.value
     var lanIp by remember { mutableStateOf("") }
 
@@ -84,22 +82,18 @@ fun ConnectScreen(
     val token = cfg?.mcpToken.orEmpty()
     val mcpEnabled = cfg?.mcpEnabled == true
     val bridgePort = bridge.port.takeIf { it > 0 } ?: appRuntime.network.defaultBridgePort()
-    val agentPort = agent.port.takeIf { it > 0 } ?: appRuntime.network.defaultAgentPort()
     val mcpLanEffective = mcpEnabled && BridgePolicy.bindHost(
         cfg?.mcpLan == true,
         mcpEnabled,
         token,
     ) == "0.0.0.0"
-    val agentLanEffective = mcpEnabled && AgentLanPolicy.lanEffective(cfg?.agentLan == true, token)
     val lanReady = lanIp.isNotEmpty()
 
     val mcpLocal = "http://127.0.0.1:$bridgePort/mcp"
-    val agentLocal = "http://127.0.0.1:$agentPort/mcp"
     val mcpLan = if (mcpLanEffective && lanReady) "http://$lanIp:$bridgePort/mcp" else ""
-    val agentLan = if (agentLanEffective && lanReady) "http://$lanIp:$agentPort/mcp" else ""
 
-    val clientJson = buildClientJson(mcpLan.ifEmpty { mcpLocal }, agentLan.ifEmpty { agentLocal }, token)
-    val skillText = buildSkillText(mcpLan.ifEmpty { mcpLocal }, agentLan.ifEmpty { agentLocal })
+    val clientJson = buildClientJson(mcpLan.ifEmpty { mcpLocal }, token)
+    val skillText = buildSkillText(mcpLan.ifEmpty { mcpLocal })
 
     fun copy(text: String, message: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -139,13 +133,11 @@ fun ConnectScreen(
 
         XiaoiGroupHeader("本机地址")
         XiaoiPreferenceCard {
-            XiaoiCopyRow("小爱任务 · 8771", mcpLocal) {
+            XiaoiCopyRow("MCP · 8771", mcpLocal) {
                 copy(mcpLocal, "已复制 8771 本机地址")
             }
             XiaoiValueRow("接口路径", "/mcp", mono = true)
-            XiaoiCopyRow("设备操作 · 8770", agentLocal) {
-                copy(agentLocal, "已复制 8770 本机地址")
-            }
+            XiaoiValueRow("设备操作", "与 MCP 同端口（0.16.0 单端口）")
         }
         Text(
             if (bridge.port > 0) {
@@ -159,7 +151,7 @@ fun ConnectScreen(
         )
 
         XiaoiGroupHeader("局域网地址")
-        val showLanRows = mcpEnabled && lanReady && (mcpLan.isNotEmpty() || agentLan.isNotEmpty())
+        val showLanRows = mcpEnabled && lanReady && mcpLan.isNotEmpty()
         if (showLanRows) {
             XiaoiPreferenceCard {
                 if (mcpLan.isNotEmpty()) {
@@ -168,13 +160,6 @@ fun ConnectScreen(
                     }
                 } else {
                     XiaoiValueRow("8771 局域网", "未开放")
-                }
-                if (agentLan.isNotEmpty()) {
-                    XiaoiCopyRow("8770 局域网", agentLan) {
-                        copy(agentLan, "已复制 8770 局域网地址")
-                    }
-                } else {
-                    XiaoiValueRow("8770 局域网", "未开放")
                 }
                 XiaoiValueRow("本机 IP", lanIp, mono = true)
             }
@@ -213,9 +198,7 @@ fun ConnectScreen(
         XiaoiGroupHeader("adb forward")
         XiaoiPreferenceCard {
             val mcpForward = "adb forward tcp:$bridgePort tcp:$bridgePort"
-            val agentForward = "adb forward tcp:$agentPort tcp:$agentPort"
             XiaoiCopyRow("8771", mcpForward) { copy(mcpForward, "已复制 adb forward 命令") }
-            XiaoiCopyRow("8770", agentForward) { copy(agentForward, "已复制 adb forward 命令") }
         }
         Text(
             "只有本机地址需要 adb forward；局域网地址与电脑在同一 Wi-Fi 时可直接访问。",
@@ -253,20 +236,16 @@ fun ConnectScreen(
     }
 }
 
-private fun buildClientJson(mcpUrl: String, agentUrl: String, token: String): String =
-    "{\"mcpServers\":{\"xiaoi-plus\":{\"url\":\"$mcpUrl\",\"headers\":{\"Authorization\":\"Bearer $token\"}}," +
-        "\"xiaoi-agent\":{\"url\":\"$agentUrl\",\"headers\":{\"Authorization\":\"Bearer $token\"}}}}"
+private fun buildClientJson(mcpUrl: String, token: String): String =
+    "{\"mcpServers\":{\"xiaoi-plus\":{\"url\":\"$mcpUrl\",\"headers\":{\"Authorization\":\"Bearer $token\"}}}}"
 
-private fun buildSkillText(mcpUrl: String, agentUrl: String): String {
+private fun buildSkillText(mcpUrl: String): String {
     val sb = StringBuilder()
     sb.append("# 小爱同学plus MCP\n\n")
-    sb.append("## 小爱任务（8771）\n\n")
+    sb.append("## 单端点（8771）\n\n")
     sb.append("端点：").append(mcpUrl).append("（streamable-http，Bearer token）\n\n")
-    sb.append("工具：\n")
+    sb.append("工具（桥 9 + 设备动作 6，共 15 个）：\n")
     sb.append(toolLines(Mcp.toolsList()))
-    sb.append("\n## 设备操作（8770）\n\n")
-    sb.append("端点：").append(agentUrl).append("（streamable-http，Bearer token）\n\n")
-    sb.append("工具：\n")
     sb.append(toolLines(AgentMcp("0").toolsList()))
     return sb.toString()
 }

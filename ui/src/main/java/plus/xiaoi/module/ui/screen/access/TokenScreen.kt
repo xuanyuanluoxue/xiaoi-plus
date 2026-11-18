@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.core.AgentLanPolicy
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.core.IssueResolver
 import plus.xiaoi.module.ui.components.LocalAppRuntime
@@ -60,7 +59,7 @@ import java.security.SecureRandom
 private enum class LanTarget { MCP, AGENT }
 
 /**
- * 令牌与局域网：令牌掩码/显示/复制/生成；8771 与 8770 的 LAN 分开控制。
+ * 令牌与局域网：令牌掩码/显示/复制/生成；8771 的 LAN 分开控制。
  * 显式保存；弱令牌 + LAN 允许请求，但明确提示实际会回退仅本机。
  */
 @Composable
@@ -74,7 +73,6 @@ fun TokenScreen(
     val colors = XiaoiTheme.colors
     val loaded = rememberAccessConfig()
     val bridge = rememberBridgeSnapshot()
-    val agent = rememberAgentSnapshot()
     val facts = loaded.value
     val scope = rememberCoroutineScope()
 
@@ -245,7 +243,7 @@ fun TokenScreen(
                     XiaoiTextButton("复制") { copyToken() }
                 }
                 Text(
-                    "令牌同时用于 8771 与 8770；复制内容含令牌，勿外传。",
+                    "令牌同时用于 8771；复制内容含令牌，勿外传。",
                     color = colors.textHint,
                     style = XiaoiTheme.typography.caption,
                 )
@@ -281,7 +279,7 @@ fun TokenScreen(
                 )
                 if (noAuth) {
                     Text(
-                        "已开启：本机与局域网都能无令牌调用 8771/8770。" +
+                        "已开启：本机与局域网都能无令牌调用 8771。" +
                             "仅用于临时联调，测完请关闭。",
                         color = colors.warning,
                         style = XiaoiTheme.typography.caption,
@@ -328,31 +326,29 @@ fun TokenScreen(
                     )
                     XiaoiValueRow(
                         "保存后将监听",
-                        effectiveBindText(mcpLan, mcpEnabled, token, isAgent = false, noAuth = noAuth, weak = weak),
+                        effectiveBindText(mcpLan, mcpEnabled, token, noAuth = noAuth, weak = weak),
                         mono = true,
                     )
                 }
                 XiaoiPreferenceCard {
                     XiaoiSwitchRow(
-                        title = "设备操作 · 局域网",
-                        subtitle = "只改监听地址；是否启动仍跟随「外部接入」开关",
-                        checked = agentLan,
-                        enabled = writable,
-                        onCheckedChange = { on ->
-                            if (on) lanDialog = LanTarget.AGENT else agentLanDraft = false
-                        },
+                        title = "设备操作 · 与 MCP 同端口",
+                        subtitle = "0.16.0 起设备动作并入 8771：局域网、令牌、端口都跟随「小爱任务」",
+                        checked = mcpLan,
+                        enabled = false,
+                        onCheckedChange = {},
                         icon = MiuixIcons.WorldClock,
                         iconTone = XiaoiIconTone.ACCENT,
                     )
-                    XiaoiValueRow(
-                        "保存后将监听",
-                        effectiveBindText(agentLan, mcpEnabled, token, isAgent = true, noAuth = noAuth, weak = weak),
-                        mono = true,
+                    Text(
+                        "设备操作接口不再单独监听端口；打开上面的「小爱任务 · 局域网」后，" +
+                            "同一 Wi-Fi 的设备凭令牌即可执行设备动作。",
+                        color = colors.textSecondary,
+                        style = XiaoiTheme.typography.caption,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
-                if (strength == IssueResolver.TokenStrength.WEAK &&
-                    (mcpLan || agentLan) && !weak && !noAuth
-                ) {
+                if (strength == IssueResolver.TokenStrength.WEAK && mcpLan && !weak && !noAuth) {
                     XiaoiCard {
                         Text(
                             "令牌不足 32 位：局域网请求已回退仅本机（保存后仍按回退执行）。" +
@@ -380,7 +376,7 @@ fun TokenScreen(
             XiaoiGroupHeader("当前运行绑定")
             XiaoiPreferenceCard {
                 XiaoiValueRow("8771", actualBridgeBind(bridge))
-                XiaoiValueRow("8770", actualAgentBind(agent))
+                XiaoiValueRow("设备操作", "与 8771 同端口（单端口统一）")
                 Text(
                     "这里是运行快照的实际情况，可能落后于草稿；保存后以服务重绑结果为准。",
                     color = colors.textHint,
@@ -451,7 +447,7 @@ fun TokenScreen(
     XiaoiConfirmDialog(
         show = noAuthDialog,
         title = "允许本机免令牌调用？",
-        message = "开启后，本机与**同一 Wi-Fi 下的所有设备**都能不带令牌调用 8771/8770：" +
+        message = "开启后，本机与**同一 Wi-Fi 下的所有设备**都能不带令牌调用 8771：" +
             "读配置、读日志、切换模型、让小爱执行任务、执行设备动作。\n" +
             "只建议在临时联调时打开，测完立即关闭。",
         confirmText = "开启",
@@ -468,13 +464,9 @@ fun TokenScreen(
     val lanTarget = lanDialog
     XiaoiConfirmDialog(
         show = lanTarget != null,
-        title = if (lanTarget == LanTarget.AGENT) "允许 8770 局域网访问？" else "允许 8771 局域网访问？",
+        title = "允许 8771 局域网访问？",
         message = buildString {
-            if (lanTarget == LanTarget.AGENT) {
-                append("同一 Wi-Fi 下的设备凭令牌可执行打开应用、发通知、调音量等设备动作。\n")
-            } else {
-                append("同一 Wi-Fi 下的设备都能访问 MCP 接口。\n")
-            }
+            append("同一 Wi-Fi 下的设备都能访问 MCP 接口，包括设备动作（打开应用、发通知、调音量等）。\n")
             append("公共 Wi-Fi / 公司网络建议保持关闭。\n")
             if (!noAuth && !weak && !BridgePolicy.tokenStrongEnoughForLan(token)) {
                 append("当前令牌不足 32 位：开启后实际会回退仅本机。\n")
@@ -483,11 +475,7 @@ fun TokenScreen(
         },
         confirmText = "仍然开启",
         onConfirm = {
-            when (lanTarget) {
-                LanTarget.MCP -> mcpLanDraft = true
-                LanTarget.AGENT -> agentLanDraft = true
-                null -> Unit
-            }
+            mcpLanDraft = true
             lanDialog = null
         },
         onDismiss = { lanDialog = null },
@@ -500,7 +488,6 @@ private fun effectiveBindText(
     requested: Boolean,
     mcpEnabled: Boolean,
     token: String,
-    isAgent: Boolean,
     noAuth: Boolean,
     weak: Boolean,
 ): String {
@@ -510,21 +497,12 @@ private fun effectiveBindText(
     val strong = BridgePolicy.tokenStrongEnoughForLan(token)
     if (token.isBlank()) return "127.0.0.1（未设密码，回退仅本机）"
     if (!strong && !weak) return "127.0.0.1（密码不足 32 位，回退仅本机）"
-    return if (isAgent) {
-        AgentLanPolicy.bindHost(true, token, weak, noAuth)
-    } else {
-        BridgePolicy.bindHost(true, mcpEnabled, token, noAuth, weak)
-    }
+    return BridgePolicy.bindHost(true, mcpEnabled, token, noAuth, weak)
 }
 
 private fun actualBridgeBind(snapshot: plus.xiaoi.module.core.BridgeSnapshot): String {
     if (snapshot.port <= 0) return "未确认"
     return bindDetail(snapshot.bindHost, snapshot.lanEnabled)
-}
-
-private fun actualAgentBind(snapshot: plus.xiaoi.module.core.AgentRuntimeSnapshot): String {
-    if (!snapshot.known()) return "未确认"
-    return bindDetail(snapshot.bindHost, snapshot.bindHost == "0.0.0.0")
 }
 
 private fun newToken(): String {

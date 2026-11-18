@@ -17,12 +17,6 @@ public final class TestMain {
         }
         failed += McpTest.run();
         failed += ToolOwnershipTest.run();
-        try {
-            failed += LoopbackMcpClientTest.run();
-        } catch (Throwable t) {
-            failed++;
-            System.out.println("  FAIL LoopbackMcpClientTest 套件异常: " + t);
-        }
         failed += LogLevelTest.run();
         failed += RedactTest.run();
         failed += AgentCallLogTest.run();
@@ -173,12 +167,6 @@ public final class TestMain {
             System.out.println("  FAIL AgentNotifyAskTest 套件异常: " + t);
         }
         try {
-            failed += AgentLanPolicyTest.run();
-        } catch (Throwable t) {
-            failed++;
-            System.out.println("  FAIL AgentLanPolicyTest 套件异常: " + t);
-        }
-        try {
             failed += AgentIdempotencyPersistenceTest.run();
         } catch (Throwable t) {
             failed++;
@@ -213,12 +201,6 @@ public final class TestMain {
         } catch (Throwable t) {
             failed++;
             System.out.println("  FAIL IssueInputFactoryTest 套件异常: " + t);
-        }
-        try {
-            failed += AgentHttpServerTest.run();
-        } catch (Throwable t) {
-            failed++;
-            System.out.println("  FAIL AgentHttpServerTest 套件异常: " + t);
         }
         try {
             failed += NavStackTest.run();

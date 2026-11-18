@@ -65,7 +65,7 @@ import top.yukonga.miuix.kmp.icon.extended.Share
 /**
  * 诊断（SCREENS.md §12）。
  *
- * 只展示事实：四维状态来自 StateModel，8771/8770 分别读取各自快照，
+ * 只展示事实：四维状态来自 StateModel，8771 分别读取各自快照，
  * 权限来自 PermissionReader，Root/LSPosed 拿不到证据就写「未确认」。
  */
 @Composable
@@ -88,7 +88,7 @@ fun DiagnosticsScreen(
     var showClearLogs by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
-        // 冷启动时 8770 可能比页面晚 1–3 秒起来；定时重采，避免与接入页结论不一致。
+        // 冷启动时动作面可能比页面晚 1–3 秒就绪；定时重采，避免与接入页结论不一致。
         while (true) {
             snapshot = withContext(Dispatchers.IO) { capture(context, configGateway, appRuntime) }
             delay(3000)
@@ -161,7 +161,7 @@ fun DiagnosticsScreen(
             )
             val agentState = agentPortUi(snap.cfg?.mcpEnabled == true, snap.agent)
             StatusLine(
-                "设备操作 · 8770",
+                "设备操作",
                 agentState.text,
                 agentState.tone,
                 agentDetail(snap.agent, snap.cfg?.mcpEnabled == true),

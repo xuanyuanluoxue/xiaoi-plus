@@ -120,7 +120,7 @@ fun BridgeScreen(
             modifier = Modifier.padding(top = XiaoiTheme.dimens.cardGap, start = 4.dp),
         )
 
-        XiaoiGroupHeader("设备操作 · 8770")
+        XiaoiGroupHeader("设备操作")
         XiaoiCard {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("状态", color = colors.text, style = XiaoiTheme.typography.rowTitle)

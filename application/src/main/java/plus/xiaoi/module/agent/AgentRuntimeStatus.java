@@ -40,6 +40,20 @@ public final class AgentRuntimeStatus {
         sSnapshot = new AgentRuntimeSnapshot(true, port, host, lanEnabled, startedAt, "", now);
     }
 
+    /**
+     * 单端口（0.16.0）：动作面不再自己监听，设备动作由 8771 的 MCP 端点提供。
+     *
+     * @param mcpPort  8771 实际端口（未知时传首选端口）
+     * @param bindHost 8771 实际 bind 地址；未知传空串（不猜 127.0.0.1）
+     * @param lan      8771 是否监听 0.0.0.0
+     */
+    public static void setServedBy(int mcpPort, String bindHost, boolean lan) {
+        long now = System.currentTimeMillis();
+        AgentRuntimeSnapshot prev = sSnapshot;
+        long startedAt = prev.running ? prev.startedAt : now;
+        sSnapshot = new AgentRuntimeSnapshot(true, mcpPort, bindHost, lan, startedAt, "", now);
+    }
+
     /** 正常停止（配置关闭/服务销毁）：清掉错误，避免下次展示旧失败。 */
     public static void setStopped() {
         sSnapshot = new AgentRuntimeSnapshot(false, 0, "", false, 0L, "",

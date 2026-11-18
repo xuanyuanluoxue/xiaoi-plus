@@ -179,7 +179,7 @@ public final class AndroidAppRuntime {
 
         @Override
         public int defaultAgentPort() {
-            return plus.xiaoi.module.agent.AgentHttpServer.DEFAULT_PORT;
+            return plus.xiaoi.module.core.Contract.BRIDGE_PORT;
         }
 
         @Override

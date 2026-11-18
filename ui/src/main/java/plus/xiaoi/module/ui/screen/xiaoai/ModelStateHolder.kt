@@ -327,7 +327,7 @@ internal class ModelStateHolder(
                             conflictRev = null
                             check = CheckUi()
                             ModelDraftCache.clear()
-                            // 与旧配置页一致：保存后按配置对齐 8770（本页不改 MCP 开关）。
+                            // 与旧配置页一致：保存后按配置对齐设备操作（本页不改 MCP 开关）。
                             appRuntime.agent.startIfEnabled()
                             SaveOutcome.Saved
                         }

@@ -40,29 +40,6 @@ public final class ToolOwnershipTest {
         T.eq("空名无归属", null, ToolOwnership.ownerOf(""));
         T.eq("null 无归属", null, ToolOwnership.ownerOf(null));
 
-        // 合并请求带 own=true 时只回本端工具，且不调用对端（防 A→B→A 递归）。
-        final boolean[] asked = {false};
-        AgentMcp.BridgePort spy = new AgentMcp.BridgePort() {
-            @Override
-            public Object tools() {
-                asked[0] = true;
-                return null;
-            }
-
-            @Override
-            public Map<String, Object> callTool(String name, Map<?, ?> arguments) {
-                asked[0] = true;
-                return null;
-            }
-        };
-        AgentMcp mcp = new AgentMcp("test", null, null, null, null, null, spy);
-        String out = mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\","
-                + "\"params\":{\"own\":true}}", null);
-        Object result = ((Map<?, ?>) Json.read(out)).get("result");
-        T.eq("own=true 只回本端工具", 6,
-                ((List<?>) ((Map<?, ?>) result).get("tools")).size());
-        T.ok("own=true 不请求对端", !asked[0]);
-
         return T.report("ToolOwnershipTest");
     }
 

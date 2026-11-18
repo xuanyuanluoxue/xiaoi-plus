@@ -74,6 +74,28 @@ final class BridgeControlBinder extends Binder {
                 reply.writeNoException();
                 return true;
             }
+            case ControlKeys.C2S_AGENT_TOOLS: {
+                // 0.16.0 单端口：8771 进程合并工具表时来取动作面自己的工具。
+                String json = plus.xiaoi.module.agent.AgentService.toolsJson();
+                Bundle out = new Bundle();
+                out.putBoolean(ControlKeys.KEY_OK, json.length() > 0);
+                out.putString(ControlKeys.KEY_AGENT_TOOLS_JSON, json);
+                reply.writeNoException();
+                reply.writeBundle(out);
+                return true;
+            }
+            case ControlKeys.C2S_AGENT_CALL: {
+                Bundle in = data.readBundle(getClass().getClassLoader());
+                String tool = in == null ? "" : in.getString(ControlKeys.KEY_AGENT_TOOL, "");
+                String args = in == null ? "" : in.getString(ControlKeys.KEY_AGENT_ARGS_JSON, "");
+                String json = plus.xiaoi.module.agent.AgentService.callJson(tool, args);
+                Bundle out = new Bundle();
+                out.putBoolean(ControlKeys.KEY_OK, json.length() > 0);
+                out.putString(ControlKeys.KEY_AGENT_RESULT_JSON, json);
+                reply.writeNoException();
+                reply.writeBundle(out);
+                return true;
+            }
             default:
                 return super.onTransact(code, data, reply, flags);
         }

@@ -84,7 +84,7 @@ internal fun rememberBridgeSnapshot(): BridgeSnapshot {
     return snapshot
 }
 
-/** 8770 快照同上；与服务生命周期一致，App 被杀后自然回到未知。 */
+/** 动作面快照同上（单端口，端口与 8771 相同）；与服务生命周期一致，App 被杀后自然回到未知。 */
 @Composable
 internal fun rememberAgentSnapshot(): AgentRuntimeSnapshot {
     var snapshot by remember { mutableStateOf(AgentRuntimeStatus.get()) }
@@ -133,7 +133,7 @@ internal fun bindDetail(host: String?, lan: Boolean?): String {
     return "$label · $h"
 }
 
-/** 8771 状态：只看 8771 自己的快照与 MCP 开关，不从 8770 推断。 */
+/** 8771 状态：只看 8771 自己的快照与 MCP 开关，不从动作面推断。 */
 internal fun bridgeStateText(
     mcpEnabled: Boolean,
     snapshot: BridgeSnapshot,

@@ -20,7 +20,7 @@ import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 
 /**
  * 56dp 端口行：状态点 + 名称 + Mono 端口 + 绑定。
- * 8771/8770 各自一行，不合并判断。
+ * 8771 各自一行，不合并判断。
  */
 @Composable
 fun PortRow(
