@@ -26,7 +26,7 @@
 
 - 资源一律走 `R.*`，禁止 `getIdentifier`
 - 后台任务一律走 `AppExecutors`，禁止裸 `new Thread`
-- 提示统一 `BaseActivity.showMessage()`，禁止系统 Toast
+- 提示统一 `MainActivity.message()` → Compose `SnackbarHost`，禁止系统 Toast
 - 新增 drawable 必须被引用，否则一致性门禁失败
 - 版本号只改 `app/src/main/AndroidManifest.xml` 的 `versionName`/`versionCode`
 

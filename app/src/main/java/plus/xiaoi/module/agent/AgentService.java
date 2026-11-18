@@ -20,7 +20,7 @@ import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.core.LogSettings;
-import plus.xiaoi.module.HomeActivity;
+import plus.xiaoi.module.MainActivity;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.R;
 import plus.xiaoi.module.core.ActivityFeed;
@@ -431,7 +431,7 @@ public final class AgentService extends Service {
     }
 
     private Notification buildNotification(String text) {
-        Intent open = new Intent(this, HomeActivity.class);
+        Intent open = new Intent(this, MainActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= 23) piFlags |= PendingIntent.FLAG_IMMUTABLE;

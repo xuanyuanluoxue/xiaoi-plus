@@ -16,13 +16,4 @@
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:textColorHint">@color/text_hint</item>
     </style>
-    <!-- 深色对话框：与浅色同名，parent 换成深色 Material，颜色仍走令牌 -->
-    <style name="Theme.XiaoiPlus.Dialog" parent="android:Theme.Material.Dialog.Alert">
-        <item name="android:windowBackground">@color/bg</item>
-        <item name="android:colorBackground">@color/bg</item>
-        <item name="android:textColorPrimary">@color/text</item>
-        <item name="android:textColorSecondary">@color/text_secondary</item>
-        <item name="android:textColorHint">@color/text_hint</item>
-        <item name="android:colorAccent">@color/primary</item>
-    </style>
 </resources>

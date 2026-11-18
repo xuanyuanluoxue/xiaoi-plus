@@ -168,7 +168,7 @@ public final class ConfigSync {
      * 当前 config.json 的内容哈希是否与「上次已应用」的不同。
      *
      * 用于 FileObserver 在部分 ROM 的 /sdcard（FUSE）上静默失效时的兜底：
-     * {@code ConfigActivity/HomeActivity.onResume} 各比对一次即可补上漏掉的变更（§5.2 #6）。
+     * {@code MainActivity.onCreate} 比对一次即可补上漏掉的变更（§5.2 #6）。
      * 基线未知（本进程还没应用过任何文件）时返回 false：启动路径自己会做首次对齐。
      */
     public static boolean fileChanged(Context ctx) {

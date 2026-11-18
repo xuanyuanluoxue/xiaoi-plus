@@ -32,8 +32,8 @@ import plus.xiaoi.module.core.config.ConfigStorageInfo;
  *   <li>旧 beta.4 外部文件位置（一次性迁移）</li>
  * </ul>
  *
- * <p>旧调用方（ConfigActivity / ConfigSync / BridgeControlService / AgentService）
- * 的 public 方法签名保持不变。</p>
+ * <p>过渡期调用方（ConfigSync / BridgeControlService / AgentService）
+ * 的 public 方法签名保持不变；旧 Java 页面已于 0.15.1 删除。</p>
  */
 public final class ConfigRepository implements ConfigGateway {
 

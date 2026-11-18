@@ -70,8 +70,6 @@ fun MeScreen(
     onNavigate: (String) -> Unit,
     onOpenLogs: () -> Unit,
     onOpenAbout: () -> Unit,
-    onOpenLegacyHome: () -> Unit,
-    onOpenLegacyConfig: () -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -289,7 +287,7 @@ fun MeScreen(
             XiaoiPreferenceCard {
                 XiaoiInfoRow(
                     title = "诊断",
-                    subtitle = "四维状态、8771/8770、权限矩阵、配置完整性、兼容模式",
+                    subtitle = "四维状态、8771/8770、权限矩阵、配置完整性",
                     onClick = { onNavigate("Diagnostics") },
                     icon = MiuixIcons.Info,
                     iconTone = XiaoiIconTone.DANGER,
@@ -386,8 +384,6 @@ fun MeScreen(
 
         Spacer(Modifier.height(24.dp))
     }
-
-    // 旧版入口只允许从「诊断 > 兼容模式」进入，不在主界面占位；签名保留给路由壳。
 
     XiaoiConfirmDialog(
         show = showStopConfirm,

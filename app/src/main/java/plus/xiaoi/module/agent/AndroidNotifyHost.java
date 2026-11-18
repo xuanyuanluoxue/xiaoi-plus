@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import plus.xiaoi.module.BridgeClient;
-import plus.xiaoi.module.HomeActivity;
+import plus.xiaoi.module.MainActivity;
 import plus.xiaoi.module.Json;
 import plus.xiaoi.module.R;
 
@@ -152,7 +152,7 @@ public final class AndroidNotifyHost implements NotifyHost {
                 .setShowWhen(true)
                 .setCategory(Notification.CATEGORY_REMINDER);
         try {
-            Intent open = new Intent(ctx, HomeActivity.class);
+            Intent open = new Intent(ctx, MainActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             builder.setContentIntent(PendingIntent.getActivity(ctx, 0, open,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));

@@ -11,7 +11,7 @@ import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.os.Build;
 
-import plus.xiaoi.module.HomeActivity;
+import plus.xiaoi.module.MainActivity;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.R;
 
@@ -50,7 +50,7 @@ public final class AgentAlarmReceiver extends BroadcastReceiver {
                     .setWhen(System.currentTimeMillis())
                     .setVisibility(Notification.VISIBILITY_PUBLIC);
             try {
-                Intent open = new Intent(context, HomeActivity.class)
+                Intent open = new Intent(context, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 PendingIntent show = PendingIntent.getActivity(context, id, open,
                         PendingIntent.FLAG_UPDATE_CURRENT

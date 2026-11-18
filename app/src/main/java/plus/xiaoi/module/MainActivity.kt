@@ -68,7 +68,6 @@ import plus.xiaoi.module.ui.screen.me.AboutScreen
 import plus.xiaoi.module.ui.screen.me.AppearanceScreen
 import plus.xiaoi.module.ui.screen.me.ConfigManageScreen
 import plus.xiaoi.module.ui.screen.me.DiagnosticsScreen
-import plus.xiaoi.module.ui.screen.me.LegacyScreen
 import plus.xiaoi.module.ui.screen.me.LicensesScreen
 import plus.xiaoi.module.ui.screen.me.LogsScreen
 import plus.xiaoi.module.ui.screen.me.MeScreen
@@ -169,7 +168,6 @@ private object Routes {
     const val LOGS = "Logs"
     const val ABOUT = "About"
     const val LICENSES = "Licenses"
-    const val LEGACY = "Legacy"
     const val SPONSOR = "Sponsor"
 
     private val table: Map<String, XiaoiRoute> = mapOf(
@@ -191,7 +189,6 @@ private object Routes {
         LOGS to XiaoiRoute("日志", NavStack.MainTab.ME),
         ABOUT to XiaoiRoute("关于", NavStack.MainTab.ME),
         LICENSES to XiaoiRoute("开源许可", NavStack.MainTab.ME),
-        LEGACY to XiaoiRoute("兼容模式", NavStack.MainTab.ME),
         SPONSOR to XiaoiRoute("赞助支持", NavStack.MainTab.ME),
     )
 
@@ -248,14 +245,6 @@ private fun XiaoiApp(
 
     fun message(text: String) {
         scope.launch { snackbarHostState.showSnackbar(text) }
-    }
-
-    fun openLegacy(clazz: Class<*>) {
-        try {
-            context.startActivity(Intent(context, clazz))
-        } catch (t: Throwable) {
-            message("无法打开旧版页面")
-        }
     }
 
     fun navigate(target: String) {
@@ -414,8 +403,6 @@ private fun XiaoiApp(
                                 onNavigate = { navigate(it) },
                                 onOpenLogs = { navigate(Routes.LOGS) },
                                 onOpenAbout = { navigate(Routes.ABOUT) },
-                                onOpenLegacyHome = { openLegacy(HomeActivity::class.java) },
-                                onOpenLegacyConfig = { openLegacy(ConfigActivity::class.java) },
                                 onMessage = { message(it) },
                             )
 
@@ -444,11 +431,6 @@ private fun XiaoiApp(
                             )
 
                             Routes.LICENSES -> LicensesScreen(onMessage = { message(it) })
-
-                            Routes.LEGACY -> LegacyScreen(
-                                onNavigate = { navigate(it) },
-                                onMessage = { message(it) },
-                            )
 
                             else -> XiaoiPlaceholder(
                                 title = "页面不存在",

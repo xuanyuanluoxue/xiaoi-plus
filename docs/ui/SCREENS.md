@@ -22,11 +22,10 @@
 | `Me` | 一级 | 我的 | 显示 | 本机/外观/配置管理/诊断/关于/危险区 |
 | `Appearance` | 二级 | 我的 | 隐藏 | 主题三档 |
 | `ConfigManage` | 二级 | 我的 | 隐藏 | 备份/还原/导出/分享/导入 |
-| `Diagnostics` | 二级 | 我的 | 隐藏 | 权限/服务/诊断信息/兼容模式 |
+| `Diagnostics` | 二级 | 我的 | 隐藏 | 权限/服务/诊断信息 |
 | `Logs` | 二级 | 我的 | 隐藏 | 日志筛选/跟随/清空/分享 |
 | `About` | 二级 | 我的 | 隐藏 | 关于/许可/致谢/更新 |
 | `Licenses` | 三级 | 我的 | 隐藏 | 开源许可 |
-| `Legacy` | 三级 | 我的 | 隐藏 | 只读兼容模式 |
 
 深链：`TAB` / `PAGE` / `FOCUS` 白名单；未知回首页；不携带 token、不执行动作。
 
@@ -234,7 +233,7 @@ BridgeClient.stats(port, token, 1)
 
 ## 12. 诊断与权限 Diagnostics
 
-**行**：日志、通知权限、精确闹钟、全屏通知、电池优化、自启动、LSPosed、Root、Shizuku、服务状态、复制诊断信息、清空本机日志、兼容模式（只读）。
+**行**：日志、通知权限、精确闹钟、全屏通知、电池优化、自启动、LSPosed、Root、Shizuku、服务状态、复制诊断信息、清空本机日志。
 
 **规则**：无标准 API 显示“未确认”；Root 只显示“已安装/未检测到”，不显示“已授权”。
 
@@ -260,14 +259,6 @@ BridgeClient.stats(port, token, 1)
 **Licenses**：GPL-3.0、Apache-2.0（Miuix）、Kotlin/Compose/AndroidX；保留版权声明。
 
 **致谢**：OpenClaw · KernelSU Next · Miuix。
-
----
-
-## 15. 兼容模式 Legacy（只读）
-
-**入口**：我的 > 诊断 > 兼容模式（默认折叠，不用隐藏手势）。
-**内容**：`config.json` 路径/最后加载/只读或错误；脱敏 JSON；`.corrupt/.legacy` 列表；复制路径/导出脱敏。
-**禁止**：保存、导入、修改。
 
 ---
 

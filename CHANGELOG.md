@@ -47,6 +47,12 @@
   `:infra -> :application -> :domain`，端口留在 `:application`、实现下沉。`:application`
   的 `java.io|net|nio` 归零，`application_no_io` 门禁生效；删除 `ConfigCodec.fromStream`
   与 `ConfigRepository.parse/toJson` 静态门面（改由适配器读流）。分层基线 49 → **11 行**。
+- **删除旧 Java 页面（WP9 / 0.15.1）**：移除 `ConfigActivity`（1049 行）、`HomeActivity`、
+  `AboutActivity`、`LogsActivity`、`BaseActivity`、`Nav`、`ui/config/*`（6 文件）、
+  `SpikeActivity` 与 `LegacyScreen`，共约 **-1.5k 行**；通知/闹钟/设备动作的「打开 App」
+  一律改指 `MainActivity`。删除 6 个旧布局、22 个只被旧页面引用的 drawable、
+  `dimens.xml`、`Widget.*` 与 `Theme.XiaoiPlus.Dialog` 样式，`strings.xml` 只保留
+  `app_name`。路由从 20 条收敛到 **19 条**，「我的 › 兼容模式」入口一并移除。
 - **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
   已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
   下一阶段优化见 `docs/refactor/NEXT.md`。

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:versionCode="22"
-    android:versionName="0.15.0">
+    android:versionCode="23"
+    android:versionName="0.15.1">
 
     <!-- miuix-blur 的 AAR 声明 minSdk 33；本项目 minSdk 26，玻璃效果只在
          API 33+ 调用，低版本走实心回退（GlassSupport）。override 只放开清单合并，
@@ -40,7 +40,7 @@
             android:value="小爱同学plus：模型重定向 / 输出标记 / 能力桥（仅本机）" />
         <meta-data android:name="xposedminversion" android:value="93" />
 
-        <!-- 0.14 起 Compose 单 Activity 是唯一启动入口；旧首页只从兼容模式显式打开。 -->
+        <!-- 0.14 起 Compose 单 Activity 是唯一入口；旧 Java 页面已于 0.15.1 删除。 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -50,19 +50,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".HomeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.XiaoiPlus" />
-        <activity android:name=".ConfigActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
-        <activity android:name=".LogsActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
-        <activity android:name=".AboutActivity" android:exported="false" android:theme="@style/Theme.XiaoiPlus" />
-
-        <!-- P0 spike：仅验证 Compose + Miuix 可构建/可渲染；不是启动入口。 -->
-        <activity
-            android:name=".ui.spike.SpikeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.XiaoiPlus" />
 
         <!-- WP1 控制面：显式 ComponentName + exported，供 com.miui.voiceassist
              通过 Binder 拉配置/注册回调。无 intent-filter；安全边界在每个

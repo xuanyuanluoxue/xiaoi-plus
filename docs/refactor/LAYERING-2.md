@@ -118,7 +118,7 @@ Gradle 侧由模块依赖本身保证方向；`scripts/check-layering.sh` 补 im
 
 ---
 
-### WP7：存储端口化 + `:application` 纯化
+### WP7：存储端口化 + `:application` 纯化 —— ✅ 已完成（2026-11-18）
 
 **目标**：`ConfigService`（唯一的配置用例）不再 import `java.io`，`application_no_io` 门禁上线。
 
@@ -153,7 +153,7 @@ gradlew.bat :application:compileJava
 
 ---
 
-### WP8：新建 `:infra`（纯 JVM 基础设施）
+### WP8：新建 `:infra`（纯 JVM 基础设施）—— ✅ 已完成（2026-11-18）
 
 **目标**：`java-library` 模块，**禁止 android/xposed**，承接全部 I/O 实现；**把 `application_no_io` 基线从 38 条清零**。
 
@@ -187,7 +187,7 @@ bash scripts/contract-test.sh --check       # 47 项不变
 
 ---
 
-### WP9：删旧页面（`:app` 清场，NEXT.md 的 P0）
+### WP9：删旧页面（`:app` 清场，NEXT.md 的 P0）—— ✅ 已完成（0.15.1，2026-11-18）
 
 **目标**：只剩 Compose 一套入口；`ConfigActivity` 引用为 0。
 
@@ -375,4 +375,5 @@ domain/registry   CapabilityRegistry · Actions · BridgeRegistry · ControlLogR
 |---|---|---|---|
 | 2026-11-18 | 计划建立 | — | — |
 | 2026-11-18 | WP7 | `ConfigStorePort` + `FileConfigStore`；`ConfigService` 不再 import `java.io`（构造参数去掉 `File`，迁移改由端口 `migrateLegacy()`）；`ConfigRepository` 保留 `configFile()/legacyBackups()` 过渡门面；新增 `ConfigPortTest`（纯内存端口，28 断言）；新增门禁 `application_no_io`（基线 38 条） | 单测 2017 断言（48 套件）；分层 `--strict`、一致性、三模块构建、`verify-apk` PASS；真机配置读写 rev 31→33、字段不变、无崩溃 |
-| 2026-11-18 | WP8 | 新建 `:infra`（9 文件）：`Http`/`ConfigStore`/`FileConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`；`ConfigCodec.fromStream` 删除、`ConfigRepository` 的 `parse/toJson` 静态门面删除；门禁新增 `infra_no_android`/`infra_no_xposed`，`application_no_io` 基线 38 → **0**，总基线 49 → **11** | 单测 2017 断言；分层 `--strict`、一致性、四模块构建、`verify-apk` PASS；真机契约 **47/47**（8771 + leader election 正常） |
+| 2026-11-18 | WP8 | 新建 `:infra`（9 文件）：`Http`/`ConfigStore`/`FileConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`；`ConfigCodec.fromStream` 与 `ConfigRepository.parse/toJson` 删除；新增 `infra_no_android`/`infra_no_xposed` 门禁，`application_no_io` 基线 38 → **0**，总基线 49 → **11** | 单测 2017 断言；分层 `--strict`、一致性、四模块构建、`verify-apk` PASS；真机契约 **47/47** |
+| 2026-11-18 | WP9 | 删旧 Java 页面（`ConfigActivity` 1049 行 / `HomeActivity` / `AboutActivity` / `LogsActivity` / `BaseActivity` / `Nav` / `ui/config` 6 文件 / `SpikeActivity` / `LegacyScreen`，约 -1.5k 行）；4 处「打开 App」改指 `MainActivity`；删 6 布局 + 22 drawable + `dimens.xml` + `Widget.*`/`Dialog` 样式，`strings.xml` 只留 `app_name`；路由 20 → 19；版本 `0.15.1` (23) | 单测 2017 断言；一致性（死资源清零）、分层 `--strict`、构建、`verify-apk`（versionCode 23）全绿；真机：4 个 tab 正常、`我的` 无「兼容模式」、契约 **47/47**、无崩溃 |

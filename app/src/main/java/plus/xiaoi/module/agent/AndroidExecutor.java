@@ -332,7 +332,7 @@ public final class AndroidExecutor implements ActionExecutor {
                 PendingIntent.FLAG_UPDATE_CURRENT
                         | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         PendingIntent show = PendingIntent.getActivity(ctx, requestCode,
-                new Intent(ctx, plus.xiaoi.module.HomeActivity.class)
+                new Intent(ctx, plus.xiaoi.module.MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT
                         | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));

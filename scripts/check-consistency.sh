@@ -100,7 +100,7 @@ fi
 
 TOAST="$(grep -rn 'Toast.makeText' app/src/main/java domain/src/main/java application/src/main/java infra/src/main/java 2>/dev/null || true)"
 if [ -z "$TOAST" ]; then
-    pass "提示统一走 BaseActivity.showMessage（无系统 Toast）"
+    pass "提示统一走 Compose Snackbar（无系统 Toast）"
 else
     fail "发现系统 Toast（请用 showMessage）："
     echo "$TOAST" | sed 's/^/      /'
