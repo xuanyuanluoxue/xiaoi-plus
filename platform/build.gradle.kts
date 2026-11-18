@@ -9,7 +9,7 @@ plugins {
  * Android 适配器层（WP10）。
  *
  * 这里放所有「必须认识 Android 才能干活」的实现：配置读写、SharedPreferences 镜像、
- * 文件监听、通知、执行器、控制面 Binder、8770 服务、8771 桥与 Hook 宿主实现。
+ * 文件监听、通知、执行器、控制面 Binder、AgentService（单端口，不监听）、8771 桥与 Hook 宿主实现。
  * 端口定义在 `:domain` / `:application`，本模块只做实现。
  *
  * 禁止：Compose / Miuix / `plus.xiaoi.module.ui.*`（门禁 platform_no_compose / platform_no_ui）。

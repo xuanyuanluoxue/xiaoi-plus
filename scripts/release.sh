@@ -57,7 +57,7 @@ if [ ! -f keystore/xiaoi.keystore ] && [ "$ALLOW_NEW_KEY" -eq 0 ]; then
   die "缺少 keystore/xiaoi.keystore。请从备份恢复（见 docs/release.md），或加 --allow-new-key 仅做本地验证"
 fi
 
-# 4) 构建（0.14 起唯一构建入口是 Gradle；build.sh 只覆盖 ≤0.13 的纯 Java 构建）
+# 4) 构建（0.14 起唯一构建入口是 Gradle；0.16.0 删除了旧的无 Gradle 构建脚本）
 echo "==> 构建"
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
 GRADLE_APK="app/build/outputs/apk/release/app-release.apk"

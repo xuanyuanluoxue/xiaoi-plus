@@ -41,7 +41,7 @@ cleanup() { [ -n "$FWD" ] && "${ADB[@]}" forward --remove "tcp:$FWD" >/dev/null 
 trap cleanup EXIT
 
 if [ -z "$PORT" ]; then
-    # 与 contract-test.sh 同一套身份判定：带 token 认 facade=，无 token 用 /stats 排除 8770
+    # 与 contract-test.sh 同一套身份判定：带 token 认 facade=，无 token 用 /stats 排除非本服务
     for i in $(seq 1 15); do
         for p in $("${ADB[@]}" shell ss -ltn 2>/dev/null | awk 'NR>1{print $4}' \
                     | grep -oE '877[0-9]$' | sort -u); do

@@ -4,6 +4,7 @@ tests/.build/
 local.properties
 *.iml
 .idea/
+.kotlin/
 *.jks
 *.keystore
 app/release/

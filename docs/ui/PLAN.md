@@ -544,7 +544,7 @@ Skill {
 - [UI 架构](../ui-architecture.md)
 - [Agent 计划](../agent/PLAN.md)
 - [Phase 1](../agent/PHASE1.md)
-- [交接说明](../../HANDOVER.md)
+- [交接说明](../archive/HANDOVER-2026-11-08.md)
 
 ### 13.3 变更控制
 

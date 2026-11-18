@@ -149,7 +149,7 @@ echo "$LOG" | grep -qE '能力桥已监听 (127\.0\.0\.1|0\.0\.0\.0):' \
     && pass "能力桥已监听" || fail "未见「能力桥已监听」"
 
 # ---------------------------------------------------------------- 2) 端口发现 + forward
-# 8770~8779 可能被其它应用占用（实测 8770 被占用会返回非本服务的响应），
+# 8770~8779 可能被其它应用占用（实测 8770 会返回非本服务的响应），
 # 因此不能只按 ss 取第一个：必须逐个 forward 后用 /health 自证身份。
 PORT=""
 for i in $(seq 1 15); do
@@ -158,15 +158,15 @@ for i in $(seq 1 15); do
         $ADB forward "tcp:$p" "tcp:$p" >/dev/null 2>&1 || continue
         if [ -n "${XIAOI_TOKEN:-}" ]; then
             # 带 token：直接看身份。桥回 "ok facade=<b> port=N"；
-            # Agent 动作面（8770）回 "ok agent=true port=N bind=..."，必须排除。
+            # 其它服务（如小爱自带的 8770）不是这个前缀，必须排除。
             BODY=$(curl -s -m 2 -H "Authorization: Bearer $XIAOI_TOKEN" \
                 "http://127.0.0.1:$p/health" 2>/dev/null || true)
             if echo "$BODY" | grep -qE '^ok facade=(true|false) port=[0-9]+'; then
                 PORT="$p"; break
             fi
         else
-            # 无 token：401 体两边都一样（unauthorized），再用 /stats 区分——
-            # 桥对 /stats 回 401（路径存在），Agent 动作面回 404 not found。
+            # 无 token：401 体可能都一样（unauthorized），再用 /stats 区分——
+            # 桥对 /stats 回 401（路径存在），其它服务多为 404/200。
             CODE=$(curl -s -m 2 -o /dev/null -w '%{http_code}' \
                 "http://127.0.0.1:$p/health" 2>/dev/null || true)
             BODY2=$(curl -s -m 2 "http://127.0.0.1:$p/health" 2>/dev/null || true)

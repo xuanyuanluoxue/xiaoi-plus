@@ -343,7 +343,7 @@ self_test() {
   # 2) 未签名 APK 必须被拒绝
   if [ ! -f "$unsigned" ]; then
     fails=$((fails+1))
-    echo "  FAIL [2/4] 找不到未签名产物 $unsigned（先跑 ./build.sh）"
+    echo "  FAIL [2/4] 找不到未签名产物 $unsigned（先跑 ./gradlew :app:assembleRelease）"
   else
     rc=0
     out="$(verify_apk "$unsigned" "$expected" "$PKG" "$(manifest_code)" "$SKIP_VERSION" 2>&1)" || rc=$?

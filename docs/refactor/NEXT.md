@@ -4,6 +4,9 @@
 > 基线：`main`，架构重构 WP0–WP6 已完成（真实历史，非恢复仓库）
 > 归档 tag：`archive-2026-11-17`（仅快照，项目已恢复开发）
 > 旧归档说明：[../../ARCHIVE.md](../../ARCHIVE.md)
+>
+> ⚠️ 0.16.0 清理：旧的 `build.sh` 已删除（历史文档里的 `./build.sh` 一律按
+> `./gradlew :app:assembleRelease` 理解）；模块清单也已扩到 6 个。
 
 ## 1. 环境
 
@@ -13,7 +16,7 @@
 | WSL 路径 | `/mnt/d/code/Android/xiaoi-plus` |
 | JDK | `C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot` |
 | Android SDK | `C:\Users\Chatxavier\AppData\Local\Android\Sdk` |
-| 模块 | `:domain` / `:application` / `:infra` / `:app` |
+| 模块 | `:domain` / `:application` / `:infra` / `:platform` / `:ui` / `:app` |
 
 ```bat
 set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"

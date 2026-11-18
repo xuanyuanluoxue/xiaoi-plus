@@ -85,3 +85,12 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
    网络可用时把 `main` 推送到 `origin`（remote URL 目前是 gitclone 镜像，需要先修正）。
 2. 真机安装归档 APK，按 `docs/refactor/LAYERING.md` 各 WP 的 P0 清单验收。
 3. 若要发正式版：先跑 45 项契约与真机 P0，再按 `docs/release.md` 定版本/tag/签名。
+
+## 8. 已删除的历史文件（0.16.0 清理）
+
+| 文件 | 原因 |
+|---|---|
+| `TASK-FOR-OPENCODE.md` | 2026-11-10 的临时任务书，内容已被本文件与 `docs/refactor/` 覆盖 |
+| `build.sh` | 无 Gradle 的旧构建（javac + aapt2 + d8），分层重构后已无法编译；构建只剩 `./gradlew :app:assembleRelease` |
+| `opencode.json` | AOCI MCP 的本机配置，路径是 WSL 时代且 `enabled:false`（本机工具不存在） |
+| `HANDOVER.md` → `docs/archive/HANDOVER-2026-11-08.md` | 0.14 时代的交接说明，文件自己也标注为历史；移入 `docs/archive/` 保留历史 |

@@ -18,8 +18,9 @@ description: 发布 xiaoi-plus（LSPosed 模块 + 设置 App）的 beta 或正�
 - 版本号只改 `app/src/main/AndroidManifest.xml`，不改 `app/build.gradle.kts`。
 - 正式包必须与上一版同签名。固定指纹在 `scripts/expected-signer.sha256`：
   `d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b`
-- 不允许静默生成新 keystore。`build.sh` 在“有口令但无 keystore”时会失败；
-  只有本地编译验证才设 `XIAOI_ALLOW_NEW_KEY=1`，该包不能发布。
+- 不允许静默生成新 keystore。`./gradlew :app:assembleRelease` 在没有
+  `keystore/xiaoi.keystore` / `KEYSTORE_PASSWORD` 时会产出未签名包（不能发布）；
+  只有本地编译验证才用临时密钥（`--allow-new-key`），该包不能发布。
 - 未签名、错包名、versionCode 不符、指纹不符的 APK 不得归档、不得发 Release。
 - 测试产物写 `~/xiaoi-plus-dev/artifacts/YYYY-MM-DD/`；手机写
   `/sdcard/Download/xiaoi-plus-dev/YYYY-MM-DD/{screenshots,ui-dumps,logs}/`；
@@ -50,25 +51,23 @@ git tag -l 'v*' | sort -V | tail -5
    - 破坏性变更（协议/配置路径/权限）；
    - 升级方式；
    - 降级警告（如果降级会重新开启能力或读不到配置）。
-3. 同步 README 当前测试版链接、`HANDOVER.md`、`docs/refactor/PLAN.md` 状态。
+3. 同步 README 当前测试版链接、`docs/refactor/NEXT.md` 状态（`HANDOVER.md` 已归档到 `docs/archive/`）。
 
 ## 3. 本机质量门禁
 
 ```bash
-# SDK 按本机实际路径；本机常用：
-export SDK="$HOME/code/逆向/tools/sdk"
-
+# 唯一构建入口是 Gradle（0.14 起；build.sh 已在 0.16.0 删除）
 ./tests/run.sh
-SDK="$SDK" ./build.sh
+./gradlew.bat :app:assembleRelease      # Linux/macOS: ./gradlew :app:assembleRelease
 ./scripts/check-consistency.sh
-SDK="$SDK" ./scripts/verify-apk.sh build/xiaoi-plus.apk
-SDK="$SDK" ./scripts/verify-apk.sh --self-test build/xiaoi-plus.apk
+bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
+bash scripts/verify-apk.sh --self-test app/build/outputs/apk/release/app-release.apk
 ```
 
 全绿标准：
 
-- 单测全部通过（当前基线 664 断言）；
-- `build.sh` 打出 `versionName` / `versionCode` 对应的已签名 APK；
+- 单测全部通过（`tests/run.sh` 末行 `==> 全部通过`）；
+- Gradle 打出与 `versionName` / `versionCode` 一致的已签名 APK；
 - 一致性检查通过；
 - `verify-apk.sh`：包名 `plus.xiaoi.module`、versionCode 与 manifest 一致、指纹命中固定值；
 - `--self-test` 4/4：正式签名通过、未签名被拒、临时密钥因指纹不符被拒、临时文件已清理。
@@ -146,7 +145,7 @@ SDK="$HOME/code/逆向/tools/sdk" ./scripts/verify-apk.sh "$D/xiaoi-plus-<versio
 - `~/xiaoi-plus-dev/artifacts/releases/YYYY-MM-DD/`
 - `~/xiaoi-plus-dev/artifacts/apk/YYYY-MM-DD/`
 - 真机截图/UI dump/log 同样归档
-- 更新 `HANDOVER.md` 为“已发布”，`docs/refactor/PLAN.md` 状态同步
+- 更新 `CHANGELOG.md` 与 `docs/refactor/NEXT.md` 状态（`HANDOVER.md` 已归档，不再维护）
 - 删除 `/tmp/opencode` 与手机根目录的临时文件
 
 ## 失败处理
@@ -154,7 +153,7 @@ SDK="$HOME/code/逆向/tools/sdk" ./scripts/verify-apk.sh "$D/xiaoi-plus-<versio
 | 现象 | 处理 |
 |---|---|
 | `verify-apk.sh` 指纹不符 | 停止发布；确认 keystore 是否被替换，恢复正式 keystore 后重跑 |
-| 未签名 / 包名或 versionCode 不符 | 停止归档；检查 `build.sh`、manifest、`SDK` |
+| 未签名 / 包名或 versionCode 不符 | 停止归档；检查 `./gradlew :app:assembleRelease` 的签名配置、manifest、`KEYSTORE_PASSWORD` |
 | CI tag 构建未创建 Release | 看 `signed` 输出；缺 `KEYSTORE_*` secrets 时只发 artifact |
 | push 报 TLS / gnutls | 检查代理端口；没监听就清掉代理环境变量直连 |
 | 设备升级后配置丢失 | 立即停止发布；用 `~/xiaoi-plus-dev/artifacts/configs/` 备份恢复并排查迁移 |
