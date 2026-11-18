@@ -43,6 +43,9 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 
 ## 3. 下一阶段优化（按 ROI 排序）
 
+> 下面的 P0–P4 已细化成工作包 WP7–WP13（含文件清单、门禁、验收与回滚），
+> 见 **[LAYERING-2.md](LAYERING-2.md)**。本节的 P 编号保留作路线索引。
+
 ### P0：删除旧 Java 页面（约 -1.5k 行）
 
 - `ConfigActivity`（1148 行）、`HomeActivity`、`ui/config/*`、`ui/config` 相关布局/资源。
