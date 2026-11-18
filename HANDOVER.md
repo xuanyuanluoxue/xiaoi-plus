@@ -1,5 +1,9 @@
 # 交接说明（2026-11-08）
 
+> **历史文档**：本文写于 2026-11-08/10，路径/命令是迁移前 WSL 环境。
+> 当前项目已归档到 Windows 原生环境，最终状态见 [ARCHIVE.md](ARCHIVE.md)，
+> 构建见 [README「从源码构建」](README.md#从源码构建014)。
+
 > 状态：**0.14 UI 重写已完成 P0/P1/P2，P3 由 A8 进行中**（R8/CI/真机收尾）。
 > 设置 App 已是单 Activity + Compose + Miuix 的 4 tab（首页/小爱/接入/我的），
 > 共 19 条路由；P2 功能验收 65 PASS / 0 FAIL / 2 BLOCKED，P2 视觉 5 条 P1 已修。

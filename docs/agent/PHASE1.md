@@ -3,6 +3,9 @@
 > 状态：**WP1.1~WP1.5 完成，1478 断言；已发布 `v0.13.0-agent.2`（prerelease）**
 > 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.2>
 > 前置：`docs/agent/PHASE0-REPORT.md`（已完成）
+>
+> **历史文档**：验收命令为迁移前 WSL 写法（`./tests/run.sh` 等）；
+> Windows 用 `bash tests/run.sh` + `gradlew.bat`，见 [../refactor/NEXT.md](../refactor/NEXT.md)。
 > 目标：App 前台服务 + 8770 + ActionRegistry + 5 个动作
 > 日期：2026-11-06
 

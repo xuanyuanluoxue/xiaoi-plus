@@ -1,7 +1,10 @@
 # 工作包拆分与执行指令
 
 > 状态：**规划中，未实现**。所有工作包在计划冻结前不得改动代码。
-> 架构依据：[architecture.md](architecture.md)。迁移依据：[migration.md](migration.md)。
+>
+> **历史草案**：路径/命令为迁移前 WSL 环境；当前入口见 [../NEXT.md](../NEXT.md)。
+>
+> 架构依据：[architecture.md](../../architecture.md)。迁移依据：[migration.md](migration-v1.md)。
 > 规模：S ≈ 1 个可独立评审的改动；M ≈ 3~5 个；L ≈ 需要跨类重构 + 新测试。
 
 ## 0. 总览与依赖

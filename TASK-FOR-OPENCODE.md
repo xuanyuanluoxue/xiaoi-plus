@@ -1,5 +1,8 @@
 # 交给 opencode 的开发任务（2026-11-10 由手机端 DSH 交接）
 
+> **历史任务书**：任务已完成/项目已归档。当前状态见 [ARCHIVE.md](ARCHIVE.md)；
+> 路径与命令为迁移前 WSL 环境，Windows 构建见 README。
+
 ## 上下文
 项目：`~/code/xiaoi-plus`（LSPosed 模块，注入小爱同学）。
 当前开发分支：`~/xiaoi-plus-dev/worktrees/liquid-nav` = `feat/ui-liquid`，HEAD `c0fc247`。

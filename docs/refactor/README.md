@@ -4,6 +4,11 @@
 > 目标版本：`0.12.0`（先发 `0.12.0-beta.1`）
 > 基线版本：`0.11.0-beta.4`（versionCode 15）
 > 文档建立：2026-11-06
+>
+> **当前状态（2026-11-17 起）**：核心重构与分层改造（WP0–WP6）均已完成，
+> 主环境为 Windows 原生。**继续开发从这里开始：[NEXT.md](NEXT.md)。**
+> 本文件与 `WORKPACKAGES.md`、`drafts/` 是 0.12 阶段的历史计划，
+> 其中的路径/命令为迁移前 WSL 写法。
 
 ## 1. 为什么重构
 
@@ -89,8 +94,9 @@
 
 | 文档 | 内容 |
 |---|---|
+| [NEXT.md](NEXT.md) | **下一阶段优化（当前入口）**：Windows 环境、P0–P5 路线 |
 | [PLAN.md](PLAN.md) | **权威计划**：最终决策、目标架构、工作包、迁移、验收 |
-| [WORKPACKAGES.md](WORKPACKAGES.md) | 8 个工作包的详细范围、验收、测试、子 Agent 指令模板 |
+| [WORKPACKAGES.md](WORKPACKAGES.md) | 8 个工作包的详细范围、验收、测试、子 Agent 指令模板（历史） |
 | [LAYERING.md](LAYERING.md) | 分层与依赖倒置改造提案（WP0~WP5，执行中） |
 | [WP2-HOOK.md](WP2-HOOK.md) | WP2 执行计划与记录（Hook 策略 + 进程宿主） |
 | [WP3-BRIDGE.md](WP3-BRIDGE.md) | WP3 执行计划与记录（Mcp 端口拆分 + 生命周期决策） |

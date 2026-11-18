@@ -1,22 +1,58 @@
 # 构建规范（Gradle / Compose / Miuix）
 
-> 状态：**生效**（0.14 P0 起）
+> 状态：**生效**（0.14 P0 起；2026-11-17 起主环境为 Windows 原生）
 > 关联：[PLAN.md](PLAN.md)、[CONVENTIONS.md](CONVENTIONS.md)。
 > 目标：一条命令可复现地产出可覆盖安装的签名 APK，并保留现有 JVM 测试与门禁。
 
+## 0. Windows 原生（当前主环境）
+
+| 项 | 值 |
+| --- | --- |
+| 仓库 | `C:\Users\Chatxavier\code\xiaoi-plus` |
+| JDK | `C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot` |
+| Android SDK | `C:\Users\Chatxavier\AppData\Local\Android\Sdk` |
+| `local.properties` | `sdk.dir=C:/Users/Chatxavier/AppData/Local/Android/Sdk` |
+| 模块 | `:domain`（纯模型/策略）、`:application`（用例/纯 JVM 适配）、`:app`（Android/UI） |
+
+```bat
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
+gradlew.bat :domain:compileJava :application:compileJava :app:assembleRelease --offline
+```
+
+脚本（`tests/run.sh`、`scripts/*.sh`）用 **Git Bash 或 WSL** 执行：
+
+```bash
+bash tests/run.sh
+bash scripts/check-consistency.sh
+bash scripts/check-layering.sh --strict
+bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
+```
+
+> WSL 也可以直接 `cd /mnt/c/Users/Chatxavier/code/xiaoi-plus` 跑脚本，但 Gradle
+> 构建以 Windows 原生为准；`local.properties` 只指向 Windows SDK。
+
 ## 1. 环境要求
 
-| 项 | 要求 | 当前环境（2026-11-08） |
+| 项 | 要求 | 当前环境（2026-11-17，Windows 原生） |
 | --- | --- | --- |
-| JDK | 21（AGP 9.5 要求） | 已装 `java-21-openjdk`，构建时显式 `JAVA_HOME` |
-| Android SDK | platforms;android-37.0、build-tools;37.0.0、platform-tools | Linux SDK 已装；`local.properties` 指向 `~/Android/Sdk` |
-| Gradle | 9.9.0（wrapper 固定） | `gradlew` 可用，distributionUrl 固定 9.9.0 |
+| JDK | 21（AGP 9.5 要求） | `C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot` |
+| Android SDK | platforms;android-37.0、build-tools;37.0.0、platform-tools | `C:\Users\Chatxavier\AppData\Local\Android\Sdk` |
+| Gradle | 9.9.0（wrapper 固定） | `gradlew.bat`（Windows）/ `gradlew`（Git Bash、WSL） |
 | 网络 | 可访问 Maven Central / Google Maven | `settings.gradle.kts` 配阿里云镜像，官方源兜底 |
-| 设备 | 有线/无线 ADB（注入/截图验证） | 2026-11-08 白天可用（31106e85），晚间断开；真机回归见 A8 |
+| 设备 | 有线/无线 ADB（注入/截图验证） | `adb devices`；真机回归见 `docs/ui/DEVICE-CHECK-*.md` |
+
+> 以下 1.1–1.3 是**迁移前的 Linux/WSL 安装步骤**，保留作参考；
+> Windows 只需确认上表三项，`local.properties` 指向 Windows SDK。
 
 ### 1.1 安装 JDK 21
 
-优先用 x-cmd：
+Windows：安装 Eclipse Temurin / Adoptium JDK 21，构建前设置：
+
+```bat
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
+```
+
+Linux / WSL（可选）：优先用 x-cmd，或用系统包管理器装 `openjdk-21-jdk`：
 
 ```bash
 . ~/.x-cmd.root/X
@@ -24,13 +60,15 @@ x env use openjdk-21
 java -version
 ```
 
-或使用系统包管理器安装 `openjdk-21-jdk`。构建时显式：
+构建时显式：
 
 ```bash
 JAVA_HOME=/path/to/jdk-21 ./gradlew ...
 ```
 
-### 1.2 安装 Linux Android SDK
+### 1.2 安装 Linux Android SDK（历史/可选）
+
+> 当前主环境是 Windows 原生 SDK，本节只在需要纯 Linux 构建时使用。
 
 不要直接让 Gradle 用 `/mnt/c/...` 的 Windows SDK（路径/可执行文件/文件锁都可能出问题）。安装到 Linux 目录：
 
@@ -46,14 +84,18 @@ yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" \
 `local.properties`：
 
 ```properties
-sdk.dir=/home/chatxavier/Android/Sdk
+# Windows
+sdk.dir=C:/Users/Chatxavier/AppData/Local/Android/Sdk
+# Linux / WSL
+# sdk.dir=/home/chatxavier/Android/Sdk
 ```
 
 > 如果 `android-37.0` 不存在，按 sdkmanager 列表选择可用的 37 平台；Miuix AAR 要求 `minCompileSdk=37`，不能用 35。
 
 ### 1.3 Gradle wrapper
 
-从 Miuix 仓库拷贝 wrapper，避免先装 Gradle：
+wrapper 已提交在仓库（`gradle/wrapper`、`gradlew`、`gradlew.bat`），无需再拷贝。
+历史做法（迁移前）是从 Miuix 仓库拷：
 
 ```bash
 cp -r /home/chatxavier/code/github/miuix/gradle/wrapper gradle/
@@ -90,9 +132,13 @@ GRADLE_OPTS="-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897" ./gradlew ...
 settings.gradle.kts
 build.gradle.kts
 gradle/libs.versions.toml
+domain/build.gradle.kts
+domain/src/main/java/plus/xiaoi/module/...      # 模型/策略/协议 DTO/端口（纯 JVM）
+application/build.gradle.kts
+application/src/main/java/plus/xiaoi/module/... # 用例/编排/纯 JVM 适配器
 app/build.gradle.kts
 app/src/main/AndroidManifest.xml
-app/src/main/java/plus/xiaoi/module/...
+app/src/main/java/plus/xiaoi/module/...         # Android / Xposed / Compose UI
 app/src/main/res/...
 app/src/main/assets/xposed_init
 tests/run.sh
@@ -101,9 +147,10 @@ scripts/verify-apk.sh
 keystore/xiaoi.keystore
 ```
 
-- 单 `:app` 模块；不拆 `:core`。
+- 三模块：`:domain`（纯）→ `:application`（纯）→ `:app`（Android）。
+  依赖方向固定 `app -> {domain, application}`、`application -> domain`。
 - `libs/xposed-stub-src` 用 `compileOnly files(...)`。
-- `tests/run.sh` 保持独立，不依赖 Gradle。
+- `tests/run.sh` 保持独立，不依赖 Gradle；先空 classpath 单编 `:domain`。
 
 ## 3. 版本与依赖
 
@@ -117,7 +164,7 @@ keystore/xiaoi.keystore
 | compileSdk | 37 |
 | minSdk / targetSdk | 26 / 34 |
 | Java/Kotlin target | 11（Compose 1.12 要求） |
-| versionName / versionCode | 0.14.1 / 20（`AndroidManifest.xml` 单一来源） |
+| versionName / versionCode | 0.15.0 / 22（`AndroidManifest.xml` 单一来源） |
 | release R8 | `isMinifyEnabled = true`、`isShrinkResources = true` |
 
 - 不引入 `miuix-blur`、`miuix-nav`、navigation-compose、DI、图片库；`miuix-icons` 仅用于底栏/空态矢量图标。
@@ -206,22 +253,23 @@ debug 保持关闭。规则在 `app/proguard-rules.pro`，原则是**只 keep �
 ## 7. 命令
 
 ```bash
-# debug（不 R8）
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleDebug
+# Windows（CMD / PowerShell，主环境）
+gradlew.bat :domain:compileJava :application:compileJava :app:assembleDebug
+gradlew.bat :app:assembleRelease
 
-# release（有 keystore 口令时自动签名）
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
-  KEYSTORE_PASSWORD=... ./gradlew :app:assembleRelease
+# Linux / WSL
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleDebug
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease
 
 # 已有 Gradle 缓存时可离线构建；首次构建需要联网拉 R8/Compose mapping 依赖
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew :app:assembleRelease --offline
+gradlew.bat :app:assembleRelease --offline
 
-# 单测（保持现有脚本）
-./tests/run.sh
+# 单测（Windows 用 Git Bash / WSL）
+bash tests/run.sh
 
 # 门禁
-./scripts/check-consistency.sh
-SDK="$HOME/Android/Sdk" ./scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
+bash scripts/check-consistency.sh
+bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 ```
 
 产物：`app/build/outputs/apk/release/app-release.apk`（无正式密钥时为
@@ -247,7 +295,7 @@ SDK="$HOME/Android/Sdk" ./scripts/verify-apk.sh app/build/outputs/apk/release/ap
 
 ## 9. P0 验收
 
-- [ ] `./gradlew :app:assembleDebug` 成功。
+- [ ] `gradlew.bat :app:assembleDebug` 成功（Linux/WSL 用 `./gradlew`）。
 - [ ] `assembleRelease` 产出签名 APK；包名/versionCode/证书指纹与现有一致。
 - [ ] 覆盖安装成功，旧配置保留。
 - [ ] LSPosed 激活后模型重定向仍生效。
@@ -257,8 +305,11 @@ SDK="$HOME/Android/Sdk" ./scripts/verify-apk.sh app/build/outputs/apk/release/ap
 
 ## 10. Worktree 与分支
 
+> Windows 主环境：worktree 放 `C:\Users\Chatxavier\code\xiaoi-plus-dev\worktrees\<wp>`
+> （WSL：`~/code/xiaoi-plus-dev/worktrees/<wp>` 或 `/mnt/c/...`）。
+
 ```bash
-# 从 main 创建 P0 worktree（不要放 ~/code）
+# 从 main 创建 P0 worktree（不要放在仓库根旁边随手建）
 git worktree add "$HOME/xiaoi-plus-dev/worktrees/ui-p0" -b feat/ui-p0
 cd "$HOME/xiaoi-plus-dev/worktrees/ui-p0"
 

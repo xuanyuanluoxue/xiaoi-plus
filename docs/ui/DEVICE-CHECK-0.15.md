@@ -1,13 +1,15 @@
 # 0.15 真机验收清单（UI + 预测性返回）
 
 > 状态：待设备验收
-> 基线：`feat/ui-liquid`（未合并 main）
-> 设备：Android 17 / 1280×2772 / 520dpi（明天连接 ADB）
+> 基线：`main`（`feat/ui-liquid` 已合并；当前 `0.15.0` / versionCode 22）
+> 设备：Android 17 / 1280×2772 / 520dpi
+> 环境：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`；
+> 脚本用 Git Bash / WSL 执行，`adb` 用 Windows platform-tools
 
 ## 0. 安装
 
 ```bash
-cd ~/xiaoi-plus-dev/worktrees/liquid-nav
+cd /c/Users/Chatxavier/code/xiaoi-plus   # Git Bash（Windows 路径）
 adb install -r app/build/outputs/apk/release/app-release.apk
 adb shell am start -n plus.xiaoi.module/.MainActivity
 ```
@@ -16,7 +18,7 @@ adb shell am start -n plus.xiaoi.module/.MainActivity
 
 ## 1. 一级页（浅色 / 深色）
 
-每页截图（`scripts/ui-screenshot.sh --review`）：
+每页截图（`bash scripts/ui-screenshot.sh --review`）：
 
 | 页面 | 检查点 |
 | --- | --- |
@@ -50,17 +52,18 @@ adb shell am start -n plus.xiaoi.module/.MainActivity
 ## 4. 回归
 
 ```bash
-XIAOI_TOKEN=$(cat ~/.config/xiaoi/token) ./scripts/contract-test.sh --check
+bash scripts/contract-test.sh --check          # token 取 XIAOI_TOKEN 或本机文件
+XIAOI_TOKEN=<token> bash scripts/contract-test.sh --check
 ```
 
 - 8771 `/health`、`/logs`、`/stats`、MCP `tools/list` 正常。
 - 8770 `/health`、`actions` 正常（端口冲突时按已知限制记录）。
 - 模型重定向仍生效；暂停/恢复、令牌轮换、LAN 开关行为不变。
-- `./tests/run.sh`、`./scripts/check-consistency.sh`、`verify-apk.sh` 全绿。
+- `bash tests/run.sh`、`bash scripts/check-consistency.sh`、`bash scripts/verify-apk.sh` 全绿。
 
 ## 5. 记录
 
-截图归档：`~/xiaoi-plus-dev/xiaoi-plus-ui/review/2026-11-09/`
-报告：`~/xiaoi-plus-dev/xiaoi-plus-ui/tests/2026-11-09/ui-liquid-acceptance.md`
+截图归档：`C:\Users\Chatxavier\code\xiaoi-plus-dev\xiaoi-plus-ui\review\<YYYY-MM-DD>\`
+报告：`C:\Users\Chatxavier\code\xiaoi-plus-dev\xiaoi-plus-ui\tests\<YYYY-MM-DD>\ui-liquid-acceptance.md`
 
 未通过项按 P0/P1/P2 分级；P0/P1 修完再合并 `main`。

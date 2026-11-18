@@ -89,10 +89,22 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
 
 ## 分层与依赖方向
 
-当前代码是「按技术关注点分包 + 局部端口化」：agent 动作面已有
-`ActionExecutor` / `AskHost` / `NotifyHost` 端口，但配置与 Hook 仍依赖具体类
-和全局静态状态。目标层、依赖规则、端口清单与增量迁移计划见
-[refactor/LAYERING.md](refactor/LAYERING.md)（提案，未开始执行）。
+代码已拆成三个 Gradle 模块（WP6，2026-11-17）：
+
+```
+:domain      模型 / 策略 / 协议 DTO / 端口        纯 JVM：无 I/O、无 Android、无 Xposed
+:application 用例 / 编排 / 纯 JVM 适配器          只依赖 :domain
+:app         Android / Xposed / Compose UI        依赖 :domain + :application
+```
+
+- 依赖方向固定：`:app -> {domain, application}`、`:application -> domain`。
+- `tests/run.sh` 先用空 classpath 单独编译 `:domain`，以此证明它不依赖上层。
+- 边界由 `scripts/check-layering.sh` 守（`domain_no_*` / `application_no_*` / UI 规则）。
+- 设备侧端口：配置 `ConfigGateway`、进程 `XiaoiProcessHost`、桥 `BridgeRuntime`、
+  MCP `Mcp.Hosts`、UI `AppRuntime`。
+
+改造过程见 [refactor/LAYERING.md](refactor/LAYERING.md)，
+下一阶段优化见 [refactor/NEXT.md](refactor/NEXT.md)。
 
 ## 为什么不用改包
 

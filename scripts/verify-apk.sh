@@ -166,7 +166,15 @@ manifest_code() {
 }
 
 new_tmp_dir() {
-  local base="${XIAOI_TMPDIR:-$HOME/xiaoi-plus-dev/tmp}"
+  local dev_root="${XIAOI_DEV_ROOT:-}"
+  if [ -z "$dev_root" ]; then
+    if [ -d "$HOME/code/xiaoi-plus-dev" ]; then
+      dev_root="$HOME/code/xiaoi-plus-dev"
+    else
+      dev_root="$HOME/xiaoi-plus-dev"
+    fi
+  fi
+  local base="${XIAOI_TMPDIR:-$dev_root/tmp}"
   if mkdir -p "$base" 2>/dev/null; then
     mktemp -d "$base/xiaoi-verify.XXXXXX"
   else

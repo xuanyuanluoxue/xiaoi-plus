@@ -4,6 +4,12 @@
 > 基线：`v0.15.0`（versionCode 22，2026-11-11），HEAD `d753fb4`
 > 日期：2026-11-16
 > 相关：[architecture.md](../architecture.md) · [refactor/PLAN.md](PLAN.md) · [agent/PLAN.md](../agent/PLAN.md)
+>
+> **当前环境（2026-11-17 起）**：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`
+> （WSL 视角 `/mnt/c/Users/Chatxavier/code/xiaoi-plus`）。
+> 本文命令里的 `bash scripts/...` 在 Windows 用 Git Bash / WSL 执行；
+> Gradle 命令 Windows 用 `gradlew.bat`，Linux/WSL 用 `./gradlew`。
+> **下一阶段继续优化见 [NEXT.md](NEXT.md)。**
 
 ## 0. 决策与边界
 
@@ -184,10 +190,10 @@ adapter + composition root（Android）
 ### 4.5 验收
 
 ```bash
-./scripts/check-layering.sh          # 通过
-./scripts/check-layering.sh --strict # 当前基线无 stale，通过
-./scripts/check-layering.sh --self-test
-./scripts/check-consistency.sh       # 全绿，且包含分层检查
+bash scripts/check-layering.sh          # 通过
+bash scripts/check-layering.sh --strict # 当前基线无 stale，通过
+bash scripts/check-layering.sh --self-test
+bash scripts/check-consistency.sh       # 全绿，且包含分层检查
 ```
 
 另做一次手工负例：临时在 `ui/` 新建一个 import `ConfigRepository` 的文件，
@@ -285,10 +291,10 @@ public final class SaveResult {
 
 ```bash
 rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
-./scripts/check-layering.sh --strict                               # ui 规则 0 基线
-./tests/run.sh                                                     # 全绿 + 新规则用例
-./scripts/check-consistency.sh                                     # 全绿
-./gradlew :app:assembleRelease --offline                           # 构建通过
+bash scripts/check-layering.sh --strict                            # ui 规则 0 基线
+bash tests/run.sh                                                  # 全绿 + 新规则用例
+bash scripts/check-consistency.sh                                  # 全绿
+gradlew.bat :app:assembleRelease --offline                         # 构建通过（Linux/WSL: ./gradlew）
 ```
 
 真机回归（行为不变断言）：
@@ -429,7 +435,7 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 ### 11.3 子 Agent 任务书模板
 
 ```text
-仓库：/home/chatxavier/code/xiaoi-plus（worktree: <path>）
+仓库：C:\Users\Chatxavier\code\xiaoi-plus（WSL: /mnt/c/Users/Chatxavier/code/xiaoi-plus；worktree: <path>）
 只允许修改：<文件白名单>
 禁止修改：<文件黑名单>
 目标：<一句话>
@@ -441,9 +447,9 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 ## 12. 每个 WP 的完成定义（DoD）
 
 1. 代码 + 测试 + 文档同步。
-2. `./tests/run.sh` 全绿。
-3. `./scripts/check-consistency.sh` 全绿（含 `check-layering --strict`）。
-4. `./gradlew :app:assembleRelease --offline` 成功。
+2. `bash tests/run.sh` 全绿。
+3. `bash scripts/check-consistency.sh` 全绿（含 `check-layering --strict`）。
+4. `gradlew.bat :app:assembleRelease --offline` 成功（Linux/WSL 用 `./gradlew`）。
 5. 涉及运行时的 WP 补真机 P0 清单与结果（可写 `docs/ui/DEVICE-CHECK-*.md`）。
 6. `scripts/layering-baseline.tsv` 只减不增（该 WP 对应的行必须删除）。
 7. 独立 commit，commit message 带 `refactor(layering): WPn ...`。
@@ -480,3 +486,17 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 | 2026-11-17 | WP4 | `AppRuntime` 五端口 + Android 适配 + UI 去 Context | `AppRuntimeTest` 9 条；UI 4 类静态依赖清零；单测/一致性/分层/构建/APK 全绿 |
 | 2026-11-17 | WP5 | `:core` java-library（82 文件）+ Gradle/测试/门禁路径 | `:core:compileJava` + Windows `assembleRelease` 成功；单测/一致性/分层/APK 全绿 |
 | 2026-11-17 | WP6 | 拆 `:domain`（53）+ `:application`（29）；app 依赖两者 | domain 空 classpath 单编 + Windows 三模块构建/APK 全绿 |
+
+## 15. 后续优化（2026-11-17 起）
+
+WP0–WP6 已完成本轮分层目标；下一阶段按 ROI 继续：
+
+1. P0：删除旧 `ConfigActivity` / `HomeActivity`（约 -1.5k 行）
+2. P1：拆 `:infra`，把 `Http`/`ConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`
+   移出 `:application`
+3. P2：清掉 `ui_no_control` 3 条（控制面查询端口化）
+4. P3：domain 内部按 `model/policy/protocol/registry` 整理，消包级环
+5. P4：拆 `Bridge`（socket / CLI / router）
+6. P5：真机 P0 与 git 历史恢复
+
+详见 [NEXT.md](NEXT.md)（Windows 继续开发指南）。

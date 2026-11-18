@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 # UI 截图脚本：截图直接写到 PC（adb exec-out），不在手机留文件。
 #
-# 默认输出：~/xiaoi-plus-dev/xiaoi-plus-ui/tmp/YYYY-MM-DD/
-# 归档输出：--review 复制到 ~/xiaoi-plus-dev/xiaoi-plus-ui/review/YYYY-MM-DD/
+# 默认输出：<dev-root>/xiaoi-plus-ui/tmp/YYYY-MM-DD/
+# 归档输出：--review 复制到 <dev-root>/xiaoi-plus-ui/review/YYYY-MM-DD/
 # 清理：    --clean 删除 tmp 下 7 天前的目录
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-UI_ROOT="${XIAOI_UI_ARTIFACTS:-$HOME/xiaoi-plus-dev/xiaoi-plus-ui}"
+DEV_ROOT="${XIAOI_DEV_ROOT:-}"
+if [ -z "$DEV_ROOT" ]; then
+    if [ -d "$HOME/code/xiaoi-plus-dev" ]; then
+        DEV_ROOT="$HOME/code/xiaoi-plus-dev"
+    else
+        DEV_ROOT="$HOME/xiaoi-plus-dev"
+    fi
+fi
+UI_ROOT="${XIAOI_UI_ARTIFACTS:-$DEV_ROOT/xiaoi-plus-ui}"
 TMP_ROOT="$UI_ROOT/tmp"
 OUT="${XIAOI_SCREENSHOT_OUT:-$TMP_ROOT/$(date +%F)}"
 SERIAL="${ANDROID_SERIAL:-}"

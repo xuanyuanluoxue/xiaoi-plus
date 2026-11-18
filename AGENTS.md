@@ -4,13 +4,22 @@
 
 ## 构建与测试
 
-- 构建（Windows 原生，当前主环境）：`gradlew.bat :app:assembleRelease`
+- 构建（Windows 原生，当前主环境）：
+  `gradlew.bat :domain:compileJava :application:compileJava :app:assembleRelease`
   → `app/build/outputs/apk/release/app-release.apk`
-- 构建（Linux / WSL）：`./gradlew :app:assembleRelease`
+- 构建（Linux / WSL）：`./gradlew :domain:compileJava :application:compileJava :app:assembleRelease`
   （`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，不再用于发版）
 - 单测：`bash tests/run.sh`（纯 JVM，无需设备；Windows 用 Git Bash/WSL）
 - 门禁：`bash scripts/check-consistency.sh`（版本/SDK/资源引用/线程/提示/分层）
-- 真机契约（可选）：`XIAOI_TOKEN=<token> bash scripts/contract-test.sh`
+- 分层：`bash scripts/check-layering.sh --strict`（基线见 `scripts/layering-baseline.tsv`）
+- 真机契约（可选）：`bash scripts/contract-test.sh --check`
+- 下一阶段优化计划：`docs/refactor/NEXT.md`
+
+## 模块
+
+- `:domain` 模型/策略/协议 DTO/端口，无 I/O、无 Android、无 Xposed
+- `:application` 用例/编排/纯 JVM 适配器，依赖 `:domain`
+- `:app` Android / Xposed / Compose UI，依赖 `:domain` + `:application`
 
 ## 改动约定
 
@@ -22,17 +31,19 @@
 
 ## 测试产物
 
+- 本机主目录（Windows）：`C:\Users\Chatxavier\code\xiaoi-plus-dev`
+  （WSL 等价 `/mnt/c/Users/Chatxavier/code/xiaoi-plus-dev`）。
 - UI 截图/视觉验收/UI 测试统一放
-  `~/xiaoi-plus-dev/xiaoi-plus-ui/{review,tests,tmp}/YYYY-MM-DD/`。
+  `xiaoi-plus-dev\xiaoi-plus-ui\{review,tests,tmp}\YYYY-MM-DD\`。
 - 截图只用 `scripts/ui-screenshot.sh`（内部 `adb exec-out`，直接写 PC），
   **不要在手机存截图**；脚本默认写 `tmp/`，`--review` 才归档。
 - 构建 APK、配置 fixture、构建/契约日志仍放
-  `~/xiaoi-plus-dev/artifacts/YYYY-MM-DD/`（apk/configs/logs/releases/notes）。
-- 临时文件先写 `~/xiaoi-plus-dev/tmp/` 或 `xiaoi-plus-ui/tmp/`，
+  `xiaoi-plus-dev\artifacts\YYYY-MM-DD\`（apk/configs/logs/releases/notes）。
+- 临时文件先写 `xiaoi-plus-dev\tmp\` 或 `/tmp/opencode`，
   不要落在仓库根、用户 home 根或 `/tmp/opencode` 根。
 - 手机端只允许临时 `logs/`、`apk/`；配置类文件测试后立即 pull 到 PC 并删除。
 - 含 `apiKey` / `mcp.token` 的配置、备份、`.corrupt` 文件必须 `chmod 600`，用完清理。
-- 目录约定与清理脚本见 `~/xiaoi-plus-dev/README.md`、`~/xiaoi-plus-dev/clean.sh`。
+- 目录约定与清理脚本见 `xiaoi-plus-dev\README.md`、`xiaoi-plus-dev\clean.sh`。
 
 ## 文档
 

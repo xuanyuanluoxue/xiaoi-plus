@@ -6,17 +6,17 @@ set -e
 
 ROOT="$(git rev-parse --show-toplevel)"
 
-if ! "$ROOT/scripts/check-consistency.sh" >/dev/null 2>&1; then
+if ! bash "$ROOT/scripts/check-consistency.sh" >/dev/null 2>&1; then
     echo ""
     echo "pre-push: 工程一致性检查失败，推送中止。输出："
-    "$ROOT/scripts/check-consistency.sh"
+    bash "$ROOT/scripts/check-consistency.sh"
     exit 1
 fi
 
-if ! "$ROOT/tests/run.sh" >/dev/null 2>&1; then
+if ! bash "$ROOT/tests/run.sh" >/dev/null 2>&1; then
     echo ""
     echo "pre-push: 单元测试失败，推送中止。输出："
-    "$ROOT/tests/run.sh"
+    bash "$ROOT/tests/run.sh"
     exit 1
 fi
 

@@ -1,7 +1,10 @@
 # 迁移与发布：`0.11.0-beta.4` → `0.12.0`
 
 > 状态：**规划中，未执行**。本文描述升级/降级、schema 迁移、令牌与客户端兼容、发布门禁。
-> 设计依据：[architecture.md](architecture.md)。工作包：[workpackages.md](workpackages.md)。
+>
+> **历史草案**：路径/命令为迁移前 WSL 环境；当前入口见 [../NEXT.md](../NEXT.md)。
+>
+> 设计依据：[architecture.md](../../architecture.md)。工作包：[workpackages.md](workpackages-v1.md)。
 
 ## 1. 版本策略
 

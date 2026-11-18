@@ -4,6 +4,23 @@
 > 见 [README「从源码构建」](../README.md#从源码构建014)。
 > 本文的 `build.sh` 是 ≤0.13 的纯 Java 遗留路径，新版本发版不要使用。
 
+## 0. 当前主环境（Windows）
+
+- 仓库：`C:\Users\Chatxavier\code\xiaoi-plus`
+- JDK 21：`C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot`
+- Android SDK：`C:\Users\Chatxavier\AppData\Local\Android\Sdk`
+- `local.properties`：`sdk.dir=C:/Users/Chatxavier/AppData/Local/Android/Sdk`
+- 模块：`:domain`、`:application`、`:app`
+
+```bat
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
+gradlew.bat :domain:compileJava :application:compileJava :app:assembleRelease
+```
+
+脚本用 Git Bash 或 WSL：`bash tests/run.sh`、`bash scripts/check-consistency.sh`。
+
+## 1. 遗留路径（≤0.13）
+
 本项目**不用 Gradle**。`build.sh` 直接调用 `javac` + `d8` + `aapt2` + `zipalign` + `apksigner`
 走完「编译 → dex → 打包 → 对齐 → 签名」，产出可直接安装的 APK。
 

@@ -6,6 +6,10 @@
 > ⚠️ **当前是 0.x 预览版（测试版）**。配置项、能力桥接口和 hook 目标都可能在小版本内调整，
 > 升级前先看 [CHANGELOG](CHANGELOG.md) 与 [Release Notes](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)。
 >
+> 📦 **架构状态（2026-11-17）**：WP0–WP6 分层重构已完成；`archive-2026-11-17`
+> 仅作为快照 tag，项目继续优化。并行/后续计划见
+> [docs/refactor/NEXT.md](docs/refactor/NEXT.md)。
+>
 > 📦 当前版本：**v0.15.0**（Compose + Miuix UI 收尾：渐变模糊顶栏 / 玻璃底栏 / 统一配色 / 多档位日志）·
 > [更新日志](CHANGELOG.md) ·
 > [下载 / 发布状态](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)
@@ -294,7 +298,7 @@ Windows（CMD / PowerShell）：
 
 ```bat
 set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
-gradlew.bat :app:assembleDebug
+gradlew.bat :domain:compileJava :application:compileJava :app:assembleDebug
 gradlew.bat :app:assembleRelease
 ```
 
@@ -311,19 +315,20 @@ export JAVA_HOME=/path/to/jdk-21
 改代码后跑门禁（单测纯 JVM，无需设备；Windows 用 Git Bash 或 WSL）：
 
 ```bash
-bash tests/run.sh                 # 桌面单测（Json / Http / Mcp / NavStack / Status…）
-bash scripts/check-consistency.sh # 版本/SDK/R 引用/线程/提示/分层/死资源
+bash tests/run.sh                  # 桌面单测（含 domain 空 classpath 单编）
+bash scripts/check-consistency.sh  # 版本/SDK/R 引用/线程/提示/分层/死资源
+bash scripts/check-layering.sh --strict  # 分层基线无 stale
 bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 # 校验：已签名 + 包名 plus.xiaoi.module + versionCode + 固定证书指纹
 ```
 
-`XIAOI_TOKEN=<token> scripts/contract-test.sh` 是可选的真机契约，设备断开时会跳过/失败，
-不要把它当成日常构建门禁。
+`bash scripts/contract-test.sh --check`（或 `XIAOI_TOKEN=<token> bash scripts/contract-test.sh`）
+是可选的真机契约，设备断开时会跳过/失败，不要把它当成日常构建门禁。
 
 R8/shrink 与 CI 已随 0.14 收尾：release 开启 `minifyEnabled` + `shrinkResources`，
-APK 从 8.4 MiB 降到 **1.6 MiB**（实测）。版本号单一来源是
+APK 从 8.4 MiB 降到 **1.9 MiB**（实测）。版本号单一来源是
 `app/src/main/AndroidManifest.xml` 的 `android:versionName` / `android:versionCode`
-（Gradle 读取）；当前为 `0.14.1` / `20`。完整构建说明见
+（Gradle 读取）；当前为 `0.15.0` / `22`。完整构建说明见
 [docs/ui/BUILD.md](docs/ui/BUILD.md)，版本说明见
 [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)。
 

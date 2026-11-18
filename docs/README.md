@@ -1,7 +1,18 @@
 # 文档索引
 
+> **当前环境（2026-11-17 起）**：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`
+> （WSL：`/mnt/c/Users/Chatxavier/code/xiaoi-plus`）。
+> `docs/agent/*`、`docs/ui/*-REPORT.md`、`docs/ui/DEVICE-CHECK-*`、`docs/ui/P0-REPORT.md`、
+> `docs/refactor/RECOVERY-*`、`docs/refactor/drafts/*` 等是**历史存档**，
+> 其中 `~/xiaoi-plus-dev`、`/home/chatxavier/...`、`./gradlew`、`./tests/run.sh`
+> 均为迁移前 WSL 环境的写法，仅作记录，不再代表当前路径。
+>
+> **继续开发入口**：[refactor/NEXT.md](refactor/NEXT.md)（Windows 环境、下一阶段优化）。
+
 | 文档 | 内容 |
 |---|---|
+| [../ARCHIVE.md](../ARCHIVE.md) | 归档快照说明：最终模块、验证结果、已知限制（项目已恢复开发） |
+| [refactor/NEXT.md](refactor/NEXT.md) | **下一阶段架构优化**：删旧页面、拆 `:infra`、清 `ui_no_control`、Bridge 拆分 |
 | [design-system.md](design-system.md) | UI 声明：颜色/字号/间距/组件/状态矩阵 |
 | [ui-architecture.md](ui-architecture.md) | 四页结构与数据流图（Mermaid） |
 | [remote-debug.md](remote-debug.md) | 远程调试手机：adb / logcat / adb forward / root / 排障 |

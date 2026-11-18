@@ -33,6 +33,13 @@
 - **`:domain` / `:application` 拆分（WP6）**：`:core` 拆成 domain（53）与 application（29）；
   `:app -> {domain, application}`，`application -> domain`。domain 用空 classpath
   单独编译验证无 I/O/Android/Xposed，Windows 三模块构建与 APK 校验通过。
+- **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
+  已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
+  下一阶段优化见 `docs/refactor/NEXT.md`。
+- **文档迁移到 Windows（2026-11-18）**：`README`/`AGENTS.md`/`docs/ci.md`/`docs/release.md`/
+  `docs/build.md`/`docs/ui/BUILD.md`/`docs/refactor/*` 统一为 Windows 路径与命令
+  （`gradlew.bat` + `bash scripts/*.sh`）；新增 `docs/refactor/NEXT.md` 作为继续开发入口；
+  历史报告标注为迁移前 WSL 环境。
 
 ## 0.15.0 — 2026-11-11
 

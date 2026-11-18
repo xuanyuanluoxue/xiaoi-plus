@@ -135,10 +135,12 @@ MainActivity
 ## 11. Git / Worktree / 提交
 
 - 每个工作包一个分支：`feat/ui-<wp>`（如 `feat/ui-p0`、`feat/ui-home`）。
-- worktree 统一放 `~/xiaoi-plus-dev/worktrees/<wp>`，**不要**散落在 `~/code`；合并后立即删除。
+- worktree 统一放 `xiaoi-plus-dev\worktrees\<wp>`（Windows）
+  或 `~/code/xiaoi-plus-dev/worktrees/<wp>`（WSL），**不要**散落在仓库旁边；合并后立即删除。
 - 提交信息用 conventional commits：`feat(ui): ...`、`fix(ui): ...`、`docs(ui): ...`。
 - 一个提交只做一件事；不提交 `build/`、`.gradle/`、`local.properties`、密钥、截图大文件。
-- 合并前必须：`./gradlew :app:assembleDebug`、`tests/run.sh`、`scripts/check-consistency.sh` 通过。
+- 合并前必须：`gradlew.bat :app:assembleDebug`（Linux/WSL `./gradlew`）、
+  `bash tests/run.sh`、`bash scripts/check-consistency.sh` 通过。
 - 不直接在 `main` 上开发；不 `git push --force`。
 
 ## 12. Definition of Done

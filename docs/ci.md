@@ -8,9 +8,10 @@
 每次 push / PR / tag 自动运行：
 
 1. 装 JDK 21 + Android SDK（`android-actions/setup-android`，SDK 37 / build-tools 37.0.0）
-2. **JVM 单测**（`tests/run.sh`，测试红则不构建）
-3. `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/Hook-Bridge 依赖方向/死资源）
-4. `./gradlew :app:assembleRelease`（0.14 起 R8 + 资源收缩，Gradle wrapper 固定 9.9.0）
+2. **JVM 单测**（`bash tests/run.sh`，含 domain 空 classpath 单编；测试红则不构建）
+3. `bash scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/Hook-Bridge 依赖方向/死资源）
+4. `./gradlew :domain:compileJava :application:compileJava :app:assembleRelease`
+   （Windows 本地为 `gradlew.bat`；0.14 起 R8 + 资源收缩，Gradle wrapper 固定 9.9.0）
 5. 无 `KEYSTORE_PASSWORD` 时产出未签名 APK；有 `KEYSTORE_BASE64` 时由
    `scripts/ci-sign.sh` 签名，否则警告 + 临时签名
 6. `scripts/verify-apk.sh` 校验：`signed=true` 必须命中
@@ -25,19 +26,19 @@
 需要设备与 aoci 的检查只能在本机跑：
 
 ```bash
-scripts/check-all.sh              # 单测 + 认知检查 + 真机契约
-scripts/check-all.sh --no-device  # 跳过设备契约
+bash scripts/check-all.sh              # 单测 + 认知检查 + 真机契约
+bash scripts/check-all.sh --no-device  # 跳过设备契约
 ```
 
 门禁含义：
 
 | 层 | 内容 | 失败即中止 |
 |---|---|---|
-| 工程一致性 | `scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/Hook-Bridge 依赖方向/死资源） | ✅ |
-| JVM 单测 | `tests/run.sh`（全部断言） | ✅ |
-| APK 签名门禁 | `scripts/verify-apk.sh`（已签名/包名/versionCode/固定指纹；`--self-test` 覆盖负向用例） | ✅ |
+| 工程一致性 | `bash scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/Hook-Bridge 依赖方向/死资源） | ✅ |
+| JVM 单测 | `bash tests/run.sh`（全部断言） | ✅ |
+| APK 签名门禁 | `bash scripts/verify-apk.sh`（已签名/包名/versionCode/固定指纹；`--self-test` 覆盖负向用例） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |
-| 真机契约 | `scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ beta.4 基线；0.12 P0 矩阵待主 Agent 补跑 |
+| 真机契约 | `bash scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ beta.4 基线；0.12 P0 矩阵待主 Agent 补跑 |
 
 CI 与本地共用的发布门禁：
 

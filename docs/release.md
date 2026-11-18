@@ -1,8 +1,11 @@
 # 发版流程
 
-0.14 起用 Gradle wrapper 构建（`./gradlew :app:assembleRelease`），
-CI 与本地发版都走 Gradle；`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，**不要再用于发版**。
+0.14 起用 Gradle wrapper 构建（Windows 原生 `gradlew.bat :app:assembleRelease`，
+Linux/WSL `./gradlew :app:assembleRelease`），CI 与本地发版都走 Gradle；
+`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，**不要再用于发版**。
 发版额外做三件事：定版本、用固定密钥签名、把产物和校验和挂到 GitHub Release。
+
+> 当前主环境是 Windows 原生；`scripts/*.sh` 用 Git Bash 或 WSL 执行。
 
 ## 1. 版本号
 
@@ -78,7 +81,8 @@ rm /tmp/ks.b64
 ## 3. 本地一键发版
 
 ```bash
-scripts/release.sh
+# Windows 用 Git Bash / WSL 执行脚本
+bash scripts/release.sh
 ```
 
 它依次做：
@@ -86,8 +90,8 @@ scripts/release.sh
 1. 检查已跟踪文件是否干净（未跟踪的 `dist/` 不阻塞）；不干净就退出
 2. 检查 `v<version>` tag 是否已存在（存在即拒绝，避免覆盖已发布版本）
 3. 检查 `keystore/xiaoi.keystore` 是否存在（缺失即拒绝，防止静默换签名）
-4. 跑 `./gradlew :app:assembleRelease`，复制为 `build/xiaoi-plus.apk`
-5. 跑 `scripts/verify-apk.sh build/xiaoi-plus.apk`：校验已签名、包名、versionCode 与固定证书指纹；
+4. 跑 Gradle release（Windows `gradlew.bat`，Linux `./gradlew`），复制为 `build/xiaoi-plus.apk`
+5. 跑 `bash scripts/verify-apk.sh build/xiaoi-plus.apk`：校验已签名、包名、versionCode 与固定证书指纹；
    **失败直接退出，不归档、不生成 notes**
 6. 复制为 `dist/xiaoi-plus-<version>.apk`，生成 `.sha256`
 7. 从 CHANGELOG 抽对应小节，生成 `dist/release-notes-<version>.md`（含大小、SHA-256、证书指纹、安装命令）
@@ -156,7 +160,7 @@ git push origin v0.1.0
 1. 安装 platform 37.0 与 build-tools 37.0.0，命中缓存则跳过
 2. 校验 tag 与 `versionName` 一致（不一致直接失败）
 3. 跑 JVM 单测与 `scripts/check-consistency.sh`
-4. `./gradlew :app:assembleDebug :app:assembleRelease`（Gradle 直接读取签名环境变量）
+4. `./gradlew :app:assembleDebug :app:assembleRelease`（Windows 本地为 `gradlew.bat`；Gradle 直接读取签名环境变量）
 5. 有 `KEYSTORE_BASE64` 就用正式密钥产物；没有则用临时证书签名并打 warning
 6. 跑 `scripts/verify-apk.sh`：
    - `signed=true`：必须命中 `scripts/expected-signer.sha256`，否则 job 失败；
