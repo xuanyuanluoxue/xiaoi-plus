@@ -21,6 +21,8 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASELINE="$ROOT/scripts/layering-baseline.tsv"
+# 临时文件一律落在项目内 tmp/
+mkdir -p "$ROOT/tmp"
 
 MODE="check"
 STRICT=0
@@ -118,7 +120,7 @@ print_hits() {
 run_check() {
     local root="$1" baseline="$2" strict="$3"
     local tmp cur base_file
-    tmp="$(mktemp -d)"
+    tmp="$(mktemp -d "$ROOT/tmp/layering.XXXXXX")"
     cur="$tmp/current.tsv"
     base_file="$tmp/baseline.tsv"
     scan_rows "$root" > "$cur"
@@ -179,7 +181,7 @@ run_check() {
 
 # ---------------------------------------------------------------- 自测
 if [ "$MODE" = "self-test" ]; then
-    tmp="$(mktemp -d)"
+    tmp="$(mktemp -d "$ROOT/tmp/layering.XXXXXX")"
     mkdir -p "$tmp/app/src/main/java/plus/xiaoi/module/ui"
     cat > "$tmp/app/src/main/java/plus/xiaoi/module/ui/Bad.kt" <<'EOF'
 package plus.xiaoi.module.ui

@@ -305,16 +305,16 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 
 ## 10. Worktree 与分支
 
-> Windows 主环境：worktree 放 `D:\code\Android\xiaoi-plus-dev\worktrees\<wp>`
-> （WSL：`~/code/xiaoi-plus-dev/worktrees/<wp>` 或 `/mnt/c/...`）。
+> 0.16.0 起 worktree 也放仓库内：`.worktrees/<wp>`（已 gitignore），
+> 不再散落在 `~/xiaoi-plus-dev/worktrees/`。
 
 ```bash
-# 从 main 创建 P0 worktree（不要放在仓库根旁边随手建）
-git worktree add "$HOME/xiaoi-plus-dev/worktrees/ui-p0" -b feat/ui-p0
-cd "$HOME/xiaoi-plus-dev/worktrees/ui-p0"
+# 从 main 创建 P0 worktree（在仓库内，已 gitignore）
+git worktree add .worktrees/ui-p0 -b feat/ui-p0
+cd .worktrees/ui-p0
 
 # 合并后删除
-git worktree remove "$HOME/xiaoi-plus-dev/worktrees/ui-p0"
+git worktree remove .worktrees/ui-p0
 git branch -d feat/ui-p0
 ```
 
@@ -355,7 +355,7 @@ git branch -d feat/ui-p0
 ## 13. UI 截图与测试产物
 
 ```bash
-# 默认写 ~/xiaoi-plus-dev/xiaoi-plus-ui/tmp/YYYY-MM-DD/
+# 默认写 artifacts/ui/tmp/YYYY-MM-DD/
 ./scripts/ui-screenshot.sh --route Me --name me-light
 
 # 同时抓 uiautomator XML（设备临时文件会删除）

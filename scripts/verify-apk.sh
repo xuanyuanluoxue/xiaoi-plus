@@ -15,7 +15,7 @@
 #     的 build-tools/*，最后回退 PATH；仍找不到就明确报错。
 #   - --allow-any-signer 只跳过指纹比对，仍强制校验「已签名 + 包名 + versionCode」；
 #     仅用于临时密钥构建（不能发布）。
-#   - 不会打印 keystore 口令；临时文件写到 ~/xiaoi-plus-dev/tmp/ 或 mktemp。
+#   - 不会打印 keystore 口令；临时文件一律写到项目内 tmp/（已 gitignore）。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -166,20 +166,11 @@ manifest_code() {
 }
 
 new_tmp_dir() {
-  local dev_root="${XIAOI_DEV_ROOT:-}"
-  if [ -z "$dev_root" ]; then
-    if [ -d "$HOME/code/xiaoi-plus-dev" ]; then
-      dev_root="$HOME/code/xiaoi-plus-dev"
-    else
-      dev_root="$HOME/xiaoi-plus-dev"
-    fi
-  fi
-  local base="${XIAOI_TMPDIR:-$dev_root/tmp}"
-  if mkdir -p "$base" 2>/dev/null; then
-    mktemp -d "$base/xiaoi-verify.XXXXXX"
-  else
-    mktemp -d
-  fi
+  # 临时目录一律在项目内（tmp/，已 gitignore）
+  local base="${XIAOI_TMPDIR:-$ROOT/tmp}"
+  mkdir -p "$base" 2>/dev/null || base="$ROOT/tmp"
+  mkdir -p "$base"
+  mktemp -d "$base/xiaoi-verify.XXXXXX"
 }
 
 pin_from_file() {
@@ -194,7 +185,8 @@ fingerprint_from_keystore() {
   command -v keytool >/dev/null 2>&1 || die "找不到 keytool（需要 JDK）"
 
   local tmp pass_out fp
-  tmp="$(mktemp "${TMPDIR:-/tmp}/xiaoi-kpass.XXXXXX")"
+  mkdir -p "$ROOT/tmp"
+  tmp="$(mktemp "$ROOT/tmp/xiaoi-kpass.XXXXXX")"
   chmod 600 "$tmp"
   printf '%s' "$KEYSTORE_PASSWORD" > "$tmp"
 

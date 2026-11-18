@@ -11,7 +11,7 @@
 #
 # 环境变量：
 #   ANDROID_SERIAL  多设备时指定（默认取第一个 device）
-#   XIAOI_TOKEN     桥 token；不传则读 ~/.config/xiaoi/token
+#   XIAOI_TOKEN     桥 token；不传则读 .secrets/xiaoi-token
 #   XIAOI_PORT      跳过端口发现，直接用指定端口
 #
 # 只读优先：默认不调用会花额度或改状态的工具（xiaoai_submit / xiaoai_switch_model 等），
@@ -26,10 +26,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 command -v adb  >/dev/null || { echo "错误：需要 adb" >&2; exit 1; }
 command -v curl >/dev/null || { echo "错误：需要 curl" >&2; exit 1; }
 
+if [ -z "${XIAOI_TOKEN:-}" ] && [ -f "$ROOT/.secrets/xiaoi-token" ]; then
+    XIAOI_TOKEN="$(tr -d ' \r\n' < "$ROOT/.secrets/xiaoi-token")"
+fi
 if [ -z "${XIAOI_TOKEN:-}" ] && [ -f "$HOME/.config/xiaoi/token" ]; then
     XIAOI_TOKEN="$(tr -d ' \r\n' < "$HOME/.config/xiaoi/token")"
 fi
 TOKEN="${XIAOI_TOKEN:-}"
+
+# 临时文件落在项目内 tmp/
+mkdir -p "$ROOT/tmp"
 
 SERIAL="${ANDROID_SERIAL:-$(adb devices | awk '$2=="device"{print $1; exit}')}"
 [ -n "$SERIAL" ] || { echo "错误：没有已连接的设备" >&2; exit 1; }
@@ -68,7 +74,7 @@ BASE="http://127.0.0.1:$PORT"
 
 post() {
     local body="$1" out status
-    out="$(mktemp)"
+    out="$(mktemp "$ROOT/tmp/mcp-call.XXXXXX")"
     if [ -n "$TOKEN" ]; then
         status=$(curl -s -m 30 -o "$out" -w '%{http_code}' -X POST "$BASE/mcp" \
             -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -98,7 +104,7 @@ case "$MODE" in
         post '{"jsonrpc":"2.0","id":2,"method":"ping"}'
         ;;
     tools)
-        out="$(mktemp)"
+        out="$(mktemp "$ROOT/tmp/mcp-call.XXXXXX")"
         if [ -n "$TOKEN" ]; then
             curl -s -m 5 -o "$out" -X POST "$BASE/mcp" \
                 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \

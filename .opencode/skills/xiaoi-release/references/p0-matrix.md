@@ -12,27 +12,28 @@ DEV="$ADBX -s <serial>"
 不要 `echo` token / apiKey。所有下载与截图放：
 
 ```text
-/sdcard/Download/xiaoi-plus-dev/YYYY-MM-DD/{screenshots,ui-dumps,logs}/
+artifacts/YYYY-MM-DD/{screenshots,ui-dumps,logs}/   # 仓库内，手机只放临时文件
 ```
 
 ## 1. 升级不丢配置
 
 ```bash
 # 升级前
-mkdir -p ~/xiaoi-plus-dev/artifacts/configs/$(date +%F)
+mkdir -p artifacts/configs/$(date +%F)
 $DEV exec-out 'su -c "cat /data/data/plus.xiaoi.module/files/config.json"' \
-  > ~/xiaoi-plus-dev/artifacts/configs/$(date +%F)/pre-upgrade-config.json
-chmod 600 ~/xiaoi-plus-dev/artifacts/configs/$(date +%F)/pre-upgrade-config.json
-sha256sum ~/xiaoi-plus-dev/artifacts/configs/$(date +%F)/pre-upgrade-config.json
+  > artifacts/configs/$(date +%F)/pre-upgrade-config.json
+chmod 600 artifacts/configs/$(date +%F)/pre-upgrade-config.json
+sha256sum artifacts/configs/$(date +%F)/pre-upgrade-config.json
 
 # 覆盖安装（同签名，versionCode 必须递增）
 $DEV install -r /path/to/xiaoi-plus-<version>.apk
 $DEV shell dumpsys package plus.xiaoi.module | grep -E 'versionName|versionCode'
 
 # 升级后
+mkdir -p tmp
 $DEV exec-out 'su -c "cat /data/data/plus.xiaoi.module/files/config.json"' \
-  > /tmp/post-upgrade-config.json
-cmp -s ~/xiaoi-plus-dev/artifacts/configs/$(date +%F)/pre-upgrade-config.json /tmp/post-upgrade-config.json \
+  > tmp/post-upgrade-config.json
+cmp -s artifacts/configs/$(date +%F)/pre-upgrade-config.json tmp/post-upgrade-config.json \
   && echo CONFIG_UNCHANGED || echo CONFIG_CHANGED
 ```
 

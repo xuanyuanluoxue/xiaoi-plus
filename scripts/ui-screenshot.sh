@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
 # UI 截图脚本：截图直接写到 PC（adb exec-out），不在手机留文件。
 #
-# 默认输出：<dev-root>/xiaoi-plus-ui/tmp/YYYY-MM-DD/
-# 归档输出：--review 复制到 <dev-root>/xiaoi-plus-ui/review/YYYY-MM-DD/
+# 默认输出：<repo>/artifacts/ui/tmp/YYYY-MM-DD/
+# 归档输出：--review 复制到 <repo>/artifacts/ui/review/YYYY-MM-DD/
 # 清理：    --clean 删除 tmp 下 7 天前的目录
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEV_ROOT="${XIAOI_DEV_ROOT:-}"
-if [ -z "$DEV_ROOT" ]; then
-    if [ -d "$HOME/code/xiaoi-plus-dev" ]; then
-        DEV_ROOT="$HOME/code/xiaoi-plus-dev"
-    else
-        DEV_ROOT="$HOME/xiaoi-plus-dev"
-    fi
-fi
-UI_ROOT="${XIAOI_UI_ARTIFACTS:-$DEV_ROOT/xiaoi-plus-ui}"
+UI_ROOT="${XIAOI_UI_ARTIFACTS:-$ROOT/artifacts/ui}"
 TMP_ROOT="$UI_ROOT/tmp"
 OUT="${XIAOI_SCREENSHOT_OUT:-$TMP_ROOT/$(date +%F)}"
 SERIAL="${ANDROID_SERIAL:-}"
@@ -33,16 +25,16 @@ usage() {
   --serial <serial>   指定设备；默认取第一个 device
   --route <name>      启动 MainActivity 并打开 Home/Xiaoai/Access/Me/Logs/About
   --name <name>       文件名（默认 ui-HHMMSS）
-  --out <dir>         输出目录（默认 xiaoi-plus-dev/xiaoi-plus-ui/tmp/日期）
+  --out <dir>         输出目录（默认 artifacts/ui/tmp/日期）
   --dump              同时抓 uiautomator XML（设备临时文件会删除）
-  --review            抓完复制到 xiaoi-plus-dev/xiaoi-plus-ui/review/日期
+  --review            抓完复制到 artifacts/ui/review/日期
   --clean             删除 tmp 下 7 天前的目录后退出
   -h, --help          显示帮助
 
 环境变量:
   ADB                 自定义 adb 路径
   ANDROID_SERIAL      默认设备
-  XIAOI_UI_ARTIFACTS  项目产物根目录（默认 ~/xiaoi-plus-dev/xiaoi-plus-ui）
+  XIAOI_UI_ARTIFACTS  产物根目录（默认 <repo>/artifacts/ui）
 EOF
 }
 

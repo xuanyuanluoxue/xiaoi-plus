@@ -46,11 +46,21 @@
 - **免鉴权 / 弱密码（可选，默认关）**：接入 › 令牌与局域网新增两个测试便利开关。
   「允许免令牌调用」打开后本机与局域网都不校验 Bearer；「允许弱密码用于局域网」
   允许任意非空密码当作令牌并绑定 `0.0.0.0`（默认仍要求 32 位十六进制）。
-  8771（`/health`、`/mcp`、`/logs`、`/stats`、`/cli`）与 8770（`/health`、`/mcp`）
+  8771 的 `/health`、`/mcp`、`/logs`、`/stats`、`/cli` 以及经它转发的设备动作
   使用同一套规则；关闭后 1~2 秒恢复 401，无需重启小爱。
   配置字段 `mcp.noAuth` / `mcp.weakToken`（缺省都 false，旧配置自动兼容）；
   `xiaoai_config` 也会显示两者。风险与验证方式见
   [docs/security.md §3.1](docs/security.md)。
+
+**工程约定（0.16.0 起）**
+
+- **所有文件只写在项目内**：构建/契约/发布产物 → `artifacts/YYYY-MM-DD/`，
+  临时脚本与中间文件 → `tmp/`，凭据 → `.secrets/`，worktree → `.worktrees/`；
+  不再写 `%TEMP%`、`~/xiaoi-plus-dev`、`/tmp`。四者都已在 `.gitignore`。
+- 脚本里的 `mktemp` 统一落在 `<repo>/tmp/`；`scripts/ui-screenshot.sh` 默认输出
+  改为 `artifacts/ui/`；`scripts/verify-apk.sh` 的临时目录同样在项目内。
+- 根目录白名单写进 `AGENTS.md`「根目录纪律」，并删除 `build.sh`、
+  `TASK-FOR-OPENCODE.md`，`HANDOVER.md` 移入 `docs/archive/`。
 
 **内部重构（无用户可见行为变化）**
 

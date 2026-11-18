@@ -6,7 +6,7 @@
 #   scripts/check-all.sh              # 全套（无设备时自动跳过契约）
 #   scripts/check-all.sh --no-device  # 只跑测试与认知检查
 #
-# 设备契约需要：adb 已连接设备 + ~/.config/xiaoi/token（或 XIAOI_TOKEN 环境变量）。
+# 设备契约需要：adb 已连接设备 + .secrets/xiaoi-token（或 XIAOI_TOKEN 环境变量）。
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

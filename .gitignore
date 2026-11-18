@@ -12,6 +12,12 @@ build/
 .gradle/
 *.keystore
 
+# 本项目内的产物/临时/凭据（0.16.0 起不在项目外写文件）
+artifacts/
+tmp/
+.secrets/
+.worktrees/
+
 # AOCI agent host integration (machine-bound; do not commit)
 opencode.json
 opencode.json.backup.*

@@ -12,7 +12,8 @@
 set -euo pipefail
 
 ADB_IME="com.android.adbkeyboard/.AdbIME"
-PREV_FILE="$HOME/.config/xiaoi/ime_prev"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PREV_FILE="$ROOT/tmp/ime_prev"
 SERIAL="${ANDROID_SERIAL:-$(adb devices | awk '$2=="device"{print $1; exit}')}"
 [ -n "$SERIAL" ] || { echo "错误：没有已连接设备" >&2; exit 1; }
 ADB="adb -s $SERIAL"

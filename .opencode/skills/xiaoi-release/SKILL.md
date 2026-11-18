@@ -22,10 +22,12 @@ description: 发布 xiaoi-plus（LSPosed 模块 + 设置 App）的 beta 或正�
   `keystore/xiaoi.keystore` / `KEYSTORE_PASSWORD` 时会产出未签名包（不能发布）；
   只有本地编译验证才用临时密钥（`--allow-new-key`），该包不能发布。
 - 未签名、错包名、versionCode 不符、指纹不符的 APK 不得归档、不得发 Release。
-- 测试产物写 `~/xiaoi-plus-dev/artifacts/YYYY-MM-DD/`；手机写
-  `/sdcard/Download/xiaoi-plus-dev/YYYY-MM-DD/{screenshots,ui-dumps,logs}/`；
-  含密钥的配置 `chmod 600`，用完删除。
-- 不把 token、apiKey、keystore 口令写进日志、提交或对话。
+- **所有产物与临时文件都写在仓库内**（0.16.0 起）：构建/契约/发布产物放
+  `artifacts/YYYY-MM-DD/{apk,logs,configs,releases}/`，一次性中间文件放 `tmp/`，
+  凭据放 `.secrets/`（gitignore）；不写 `%TEMP%`、`~/xiaoi-plus-dev`、`/tmp`。
+  手机侧只用 `/data/local/tmp` 或用完即删的 `/sdcard` 目录，截图/配置用
+  `adb exec-out` / `adb pull` 直接落回 `artifacts/`。
+- 含密钥的配置用完即删；不把 token、apiKey、keystore 口令写进日志、提交或对话。
 
 ## 1. 发布前检查
 
@@ -131,22 +133,22 @@ gh release view v<version> -R xuanyuanluoxue/xiaoi-plus \
 下载 Release 资产复验：
 
 ```bash
-D="$HOME/xiaoi-plus-dev/tmp/release-check"
+D="$PWD/tmp/release-check"
 mkdir -p "$D"
 gh release download v<version> -R xuanyuanluoxue/xiaoi-plus -D "$D" --clobber
 ( cd "$D" && sha256sum -c xiaoi-plus-<version>.apk.sha256 )
-SDK="$HOME/code/逆向/tools/sdk" ./scripts/verify-apk.sh "$D/xiaoi-plus-<version>.apk"
+./scripts/verify-apk.sh "$D/xiaoi-plus-<version>.apk"
 ```
 
 再覆盖安装一次 Release 资产，确认 `versionCode` 与启动/状态正常。
 
-归档：
+归档（都在仓库内）：
 
-- `~/xiaoi-plus-dev/artifacts/releases/YYYY-MM-DD/`
-- `~/xiaoi-plus-dev/artifacts/apk/YYYY-MM-DD/`
-- 真机截图/UI dump/log 同样归档
+- `artifacts/releases/YYYY-MM-DD/`
+- `artifacts/apk/YYYY-MM-DD/`
+- 真机截图/UI dump/log 同样归档到 `artifacts/`
 - 更新 `CHANGELOG.md` 与 `docs/refactor/NEXT.md` 状态（`HANDOVER.md` 已归档，不再维护）
-- 删除 `/tmp/opencode` 与手机根目录的临时文件
+- 清空 `tmp/` 与手机侧临时文件（`tmp/` 本身已在 `.gitignore`）
 
 ## 失败处理
 
@@ -156,7 +158,7 @@ SDK="$HOME/code/逆向/tools/sdk" ./scripts/verify-apk.sh "$D/xiaoi-plus-<versio
 | 未签名 / 包名或 versionCode 不符 | 停止归档；检查 `./gradlew :app:assembleRelease` 的签名配置、manifest、`KEYSTORE_PASSWORD` |
 | CI tag 构建未创建 Release | 看 `signed` 输出；缺 `KEYSTORE_*` secrets 时只发 artifact |
 | push 报 TLS / gnutls | 检查代理端口；没监听就清掉代理环境变量直连 |
-| 设备升级后配置丢失 | 立即停止发布；用 `~/xiaoi-plus-dev/artifacts/configs/` 备份恢复并排查迁移 |
+| 设备升级后配置丢失 | 立即停止发布；用 `artifacts/configs/` 备份恢复并排查迁移 |
 | 单测/一致性失败 | 不发布；修好回到本流程第 3 步 |
 
 ## 常用路径

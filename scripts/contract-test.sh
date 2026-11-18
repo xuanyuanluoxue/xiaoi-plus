@@ -8,7 +8,7 @@
 #
 # 环境变量：
 #   XIAOI_TOKEN    桥的 Bearer token（设置页「能力桥 Token」）；不传则回退读取
-#                  ~/.config/xiaoi/token（自建 runner / 日常使用免 export）
+#                  .secrets/xiaoi-token（项目内，gitignore）或旧 ~/.config/xiaoi/token
 #   ANDROID_SERIAL 多设备时指定串号
 #
 # 副作用：强制重启小爱（force-stop + 重新拉起）、adb forward 端口、POST /island 会弹一次超级岛。
@@ -29,12 +29,17 @@ command -v adb  >/dev/null || { echo "错误：需要 adb" >&2; exit 1; }
 command -v curl >/dev/null || { echo "错误：需要 curl" >&2; exit 1; }
 command -v jq   >/dev/null || { echo "错误：需要 jq" >&2; exit 1; }
 
-# token 来源：环境变量优先，其次本机 token 文件（不进仓库）
+# token 来源：环境变量优先 → 项目内 .secrets/xiaoi-token → 旧的 ~/.config/xiaoi/token
+if [ -z "${XIAOI_TOKEN:-}" ] && [ -f "$ROOT/.secrets/xiaoi-token" ]; then
+    XIAOI_TOKEN="$(tr -d ' \r\n' < "$ROOT/.secrets/xiaoi-token")"
+fi
 if [ -z "${XIAOI_TOKEN:-}" ] && [ -f "$HOME/.config/xiaoi/token" ]; then
     XIAOI_TOKEN="$(tr -d ' \r\n' < "$HOME/.config/xiaoi/token")"
 fi
 
-TMP="$(mktemp -d)"
+# 临时文件一律落在项目内 tmp/（不写 /tmp 或 %TEMP%）
+mkdir -p "$ROOT/tmp"
+TMP="$(mktemp -d "$ROOT/tmp/contract.XXXXXX")"
 FWD_PORT=""
 cleanup() {
     [ -n "$FWD_PORT" ] && $ADB forward --remove "tcp:$FWD_PORT" >/dev/null 2>&1 || true

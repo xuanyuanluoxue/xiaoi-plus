@@ -14,8 +14,10 @@ public final class LeaderElectionTest {
 
     public static int run() {
         System.out.println("-- LeaderElection");
-        File dir = new File(System.getProperty("java.io.tmpdir"),
-                "xiaoi-leader-test-" + System.nanoTime());
+        // 测试产物落在项目内（tests/.build），不写系统临时目录
+        File base = new File("tests/.build/tmp");
+        base.mkdirs();
+        File dir = new File(base, "xiaoi-leader-test-" + System.nanoTime());
         try {
             if (!dir.mkdirs()) {
                 T.ok("创建测试目录", false);

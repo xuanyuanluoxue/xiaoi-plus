@@ -32,21 +32,24 @@
 - 新增 drawable 必须被引用，否则一致性门禁失败
 - 版本号只改 `app/src/main/AndroidManifest.xml` 的 `versionName`/`versionCode`
 
-## 测试产物
+## 产物与临时文件（一律写在项目内）
 
-- 本机主目录（Windows）：`C:\Users\Chatxavier\code\xiaoi-plus-dev`
-  （WSL 等价 `/mnt/c/Users/Chatxavier/code/xiaoi-plus-dev`）。
-- UI 截图/视觉验收/UI 测试统一放
-  `xiaoi-plus-dev\xiaoi-plus-ui\{review,tests,tmp}\YYYY-MM-DD\`。
-- 截图只用 `scripts/ui-screenshot.sh`（内部 `adb exec-out`，直接写 PC），
-  **不要在手机存截图**；脚本默认写 `tmp/`，`--review` 才归档。
-- 构建 APK、配置 fixture、构建/契约日志仍放
-  `xiaoi-plus-dev\artifacts\YYYY-MM-DD\`（apk/configs/logs/releases/notes）。
-- 临时文件先写 `xiaoi-plus-dev\tmp\` 或 `/tmp/opencode`，
-  不要落在仓库根、用户 home 根或 `/tmp/opencode` 根。
-- 手机端只允许临时 `logs/`、`apk/`；配置类文件测试后立即 pull 到 PC 并删除。
-- 含 `apiKey` / `mcp.token` 的配置、备份、`.corrupt` 文件必须 `chmod 600`，用完清理。
-- 目录约定与清理脚本见 `xiaoi-plus-dev\README.md`、`xiaoi-plus-dev\clean.sh`。
+**除了依赖与工具调用（JDK / Android SDK / adb / aoci 等外部程序），所有文件都落在
+仓库目录内**：不写 `%TEMP%`、用户 home、`~/xiaoi-plus-dev`、`/tmp`。
+
+| 内容 | 位置 |
+|---|---|
+| 构建产物、契约日志、发布 APK | `artifacts/YYYY-MM-DD/{apk,logs,configs,releases}/` |
+| UI 截图（`scripts/ui-screenshot.sh`） | `artifacts/ui/{tmp,review}/YYYY-MM-DD/`（`--clean` 清 7 天前） |
+| 一次性脚本 / 中间文件 / `mktemp` 父目录 | `tmp/`（脚本先 `mkdir -p <repo>/tmp`，再 `mktemp -d <repo>/tmp/...`） |
+| 令牌、keystore 口令等凭据 | `.secrets/`（如 `.secrets/xiaoi-token`；**绝不入库**） |
+| 单测产物 | `tests/.build/`（`run.sh` 每次重建） |
+
+- `artifacts/`、`tmp/`、`.secrets/`、`dist/` 已在 `.gitignore`。
+- 手机端只放临时文件（`/data/local/tmp` 或用完即删的 `/sdcard` 目录）；
+  截图/配置用 `adb exec-out` / `adb pull` 直接落到 `artifacts/`，不在手机留产物。
+- 含 `apiKey` / `mcp.token` 的配置与备份用完即删；Windows 盘上的 `chmod` 不生效，
+  凭据文件依赖仓库目录本身的 ACL。
 
 ## 根目录纪律
 
@@ -60,11 +63,12 @@
 |---|---|
 | 工具脚本 | `scripts/`（并在 `AGENTS.md` 或 `docs/` 登记） |
 | 设计/交接/调研 | `docs/`（历史归档放 `docs/refactor/drafts/`） |
-| 临时验证、构建日志、截图 | `C:\Users\Chatxavier\code\xiaoi-plus-dev\tmp\` 或 `%TEMP%\opencode\` |
+| 临时验证、中间文件、截图 | `tmp/`（临时）或 `artifacts/`（需要留档） |
 | 一次性任务书 | **不要入库**；用完合并进 `docs/` 或删除 |
 
 **禁止**在根目录新建 `*.md` / `*.sh` / `*.txt` / `*.ps1` / `test.*` / `notes.*`；
-也不要把 `aoci*`、`opencode.json`、`local.properties`、`keystore/` 提交进来（已在 `.gitignore`）。
+也不要把 `aoci*`、`opencode.json`、`local.properties`、`keystore/`、
+`artifacts/`、`tmp/`、`.secrets/` 提交进来（都已在 `.gitignore`）。
 
 ## 文档
 
