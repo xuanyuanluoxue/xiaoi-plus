@@ -13,9 +13,9 @@ skill/
     └── references/tools.md
 ```
 
-> 0.16.0 起两个 skill 指向的是**同一套 15 个工具**：8771（小爱进程）与动作面（App 进程，
-> 从 8770 起）互相补齐，配哪个端点都行。端口不要写死，以 `/health` 或设置页为准
-> （`8770` 常被小爱自身占用 → 顺延到 `8772~8779`）。
+> 0.16.0 起**只有一个端口 8771**：模块不再开第二个监听，两个 skill 指向的是同一套 15 个工具
+> （桥 9 + 设备动作 6）。端口不要写死，以 `/health` 或设置页为准
+> （被占用会顺延到 `8771~8775`）。
 
 ## 当前 skill
 
@@ -23,7 +23,7 @@ skill/
 
 用途：让外部 Agent 通过动作面调用手机能力。
 
-- 端点：`http://127.0.0.1:8770/mcp`（`adb forward`，端口以 `/health` 为准）或局域网地址
+- 端点：`http://127.0.0.1:8771/mcp`（`adb forward`，端口以 `/health` 为准）或局域网地址
 - 能力：`device.info`、`app.open`、`alarm.set`、`notification.send`、`media.control`
 - Agent 工具：`xiaoai_capabilities`、`xiaoai_action`、`xiaoai_confirm`、
   `xiaoai_audit`、`xiaoai_notify`、`xiaoai_ask`
@@ -37,7 +37,7 @@ skill/
 
 用途：小爱进程内的 MCP，适合直接让小爱执行一句话任务、读配置/日志/调用量。
 
-- 端点：`http://127.0.0.1:8771/mcp` 或动作面端点（工具完全相同）
+- 端点：`http://127.0.0.1:8771/mcp`（唯一端点）
 - 核心工具：`xiaoai_submit`、`xiaoai_status`、`xiaoai_config`、
   `xiaoai_switch_model`、`xiaoai_logs`、`xiaoai_stats`、`xiaoai_island`，
   以及 App 侧的 `xiaoai_action` / `xiaoai_notify` / `xiaoai_ask` 等

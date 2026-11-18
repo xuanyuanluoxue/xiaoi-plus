@@ -1,6 +1,6 @@
 # xiaoi-agent 动作参考
 
-端点：`POST http://127.0.0.1:8770/mcp`（先 `adb forward tcp:8770 tcp:8770`）
+端点：`POST http://127.0.0.1:8771/mcp`（先 `adb forward tcp:8771 tcp:8771`；设备动作与 MCP 同端口）
 鉴权：`Authorization: Bearer <mcpToken>`
 
 所有工具返回 `result.content[0].text`，内容是 JSON 字符串；`result.isError` 表示失败。

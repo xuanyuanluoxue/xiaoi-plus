@@ -3,10 +3,10 @@
 协议：JSON-RPC 2.0 over HTTP，单端点 `POST /mcp`，无会话。
 鉴权：`Authorization: Bearer <token>`。
 
-**0.16.0 单端口统一**：`8771`（小爱进程能力桥）与 `8772`（App 进程动作面）互相补齐
-工具，两个端点返回同一套 15 个工具，配哪个都行。推荐 `http://127.0.0.1:8772/mcp`；
-`8771` 是长期保留的兼容镜像。对端不可用时返回 `AGENT_UNAVAILABLE`（8771 侧）或
-`BRIDGE_UNAVAILABLE`（8772 侧），带 `retryable:true`。
+**0.16.0 起只有一个端口 `8771`**：App 进程不再单独监听，设备动作工具由 App 执行但
+从同一个端点调用（共 15 个工具）。
+App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可判断；
+失败带 `retryable:true`。
 
 约束（全部来自 `Contract.java`）：请求体 ≤64 KB；`submit.text` ≤4000；
 `ask.text` ≤8000；`notify.text` ≤2000；`todo.title` ≤200 / `content` ≤8192；
@@ -40,7 +40,7 @@
     "protocolVersion": "2025-03-26",
     "capabilities": {"tools": {"listChanged": false}},
     "serverInfo": {"name": "xiaoi-plus", "version": "0.12.0-beta.1"},
-    "instructions": "小爱同学+ 统一 MCP 端点（小爱进程能力桥，8771）：与 8772 动作面共享同一套工具清单..."
+    "instructions": "小爱同学+ 统一 MCP 端点（8771）：15 个工具都从这里调用..."
   }
 }
 ```
@@ -276,10 +276,10 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 
 返回小爱 CLI 的原始响应文本。
 
-## App 侧工具（8772 归属，从 8771 也能调）
+## App 侧工具（设备动作，经控制面 Binder 从 8771 转发）
 
 这 6 个工具由 App 进程执行；详细 schema 与动作清单见 `skill/xiaoi-agent/references/actions.md`。
-从 8771 调用时会被转发到 8772。
+调用方看到的都是 8771 的同一个 tools/call。
 
 | 工具 | 参数 | 说明 |
 |---|---|---|
@@ -300,13 +300,13 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |---|---|---|---|
-| GET | `/health` | Bearer | `ok facade=<b> port=<n> auth=<mode> tools=<n> agent=<port> version=<v>`（8771）/ `ok agent=true port=<n> bind=<h> auth=... tools=... version=...`（8772） |
+| GET | `/health` | Bearer | `ok facade=<b> port=<n> auth=<mode> tools=<n> agent=ipc|down version=<v>` |
 | GET | `/logs?limit=&since=` | Bearer | 日志 JSON；`limit=0` 返回空数组 |
 | GET | `/stats?days=` | Bearer | 调用量 JSON；超 90 回 `clamped:true` |
-| GET | `/cli?cmd=` | Bearer | 原始 CLI（仅 8771） |
+| GET | `/cli?cmd=` | Bearer | 原始 CLI |
 | POST | `/mcp` | Bearer | MCP JSON-RPC |
 | OPTIONS | 任意 | 无 | `204` 预检（CORS），所有响应带 `Access-Control-Allow-*` |
-| POST | `/island` | 仅 loopback，无 token | 弹岛（仅 8771） |
+| POST | `/island` | 仅 loopback，无 token | 弹岛 |
 | POST | `/config` | 无 | **固定 410 Gone** |
 
 请求体 >64 KB 一律 `413 payload too large (max 65536 bytes)`。

@@ -88,7 +88,7 @@ curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8771~8775/health
 |---|---|
 | **允许免令牌调用** | 本机与**局域网**都不校验 Bearer；打开需二次确认 |
 | **允许弱密码用于局域网** | 任意非空密码都能作为 Bearer；默认要求 32 hex |
-| 生效内容 | 8771 的 `/health`、`/mcp`、`/logs`、`/stats`、`/cli`；8770 的 `/health`、`/mcp` 同样适用 |
+| 生效内容 | 8771 的 `/health`、`/mcp`、`/logs`、`/stats`、`/cli`，以及经它转发到 App 进程的全部设备动作（0.16.0 起只有这一个端口） |
 | 关闭后 | 保存后 1~2 秒内恢复 401，不需要重启小爱 |
 | 代价 | 同一 Wi-Fi 下的任何设备都能驱动小爱 / 执行设备动作 / 读日志与配置摘要 |
 
@@ -98,7 +98,7 @@ curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8771~8775/health
 - `BridgePolicy.bindHost(lan, mcp, token, noAuth, weakToken)`：
   `noAuth` → 可绑 `0.0.0.0`；`weakToken` + 非空密码 → 也可绑；
   否则仍要求 32 hex。
-- `AgentLanPolicy` 对 8770 使用同一套放宽规则。
+- 设备动作没有独立端口：App 进程不再监听，全部经 8771 的 `/mcp` 转发。
 - 配置字段：`mcp.noAuth` / `mcp.weakToken`，缺省都 false，旧配置自动兼容。
 
 > 这两个开关是**测试便利选项**：只在个人设备 + 可信网络（或云端无人值守的测试机）上开，

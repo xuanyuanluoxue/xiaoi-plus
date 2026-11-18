@@ -1,13 +1,14 @@
 ---
 name: xiaoi-mcp
-description: 通过 xiaoi-plus 的 MCP 端点调用手机上的小爱同学：发送一句话任务并取回回复/会话、探活、查看配置/日志/调用量、切模型、弹超级岛，也能执行设备动作。0.16.0 起桥端（8771）与动作面端（App 进程，8770 起）工具相同、各 15 个，配哪个都行；端口以 /health 或设置页为准。
+description: 通过 xiaoi-plus 的 MCP 端点调用手机上的小爱同学：发送一句话任务并取回回复/会话、探活、查看配置/日志/调用量、切模型、弹超级岛，也能执行设备动作。0.16.0 起只有一个端口 8771，15 个工具（桥 9 + 设备动作 6）都从这里调用；端口以 /health 或设置页为准。
 ---
 
 # 调用小爱同学（xiaoi-plus MCP）
 
-> **0.16.0 起是单端口统一**：桥端（8771，小爱进程）与动作面端（App 进程，
-> 从 8770 起）互相补齐工具，**两个端点都返回同一套 15 个工具**，客户端只配一个即可。
-> 端口不要写死：被占用会顺延，**以 `/health` 的 `port=` 或设置页「连接信息」为准**。
+> **0.16.0 起只有一个端口 8771**：App 进程不再单独监听，设备动作工具从同一个端点
+> 提供（共 15 个：桥 9 + 设备动作 6），客户端只配一个地址即可。
+> 端口不要写死：被占用会顺延（`8771~8775`），**以 `/health` 的 `port=` 或设置页为准**；
+> `/health` 的 `agent=ipc|down` 表示设备动作是否可用。
 >
 > 只想驱动设备动作（不需要小爱对话）时仍可看 `skill/xiaoi-agent`。
 
@@ -54,9 +55,9 @@ App 侧（动作面）6 个：
      用「接入 › 连接信息」显示的 MCP 地址（`http://<手机IP>:<port>/mcp`）
 5. token 来源：「接入 › 连接信息」的“复制连接信息”，或本机 `~/.config/xiaoi/token`。
 
-端口不是固定值：桥首选 `8771`，动作面首选 `8770`（常被小爱自身占用，会顺延到
-`8772~8779`）。**以「接入 › 端口与服务」或 `/health` 里的 `port=` 为准**，
-不要写死 8770。
+端口不是固定值：桥首选 `8771`（被占用会顺延到
+`8771~8775`）。**以「接入 › 端口与服务」或 `/health` 里的 `port=` 为准**，
+不要写死端口。
 
 ## 最小调用
 
@@ -67,7 +68,7 @@ TOKEN="$(cat "$HOME/.config/xiaoi/token")"   # 不要 echo 到日志
 # 0) 探活（/health 现在是 GET，不是 MCP 方法）
 curl --noproxy '*' -s -H "Authorization: Bearer $TOKEN" \
   "http://127.0.0.1:8771/health"
-# ok facade=true port=8771 auth=token tools=9 agent=0 version=0.16.0
+# ok facade=true port=8771 auth=token tools=9 agent=ipc version=0.16.0
 
 # 1) 握手
 curl --noproxy '*' -s -X POST "$MCP" \
@@ -193,8 +194,8 @@ print(tool("xiaoai_ask", {"text": "现在几点"}))       # 直接拿 sessionId
 | HTTP 413 | 请求体 >64 KB，把大文本拆成多次调用 |
 | HTTP 429 | `/health`/`/island` 限流，等 10 秒 |
 | `unknown argument: xxx` | 参数名写错；看返回里的「可用：」清单 |
-| `AGENT_UNAVAILABLE` | 走的是 8771，但 App 进程/AgentService 没在跑；先把 App 打开 |
-| `BRIDGE_UNAVAILABLE` | 走的是动作面端，但小爱进程没起来；打开小爱后重试 |
+| `AGENT_UNAVAILABLE` | App 进程/AgentService 没在跑（`/health` 里 `agent=down`）；先把 App 打开 |
+| `AGENT_UNAVAILABLE` | 设备动作需要 App 进程：打开 App 后重试（`/health` 的 `agent=down` 可确认） |
 | `ERR cli service not ready` | 小爱进程没起来；打开小爱或重启小爱 |
 | `session.open failed` | 小爱 CLI/facade 未就绪；重启小爱后重试 |
 | 连接被拒 | MCP 未开启、token 为空、端口不对、或手机不在同一网络 |

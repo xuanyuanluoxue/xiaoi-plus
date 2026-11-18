@@ -1,44 +1,44 @@
 ---
 name: xiaoi-agent
-description: 通过 xiaoi-plus App 进程的动作面调用手机能力：设备信息、打开应用、闹钟、通知、媒体控制、确认 token、幂等、审计、超级岛提醒，以及小爱对话代理。0.16.0 起动作面与桥端（8771）工具相同、各 15 个；动作面端口从 8770 起、被占用会顺延，以 /health 或设置页为准。其他 Agent 克隆仓库后按本 skill 使用。
+description: 通过 xiaoi-plus 的单一 MCP 端点（8771）调用手机能力：设备信息、打开应用、闹钟、通知、媒体控制、确认 token、幂等、审计、超级岛提醒，以及小爱对话代理。0.16.0 起设备动作不再单独占端口，全部工具从 8771 提供；/health 的 agent=ipc 表示设备动作可用。其他 Agent 克隆仓库后按本 skill 使用。
 ---
 
 # 用 xiaoi-plus 驱动手机（Agent Action Plane）
 
-xiaoi-plus 现在有两层能力（**0.16.0 起是单端口统一**：两个端点互相补齐工具，
-拿到的是同一套 15 个工具，配哪个都行）：
+**0.16.0 起只有一个小爱端口 8771**：App 进程不再单独监听，设备动作工具（
+`xiaoai_capabilities` / `xiaoai_action` / `xiaoai_confirm` / `xiaoai_audit` /
+`xiaoai_notify` / `xiaoai_ask`）由 App 进程执行，但**从 8771 的同一套工具里调用**。
 
-| 端点 | 位置 | 用途 |
+| 工具组 | 执行位置 | 用途 |
 |---|---|---|
-| 动作面（`8770` 起，可能顺延） | App 进程 | **Agent 动作面**：device.info / app.open / alarm / notification / media / notify / ask / confirm / audit；也转发小爱的对话与运维工具 |
-| `8771` | 小爱进程 | 小爱 MCP：submit / status / config / logs / stats / island；也转发 App 侧动作工具 |
+| 设备动作 6 个 | App 进程（经控制面 Binder 转发） | device.info / app.open / alarm / notification / media / notify / ask / confirm / audit |
+| 桥工具 9 个 | 小爱进程 | submit / status / config / logs / stats / island 等 |
 
-动作面不依赖小爱对话进程；`8771` 只在小爱运行时可用。两者共用同一个 `mcpToken`。
-**端口不是固定值**：动作面首选 `8770`，但该端口常被小爱自身的本地服务占用，此时会顺延到
-`8772~8779`；以「接入 › 端口与服务」或 `/health` 的 `port=` 为准。
+两者共用同一个 `mcpToken`。`/health` 里的 `agent=ipc` 表示已连上 App 进程
+（设备动作可用），`agent=down` 表示 App 没起来（调用返回 `AGENT_UNAVAILABLE`）。
 
-> 默认只监听 `127.0.0.1`。电脑上先建立隧道（把 `8770` 换成 `/health` 显示的实际端口）：
-> `adb forward tcp:8770 tcp:8770` → `http://127.0.0.1:8770/mcp`。
-> 「接入 › 令牌与局域网」可独立开启「Agent 动作面允许局域网访问」；同一 Wi-Fi 直接用
-> `http://<手机IP>:<实际端口>/mcp`。默认要求 32 位十六进制 token，弱 token 会自动回退仅本机
+> 默认只监听 `127.0.0.1`。电脑上先建立隧道：
+> `adb forward tcp:8771 tcp:8771` → `http://127.0.0.1:8771/mcp`。
+> 「接入 › 令牌与局域网」的「小爱任务 · 局域网」同时决定设备动作是否可被局域网访问；
+> 默认要求 32 位十六进制 token，弱 token 会自动回退仅本机
 > （App 里可显式打开「允许弱密码」/「免鉴权」，属测试便利选项，默认关闭）。
 
 ## 前置条件
 
 1. 手机安装 xiaoi-plus，LSPosed 启用，作用域勾选「超级小爱」。
 2. 「接入 › 令牌与局域网」：MCP 接口开启、令牌已设置、保存（旧版配置页仅为过渡入口）。
-3. 打开一次 App（或开机自启）让 `AgentService` 启动。
+3. 打开一次 App（或开机自启）让 `AgentService` 启动——设备动作需要它在线。
 4. token 来源：「接入 › 连接信息」的“复制连接信息”，或 `~/.config/xiaoi/token`。
 
 ## 探活
 
 ```bash
-MCP="http://127.0.0.1:8770/mcp"        # 以 /health 或设置页显示的实际端口为准
+MCP="http://127.0.0.1:8771/mcp"        # 以 /health 或设置页显示的实际端口为准
 TOKEN="$(cat "$HOME/.config/xiaoi/token")"
 
 curl --noproxy '*' -s -H "Authorization: Bearer $TOKEN" \
-  http://127.0.0.1:8770/health
-# ok agent=true port=8770 bind=0.0.0.0 auth=token tools=6 version=0.16.0
+  http://127.0.0.1:8771/health
+# ok facade=true port=8771 auth=token tools=9 agent=ipc version=0.16.0
 ```
 
 无 token / 错 token → 401。
@@ -176,7 +176,7 @@ curl --noproxy '*' -s -X POST "$MCP" \
 
 ## 安全边界
 
-- 动作面默认只绑 loopback；LAN 需在 App 内显式开启，且 token 默认必须是 32 位十六进制。
+- 8771 默认只绑 loopback；LAN 需在 App 内显式开启，且 token 默认必须是 32 位十六进制。
 - LAN 打开后，同一 Wi-Fi 的设备凭 token 可执行设备动作；公共/公司网络建议关闭。
 - 一个 token 共用；不要提交到 Git。skill 复制带 token 时只放本机临时文件。
 - 动作白名单；没有任意 shell。root 只用于固定的 `monkey` / `media_session` 命令。
@@ -190,7 +190,7 @@ curl --noproxy '*' -s -X POST "$MCP" \
 |---|---|
 | 连接被拒 | App 未启动 / MCP 未开 / token 为空 / 没 `adb forward` 或 LAN 未开 |
 | 401 | token 错误或已轮换 |
-| 动作面不监听 | 打开 App；确认 MCP 开、token 非空、服务未被系统杀 |
+| 设备动作返回 `AGENT_UNAVAILABLE` | App 进程/AgentService 没起来：打开 App 后重试（`/health` 的 `agent=down` 可确认） |
 | `NOT_AVAILABLE` | 动作未实现/设备不支持；看 capabilities |
 | `PERMISSION_DENIED` | 缺通知权限或需要 root |
 | `XIAOI_OFFLINE` | 8771 小爱不在线；`ask` 需要小爱，`action` 不需要 |

@@ -53,28 +53,29 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
 5. 失败先查：小爱是否在运行（`ps -A | grep voiceassist`）、token 是否一致、端口是否 8771–8775
 ```
 
-## 4. MCP 接入（v0.3.0 起内置，0.16.0 单端口统一）
+## 4. MCP 接入（v0.3.0 起内置，0.16.0 起单端口）
 
 桥同时是标准 MCP 服务端：`POST /mcp`，JSON-RPC 2.0，协议版本 `2025-03-26`。
 
 - 传输：Streamable HTTP，只回 JSON（不提供 SSE，`GET /mcp` → 405）；`OPTIONS` 回 204 预检
 - 鉴权：与 `/cli` 相同，`Authorization: Bearer <TOKEN>`
-- **单端口统一**：8771（小爱进程）与动作面（App 进程）互相补齐工具，两个端点都返回 15 个工具，
-  客户端只需要配一个。端点不要写死：桥从 `8771`、动作面从 `8770` 起，被占用都会顺延，
-  以 `/health` 的 `port=` 或设置页「连接信息」为准。
+- **只有一个端口 8771**：模块不再开第二个监听。App 进程的设备动作工具经控制面
+  Binder 从 8771 转发（`/health` 里 `agent=ipc` 表示已连上，`agent=down` 表示 App 未就绪）。
+  端口不要写死：桥从 `8771` 起，被占用会顺延（`8771~8775`），以 `/health` 的 `port=`
+  或设置页「连接信息」为准。
 - 工具（15 个）：
   - 桥侧 9 个：`xiaoai_status` / `xiaoai_submit` / `xiaoai_todo_create` / `xiaoai_cli` /
     `xiaoai_config` / `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats`
   - App 侧 6 个：`xiaoai_capabilities` / `xiaoai_action` / `xiaoai_confirm` / `xiaoai_audit` /
     `xiaoai_notify` / `xiaoai_ask`
   - 语义与 README 的工具表一致；上限/TTL/端口统一来自 `Contract.java`
-- 转发失败的错误码：8771 侧 `AGENT_UNAVAILABLE`、8772 侧 `BRIDGE_UNAVAILABLE`，都带 `retryable:true`
+- 转发失败的错误码：`AGENT_UNAVAILABLE`（App 进程未就绪），带 `retryable:true`
 
 电脑上接入有两种方式：
 
 ```bash
 # A. 同一 Wi-Fi 直连（设置页打开「允许局域网访问」，Token 非空）
-# MCP URL: http://<手机IP>:8771/mcp   （或动作面端口，工具相同）
+# MCP URL: http://<手机IP>:8771/mcp
 # Header : Authorization: Bearer <TOKEN>
 
 # B. adb 隧道（USB / 无线 adb）
@@ -100,7 +101,7 @@ adb forward tcp:8771 tcp:8771
 | 脚本 | 用途 |
 |---|---|
 | `scripts/contract-test.sh --check` | 45 项回归（开免鉴权时 3 项 401 断言按配置跳过）：鉴权、MCP 形状、`tools/list`（own + 合并）、`/island`、工具表；会重启小爱并对比基线 |
-| `scripts/mcp-call.sh` | 手工调单个工具：端口发现（自动排除 8770 Agent 面）+ `adb forward` + Bearer 鉴权 |
+| `scripts/mcp-call.sh` | 手工调单个工具：端口发现 + `adb forward` + Bearer 鉴权 |
 
 ```bash
 bash scripts/mcp-call.sh health                    # GET /health，自证端口
