@@ -96,6 +96,7 @@
 | [WP3-BRIDGE.md](WP3-BRIDGE.md) | WP3 执行计划与记录（Mcp 端口拆分 + 生命周期决策） |
 | [WP4-UI.md](WP4-UI.md) | WP4 执行计划与记录（AppRuntime + UI 去 Context） |
 | [WP5-CORE.md](WP5-CORE.md) | WP5 执行计划与记录（`:core` 物理模块） |
+| [WP6-DOMAIN.md](WP6-DOMAIN.md) | WP6 执行计划与记录（`:domain` / `:application`） |
 | [RECOVERY-2026-11-17.md](RECOVERY-2026-11-17.md) | 仓库异常清空后的恢复记录 |
 | [drafts/](drafts/) | 被否决的 v1 草案（HMAC/Provider/配对码），仅作讨论记录 |
 

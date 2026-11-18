@@ -10,10 +10,15 @@ OUT="$ROOT/tests/.build"
 
 rm -rf "$OUT"; mkdir -p "$OUT"
 
+# 先单编 domain（空 classpath）：证明 domain 不依赖 application / android / Xposed。
+mkdir -p "$OUT/domain-only"
+javac -nowarn -source 1.8 -target 1.8 -d "$OUT/domain-only" \
+    $(find "$ROOT/domain/src/main/java" -name '*.java')
+
 javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/libs/xposed-stub-src/robv/android/xposed/XposedBridge.java" \
     "$ROOT/libs/xposed-stub-src/robv/android/xposed/XC_MethodHook.java" \
-    $(find "$ROOT/core/src/main/java" -name '*.java') \
+    $(find "$ROOT/domain/src/main/java" "$ROOT/application/src/main/java" -name '*.java') \
     "$ROOT/app/src/main/java/plus/xiaoi/module/Logs.java" \
     $(find "$ROOT/tests/src" -name '*.java')
 

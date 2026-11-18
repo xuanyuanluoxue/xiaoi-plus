@@ -49,13 +49,14 @@ RULES=(
     'ui_no_permission_probe|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.core\.PermissionProbe'
     'ui_no_status_cache|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.StatusCache'
     'ui_no_config_sync|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ConfigSync'
-    'core_module_no_android|core/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
-    'core_module_no_xposed|core/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
-    'core_module_no_orgjson|core/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'
-    'domain_no_android|app/src/main/java/plus/xiaoi/module/domain|import|^[[:space:]]*import[[:space:]]+android\.'
-    'domain_no_orgjson|app/src/main/java/plus/xiaoi/module/domain|import|^[[:space:]]*import[[:space:]]+org\.json\.'
-    'application_no_android|core/src/main/java/plus/xiaoi/module/application|import|^[[:space:]]*import[[:space:]]+android\.'
-    'application_no_orgjson|core/src/main/java/plus/xiaoi/module/application|import|^[[:space:]]*import[[:space:]]+org\.json\.'
+    'domain_no_android|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
+    'domain_no_xposed|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
+    'domain_no_orgjson|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'
+    'domain_no_io|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+java\.(io|net|nio)\.'
+    'domain_no_concurrent|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+java\.util\.concurrent\.'
+    'application_no_android|application/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
+    'application_no_xposed|application/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
+    'application_no_orgjson|application/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'
 )
 
 # 输出所有违规行：rule<TAB>file<TAB>token<TAB>count

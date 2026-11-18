@@ -1,6 +1,6 @@
 # 分层与依赖倒置改造：执行计划
 
-> 状态：**WP0–WP5 全部完成（WP5 `:core` 物理模块）**
+> 状态：**WP0–WP6 全部完成（WP6 `:domain` / `:application` 拆分）**
 > 基线：`v0.15.0`（versionCode 22，2026-11-11），HEAD `d753fb4`
 > 日期：2026-11-16
 > 相关：[architecture.md](../architecture.md) · [refactor/PLAN.md](PLAN.md) · [agent/PLAN.md](../agent/PLAN.md)
@@ -390,9 +390,17 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 2. 包名不变；`:app` `implementation(project(":core"))`；Xposed 桩继续 `compileOnly`。
 3. `Logs`（Xposed）与 `Usage`（android）留在 app。
 4. `tests/run.sh` 改为 `find core/src` + `Logs.java`；`build.sh`/一致性/分层路径同步。
-5. `:domain` / `:application` 进一步拆分**未做**，留作可选后续。
-- 验收：`:core:compileJava`、Windows `:app:assembleRelease`、单测/一致性/分层/APK 全绿。
+5. 后续已由 WP6 拆成 `:domain` + `:application`。
 - 详细计划与记录：[WP5-CORE.md](WP5-CORE.md)。
+
+## 10.1 WP6：`:domain` / `:application`（已实现）
+
+1. `:core` 82 文件拆成 `:domain` 53 + `:application` 29；包名不变。
+2. `:app -> {domain, application}`，`:application -> domain`。
+3. `:domain` 无 I/O/并发/Android/Xposed/org.json；`tests/run.sh` 用空 classpath
+   单独编译 domain，不依赖 import 规则。
+4. `:application` 放用例、协议、纯 JVM 传输/文件适配器。
+5. 详细计划与记录：[WP6-DOMAIN.md](WP6-DOMAIN.md)。
 
 ## 11. 子 Agent 编排
 
@@ -471,3 +479,4 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 | 2026-11-17 | WP3 | `Mcp.Hosts` 拆分 + `BridgeRuntime` + `BridgeService` + `BridgeHttpPolicy` | 11+20 条新用例；H3 负例；单测/一致性/分层/构建/APK 全绿 |
 | 2026-11-17 | WP4 | `AppRuntime` 五端口 + Android 适配 + UI 去 Context | `AppRuntimeTest` 9 条；UI 4 类静态依赖清零；单测/一致性/分层/构建/APK 全绿 |
 | 2026-11-17 | WP5 | `:core` java-library（82 文件）+ Gradle/测试/门禁路径 | `:core:compileJava` + Windows `assembleRelease` 成功；单测/一致性/分层/APK 全绿 |
+| 2026-11-17 | WP6 | 拆 `:domain`（53）+ `:application`（29）；app 依赖两者 | domain 空 classpath 单编 + Windows 三模块构建/APK 全绿 |

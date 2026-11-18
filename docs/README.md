@@ -20,6 +20,7 @@
 | [refactor/WP3-BRIDGE.md](refactor/WP3-BRIDGE.md) | WP3 执行计划与记录：Mcp 端口拆分、BridgeRuntime、生命周期决策 |
 | [refactor/WP4-UI.md](refactor/WP4-UI.md) | WP4 执行计划与记录：AppRuntime、UI 去 Context、门禁 |
 | [refactor/WP5-CORE.md](refactor/WP5-CORE.md) | WP5 执行计划与记录：`:core` 物理模块、路径/门禁迁移 |
+| [refactor/WP6-DOMAIN.md](refactor/WP6-DOMAIN.md) | WP6 执行计划与记录：`:domain` / `:application` 拆分 |
 | [refactor/RECOVERY-2026-11-17.md](refactor/RECOVERY-2026-11-17.md) | 2026-11-17 仓库异常清空后的恢复记录 |
 | [agent/PLAN.md](agent/PLAN.md) | D1 Agent 能力层与记忆系统：8770 动作面、root/Shizuku、记忆读写 |
 | [agent/PHASE0.md](agent/PHASE0.md) | Phase 0 侦察计划（已完成） |

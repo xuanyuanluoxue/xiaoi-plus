@@ -30,6 +30,9 @@
 - **`:core` 物理模块（WP5）**：新增 `:core` java-library，承载 82 个纯 JVM 类；
   `:app` 依赖 `:core`，Xposed 的 `Logs` 与 Android 的 `Usage` 留在 app。
   测试/一致性/分层路径同步，`build.sh` 兼容；Windows JDK 21 构建与 APK 校验通过。
+- **`:domain` / `:application` 拆分（WP6）**：`:core` 拆成 domain（53）与 application（29）；
+  `:app -> {domain, application}`，`application -> domain`。domain 用空 classpath
+  单独编译验证无 I/O/Android/Xposed，Windows 三模块构建与 APK 校验通过。
 
 ## 0.15.0 — 2026-11-11
 

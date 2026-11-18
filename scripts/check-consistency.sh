@@ -71,7 +71,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 2) 运行时资源查找
-HITS="$(grep -rn 'getIdentifier' app/src/main/java core/src/main/java 2>/dev/null || true)"
+HITS="$(grep -rn 'getIdentifier' app/src/main/java domain/src/main/java application/src/main/java 2>/dev/null || true)"
 if [ -z "$HITS" ]; then
     pass "业务代码 0 处 getIdentifier（全部走 R）"
 else
@@ -80,7 +80,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 3) 统一实现路径
-THREADS="$(grep -rn 'new Thread(' app/src/main/java core/src/main/java 2>/dev/null \
+THREADS="$(grep -rn 'new Thread(' app/src/main/java domain/src/main/java application/src/main/java 2>/dev/null \
     | grep -v 'AppExecutors.java' | grep -v 'Bridge.java' || true)"
 if [ -z "$THREADS" ]; then
     pass "业务代码后台任务统一走 AppExecutors（无裸 new Thread）"
@@ -89,7 +89,7 @@ else
     echo "$THREADS" | sed 's/^/      /'
 fi
 
-HTTP="$(grep -rln 'HttpURLConnection' app/src/main/java core/src/main/java 2>/dev/null \
+HTTP="$(grep -rln 'HttpURLConnection' app/src/main/java domain/src/main/java application/src/main/java 2>/dev/null \
     | grep -v 'BridgeClient.java' | grep -v 'ModelValidator.java' || true)"
 if [ -z "$HTTP" ]; then
     pass "HTTP 客户端收敛（桥访问走 BridgeClient，模型探测走 ModelValidator）"
@@ -98,7 +98,7 @@ else
     echo "$HTTP" | sed 's/^/      /'
 fi
 
-TOAST="$(grep -rn 'Toast.makeText' app/src/main/java core/src/main/java 2>/dev/null || true)"
+TOAST="$(grep -rn 'Toast.makeText' app/src/main/java domain/src/main/java application/src/main/java 2>/dev/null || true)"
 if [ -z "$TOAST" ]; then
     pass "提示统一走 BaseActivity.showMessage（无系统 Toast）"
 else

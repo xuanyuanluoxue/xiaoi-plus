@@ -279,6 +279,17 @@ WSL 通过 `/mnt/c/Users/Chatxavier/code/xiaoi-plus` 访问同一份源码跑脚
 - Gradle **9.9.0**（wrapper 固定）、AGP **9.5.1**、Kotlin 2.4.21、Compose 1.12.2、Miuix 0.9.4
 - `local.properties` 的 `sdk.dir` 指向当前平台的 SDK（Windows 用 `C:/Users/.../Android/Sdk`）
 
+模块：
+
+```
+:domain      模型/策略/协议 DTO/端口（纯 JVM，无 I/O）
+:application 用例/编排/纯 JVM 适配器（依赖 :domain）
+:app         Android / Xposed / UI（依赖 :domain + :application）
+```
+
+`tests/run.sh` 会先用空 classpath 单独编译 `:domain`，再合并编译 application/app 纯层，
+以此证明 domain 不依赖 application/Android/Xposed。
+
 Windows（CMD / PowerShell）：
 
 ```bat
