@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.ui.components.ConfirmCard
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
@@ -54,7 +55,10 @@ fun ModelScreen(
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val configGateway = LocalConfigGateway.current
-    val holder = remember(configGateway) { ModelStateHolder(context, configGateway) }
+    val appRuntime = LocalAppRuntime.current
+    val holder = remember(configGateway, appRuntime) {
+        ModelStateHolder(configGateway, appRuntime)
+    }
     val scope = rememberCoroutineScope()
     val editable = !holder.readOnly
 

@@ -39,7 +39,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.core.NavStack
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.LocalXiaoiPageActions
 import plus.xiaoi.module.ui.components.LocalXiaoiTopBarInset
@@ -84,12 +86,14 @@ import top.yukonga.miuix.kmp.basic.SnackbarHostState
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Compose-only 入口也必须启动文件监听；旧实现只在 ConfigActivity/HomeActivity 启动。
-        ConfigSync.start(this)
+        // 运行时端口与文件监听必须在 setContent 之前就绪（保持原 ConfigSync.start 时序）。
+        val appRuntime = AndroidAppRuntime.create(this)
+        appRuntime.watcher.start()
         applySystemBars(ThemeManager.get(this))
         setContent {
             XiaoiTheme(mode = ThemeManager.get(this)) {
                 XiaoiApp(
+                    appRuntime = appRuntime,
                     initialRoute = intent?.getStringExtra("route"),
                     onThemeChange = { mode ->
                         ThemeManager.set(this, mode)
@@ -214,7 +218,11 @@ private val NavStackSaver = listSaver<NavStack, String>(
 )
 
 @Composable
-private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
+private fun XiaoiApp(
+    appRuntime: AppRuntime,
+    initialRoute: String?,
+    onThemeChange: (Int) -> Unit,
+) {
     val context = LocalContext.current
     // 进程级配置端口：Activity recreate（主题切换）后仍复用同一个 repository 实例。
     val configGateway = remember(context) { ConfigRepository.get(context) }
@@ -336,6 +344,7 @@ private fun XiaoiApp(initialRoute: String?, onThemeChange: (Int) -> Unit) {
                 .glassBackdropSource(glassBackdrop),
         ) {
             CompositionLocalProvider(
+                LocalAppRuntime provides appRuntime,
                 LocalConfigGateway provides configGateway,
                 LocalXiaoiPageActions provides pageActions,
                 // 页面把它当滚动内容内部的顶部留白，滚动时内容从顶栏下穿过。

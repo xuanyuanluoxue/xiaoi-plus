@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -25,6 +24,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import plus.xiaoi.module.ui.components.IssueRow
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.StatusHero
 import plus.xiaoi.module.ui.components.XiaoiBadge
@@ -60,9 +60,11 @@ fun HomeScreen(
     onNavigate: (String) -> Unit,
     onMessage: (String) -> Unit,
 ) {
-    val context = LocalContext.current
     val configGateway = LocalConfigGateway.current
-    val holder = remember(configGateway) { HomeStateHolder(context, configGateway) }
+    val appRuntime = LocalAppRuntime.current
+    val holder = remember(configGateway, appRuntime) {
+        HomeStateHolder(configGateway, appRuntime)
+    }
     val state = holder.state
     val lifecycleOwner = LocalLifecycleOwner.current
 

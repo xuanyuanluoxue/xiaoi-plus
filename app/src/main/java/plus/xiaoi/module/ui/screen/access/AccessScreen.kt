@@ -17,17 +17,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.agent.AgentRuntimeStatus
-import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.CapabilityRegistry
 import plus.xiaoi.module.core.IssueResolver
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.PortRow
 import plus.xiaoi.module.ui.components.XiaoiBadge
@@ -66,8 +65,8 @@ fun AccessScreen(
     onMessage: (String) -> Unit,
 ) {
     val colors = XiaoiTheme.colors
-    val context = LocalContext.current
     val configGateway = LocalConfigGateway.current
+    val appRuntime = LocalAppRuntime.current
     val scope = rememberCoroutineScope()
     var saving by remember { mutableStateOf(false) }
     val loaded = rememberAccessConfig()
@@ -166,7 +165,7 @@ fun AccessScreen(
                                         saved.conflict() -> throw IllegalStateException("配置已被其他页面修改，请重试")
                                         !saved.ok() -> throw IllegalStateException(saved.error)
                                     }
-                                    AgentService.startIfEnabled(context)
+                                    appRuntime.agent.startIfEnabled()
                                 }
                             }
                             saving = false

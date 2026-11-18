@@ -25,10 +25,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.ThemeMode
-import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.config.ConfigGateway
 import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.core.BridgeStatus
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
@@ -76,6 +76,7 @@ fun MeScreen(
 ) {
     val context = LocalContext.current
     val configGateway = LocalConfigGateway.current
+    val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
     val scope = rememberCoroutineScope()
     val version = MeSupport.versionName(context)
@@ -146,7 +147,7 @@ fun MeScreen(
                     if (!saved.ok()) {
                         return@withContext StopResult(false, "停用失败：${saved.error}")
                     }
-                    AgentService.startIfEnabled(context)
+                    appRuntime.agent.startIfEnabled()
                     // 以重新读取的文件为准验证，而不是相信内存草稿。
                     val check = configGateway.loadState().config
                     val ok = !check.enabled && !check.mcpEnabled &&

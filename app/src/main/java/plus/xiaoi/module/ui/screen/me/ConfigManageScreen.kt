@@ -26,11 +26,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ConfigCodec
-import plus.xiaoi.module.ConfigSync
 import plus.xiaoi.module.ShareProvider
-import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.ErrorCatalog
 import plus.xiaoi.module.core.config.ConfigBackupInfo
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
@@ -71,6 +70,7 @@ fun ConfigManageScreen(
 ) {
     val context = LocalContext.current
     val configGateway = LocalConfigGateway.current
+    val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
     val scope = rememberCoroutineScope()
 
@@ -192,7 +192,7 @@ fun ConfigManageScreen(
                         } else if (!saved.ok()) {
                             "还原失败：${saved.error}（现有配置未改动）"
                         } else {
-                            AgentService.startIfEnabled(context)
+                            appRuntime.agent.startIfEnabled()
                             "已还原并应用（rev 已递增，等待小爱重新加载）"
                         }
                     }
@@ -217,13 +217,13 @@ fun ConfigManageScreen(
                             val backup = configGateway.backupInfos().firstOrNull()
                                 ?: throw IllegalStateException("没有可恢复的旧配置")
                             configGateway.restore(backup)
-                            AgentService.startIfEnabled(context)
+                            appRuntime.agent.startIfEnabled()
                             "已从 ${backup.name} 恢复"
                         }
 
                         RecoveryKind.DEFAULTS -> {
                             configGateway.resetAfterCorruption()
-                            AgentService.startIfEnabled(context)
+                            appRuntime.agent.startIfEnabled()
                             "已重建默认配置；损坏原文保留为 .corrupt 备份"
                         }
                     }
@@ -486,7 +486,7 @@ fun ConfigManageScreen(
             showRuntimeImportConfirm = false
             busy = true
             scope.launch {
-                val ok = withContext(Dispatchers.IO) { ConfigSync.importFromRuntime(context) }
+                val ok = withContext(Dispatchers.IO) { appRuntime.configImport.importFromRuntime() }
                 busy = false
                 onMessage(
                     if (ok) "已从运行中的小爱导入（密钥沿用当前文件）"

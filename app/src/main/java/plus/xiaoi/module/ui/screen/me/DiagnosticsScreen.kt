@@ -26,17 +26,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
-import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
+import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
-import plus.xiaoi.module.core.PermissionProbe
 import plus.xiaoi.module.core.PermissionSnapshot
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.core.config.ConfigGateway
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.PermissionRow
 import plus.xiaoi.module.ui.components.PermissionStatus
@@ -65,7 +65,7 @@ import top.yukonga.miuix.kmp.icon.extended.Share
  * 诊断（SCREENS.md §12）。
  *
  * 只展示事实：四维状态来自 StateModel，8771/8770 分别读取各自快照，
- * 权限来自 PermissionProbe，Root/LSPosed 拿不到证据就写「未确认」。
+ * 权限来自 PermissionReader，Root/LSPosed 拿不到证据就写「未确认」。
  */
 @Composable
 @Suppress("UNUSED_PARAMETER")
@@ -75,6 +75,7 @@ fun DiagnosticsScreen(
 ) {
     val context = LocalContext.current
     val configGateway = LocalConfigGateway.current
+    val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
     val scope = rememberCoroutineScope()
     val version = MeSupport.versionName(context)
@@ -88,7 +89,7 @@ fun DiagnosticsScreen(
     LaunchedEffect(refresh) {
         // 冷启动时 8770 可能比页面晚 1–3 秒起来；定时重采，避免与接入页结论不一致。
         while (true) {
-            snapshot = withContext(Dispatchers.IO) { capture(context, configGateway) }
+            snapshot = withContext(Dispatchers.IO) { capture(context, configGateway, appRuntime) }
             delay(3000)
         }
     }
@@ -343,19 +344,24 @@ private data class DiagSnapshot(
     val errorLines: Int,
 )
 
-private fun capture(context: android.content.Context, configGateway: ConfigGateway): DiagSnapshot {
+private fun capture(
+    context: android.content.Context,
+    configGateway: ConfigGateway,
+    appRuntime: AppRuntime,
+): DiagSnapshot {
     val loaded = runCatching { configGateway.loadState() }.getOrNull()
     val cfg = loaded?.config
     val readOnly = loaded?.readOnly ?: true
     val bridge = BridgeStatus.get()
     val agent = AgentRuntimeStatus.get()
-    val permissions = PermissionProbe.capture(context)
+    val permissions = appRuntime.permissions.capture()
 
     val facts = IssueInputFactory.ConfigFacts.from(cfg, !readOnly, readOnly)
     facts.probe = mapProbe(
-        StatusCache.probe(
-            context,
-            StatusCache.fingerprint(cfg?.baseUrl() ?: "", cfg?.apiKey() ?: "", cfg?.model() ?: ""),
+        appRuntime.status.read(
+            cfg?.baseUrl() ?: "",
+            cfg?.apiKey() ?: "",
+            cfg?.model() ?: "",
         ),
     )
     val input = IssueInputFactory.from(facts, bridge, agent, permissions, System.currentTimeMillis())

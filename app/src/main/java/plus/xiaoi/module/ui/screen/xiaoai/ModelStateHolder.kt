@@ -1,15 +1,13 @@
 package plus.xiaoi.module.ui.screen.xiaoai
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ConfigCodec
 import plus.xiaoi.module.ModelValidator
-import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
-import plus.xiaoi.module.agent.AgentService
+import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.core.config.ConfigGateway
 
 /**
@@ -34,8 +32,8 @@ private object ModelDraftCache {
  * 不做静默覆盖。校验只更新 [StatusCache]（D2），不改运行态。
  */
 internal class ModelStateHolder(
-    private val context: Context,
     private val configGateway: ConfigGateway,
+    private val appRuntime: AppRuntime,
 ) {
 
     var loading by mutableStateOf(true)
@@ -273,9 +271,8 @@ internal class ModelStateHolder(
         check = CheckUi(ok = result.ok, message = result.message)
         // 只记录 D2 结论；配置一变指纹失配，缓存自动作废。
         xiaoaiIo {
-            StatusCache.saveProbe(
-                context,
-                StatusCache.fingerprint(base, key, modelId),
+            appRuntime.status.save(
+                base, key, modelId,
                 when (result.code) {
                     "ok" -> StatusResolver.Probe.OK
                     "auth" -> StatusResolver.Probe.AUTH
@@ -332,7 +329,7 @@ internal class ModelStateHolder(
                             check = CheckUi()
                             ModelDraftCache.clear()
                             // 与旧配置页一致：保存后按配置对齐 8770（本页不改 MCP 开关）。
-                            AgentService.startIfEnabled(context)
+                            appRuntime.agent.startIfEnabled()
                             SaveOutcome.Saved
                         }
                     }

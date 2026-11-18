@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.core.PermissionProbe
 import plus.xiaoi.module.core.PermissionSnapshot
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.PermissionRow
 import plus.xiaoi.module.ui.components.PermissionStatus
 import plus.xiaoi.module.ui.components.XiaoiCard
@@ -52,7 +52,7 @@ private enum class PermissionKind {
 }
 
 /**
- * 权限矩阵：展示 PermissionProbe.capture 的真实结论，UNKNOWN 只写“未确认”。
+ * 权限矩阵：展示 PermissionReader 的真实结论，UNKNOWN 只写“未确认”。
  * 每项提供“去设置”Intent；打不开时退回应用详情，仍失败才提示。
  */
 @Composable
@@ -61,6 +61,7 @@ fun PermissionsScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
     val scope = rememberCoroutineScope()
     var snapshot by remember { mutableStateOf<PermissionSnapshot?>(null) }
@@ -70,7 +71,7 @@ fun PermissionsScreen(
         if (refreshing) return
         refreshing = true
         scope.launch {
-            snapshot = withContext(Dispatchers.IO) { PermissionProbe.capture(context) }
+            snapshot = withContext(Dispatchers.IO) { appRuntime.permissions.capture() }
             refreshing = false
         }
     }

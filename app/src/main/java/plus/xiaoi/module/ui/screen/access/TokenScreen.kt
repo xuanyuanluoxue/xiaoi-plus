@@ -27,9 +27,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.agent.AgentLanPolicy
-import plus.xiaoi.module.agent.AgentService
 import plus.xiaoi.module.core.BridgePolicy
 import plus.xiaoi.module.core.IssueResolver
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiButton
@@ -66,6 +66,7 @@ fun TokenScreen(
 ) {
     val context = LocalContext.current
     val configGateway = LocalConfigGateway.current
+    val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
     val loaded = rememberAccessConfig()
     val bridge = rememberBridgeSnapshot()
@@ -144,7 +145,7 @@ fun TokenScreen(
                         !saved.ok() -> throw IllegalStateException(saved.error)
                     }
                     // 保存后按新配置重绑设备操作接口；小爱任务接口由小爱重新加载配置后生效。
-                    AgentService.startIfEnabled(context)
+                    appRuntime.agent.startIfEnabled()
                 }
             }
             saving = false

@@ -143,7 +143,7 @@ public class ConfigActivity extends BaseActivity {
             public void selectModel(AppConfig.ModelItem m) { ConfigActivity.this.selectModel(m); }
             public ConfigDialogs dialogs() { return dialogs; }
         });
-        editSection = new EditSection(this, new EditSection.Host() {
+        editSection = new EditSection(new EditSection.Host() {
             public AppConfig config() { return cfg; }
             public void setConfig(AppConfig next) { cfg = next; }
             public void render() { ConfigActivity.this.render(); }
@@ -160,7 +160,7 @@ public class ConfigActivity extends BaseActivity {
             public void checkModelNow() { ConfigActivity.this.checkModelNow(true); }
             public ConfigDialogs dialogs() { return dialogs; }
             public boolean dirty() { return ConfigActivity.this.dirty; }
-        }, ConfigRepository.get(this));
+        }, ConfigRepository.get(this), AndroidAppRuntime.create(this).configImport);
         mcpSection = new McpSection(this, root, new McpSection.Host() {
             public AppConfig config() { return cfg; }
             public boolean alive() { return !isFinishing(); }

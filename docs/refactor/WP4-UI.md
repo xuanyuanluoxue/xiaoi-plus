@@ -34,10 +34,9 @@ public interface AgentControl {
 }
 
 public interface StatusProbeStore {
-    /** 端点+密钥+模型的指纹；纯计算，供 UI 与缓存共用。 */
-    String fingerprint(String baseUrl, String apiKey, String model);
-    void save(String fingerprint, StatusResolver.Probe probe);
-    StatusResolver.Probe read(String fingerprint);
+    /** 内部按 baseUrl/apiKey/model 计算指纹并校验 TTL，避免调用方拼错。 */
+    StatusResolver.Probe read(String baseUrl, String apiKey, String model);
+    void save(String baseUrl, String apiKey, String model, StatusResolver.Probe probe);
 }
 
 public interface PermissionReader {
@@ -80,8 +79,11 @@ val LocalAppRuntime = staticCompositionLocalOf<AppRuntime> {
 }
 ```
 
-`XiaoiApp` 与 `LocalConfigGateway` 一起 provide；runtime 用 `applicationContext` 创建，
-Activity 重建后仍指向同一进程服务。
+`MainActivity.onCreate` 先创建 `AndroidAppRuntime.create(this)` 并 `runtime.watcher.start()`
+（保持原 `ConfigSync.start` 在 `setContent` 之前执行的时序），再把 runtime 传给
+`XiaoiApp(appRuntime, ...)`，与 `LocalConfigGateway` 一起 provide。
+runtime 内部所有 adapter 统一用 `getApplicationContext()`，Activity 重建不会泄漏。
+**不在 composition/remember 内启动 watcher**。
 
 ### 2.3 UI 改造
 
@@ -96,13 +98,14 @@ Activity 重建后仍指向同一进程服务。
 | `ConfigManageScreen` | Agent/运行时导入走 runtime；文件 IO/分享仍用 Context |
 | `DiagnosticsScreen` | 权限/状态缓存走 runtime；包名/设置 Intent 仍用 Context |
 | `PermissionsScreen` | 权限矩阵走 runtime；设置 Intent 仍用 Context |
-| `MainActivity` | provide runtime；`ConfigSync.start` 改 `runtime.watcher.start()` |
-| `ui/config/EditSection.java` | 构造注入 `RuntimeConfigImporter`；删除 `ConfigSync` 直连 |
-| `ConfigActivity` | 构造 `AndroidAppRuntime.create(this)` 传给 EditSection |
+| `MainActivity` | `onCreate` 创建 runtime + `watcher.start()`；provide runtime；删除 ConfigSync 直调 |
+| `ui/config/EditSection.java` | 去掉 Context；构造注入 `RuntimeConfigImporter`；删除 ConfigSync 直连 |
+| `ConfigActivity` | 构造 `AndroidAppRuntime.create(this).configImport` 传给 EditSection |
 
 ### 2.4 明确不做
 
 - 不迁移 `ThemeManager`：它是 UI 偏好（prefs），不是业务服务；主 Activity 仍直接读写。
+  父计划里的 ThemeManager 端口化**顺延**，不在本 WP 虚报完成。
 - 不迁移 `MeSupport` 的剪贴板/包信息/Intent：这些是平台 UI 能力，留在 UI 适配层。
 - 不迁移旧 `ConfigActivity` / `HomeActivity` 的其余逻辑（过渡入口）。
 - 不引入 `StatusService`：四维状态已由 `StateModel` / `IssueInputFactory` 组装，
@@ -144,6 +147,16 @@ Activity 重建后仍指向同一进程服务。
 迁移完成后基线中不应再有这 4 类条目；旧 `ui/config/EditSection.java` 也要清零。
 `ui_no_control`（BridgeControlService）仍保留 3 条，留给后续。
 
+**门禁范围说明**：
+
+- 这 4 条规则只覆盖 `ui/`。`MainActivity` 与本包工具类没有 import，必须靠
+  代码改造（runtime.watcher）而不是规则约束；旧 `ConfigActivity` / `HomeActivity`
+  仍可直连，属于过渡入口。
+- 基线当前**没有**这 4 类行（规则尚未加入）。实施顺序：先迁移代码 → 再加规则 →
+  最后 `check-layering.sh --init` 生成 0 条基线；不要迁移前 `--init`。
+- `check-consistency.sh` 默认不带 `--strict`，收尾必须单独跑
+  `check-layering.sh --strict`。
+
 ## 5. 测试与真机
 
 ### 5.1 纯 JVM
@@ -158,9 +171,12 @@ Activity 重建后仍指向同一进程服务。
 - 首页权限/状态徽章与诊断页一致；权限矩阵仍显示真实结论。
 - 模型页校验后主页 D2 结论同步；10 分钟 TTL 行为不变。
 - 接入页开关外部接入 → 8770 启动/停止行为不变；令牌页保存后重连行为不变。
+- **模型页保存后** 8770 按新配置对齐（`ModelStateHolder` 保存路径）。
+- **「我的 › 停用全部」** 仍走 `AgentService.stop` 语义，停用后 8770 不再监听。
 - 配置管理：导入运行时配置、还原/重置后 8770 对齐行为不变。
+- **兼容模式（旧 ConfigActivity）** 的“从运行中小爱导入”仍可用（EditSection importer）。
 - 主题切换/Activity 重建后页面状态、runtime 不丢。
-- 外部改 config.json 后 watcher 仍生效（MainActivity 启动路径）。
+- 外部改 config.json 后 watcher 仍生效（MainActivity onCreate 启动路径）。
 
 ## 6. 风险与回滚
 
@@ -187,7 +203,8 @@ Activity 重建后仍指向同一进程服务。
 
 ## 8. 完成定义
 
-1. UI 不再 import `AgentService` / `PermissionProbe` / `StatusCache` / `ConfigSync`。
+1. UI 不再 import `AgentService` / `PermissionProbe` / `StatusCache` / `ConfigSync`
+   （`ui/` 范围；MainActivity/旧 Activity 由 runtime/过渡入口单独处理）。
 2. 三个 StateHolder 不再需要 `Context`（TokenScreen 等仍需平台 Context 的页面除外）。
 3. 分层基线对应条目清零；全量门禁/构建/APK 通过。
 4. 真机 P0 通过或明确记录未验项。
@@ -208,5 +225,15 @@ Activity 重建后仍指向同一进程服务。
 | R9 | 是否与 WP5 冲突 | 通过：runtime 在 application 层，物理拆模块时可直接搬 |
 | R10 | 真机清单是否覆盖 | 通过：权限/状态/8770/导入/主题/watcher |
 
-> 审核结论：**通过，可执行**。
-> 审核人：主 Agent（基于 UI 调用面与 4 个 Android 工具 API 复核）。
+> 审核结论：**通过（已按独立复核修订）**。
+> 审核人：主 Agent + 独立 reviewer（只读）。
+>
+> 复核修订：
+> 1. `StatusProbeStore` 改为 read/save 直接收 baseUrl/apiKey/model，内部算指纹，避免错配；
+> 2. MainActivity 在 `onCreate` 创建 runtime 并启动 watcher，不放进 composition；
+> 3. P0 补模型保存后 8770、停用全部 stop、兼容模式导入三条路径；
+> 4. 门禁明确只覆盖 `ui/`，MainActivity/旧 Activity 用代码改造/过渡例外；
+> 5. 基线本来没有这 4 类行，实施顺序改为“先迁移再 `--init`”，收尾跑 `--strict`；
+> 6. adapter 统一 applicationContext；EditSection 去掉 Context 参数；
+> 7. 保留 AgentControl.stop 并在 AppRuntimeTest 覆盖；
+> 8. ThemeManager 端口化明确顺延，不计入 WP4 完成；

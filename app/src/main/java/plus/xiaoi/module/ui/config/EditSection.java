@@ -1,7 +1,6 @@
 package plus.xiaoi.module.ui.config;
 
 import android.content.ContentResolver;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
@@ -17,9 +16,9 @@ import java.io.OutputStream;
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigCodec;
-import plus.xiaoi.module.ConfigSync;
 import plus.xiaoi.module.R;
 import plus.xiaoi.module.ShareProvider;
+import plus.xiaoi.module.application.runtime.RuntimeConfigImporter;
 import plus.xiaoi.module.core.ErrorCatalog;
 import plus.xiaoi.module.core.config.ConfigGateway;
 
@@ -51,16 +50,17 @@ public final class EditSection {
         boolean dirty();
     }
 
-    private final Context ctx;
     private final Host host;
     private final ConfigGateway configGateway;
+    private final RuntimeConfigImporter configImporter;
     /** 导出（脱敏）：只用于分享/排障，不能用于恢复。 */
     private boolean exportMasked = true;
 
-    public EditSection(Context ctx, Host host, ConfigGateway configGateway) {
-        this.ctx = ctx;
+    public EditSection(Host host, ConfigGateway configGateway,
+                       RuntimeConfigImporter configImporter) {
         this.host = host;
         this.configGateway = configGateway;
+        this.configImporter = configImporter;
     }
 
     /** 从运行中的小爱导入真实生效配置到 config.json（文件优先，手动触发）。 */
@@ -68,7 +68,7 @@ public final class EditSection {
         host.toast("正在读取运行中配置…");
         AppExecutors.io(new Runnable() {
             public void run() {
-                final boolean ok = ConfigSync.importFromRuntime(ctx);
+                final boolean ok = configImporter.importFromRuntime();
                 AppExecutors.ui(new Runnable() {
                     public void run() {
                         if (!host.alive()) return;

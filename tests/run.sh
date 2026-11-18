@@ -67,6 +67,12 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/hook/UsageSignal.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/application/bridge/BridgeService.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/core/bridge/BridgeHttpPolicy.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/runtime/AgentControl.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/runtime/StatusProbeStore.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/runtime/PermissionReader.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/runtime/RuntimeConfigImporter.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/runtime/ConfigWatcher.java" \
+    "$ROOT/app/src/main/java/plus/xiaoi/module/application/runtime/AppRuntime.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigDefaults.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigPrefsPort.java" \
     "$ROOT/app/src/main/java/plus/xiaoi/module/application/config/ConfigEffectsPort.java" \

@@ -1,12 +1,11 @@
 package plus.xiaoi.module.ui.screen.xiaoai
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
+import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.core.ActivityFeed
 import plus.xiaoi.module.core.ActivityHub
 import plus.xiaoi.module.core.BridgeStatus
@@ -45,8 +44,8 @@ internal data class XiaoaiUiState(
  * 主开关即时保存；失败回滚到文件事实并用 Snackbar 说明。
  */
 internal class XiaoaiStateHolder(
-    private val context: Context,
     private val configGateway: ConfigGateway,
+    private val appRuntime: AppRuntime,
 ) {
 
     var state by mutableStateOf(XiaoaiUiState())
@@ -110,10 +109,7 @@ internal class XiaoaiStateHolder(
         val cacheProbe = if (readOnly) {
             StatusResolver.Probe.UNKNOWN
         } else {
-            StatusCache.probe(
-                context,
-                StatusCache.fingerprint(cfg.baseUrl(), cfg.apiKey(), fileModel),
-            )
+            appRuntime.status.read(cfg.baseUrl(), cfg.apiKey(), fileModel)
         }
         val input = StateModel.Input().apply {
             hasProvider = cfg.activeProvider() != null

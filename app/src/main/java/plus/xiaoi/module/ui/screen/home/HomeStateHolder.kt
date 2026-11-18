@@ -1,6 +1,5 @@
 package plus.xiaoi.module.ui.screen.home
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,15 +8,14 @@ import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.AppExecutors
 import plus.xiaoi.module.BridgeClient
 import plus.xiaoi.module.Json
-import plus.xiaoi.module.StatusCache
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
+import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.core.ActivityFeed
 import plus.xiaoi.module.core.ActivityHub
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
-import plus.xiaoi.module.core.PermissionProbe
 import plus.xiaoi.module.core.StateModel
 import plus.xiaoi.module.core.config.ConfigGateway
 import plus.xiaoi.module.ui.components.DimensionState
@@ -85,11 +83,10 @@ internal data class HomeUiState(
  * 不把 0 当成离线，也不把旧快照当成在线。</p>
  */
 internal class HomeStateHolder(
-    context: Context,
     private val configGateway: ConfigGateway,
+    private val appRuntime: AppRuntime,
 ) {
 
-    private val app: Context = context.applicationContext ?: context
     private val busy = AtomicBoolean(false)
 
     var state by mutableStateOf(HomeUiState())
@@ -123,7 +120,7 @@ internal class HomeStateHolder(
         val now = System.currentTimeMillis()
         val bridge = BridgeStatus.get()
         val agent = AgentRuntimeStatus.get()
-        val permissions = PermissionProbe.capture(app)
+        val permissions = appRuntime.permissions.capture()
 
         val facts = IssueInputFactory.ConfigFacts.from(config, !readOnly, readOnly)
         facts.probe = cachedProbe(config)
@@ -267,10 +264,7 @@ internal class HomeStateHolder(
     private fun cachedProbe(config: AppConfig): StateModel.Probe {
         val provider = config.activeProvider() ?: return StateModel.Probe.UNKNOWN
         val model = config.activeModel() ?: return StateModel.Probe.UNKNOWN
-        val cached = StatusCache.probe(
-            app,
-            StatusCache.fingerprint(provider.baseUrl, provider.apiKey, model.id),
-        )
+        val cached = appRuntime.status.read(provider.baseUrl, provider.apiKey, model.id)
         return when (cached) {
             StatusResolver.Probe.OK -> StateModel.Probe.OK
             StatusResolver.Probe.AUTH -> StateModel.Probe.AUTH
