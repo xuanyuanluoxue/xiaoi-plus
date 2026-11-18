@@ -42,7 +42,6 @@ done
 # rule id | 相对目录 | 类型(import|literal) | grep 正则
 RULES=(
     'core_no_android|app/src/main/java/plus/xiaoi/module/core|import|^[[:space:]]*import[[:space:]]+android\.'
-    'core_no_agent|app/src/main/java/plus/xiaoi/module/core|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.agent\.'
     'ui_no_repository_import|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ConfigRepository'
     'ui_no_repository_get|app/src/main/java/plus/xiaoi/module/ui|literal|ConfigRepository\.get\('
     'ui_no_control|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.control\.'
@@ -50,10 +49,13 @@ RULES=(
     'ui_no_permission_probe|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.core\.PermissionProbe'
     'ui_no_status_cache|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.StatusCache'
     'ui_no_config_sync|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ConfigSync'
+    'core_module_no_android|core/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
+    'core_module_no_xposed|core/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
+    'core_module_no_orgjson|core/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'
     'domain_no_android|app/src/main/java/plus/xiaoi/module/domain|import|^[[:space:]]*import[[:space:]]+android\.'
     'domain_no_orgjson|app/src/main/java/plus/xiaoi/module/domain|import|^[[:space:]]*import[[:space:]]+org\.json\.'
-    'application_no_android|app/src/main/java/plus/xiaoi/module/application|import|^[[:space:]]*import[[:space:]]+android\.'
-    'application_no_orgjson|app/src/main/java/plus/xiaoi/module/application|import|^[[:space:]]*import[[:space:]]+org\.json\.'
+    'application_no_android|core/src/main/java/plus/xiaoi/module/application|import|^[[:space:]]*import[[:space:]]+android\.'
+    'application_no_orgjson|core/src/main/java/plus/xiaoi/module/application|import|^[[:space:]]*import[[:space:]]+org\.json\.'
 )
 
 # 输出所有违规行：rule<TAB>file<TAB>token<TAB>count

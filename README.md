@@ -267,26 +267,42 @@ App 保存配置后会通知小爱重新拉取（不再有 `/config` HTTP 推送
 
 0.14 起用 Gradle wrapper 构建，不再用 `build.sh`（`build.sh` 只覆盖 ≤0.13 的纯 Java 构建）。
 
+**当前主开发环境是 Windows 原生**：`C:\Users\Chatxavier\code\xiaoi-plus`；
+WSL 通过 `/mnt/c/Users/Chatxavier/code/xiaoi-plus` 访问同一份源码跑脚本/单测。
+原 WSL 仓库在 2026-11-17 被异常清空，恢复记录见
+[docs/refactor/RECOVERY-2026-11-17.md](docs/refactor/RECOVERY-2026-11-17.md)。
+
 环境：
 
 - **JDK 21**（AGP 9.5.1 要求）
 - Android SDK：`platforms;android-37.0`、`build-tools;37.0.0`、`platform-tools`
 - Gradle **9.9.0**（wrapper 固定）、AGP **9.5.1**、Kotlin 2.4.21、Compose 1.12.2、Miuix 0.9.4
-- `local.properties` 的 `sdk.dir` 指向 Linux SDK；依赖镜像已在 `settings.gradle.kts` 配好
+- `local.properties` 的 `sdk.dir` 指向当前平台的 SDK（Windows 用 `C:/Users/.../Android/Sdk`）
+
+Windows（CMD / PowerShell）：
+
+```bat
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
+gradlew.bat :app:assembleDebug
+gradlew.bat :app:assembleRelease
+```
+
+Linux / WSL：
 
 ```bash
 export JAVA_HOME=/path/to/jdk-21
 ./gradlew :app:assembleDebug
 ./gradlew :app:assembleRelease
-# 产物：app/build/outputs/apk/debug/ 或 release/
 ```
 
-改代码后跑门禁（单测纯 JVM，无需设备）：
+产物：`app/build/outputs/apk/debug/` 或 `release/`。
+
+改代码后跑门禁（单测纯 JVM，无需设备；Windows 用 Git Bash 或 WSL）：
 
 ```bash
-./tests/run.sh                 # 桌面单测（Json / Http / Mcp / NavStack / Status…）
-./scripts/check-consistency.sh # 版本/SDK/R 引用/线程/提示/死资源
-./scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
+bash tests/run.sh                 # 桌面单测（Json / Http / Mcp / NavStack / Status…）
+bash scripts/check-consistency.sh # 版本/SDK/R 引用/线程/提示/分层/死资源
+bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 # 校验：已签名 + 包名 plus.xiaoi.module + versionCode + 固定证书指纹
 ```
 

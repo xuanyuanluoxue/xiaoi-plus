@@ -1,7 +1,7 @@
 # WP4：UI 运行时端口与剩余 Context 清理（执行计划）
 
-> 状态：**待审核 → 通过后执行**
-> 基线：`refactor/layering` @ `5a0236e`（WP0–WP3 已完成）
+> 状态：**已完成（2026-11-17）**
+> 基线：`refactor/layering`（WP0–WP3 已完成；原 git 历史在 2026-11-17 异常丢失，见 [RECOVERY-2026-11-17.md](RECOVERY-2026-11-17.md)）
 > 日期：2026-11-17
 > 父计划：[LAYERING.md](LAYERING.md) · 前置：[WP3-BRIDGE.md](WP3-BRIDGE.md)
 
@@ -237,3 +237,24 @@ runtime 内部所有 adapter 统一用 `getApplicationContext()`，Activity 重�
 > 6. adapter 统一 applicationContext；EditSection 去掉 Context 参数；
 > 7. 保留 AgentControl.stop 并在 AppRuntimeTest 覆盖；
 > 8. ThemeManager 端口化明确顺延，不计入 WP4 完成；
+
+## 10. 执行记录（2026-11-17）
+
+| 项 | 结果 |
+|---|---|
+| 端口 | `AgentControl` / `StatusProbeStore` / `PermissionReader` / `RuntimeConfigImporter` / `ConfigWatcher` + `AppRuntime` |
+| Android 适配 | `AndroidAppRuntime.create` 统一 applicationContext；委托 AgentService/StatusCache/PermissionProbe/ConfigSync |
+| Compose | `LocalAppRuntime` 注入；MainActivity onCreate 创建并启动 watcher |
+| StateHolder | Home/Model/Xiaoai 去掉 `Context`，改用 gateway + runtime |
+| 页面 | Access/Token/Me/ConfigManage/Diagnostics/Permissions 改走端口；平台 Context 保留 |
+| 旧入口 | `EditSection` 去掉 Context，注入 importer；ConfigActivity 传 runtime.configImport |
+| 门禁 | 新增 4 条 `ui_no_*`；基线仍 12 行（新增规则 0 命中） |
+| 单测 | `AppRuntimeTest` 9 条；全量单测全绿 |
+| 全量 | 一致性/分层/assembleRelease/verify-apk 全绿 |
+| 真机 | **未执行**（按 §5.2 P0 清单验收） |
+
+残留：
+- `ui_no_control` 仍有 3 条 `BridgeControlService` 依赖，留给后续；
+- UI 仍 import `AgentRuntimeStatus`（agent 包只读快照），WP5 拆模块时再处理；
+- `ThemeManager` 端口化顺延；
+- 原 git 历史丢失，恢复基线见 RECOVERY 文档。

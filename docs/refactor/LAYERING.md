@@ -1,6 +1,6 @@
 # 分层与依赖倒置改造：执行计划
 
-> 状态：**WP0、WP1a、WP1b、WP2、WP3 已完成；WP4 待开始**
+> 状态：**WP0–WP5 全部完成（WP5 `:core` 物理模块）**
 > 基线：`v0.15.0`（versionCode 22，2026-11-11），HEAD `d753fb4`
 > 日期：2026-11-16
 > 相关：[architecture.md](../architecture.md) · [refactor/PLAN.md](PLAN.md) · [agent/PLAN.md](../agent/PLAN.md)
@@ -373,20 +373,26 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 - `StatusService`/四维状态组装**未在本 WP 实施**，留给 WP4 或独立任务。
 - 详细计划与执行记录：[WP3-BRIDGE.md](WP3-BRIDGE.md)。
 
-## 9. WP4：剩余 UI Context 清理（后续）
+## 9. WP4：运行时端口与 UI Context 清理（已实现）
 
-- `AgentService.startIfEnabled`、`PermissionProbe`、`ThemeManager` 通过端口/用例注入。
-- Compose 预览使用 fake gateway；StateHolder 单测不再需要真机。
-- 验收：`ui/` 除平台组件外无业务静态调用。
+- 新增 `AppRuntime` 五端口（Agent/StatusProbe/Permission/ConfigImport/ConfigWatcher），
+  `AndroidAppRuntime` 统一 applicationContext。
+- Compose 通过 `LocalAppRuntime` 注入；Home/Model/Xiaoai StateHolder 去掉 `Context`。
+- 接入/令牌/我的/配置管理/诊断/权限页改走端口；剪贴板/Intent/包信息等平台能力保留。
+- 旧 `EditSection` 去掉 Context，注入 `RuntimeConfigImporter`。
+- 新增 4 条 `ui_no_*` 门禁与 `AppRuntimeTest` 9 条断言。
+- `ThemeManager` 端口化顺延；`ui_no_control` 3 条保留。
+- 详细计划与执行记录：[WP4-UI.md](WP4-UI.md)。
 
-## 10. WP5：物理模块（后续，可选）
+## 10. WP5：`:core` 物理模块（已实现）
 
-1. `:core`（java-library，先放 domain + application，包名先不变）。
-2. `app` 加 `implementation(project(":core"))`；Xposed 桩继续 `compileOnly`。
-3. `tests/run.sh` 改为 `find core/src -name '*.java'` 或依赖 jar。
-4. 再视 import 图拆 `:domain` / `:application`。
-- 验收：构建/单测/一致性/契约全绿；R8 keep 与 APK 体积无明显回退。
-- 注意：`Logs` 依赖 Xposed 桩，不能进纯 `:core`；要么留在 app，要么加独立 stub API。
+1. 新增 `:core` `java-library`，承载 82 个纯 JVM 类（`tests/run.sh` 闭包去掉 `Logs`）。
+2. 包名不变；`:app` `implementation(project(":core"))`；Xposed 桩继续 `compileOnly`。
+3. `Logs`（Xposed）与 `Usage`（android）留在 app。
+4. `tests/run.sh` 改为 `find core/src` + `Logs.java`；`build.sh`/一致性/分层路径同步。
+5. `:domain` / `:application` 进一步拆分**未做**，留作可选后续。
+- 验收：`:core:compileJava`、Windows `:app:assembleRelease`、单测/一致性/分层/APK 全绿。
+- 详细计划与记录：[WP5-CORE.md](WP5-CORE.md)。
 
 ## 11. 子 Agent 编排
 
@@ -463,3 +469,5 @@ rg -n "ConfigRepository" app/src/main/java/plus/xiaoi/module/ui/   # 0
 | 2026-11-17 | WP1b | `ConfigService` + prefs/effects/log 端口 + reset/restore rev 修复 + Compose watcher | 52 条配置用例；单测/一致性/分层/构建/APK 校验全绿 |
 | 2026-11-17 | WP2 | 纯策略 + 死代码清理 + `XiaoiProcessHost` + H1/H2 门禁 | Hook 565→482；16 条策略用例；双负例；单测/一致性/分层/构建/APK 全绿 |
 | 2026-11-17 | WP3 | `Mcp.Hosts` 拆分 + `BridgeRuntime` + `BridgeService` + `BridgeHttpPolicy` | 11+20 条新用例；H3 负例；单测/一致性/分层/构建/APK 全绿 |
+| 2026-11-17 | WP4 | `AppRuntime` 五端口 + Android 适配 + UI 去 Context | `AppRuntimeTest` 9 条；UI 4 类静态依赖清零；单测/一致性/分层/构建/APK 全绿 |
+| 2026-11-17 | WP5 | `:core` java-library（82 文件）+ Gradle/测试/门禁路径 | `:core:compileJava` + Windows `assembleRelease` 成功；单测/一致性/分层/APK 全绿 |

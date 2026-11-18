@@ -1,5 +1,9 @@
 # 从零构建
 
+> 当前主构建方式是 Gradle wrapper（Windows 原生 `gradlew.bat` / Linux `./gradlew`），
+> 见 [README「从源码构建」](../README.md#从源码构建014)。
+> 本文的 `build.sh` 是 ≤0.13 的纯 Java 遗留路径，新版本发版不要使用。
+
 本项目**不用 Gradle**。`build.sh` 直接调用 `javac` + `d8` + `aapt2` + `zipalign` + `apksigner`
 走完「编译 → dex → 打包 → 对齐 → 签名」，产出可直接安装的 APK。
 

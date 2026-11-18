@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "xiaoi-plus"
+include(":core")
 include(":app")

@@ -23,6 +23,13 @@
   五个端口；`BridgeLifecycle` 改为只依赖 `BridgeRuntime`，生命周期决策抽成纯 JVM
   `BridgeService`，HTTP 路径/limit 抽成 `BridgeHttpPolicy`。新增 H3 门禁与 31 条
   决策/路由用例；8771 工具表、报文与 LAN/410 语义不变。
+- **UI 运行时端口（WP4）**：新增 `AppRuntime` 五端口与 `AndroidAppRuntime`；
+  Compose 通过 `LocalAppRuntime` 注入，Home/Model/Xiaoai StateHolder 去掉 `Context`；
+  接入/令牌/我的/配置管理/诊断/权限页不再直接调用 AgentService/PermissionProbe/
+  StatusCache/ConfigSync。新增 4 条 UI 分层门禁与 9 条 AppRuntime 用例。
+- **`:core` 物理模块（WP5）**：新增 `:core` java-library，承载 82 个纯 JVM 类；
+  `:app` 依赖 `:core`，Xposed 的 `Logs` 与 Android 的 `Usage` 留在 app。
+  测试/一致性/分层路径同步，`build.sh` 兼容；Windows JDK 21 构建与 APK 校验通过。
 
 ## 0.15.0 — 2026-11-11
 

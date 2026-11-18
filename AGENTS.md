@@ -4,11 +4,13 @@
 
 ## 构建与测试
 
-- 构建：`./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`
+- 构建（Windows 原生，当前主环境）：`gradlew.bat :app:assembleRelease`
+  → `app/build/outputs/apk/release/app-release.apk`
+- 构建（Linux / WSL）：`./gradlew :app:assembleRelease`
   （`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，不再用于发版）
-- 单测：`./tests/run.sh`（纯 JVM，无需设备）
-- 门禁：`scripts/check-consistency.sh`（版本/SDK/资源引用/线程与提示规范）
-- 真机契约（可选）：`XIAOI_TOKEN=<token> scripts/contract-test.sh`
+- 单测：`bash tests/run.sh`（纯 JVM，无需设备；Windows 用 Git Bash/WSL）
+- 门禁：`bash scripts/check-consistency.sh`（版本/SDK/资源引用/线程/提示/分层）
+- 真机契约（可选）：`XIAOI_TOKEN=<token> bash scripts/contract-test.sh`
 
 ## 改动约定
 

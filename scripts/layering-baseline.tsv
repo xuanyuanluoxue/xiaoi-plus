@@ -1,6 +1,5 @@
 # rule<TAB>file<TAB>token<TAB>count
 # 由 scripts/check-layering.sh --init 生成；只减不增。
-core_no_agent	app/src/main/java/plus/xiaoi/module/core/IssueInputFactory.java	plus.xiaoi.module.agent.AgentRuntimeStatus	1
 core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.app.AlarmManager	1
 core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.app.AppOpsManager	1
 core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.app.NotificationManager	1

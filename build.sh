@@ -26,7 +26,7 @@ echo "[2/6] 编译资源并生成 R"
 
 echo "[3/6] 编译模块（含 R）"
 javac -nowarn -source 1.8 -target 1.8 -cp "$AJ:$OUT/classes" -d "$OUT/classes" \
-  $(find "$ROOT/app/src/main/java" "$OUT/gen" -name "*.java")
+  $(find "$ROOT/app/src/main/java" "$ROOT/core/src/main/java" "$OUT/gen" -name "*.java")
 
 echo "[4/6] dex"
 "$BT/d8" --lib "$AJ" --release --output "$OUT/dex" \
