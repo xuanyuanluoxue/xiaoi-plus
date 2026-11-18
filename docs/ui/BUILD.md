@@ -8,7 +8,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| 仓库 | `C:\Users\Chatxavier\code\xiaoi-plus` |
+| 仓库 | `D:\code\Android\xiaoi-plus` |
 | JDK | `C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot` |
 | Android SDK | `C:\Users\Chatxavier\AppData\Local\Android\Sdk` |
 | `local.properties` | `sdk.dir=C:/Users/Chatxavier/AppData/Local/Android/Sdk` |
@@ -28,7 +28,7 @@ bash scripts/check-layering.sh --strict
 bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 ```
 
-> WSL 也可以直接 `cd /mnt/c/Users/Chatxavier/code/xiaoi-plus` 跑脚本，但 Gradle
+> WSL 也可以直接 `cd /mnt/d/code/Android/xiaoi-plus` 跑脚本，但 Gradle
 > 构建以 Windows 原生为准；`local.properties` 只指向 Windows SDK。
 
 ## 1. 环境要求
@@ -305,7 +305,7 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 
 ## 10. Worktree 与分支
 
-> Windows 主环境：worktree 放 `C:\Users\Chatxavier\code\xiaoi-plus-dev\worktrees\<wp>`
+> Windows 主环境：worktree 放 `D:\code\Android\xiaoi-plus-dev\worktrees\<wp>`
 > （WSL：`~/code/xiaoi-plus-dev/worktrees/<wp>` 或 `/mnt/c/...`）。
 
 ```bash

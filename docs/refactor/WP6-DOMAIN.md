@@ -1,7 +1,7 @@
 # WP6：`:domain` / `:application` 拆分（执行计划）
 
 > 状态：**已完成（2026-11-17）**
-> 基线：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`，`:core` 已完成（WP5）
+> 基线：Windows 原生 `D:\code\Android\xiaoi-plus`，`:core` 已完成（WP5）
 > 日期：2026-11-17
 > 父计划：[LAYERING.md](LAYERING.md) · 前置：[WP5-CORE.md](WP5-CORE.md)
 

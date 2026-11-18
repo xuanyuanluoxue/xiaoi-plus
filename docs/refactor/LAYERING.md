@@ -5,8 +5,8 @@
 > 日期：2026-11-16
 > 相关：[architecture.md](../architecture.md) · [refactor/PLAN.md](PLAN.md) · [agent/PLAN.md](../agent/PLAN.md)
 >
-> **当前环境（2026-11-17 起）**：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`
-> （WSL 视角 `/mnt/c/Users/Chatxavier/code/xiaoi-plus`）。
+> **当前环境（2026-11-17 起）**：Windows 原生 `D:\code\Android\xiaoi-plus`
+> （WSL 视角 `/mnt/d/code/Android/xiaoi-plus`）。
 > 本文命令里的 `bash scripts/...` 在 Windows 用 Git Bash / WSL 执行；
 > Gradle 命令 Windows 用 `gradlew.bat`，Linux/WSL 用 `./gradlew`。
 > **下一阶段继续优化见 [NEXT.md](NEXT.md)。**
@@ -435,7 +435,7 @@ gradlew.bat :app:assembleRelease --offline                         # 构建通�
 ### 11.3 子 Agent 任务书模板
 
 ```text
-仓库：C:\Users\Chatxavier\code\xiaoi-plus（WSL: /mnt/c/Users/Chatxavier/code/xiaoi-plus；worktree: <path>）
+仓库：D:\code\Android\xiaoi-plus（WSL: /mnt/d/code/Android/xiaoi-plus；worktree: <path>）
 只允许修改：<文件白名单>
 禁止修改：<文件黑名单>
 目标：<一句话>

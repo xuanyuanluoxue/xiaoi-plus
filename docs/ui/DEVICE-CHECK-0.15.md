@@ -3,13 +3,13 @@
 > 状态：待设备验收
 > 基线：`main`（`feat/ui-liquid` 已合并；当前 `0.15.0` / versionCode 22）
 > 设备：Android 17 / 1280×2772 / 520dpi
-> 环境：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`；
+> 环境：Windows 原生 `D:\code\Android\xiaoi-plus`；
 > 脚本用 Git Bash / WSL 执行，`adb` 用 Windows platform-tools
 
 ## 0. 安装
 
 ```bash
-cd /c/Users/Chatxavier/code/xiaoi-plus   # Git Bash（Windows 路径）
+cd /d/code/Android/xiaoi-plus   # Git Bash（Windows 路径）
 adb install -r app/build/outputs/apk/release/app-release.apk
 adb shell am start -n plus.xiaoi.module/.MainActivity
 ```
@@ -63,7 +63,7 @@ XIAOI_TOKEN=<token> bash scripts/contract-test.sh --check
 
 ## 5. 记录
 
-截图归档：`C:\Users\Chatxavier\code\xiaoi-plus-dev\xiaoi-plus-ui\review\<YYYY-MM-DD>\`
-报告：`C:\Users\Chatxavier\code\xiaoi-plus-dev\xiaoi-plus-ui\tests\<YYYY-MM-DD>\ui-liquid-acceptance.md`
+截图归档：`D:\code\Android\xiaoi-plus-dev\xiaoi-plus-ui\review\<YYYY-MM-DD>\`
+报告：`D:\code\Android\xiaoi-plus-dev\xiaoi-plus-ui\tests\<YYYY-MM-DD>\ui-liquid-acceptance.md`
 
 未通过项按 P0/P1/P2 分级；P0/P1 修完再合并 `main`。

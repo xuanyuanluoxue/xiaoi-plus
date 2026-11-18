@@ -1,7 +1,7 @@
 # Windows 继续开发指南与下一阶段优化
 
 > 状态：**生效**（2026-11-17 起，Windows 原生主环境）
-> 基线：`main` @ `db1a85f`，架构重构 WP0–WP6 已完成
+> 基线：`main`，架构重构 WP0–WP6 已完成（真实历史，非恢复仓库）
 > 归档 tag：`archive-2026-11-17`（仅快照，项目已恢复开发）
 > 旧归档说明：[../../ARCHIVE.md](../../ARCHIVE.md)
 
@@ -9,8 +9,8 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 | `C:\Users\Chatxavier\code\xiaoi-plus` |
-| WSL 路径 | `/mnt/c/Users/Chatxavier/code/xiaoi-plus` |
+| 仓库 | `D:\code\Android\xiaoi-plus` |
+| WSL 路径 | `/mnt/d/code/Android/xiaoi-plus` |
 | JDK | `C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot` |
 | Android SDK | `C:\Users\Chatxavier\AppData\Local\Android\Sdk` |
 | 模块 | `:domain` / `:application` / `:app` |

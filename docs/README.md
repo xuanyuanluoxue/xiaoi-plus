@@ -1,7 +1,7 @@
 # 文档索引
 
-> **当前环境（2026-11-17 起）**：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`
-> （WSL：`/mnt/c/Users/Chatxavier/code/xiaoi-plus`）。
+> **当前环境（2026-11-17 起）**：Windows 原生 `D:\code\Android\xiaoi-plus`
+> （WSL：`/mnt/d/code/Android/xiaoi-plus`）。
 > `docs/agent/*`、`docs/ui/*-REPORT.md`、`docs/ui/DEVICE-CHECK-*`、`docs/ui/P0-REPORT.md`、
 > `docs/refactor/RECOVERY-*`、`docs/refactor/drafts/*` 等是**历史存档**，
 > 其中 `~/xiaoi-plus-dev`、`/home/chatxavier/...`、`./gradlew`、`./tests/run.sh`

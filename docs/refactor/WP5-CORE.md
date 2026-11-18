@@ -1,7 +1,7 @@
 # WP5：`:core` 物理模块（执行计划）
 
 > 状态：**已完成（2026-11-17）**
-> 基线：Windows 原生仓库 `C:\Users\Chatxavier\code\xiaoi-plus`（WSL 路径 `/mnt/c/...`）
+> 基线：Windows 原生仓库 `D:\code\Android\xiaoi-plus`（WSL 路径 `/mnt/c/...`）
 > 日期：2026-11-17
 > 父计划：[LAYERING.md](LAYERING.md) · 前置：[WP4-UI.md](WP4-UI.md)
 

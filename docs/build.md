@@ -6,7 +6,7 @@
 
 ## 0. 当前主环境（Windows）
 
-- 仓库：`C:\Users\Chatxavier\code\xiaoi-plus`
+- 仓库：`D:\code\Android\xiaoi-plus`
 - JDK 21：`C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot`
 - Android SDK：`C:\Users\Chatxavier\AppData\Local\Android\Sdk`
 - `local.properties`：`sdk.dir=C:/Users/Chatxavier/AppData/Local/Android/Sdk`

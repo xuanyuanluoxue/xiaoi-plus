@@ -271,10 +271,11 @@ App 保存配置后会通知小爱重新拉取（不再有 `/config` HTTP 推送
 
 0.14 起用 Gradle wrapper 构建，不再用 `build.sh`（`build.sh` 只覆盖 ≤0.13 的纯 Java 构建）。
 
-**当前主开发环境是 Windows 原生**：`C:\Users\Chatxavier\code\xiaoi-plus`；
-WSL 通过 `/mnt/c/Users/Chatxavier/code/xiaoi-plus` 访问同一份源码跑脚本/单测。
-原 WSL 仓库在 2026-11-17 被异常清空，恢复记录见
-[docs/refactor/RECOVERY-2026-11-17.md](docs/refactor/RECOVERY-2026-11-17.md)。
+**当前主开发环境是 Windows 原生**：`D:\code\Android\xiaoi-plus`；
+WSL 通过 `/mnt/d/code/Android/xiaoi-plus` 访问同一份源码跑脚本/单测。
+原 WSL 仓库在 2026-11-17 被异常清空，但原始历史（v0.15.0 及 WP0–WP3）在
+`D:\code\Android\xiaoi-plus` 中完整保留，WP4–WP6 已重放到该历史上；
+恢复记录见 [docs/refactor/RECOVERY-2026-11-17.md](docs/refactor/RECOVERY-2026-11-17.md)。
 
 环境：
 

@@ -2,7 +2,7 @@
 
 > 状态：**归档快照（2026-11-17）；项目已恢复开发**
 > 版本：`0.15.0`（versionCode 22）
-> 主环境：Windows 原生 `C:\Users\Chatxavier\code\xiaoi-plus`
+> 主环境：Windows 原生 `D:\code\Android\xiaoi-plus`
 > 归档 tag：`archive-2026-11-17`（仅快照，不是正式 Release）
 > 后续开发：[docs/refactor/NEXT.md](docs/refactor/NEXT.md)
 
@@ -48,8 +48,9 @@ LSPosed 模块 + 设置 App：把小米超级小爱的请求重定向到自己�
 
 1. **真机 P0 未跑完**：WP1–WP6 的权限矩阵、D2 TTL、8770 启停、配置导入、
    watcher、8771 LAN/leader、控制面端口上报仍需真机验收。
-2. **git 历史丢失**：原 WSL 仓库 2026-11-17 被异常清空；当前是恢复基线 +
-   WP5/WP6 提交，早期 commit/reflog/remote 不完整。详见
+2. ~~git 历史丢失~~ **已解决（2026-11-18）**：原 WSL 仓库 2026-11-17 被异常清空，
+   但原仓库副本 `D:\code\Android\xiaoi-plus` 保留了完整的 v0.15.0 历史、
+   WP0–WP3 提交、分支与 remote。WP4–WP6 与文档迁移已重放到真实历史上。详见
    [docs/refactor/RECOVERY-2026-11-17.md](docs/refactor/RECOVERY-2026-11-17.md)。
 3. 既有产品限制仍有效：输出前缀（markerTemplate）未单点注入；
    官方调用量统计在真机未触发；部分 UI 仍硬编码中文；旧 `ConfigActivity` 保留为过渡入口。
@@ -80,6 +81,7 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 
 ## 7. 如何恢复开发
 
-1. 网络可用时恢复远端历史并推送当前 `main`。
+1. `main` 已建立在真实历史之上（`D:\code\Android\xiaoi-plus`）；
+   网络可用时把 `main` 推送到 `origin`（remote URL 目前是 gitclone 镜像，需要先修正）。
 2. 真机安装归档 APK，按 `docs/refactor/LAYERING.md` 各 WP 的 P0 清单验收。
 3. 若要发正式版：先跑 45 项契约与真机 P0，再按 `docs/release.md` 定版本/tag/签名。
