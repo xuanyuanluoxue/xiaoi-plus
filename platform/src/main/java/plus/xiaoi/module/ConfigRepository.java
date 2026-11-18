@@ -213,6 +213,7 @@ public final class ConfigRepository implements ConfigGateway {
                     .putBoolean(Config.KEY_BRIDGE, c.mcpEnabled)
                     .putBoolean(Config.KEY_MCP_LAN, c.mcpLan)
                     .putBoolean(Config.KEY_MCP_NO_AUTH, c.mcpNoAuth)
+                    .putBoolean(Config.KEY_MCP_WEAK_TOKEN, c.mcpWeakToken)
                     .putString(Config.KEY_TOKEN, c.mcpToken)
                     .putLong(Config.KEY_CFG_REV, c.rev)
                     .commit();

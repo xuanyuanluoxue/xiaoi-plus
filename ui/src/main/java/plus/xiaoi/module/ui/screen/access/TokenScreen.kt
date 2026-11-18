@@ -44,6 +44,7 @@ import plus.xiaoi.module.ui.components.XiaoiIconTone
 import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
+import plus.xiaoi.module.ui.components.XiaoiTextField
 import plus.xiaoi.module.ui.components.XiaoiTextButton
 import plus.xiaoi.module.ui.components.XiaoiTone
 import plus.xiaoi.module.ui.components.XiaoiValueRow
@@ -51,6 +52,7 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Lock
 import top.yukonga.miuix.kmp.icon.extended.Unlock
 import top.yukonga.miuix.kmp.icon.extended.WorldClock
 import java.security.SecureRandom
@@ -80,6 +82,7 @@ fun TokenScreen(
     var mcpLanDraft by remember { mutableStateOf<Boolean?>(null) }
     var agentLanDraft by remember { mutableStateOf<Boolean?>(null) }
     var noAuthDraft by remember { mutableStateOf<Boolean?>(null) }
+    var weakDraft by remember { mutableStateOf<Boolean?>(null) }
     var revealed by remember { mutableStateOf(false) }
     var rotateDialog by remember { mutableStateOf(false) }
     var noAuthDialog by remember { mutableStateOf(false) }
@@ -107,12 +110,14 @@ fun TokenScreen(
     val mcpLan = mcpLanDraft ?: cfg?.mcpLan ?: false
     val agentLan = agentLanDraft ?: cfg?.agentLan ?: false
     val noAuth = noAuthDraft ?: cfg?.mcpNoAuth ?: false
+    val weak = weakDraft ?: cfg?.mcpWeakToken ?: false
     val mcpEnabled = cfg?.mcpEnabled == true
     val writable = cfg != null && !facts.readOnly && !facts.skeleton
     val dirty = tokenDraft != null ||
         (mcpLanDraft != null && mcpLanDraft != cfg?.mcpLan) ||
         (agentLanDraft != null && agentLanDraft != cfg?.agentLan) ||
-        (noAuthDraft != null && noAuthDraft != cfg?.mcpNoAuth)
+        (noAuthDraft != null && noAuthDraft != cfg?.mcpNoAuth) ||
+        (weakDraft != null && weakDraft != cfg?.mcpWeakToken)
 
     fun copyToken() {
         if (token.isEmpty()) {
@@ -146,6 +151,7 @@ fun TokenScreen(
                     fresh.mcpLan = mcpLan
                     fresh.agentLan = agentLan
                     fresh.mcpNoAuth = noAuth
+                    fresh.mcpWeakToken = weak
                     val saved = configGateway.saveIfRev(fresh, fresh.rev)
                     when {
                         saved.conflict() -> throw IllegalStateException("配置已被其他页面修改，请重试")
@@ -161,6 +167,7 @@ fun TokenScreen(
                 mcpLanDraft = null
                 agentLanDraft = null
                 noAuthDraft = null
+                weakDraft = null
                 loaded.reload()
                 onMessage("已保存：设备操作接口会重连，小爱任务接口等待小爱重新加载")
             }.onFailure {
@@ -209,6 +216,18 @@ fun TokenScreen(
                         },
                     )
                 }
+                Spacer(Modifier.height(6.dp))
+                XiaoiTextField(
+                    value = token,
+                    onValueChange = { raw ->
+                        val v = raw.trim()
+                        tokenDraft = if (v == baseToken) null else v
+                    },
+                    label = "令牌 / 密码",
+                    placeholder = "自定义密码或 32 位十六进制；留空 = 拒绝所有请求",
+                    isSecret = true,
+                    enabled = writable,
+                )
                 Spacer(Modifier.height(4.dp))
                 Row(
                     Modifier
@@ -250,8 +269,8 @@ fun TokenScreen(
             XiaoiGroupHeader("本机免鉴权（可选）")
             XiaoiPreferenceCard {
                 XiaoiSwitchRow(
-                    title = "允许本机免令牌调用",
-                    subtitle = "仅 127.0.0.1 / adb forward 跳过 Bearer；局域网仍需令牌",
+                    title = "允许免令牌调用",
+                    subtitle = "本机与局域网都不校验 Bearer；打开后同一 Wi-Fi 的任何设备都能调用",
                     checked = noAuth,
                     enabled = writable,
                     onCheckedChange = { on ->
@@ -262,8 +281,30 @@ fun TokenScreen(
                 )
                 if (noAuth) {
                     Text(
-                        "已开启：本机任何应用都能无令牌调用 8771（/health、/mcp、/logs、/stats、/cli）。" +
-                            "局域网来源仍要求令牌。",
+                        "已开启：本机与局域网都能无令牌调用 8771/8770。" +
+                            "仅用于临时联调，测完请关闭。",
+                        color = colors.warning,
+                        style = XiaoiTheme.typography.caption,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
+            XiaoiGroupHeader("密码强度")
+            XiaoiPreferenceCard {
+                XiaoiSwitchRow(
+                    title = "允许弱密码用于局域网",
+                    subtitle = "任意非空密码都可以当令牌；默认只接受 32 位十六进制",
+                    checked = weak,
+                    enabled = writable,
+                    onCheckedChange = { weakDraft = it },
+                    icon = MiuixIcons.Lock,
+                    iconTone = XiaoiIconTone.WARNING,
+                )
+                if (weak) {
+                    Text(
+                        "已允许弱密码：局域网只要密码非空就能绑定 0.0.0.0，" +
+                            "建议只在临时联调时打开。",
                         color = colors.warning,
                         style = XiaoiTheme.typography.caption,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -287,7 +328,7 @@ fun TokenScreen(
                     )
                     XiaoiValueRow(
                         "保存后将监听",
-                        effectiveBindText(mcpLan, mcpEnabled, token, isAgent = false),
+                        effectiveBindText(mcpLan, mcpEnabled, token, isAgent = false, noAuth = noAuth, weak = weak),
                         mono = true,
                     )
                 }
@@ -305,16 +346,17 @@ fun TokenScreen(
                     )
                     XiaoiValueRow(
                         "保存后将监听",
-                        effectiveBindText(agentLan, mcpEnabled, token, isAgent = true),
+                        effectiveBindText(agentLan, mcpEnabled, token, isAgent = true, noAuth = noAuth, weak = weak),
                         mono = true,
                     )
                 }
                 if (strength == IssueResolver.TokenStrength.WEAK &&
-                    (mcpLan || agentLan)
+                    (mcpLan || agentLan) && !weak && !noAuth
                 ) {
                     XiaoiCard {
                         Text(
-                            "令牌不足 32 位：局域网请求已回退仅本机（保存后仍按回退执行）。",
+                            "令牌不足 32 位：局域网请求已回退仅本机（保存后仍按回退执行）。" +
+                                "联调时可打开「允许弱密码」或「免鉴权」。",
                             color = colors.warning,
                             style = XiaoiTheme.typography.caption,
                         )
@@ -356,7 +398,13 @@ fun TokenScreen(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "局域网必须使用 32 位十六进制令牌；不足 32 位会自动回退仅本机。",
+                    if (noAuth) {
+                        "已开免鉴权：局域网设备无需令牌即可调用。"
+                    } else if (weak) {
+                        "已允许弱密码：局域网只要密码非空即可访问，建议只在联调时使用。"
+                    } else {
+                        "局域网必须使用 32 位十六进制令牌；不足 32 位会自动回退仅本机。"
+                    },
                     color = colors.textSecondary,
                     style = XiaoiTheme.typography.body,
                 )
@@ -378,6 +426,7 @@ fun TokenScreen(
                 mcpLanDraft = null
                 agentLanDraft = null
                 noAuthDraft = null
+                weakDraft = null
                 revealed = false
                 onMessage("已放弃修改")
             },
@@ -402,12 +451,12 @@ fun TokenScreen(
     XiaoiConfirmDialog(
         show = noAuthDialog,
         title = "允许本机免令牌调用？",
-        message = "开启后，手机上的任何应用（以及 adb forward）都能不带令牌调用 8771 的" +
-            "全部能力：读配置、读日志、切换模型、让小爱执行任务。\n" +
-            "局域网来源仍要求令牌，但本机应用不再受保护。",
+        message = "开启后，本机与**同一 Wi-Fi 下的所有设备**都能不带令牌调用 8771/8770：" +
+            "读配置、读日志、切换模型、让小爱执行任务、执行设备动作。\n" +
+            "只建议在临时联调时打开，测完立即关闭。",
         confirmText = "开启",
         danger = true,
-        secondaryNote = "只影响 127.0.0.1；可随时关闭。",
+        secondaryNote = "打开后仍可用「允许局域网访问」控制是否监听 0.0.0.0；可随时关闭。",
         onConfirm = {
             noAuthDialog = false
             noAuthDraft = true
@@ -427,8 +476,9 @@ fun TokenScreen(
                 append("同一 Wi-Fi 下的设备都能访问 MCP 接口。\n")
             }
             append("公共 Wi-Fi / 公司网络建议保持关闭。\n")
-            if (!BridgePolicy.tokenStrongEnoughForLan(token)) {
-                append("当前令牌不足 32 位：开启后实际会回退仅本机。")
+            if (!noAuth && !weak && !BridgePolicy.tokenStrongEnoughForLan(token)) {
+                append("当前令牌不足 32 位：开启后实际会回退仅本机。\n")
+                append("联调可先打开「允许弱密码」或「免鉴权」。")
             }
         },
         confirmText = "仍然开启",
@@ -446,15 +496,24 @@ fun TokenScreen(
     )
 }
 
-private fun effectiveBindText(requested: Boolean, mcpEnabled: Boolean, token: String, isAgent: Boolean): String {
+private fun effectiveBindText(
+    requested: Boolean,
+    mcpEnabled: Boolean,
+    token: String,
+    isAgent: Boolean,
+    noAuth: Boolean,
+    weak: Boolean,
+): String {
     if (!requested) return "127.0.0.1（仅本机）"
     if (!mcpEnabled) return "127.0.0.1（MCP 未开启）"
+    if (noAuth) return "0.0.0.0（免鉴权，局域网无需令牌）"
     val strong = BridgePolicy.tokenStrongEnoughForLan(token)
-    if (!strong) return "127.0.0.1（令牌不足，回退仅本机）"
+    if (token.isBlank()) return "127.0.0.1（未设密码，回退仅本机）"
+    if (!strong && !weak) return "127.0.0.1（密码不足 32 位，回退仅本机）"
     return if (isAgent) {
-        AgentLanPolicy.bindHost(true, token)
+        AgentLanPolicy.bindHost(true, token, weak, noAuth)
     } else {
-        BridgePolicy.bindHost(true, mcpEnabled, token)
+        BridgePolicy.bindHost(true, mcpEnabled, token, noAuth, weak)
     }
 }
 

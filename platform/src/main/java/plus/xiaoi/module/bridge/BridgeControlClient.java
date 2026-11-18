@@ -372,12 +372,13 @@ public final class BridgeControlClient {
             AppConfig ac = ConfigCodec.fromJson(json);
             Config c = Config.create(ac.baseUrl(), ac.apiKey(), ac.model(), ac.marker,
                     ac.mcpEnabled, ac.mcpToken, ac.markerTemplate, ac.enabled, ac.mcpLan,
-                    ac.rev, ac.mcpNoAuth);
+                    ac.rev, ac.mcpNoAuth, ac.mcpWeakToken);
             LogSettings.setWire(ac.logLevel);
             Logs.setLevel(LogSettings.get());
             host.onConfigReload(c);
             host.updateAccess(c.lan(), c.bridge());
             host.updateNoAuth(c.noAuth());
+            host.updateWeakToken(c.weakToken());
             sAppliedHash = hash;
             Logs.i("控制面已应用配置 model=" + c.model()
                     + " enabled=" + c.enabled()

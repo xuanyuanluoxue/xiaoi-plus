@@ -39,18 +39,17 @@ import plus.xiaoi.module.core.BridgePolicy;
         T.eq("lan 但 token 为 null → loopback", "127.0.0.1",
                 BridgePolicy.bindHost(true, true, null));
 
-        // 免鉴权（noAuth）：只让本机回环免 token，不放宽局域网
-        T.ok("开启 + 空 token + noAuth → 仍监听", BridgePolicy.shouldListen(true, "", true));
-        T.ok("开启 + 空 token 且 noAuth=false → 不监听", !BridgePolicy.shouldListen(true, "", false));
-        T.ok("关闭 + noAuth → 不监听", !BridgePolicy.shouldListen(false, "", true));
-        T.eq("lan + noAuth 但无 token → 仍 loopback", "127.0.0.1",
-                BridgePolicy.bindHost(true, true, "", true));
-        T.eq("lan + noAuth + 强 token → 仍可 0.0.0.0（但 LAN 要令牌）", "0.0.0.0",
-                BridgePolicy.bindHost(true, true, "0123456789abcdef0123456789abcdef", true));
-        T.ok("allowsAnonymous 仅 loopback",
-                BridgePolicy.allowsAnonymous(true, true)
-                        && !BridgePolicy.allowsAnonymous(true, false)
-                        && !BridgePolicy.allowsAnonymous(false, true));
+        // 免鉴权 / 弱密码：默认关闭；打开后本机与局域网都放行
+        T.ok("allowsAnonymous 只由开关决定（本机 + 局域网）",
+                BridgePolicy.allowsAnonymous(true) && !BridgePolicy.allowsAnonymous(false));
+        T.eq("免鉴权：lan + 无 token → 0.0.0.0", "0.0.0.0",
+                BridgePolicy.bindHost(true, true, "", true, false));
+        T.eq("弱密码：lan + 短 token + weak → 0.0.0.0", "0.0.0.0",
+                BridgePolicy.bindHost(true, true, "test1234", false, true));
+        T.eq("弱密码：lan + 短 token 未开 weak → loopback", "127.0.0.1",
+                BridgePolicy.bindHost(true, true, "test1234", false, false));
+        T.eq("弱密码：lan + 空 token + weak → loopback（仍需密码或免鉴权）", "127.0.0.1",
+                BridgePolicy.bindHost(true, true, "", false, true));
         T.ok("token 为 null 且 noAuth 也可监听", BridgePolicy.shouldListen(true, null, true));
         T.eq("关闭 + 非 lan → loopback", "127.0.0.1",
                 BridgePolicy.bindHost(false, false, ""));

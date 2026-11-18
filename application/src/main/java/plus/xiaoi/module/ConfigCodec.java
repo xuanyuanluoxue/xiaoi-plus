@@ -59,6 +59,7 @@ public final class ConfigCodec {
             c.agentLan = Json.optBoolean(mcp, "agentLan", false);
             // 旧文件没有 noAuth：默认 false（仍要求 token）。
             c.mcpNoAuth = Json.optBoolean(mcp, "noAuth", false);
+            c.mcpWeakToken = Json.optBoolean(mcp, "weakToken", false);
             c.mcpToken = Json.optString(mcp, "token", "");
         }
 
@@ -192,6 +193,7 @@ public final class ConfigCodec {
         mcp.put("lan", c.mcpLan);
         mcp.put("agentLan", c.agentLan);
         mcp.put("noAuth", c.mcpNoAuth);
+        mcp.put("weakToken", c.mcpWeakToken);
         mcp.put("token", c.mcpToken == null ? "" : c.mcpToken);
         o.put("mcp", mcp);
 

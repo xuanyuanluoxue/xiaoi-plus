@@ -347,7 +347,7 @@ public final class McpTest {
         eq("xiaoai_config",
                 "{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"{\\\"model\\\":\\\"deepseek-chat\\\",\\\"baseUrl\\\":\\\"https://api.deepseek.com/v1\\\","
-                        + "\\\"enabled\\\":true,\\\"marker\\\":true,\\\"markerTemplate\\\":\\\"\\\",\\\"bridge\\\":true,\\\"lan\\\":false,\\\"noAuth\\\":false,\\\"apiKeySet\\\":true,\\\"tokenSet\\\":true,"
+                        + "\\\"enabled\\\":true,\\\"marker\\\":true,\\\"markerTemplate\\\":\\\"\\\",\\\"bridge\\\":true,\\\"lan\\\":false,\\\"noAuth\\\":false,\\\"weakToken\\\":false,\\\"apiKeySet\\\":true,\\\"tokenSet\\\":true,"
                         + "\\\"port\\\":8771,\\\"version\\\":\\\"9.9.9\\\"}\"}],\"isError\":false}}",
                 call(hs, 5, "xiaoai_config", null));
 

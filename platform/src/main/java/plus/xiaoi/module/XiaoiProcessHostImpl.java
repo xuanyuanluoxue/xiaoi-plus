@@ -51,6 +51,11 @@ public final class XiaoiProcessHostImpl implements XiaoiProcessHost {
     }
 
     @Override
+    public void updateWeakToken(boolean weakToken) {
+        Bridge.updateWeakToken(weakToken);
+    }
+
+    @Override
     public void showIsland(String text, boolean force) {
         Island.show(text, force);
     }

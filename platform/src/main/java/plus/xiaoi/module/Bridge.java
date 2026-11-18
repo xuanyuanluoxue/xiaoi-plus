@@ -83,6 +83,8 @@ public final class Bridge {
     private static volatile boolean sBridge;
     /** 本机回环免鉴权（可选）；局域网仍要求 token。 */
     private static volatile boolean sNoAuth;
+    /** 允许任意非空密码用于 LAN。 */
+    private static volatile boolean sWeakToken;
     /** WP2：进程宿主（BridgeControlClient / remote writeConfig 只通过它回调）。 */
     private static volatile XiaoiProcessHost sHost;
     /** 当前 socket 实际绑定的模式：true = 0.0.0.0，false = 127.0.0.1。 */
@@ -122,7 +124,7 @@ public final class Bridge {
             Config c = Config.current();
             return new Mcp.Snapshot(c.baseUrl(), c.apiKey(), c.model(),
                     c.marker(), c.bridge(), c.token(), c.markerTemplate(), c.enabledFlag(),
-                    c.lan(), c.noAuth());
+                    c.lan(), c.noAuth(), c.weakToken());
         }
 
         @Override
@@ -132,7 +134,7 @@ public final class Bridge {
             Config cur = Config.current();
             Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker,
                     cur.bridge(), cur.token(), n.markerTemplate, n.enabled, cur.lan(),
-                    cur.cfgRev(), cur.noAuth());
+                    cur.cfgRev(), cur.noAuth(), cur.weakToken());
             XiaoiProcessHost host = sHost;
             if (host == null) return false;
             if (!writeTargetPrefs(c)) return false;
@@ -140,6 +142,7 @@ public final class Bridge {
             host.onConfigReload(c);
             updateAccess(cur.lan(), cur.bridge());
             updateNoAuth(cur.noAuth());
+            updateWeakToken(cur.weakToken());
             return true;
         }
 
@@ -316,6 +319,7 @@ public final class Bridge {
                 sLan = config.lan();
                 sBridge = config.bridge();
                 sNoAuth = config.noAuth();
+                sWeakToken = config.weakToken();
             }
             startControlPlane();
             BridgeLifecycle.start(appContext(), RUNTIME);
@@ -323,6 +327,7 @@ public final class Bridge {
                     + " process=" + processName()
                     + " mcp=" + sBridge
                     + " noAuth=" + sNoAuth
+                    + " weakToken=" + sWeakToken
                     + " hasToken=" + (sToken.length() > 0)
                     + " shouldListen=" + BridgePolicy.shouldListen(sBridge, sToken, sNoAuth)
                     + " leader=" + BridgeLifecycle.isLeader()
@@ -385,7 +390,7 @@ public final class Bridge {
 
     /** 当前配置下是否应绑 0.0.0.0（LAN 且 token 为 32 hex）。 */
     public static boolean bindsLan() {
-        return "0.0.0.0".equals(BridgePolicy.bindHost(sLan, sBridge, sToken, sNoAuth));
+        return "0.0.0.0".equals(BridgePolicy.bindHost(sLan, sBridge, sToken, sNoAuth, sWeakToken));
     }
 
     /** 当前 socket 是否真的绑在 0.0.0.0（弱 token 回退 loopback 时为 false）。 */
@@ -410,6 +415,7 @@ public final class Bridge {
             sLan = c.lan();
             sBridge = c.bridge();
             sNoAuth = c.noAuth();
+            sWeakToken = c.weakToken();
         } catch (Throwable ignored) {
         }
     }
@@ -643,7 +649,7 @@ public final class Bridge {
         }
         synchronized (LOCK) {
             if (sStarted) return true;
-            final String host = BridgePolicy.bindHost(sLan, sBridge, sToken, sNoAuth);
+            final String host = BridgePolicy.bindHost(sLan, sBridge, sToken, sNoAuth, sWeakToken);
             final boolean lan = "0.0.0.0".equals(host);
             if (sLan && !lan) {
                 // 只说明策略，不输出 token 内容。
@@ -963,7 +969,7 @@ public final class Bridge {
      */
     private static boolean authorized(Socket s, Map<String, String> headers) {
         try {
-            if (BridgePolicy.allowsAnonymous(sNoAuth, isLoopback(s))) return true;
+            if (BridgePolicy.allowsAnonymous(sNoAuth)) return true;
             String token = sToken;
             if (token == null || token.length() == 0) return false;
             return Http.bearerMatchesAny(headers, token);
@@ -972,9 +978,15 @@ public final class Bridge {
         }
     }
 
-    /** 配置热更新后同步「本机免鉴权」开关。 */
+    /** 配置热更新后同步「免鉴权」开关。 */
     public static void updateNoAuth(boolean noAuth) {
         sNoAuth = noAuth;
+        BridgeLifecycle.apply(RUNTIME);
+    }
+
+    /** 配置热更新后同步「允许弱密码」开关。 */
+    public static void updateWeakToken(boolean weakToken) {
+        sWeakToken = weakToken;
         BridgeLifecycle.apply(RUNTIME);
     }
 

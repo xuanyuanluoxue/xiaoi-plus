@@ -81,6 +81,13 @@ public final class AppConfig {
      * `/health`、`/mcp`、`/logs`、`/stats`、`/cli` 均可无 token 调用。</p>
      */
     public boolean mcpNoAuth;
+    /**
+     * true = 允许把任意非空「密码」当局域网令牌用（不要求 32 位十六进制）。
+     *
+     * <p>默认 false：LAN 仍要求 32 hex。打开后可用 `test1234` 这类弱密码做
+     * Bearer 鉴权，便于临时联调；风险由用户自担（见 docs/security.md）。</p>
+     */
+    public boolean mcpWeakToken;
     public String mcpToken = "";
     public String activeProviderId = "";
     public String activeModelId = "";

@@ -12,7 +12,7 @@ public final class ConfigCodecTest {
             "{\"version\":3,\"rev\":1,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
             + "\"logLevel\":\"standard\","
             + "\"activeProviderId\":\"crazyai\",\"activeModelId\":\"your-model\","
-            + "\"mcp\":{\"enabled\":true,\"lan\":false,\"agentLan\":false,\"noAuth\":false,\"token\":\"tok-123\"},"
+            + "\"mcp\":{\"enabled\":true,\"lan\":false,\"agentLan\":false,\"noAuth\":false,\"weakToken\":false,\"token\":\"tok-123\"},"
             + "\"providers\":[{\"id\":\"crazyai\",\"name\":\"CrashMail\","
             + "\"baseUrl\":\"https://api.example.com/v1\",\"apiKey\":\"sk-abc\","
             + "\"models\":[{\"id\":\"your-model\",\"name\":\"GLM\"},"
@@ -110,7 +110,7 @@ public final class ConfigCodecTest {
         eq("lan 解析", true, lanOk.mcpLan);
         eq("暂停但局域网有 token 合法", null, ConfigCodec.validate(lanOk));
         String lanOut = ConfigCodec.toJson(lanOk);
-        ok("lan 写回", lanOut.contains("\"mcp\":{\"enabled\":true,\"lan\":true,\"agentLan\":false,\"noAuth\":false,\"token\":\"tok\"}"));
+        ok("lan 写回", lanOut.contains("\"mcp\":{\"enabled\":true,\"lan\":true,\"agentLan\":false,\"noAuth\":false,\"weakToken\":false,\"token\":\"tok\"}"));
         AppConfig lanNoToken = ConfigCodec.fromJson(
                 "{\"enabled\":false,\"mcp\":{\"enabled\":true,\"lan\":true,\"token\":\"\"}}");
         eq("局域网无 token 被拒",

@@ -107,8 +107,10 @@ public final class Mcp {
         public final boolean bridge;
         /** true = 允许同一局域网访问能力桥（仍要求非空 token）。 */
         public final boolean lan;
-        /** true = 本机回环免鉴权（可选）；局域网仍要求 token。 */
+        /** true = 免鉴权（可选）；本机与局域网都跳过 Bearer。 */
         public final boolean noAuth;
+        /** true = 允许任意非空密码用于局域网（不要求 32 hex）。 */
+        public final boolean weakToken;
         public final String token;
 
         public Snapshot(String baseUrl, String apiKey, String model, boolean marker,
@@ -135,6 +137,12 @@ public final class Mcp {
         public Snapshot(String baseUrl, String apiKey, String model, boolean marker,
                         boolean bridge, String token, String markerTemplate, boolean enabled,
                         boolean lan, boolean noAuth) {
+            this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, noAuth, false);
+        }
+
+        public Snapshot(String baseUrl, String apiKey, String model, boolean marker,
+                        boolean bridge, String token, String markerTemplate, boolean enabled,
+                        boolean lan, boolean noAuth, boolean weakToken) {
             this.baseUrl = baseUrl == null ? "" : baseUrl;
             this.apiKey = apiKey == null ? "" : apiKey;
             this.model = model == null ? "" : model;
@@ -144,6 +152,7 @@ public final class Mcp {
             this.bridge = bridge;
             this.lan = lan;
             this.noAuth = noAuth;
+            this.weakToken = weakToken;
             this.token = token == null ? "" : token;
         }
     }
@@ -519,6 +528,7 @@ public final class Mcp {
                 r.put("bridge", c.bridge);
                 r.put("lan", c.lan);
                 r.put("noAuth", c.noAuth);
+                r.put("weakToken", c.weakToken);
                 r.put("apiKeySet", c.apiKey.length() > 0);
                 r.put("tokenSet", c.token.length() > 0);
                 r.put("port", (long) hosts.runtime.port());
@@ -538,7 +548,8 @@ public final class Mcp {
                     return toolText("missing argument: baseUrl（当前没有可用端点，请在手机 App 设置）", true);
                 }
                 Snapshot next = new Snapshot(cur.baseUrl, cur.apiKey, model, marker,
-                        cur.bridge, cur.token, cur.markerTemplate, cur.enabled, cur.lan, cur.noAuth);
+                        cur.bridge, cur.token, cur.markerTemplate, cur.enabled, cur.lan, cur.noAuth,
+                        cur.weakToken);
                 if (!hosts.config.writeConfig(next)) return toolText("write prefs failed", true);
                 Map<String, Object> r = Json.obj();
                 r.put("ok", true);

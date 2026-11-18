@@ -189,17 +189,17 @@ public final class AgentService extends Service {
         AppConfig c = ConfigRepository.get(this).load();
         LogSettings.setWire(c.logLevel);
         String token = c.mcpToken == null ? "" : c.mcpToken.trim();
-        if (!c.mcpEnabled || token.length() == 0) {
-            Logs.i("AgentService: MCP 未启用或 token 为空，停止 8770");
+        if (!c.mcpEnabled || (token.length() == 0 && !c.mcpNoAuth)) {
+            Logs.i("AgentService: MCP 未启用或既无 token 也未开免鉴权，停止 8770");
             AgentRuntimeStatus.setStopped();
             ActivityHub.info(ActivityFeed.Domain.AGENT,
-                    "8770 未启动（MCP 关闭或令牌为空）");
+                    "8770 未启动（MCP 关闭或既无令牌也未开免鉴权）");
             stopSelf();
             return;
         }
 
         AgentHttpServer current = server;
-        boolean lanEffective = AgentLanPolicy.lanEffective(c.agentLan, token);
+        boolean lanEffective = AgentLanPolicy.lanEffective(c.agentLan, token, c.mcpWeakToken, c.mcpNoAuth);
         if (current != null && current.isRunning() && token.equals(runningToken)
                 && current.isLan() == lanEffective) {
             updateNotification(runningText(c.agentLan, current));
@@ -231,7 +231,8 @@ public final class AgentService extends Service {
         AgentHttpServer next = new AgentHttpServer(token,
                 new AgentMcp(versionName(), confirmations, idempotencyStore, audit,
                         new AndroidNotifyHost(this, token),
-                        new BridgeAskHost(token)), registry, c.agentLan);
+                        new BridgeAskHost(token)), registry, c.agentLan,
+                c.mcpNoAuth, c.mcpWeakToken);
         String err = next.start();
         if (err.length() > 0) {
             Logs.e("AgentService: " + err);

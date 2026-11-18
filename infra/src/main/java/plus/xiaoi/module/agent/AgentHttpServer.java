@@ -14,6 +14,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import plus.xiaoi.module.Http;
+import plus.xiaoi.module.core.BridgePolicy;
 
 /**
  * App 进程内的 Agent HTTP 端点（纯 JVM）。
@@ -48,6 +49,10 @@ public final class AgentHttpServer {
     private final ActionRegistry registry;
     /** 配置请求的局域网开关；实际是否监听 0.0.0.0 由 AgentLanPolicy 决定。 */
     private final boolean lan;
+    /** 免鉴权（可选）：打开后本机与局域网都不校验 Bearer。 */
+    private final boolean noAuth;
+    /** 允许任意非空密码用于局域网。 */
+    private final boolean weakToken;
 
     private volatile boolean running;
     private volatile String lastError = "";
@@ -64,10 +69,17 @@ public final class AgentHttpServer {
     }
 
     public AgentHttpServer(String token, AgentMcp mcp, ActionRegistry registry, boolean lan) {
+        this(token, mcp, registry, lan, false, false);
+    }
+
+    public AgentHttpServer(String token, AgentMcp mcp, ActionRegistry registry, boolean lan,
+                           boolean noAuth, boolean weakToken) {
         this.token = token == null ? "" : token.trim();
         this.mcp = mcp;
         this.registry = registry;
         this.lan = lan;
+        this.noAuth = noAuth;
+        this.weakToken = weakToken;
     }
 
     public int port() {
@@ -103,8 +115,8 @@ public final class AgentHttpServer {
      */
     public synchronized String start() {
         if (running) return "";
-        if (token.length() == 0) {
-            lastError = "mcpToken 为空，拒绝启动 8770";
+        if (token.length() == 0 && !noAuth) {
+            lastError = "mcpToken 为空且未开免鉴权，拒绝启动 8770";
             return lastError;
         }
         if (mcp == null || registry == null) {
@@ -113,8 +125,8 @@ public final class AgentHttpServer {
         }
 
         ServerSocket ss = null;
-        String host = AgentLanPolicy.bindHost(lan, token);
-        String fallback = AgentLanPolicy.fallbackReason(lan, token);
+        String host = AgentLanPolicy.bindHost(lan, token, weakToken, noAuth);
+        String fallback = AgentLanPolicy.fallbackReason(lan, token, weakToken, noAuth);
         try {
             String bindFailure = "";
             for (int candidate = PORT_MIN; candidate <= PORT_MAX; candidate++) {
@@ -299,6 +311,7 @@ public final class AgentHttpServer {
 
     private boolean authorized(Http.Req req) {
         try {
+            if (BridgePolicy.allowsAnonymous(noAuth)) return true;
             return token.length() > 0 && Http.bearerMatchesAny(req.headers, token);
         } catch (Throwable t) {
             return false;

@@ -38,18 +38,29 @@ public final class BridgePolicy {
     }
 
     public static String bindHost(boolean lan, boolean mcpEnabled, String token, boolean noAuth) {
-        return lan && shouldListen(mcpEnabled, token, noAuth) && tokenStrongEnoughForLan(token)
-                ? "0.0.0.0" : "127.0.0.1";
+        return bindHost(lan, mcpEnabled, token, noAuth, false);
+    }
+
+    /**
+     * @param weakToken 允许任意非空密码用于 LAN（不要求 32 hex）
+     * @param noAuth    免鉴权；打开后即使没有 token 也可绑 0.0.0.0
+     */
+    public static String bindHost(boolean lan, boolean mcpEnabled, String token,
+                                  boolean noAuth, boolean weakToken) {
+        if (!lan || !mcpEnabled) return "127.0.0.1";
+        boolean hasToken = normalize(token).length() > 0;
+        boolean tokenOk = hasToken && (tokenStrongEnoughForLan(token) || weakToken);
+        return (tokenOk || noAuth) ? "0.0.0.0" : "127.0.0.1";
     }
 
     /**
      * 本次请求是否可跳过 Bearer 校验。
      *
-     * <p>只有「用户显式开了免鉴权」且「来源是本机回环」时才成立；
-     * 局域网来源永远要求 token。</p>
+     * <p>用户显式打开「免鉴权」后，本机与局域网来源都跳过；默认关闭。
+     * 这是测试便利选项，代价见 docs/security.md §3.1。</p>
      */
-    public static boolean allowsAnonymous(boolean noAuth, boolean loopback) {
-        return noAuth && loopback;
+    public static boolean allowsAnonymous(boolean noAuth) {
+        return noAuth;
     }
 
     /** token 是否强到可以开放局域网（恰好 32 个十六进制字符）。 */
