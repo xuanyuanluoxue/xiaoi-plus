@@ -230,11 +230,11 @@ bash scripts/ui-screenshot.sh --route Home --review
 
 ---
 
-### WP10：新建 `:platform`（Android 适配器）
+### WP10：新建 `:platform`（Android 适配器）—— ✅ 已完成（2026-11-18）
 
 **目标**：38 个适配器文件离开 `:app`；`:app` 只剩清单/资源/入口。
 
-**前置**：`xposedStubJar` 任务从 `app/build.gradle.kts` 上移到**根 `build.gradle.kts`**，供 `:platform`（`XSharedPreferences`）与 `:app`（`Hook`）共用 `compileOnly`。
+**前置**：`xposedStubJar` 任务从 `app/build.gradle.kts` 移到 **`:platform`**（它有 android bootClasspath，桩里的 `XC_LoadPackage` 需要 `ApplicationInfo`），`:app` 消费同一个 jar（`compileOnly(files(...))` + `dependsOn(":platform:xposedStubJar")`）。
 
 **移植清单**
 
@@ -346,7 +346,7 @@ domain/registry   CapabilityRegistry · Actions · BridgeRegistry · ControlLogR
 | R1 | `:ui` 拆出后资源/R 合并顺序变化 | 视觉回归、`R.style` 失效 | WP9 先把 R 引用降到 0；`aapt2 dump xmltree` 核对；6 路由截图留档 |
 | R2 | `miuix-blur` 的 `uses-sdk override` 在 library 模式下失效 | 低版本设备崩溃 | 保持 override 在 `:app` 清单，装 API 26 模拟器验一次 |
 | R3 | `exported` Service/Receiver 拆模块后清单合并出错 | 安全（导出了不该导出的组件） | 清单集中在 `:app`；`verify-apk` 增加 `aapt2 dump badging` 组件比对 |
-| R4 | `xposedStubJar` 上移后 `compileOnly` 污染 runtime | Xposed 桩进 APK | 上移后重跑 `verify-apk` + `unzip -l` 检查 `de/robv` |
+| R4 | Xposed 桩被误打进 APK | 体积/校验异常 | 桩是 `compileOnly`，不进 dex；2026-11-18 实测 APK 只有 1 处对 `robv/android/xposed` 的**调用引用**（`Logs.java` 调框架方法，运行时由 LSPosed 提供），无桩类本体 |
 | R5 | `AgentHttpServer` 下沉 `:infra` 造成 `infra↔application` 环 | 编译失败 | 允许 `infra→application`（单向）；出现环就把 `AgentCallLog`/`AuditLog` 一起下沉 |
 | R6 | 删旧页面时漏掉未迁移的小功能 | 功能缺失 | 按 `docs/ui/SCREENS.md` + 20 路由逐项对照；真机手工过 6 类操作 |
 | R7 | WP13 去静态化打乱契约测试假设 | 47 项红色 | 先补断言再改；每子步骤单独 commit |
@@ -377,3 +377,4 @@ domain/registry   CapabilityRegistry · Actions · BridgeRegistry · ControlLogR
 | 2026-11-18 | WP7 | `ConfigStorePort` + `FileConfigStore`；`ConfigService` 不再 import `java.io`（构造参数去掉 `File`，迁移改由端口 `migrateLegacy()`）；`ConfigRepository` 保留 `configFile()/legacyBackups()` 过渡门面；新增 `ConfigPortTest`（纯内存端口，28 断言）；新增门禁 `application_no_io`（基线 38 条） | 单测 2017 断言（48 套件）；分层 `--strict`、一致性、三模块构建、`verify-apk` PASS；真机配置读写 rev 31→33、字段不变、无崩溃 |
 | 2026-11-18 | WP8 | 新建 `:infra`（9 文件）：`Http`/`ConfigStore`/`FileConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`；`ConfigCodec.fromStream` 与 `ConfigRepository.parse/toJson` 删除；新增 `infra_no_android`/`infra_no_xposed` 门禁，`application_no_io` 基线 38 → **0**，总基线 49 → **11** | 单测 2017 断言；分层 `--strict`、一致性、四模块构建、`verify-apk` PASS；真机契约 **47/47** |
 | 2026-11-18 | WP9 | 删旧 Java 页面（`ConfigActivity` 1049 行 / `HomeActivity` / `AboutActivity` / `LogsActivity` / `BaseActivity` / `Nav` / `ui/config` 6 文件 / `SpikeActivity` / `LegacyScreen`，约 -1.5k 行）；4 处「打开 App」改指 `MainActivity`；删 6 布局 + 22 drawable + `dimens.xml` + `Widget.*`/`Dialog` 样式，`strings.xml` 只留 `app_name`；路由 20 → 19；版本 `0.15.1` (23) | 单测 2017 断言；一致性（死资源清零）、分层 `--strict`、构建、`verify-apk`（versionCode 23）全绿；真机：4 个 tab 正常、`我的` 无「兼容模式」、契约 **47/47**、无崩溃 |
+| 2026-11-18 | WP10 | 新建 `:platform` Android library（namespace `.platform`），搬 30 个适配器（配置/桥/控制面/8770/通知/执行器/`PermissionProbe`/`ShareProvider`/`ThemeManager`/`Logs`）；`:app` 只剩清单+资源+`MainActivity`+`Hook`；Xposed 桩改由 `:platform` 产出；新增 `AppLaunch` 替代 `MainActivity` 直接引用；新增 `platform_no_compose`/`platform_no_miuix`/`platform_no_ui` 门禁，基线 11 → **3 行** | 单测 2017 断言；分层 `--strict`、一致性、五模块构建、`verify-apk` PASS；真机：启动 328ms、`我的` 页正常、契约 **47/47**、无崩溃 |

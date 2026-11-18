@@ -60,6 +60,9 @@ RULES=(
     'application_no_io|application/src/main/java|import|^[[:space:]]*import[[:space:]]+java\.(io|net|nio)\.'
     'infra_no_android|infra/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
     'infra_no_xposed|infra/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
+    'platform_no_compose|platform/src/main/java|import|^[[:space:]]*import[[:space:]]+androidx\.compose\.'
+    'platform_no_miuix|platform/src/main/java|import|^[[:space:]]*import[[:space:]]+top\.yukonga\.miuix\.'
+    'platform_no_ui|platform/src/main/java|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ui\.'
 )
 
 # 输出所有违规行：rule<TAB>file<TAB>token<TAB>count

@@ -13,10 +13,10 @@ import android.os.Build;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import plus.xiaoi.module.AppLaunch;
 import plus.xiaoi.module.BridgeClient;
-import plus.xiaoi.module.MainActivity;
 import plus.xiaoi.module.Json;
-import plus.xiaoi.module.R;
+import plus.xiaoi.module.platform.R;
 
 /**
  * 提醒宿主（Android 实现）：超级岛优先，失败自动降级普通通知。
@@ -152,7 +152,7 @@ public final class AndroidNotifyHost implements NotifyHost {
                 .setShowWhen(true)
                 .setCategory(Notification.CATEGORY_REMINDER);
         try {
-            Intent open = new Intent(ctx, MainActivity.class);
+            Intent open = AppLaunch.intent(ctx);
             open.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             builder.setContentIntent(PendingIntent.getActivity(ctx, 0, open,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));

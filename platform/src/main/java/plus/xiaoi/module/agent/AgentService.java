@@ -17,12 +17,12 @@ import java.io.FileOutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import plus.xiaoi.module.AppConfig;
+import plus.xiaoi.module.AppLaunch;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigRepository;
 import plus.xiaoi.module.core.LogSettings;
-import plus.xiaoi.module.MainActivity;
 import plus.xiaoi.module.Logs;
-import plus.xiaoi.module.R;
+import plus.xiaoi.module.platform.R;
 import plus.xiaoi.module.core.ActivityFeed;
 import plus.xiaoi.module.core.ActivityHub;
 
@@ -431,7 +431,7 @@ public final class AgentService extends Service {
     }
 
     private Notification buildNotification(String text) {
-        Intent open = new Intent(this, MainActivity.class);
+        Intent open = AppLaunch.intent(this);
         open.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= 23) piFlags |= PendingIntent.FLAG_IMMUTABLE;

@@ -53,6 +53,15 @@
   一律改指 `MainActivity`。删除 6 个旧布局、22 个只被旧页面引用的 drawable、
   `dimens.xml`、`Widget.*` 与 `Theme.XiaoiPlus.Dialog` 样式，`strings.xml` 只保留
   `app_name`。路由从 20 条收敛到 **19 条**，「我的 › 兼容模式」入口一并移除。
+- **`:platform` 适配器模块（WP10）**：新增 `:platform` Android library（namespace
+  `plus.xiaoi.module.platform`），承接 30 个 Android 适配器：`ConfigRepository` /
+  `ConfigSync` / `Prefs` / `Bridge` / `BridgeLifecycle` / 控制面 Binder /
+  `AgentService` / 执行器 / 通知 / `PermissionProbe` / `ShareProvider` / `ThemeManager` /
+  `Logs` / `Xposed` 宿主实现。`:app` 只剩清单、资源、`MainActivity.kt`、`Hook.java`。
+  Xposed 编译桩改由 `:platform` 产出、`:app` 复用；新增 `AppLaunch.intent(ctx)`
+  让下层按包名打开设置页，不再引用 `MainActivity` 类。新增
+  `platform_no_compose` / `platform_no_miuix` / `platform_no_ui` 门禁，
+  分层基线 **11 → 3 行**（只剩 `ui_no_control`）。
 - **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
   已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
   下一阶段优化见 `docs/refactor/NEXT.md`。

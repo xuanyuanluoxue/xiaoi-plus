@@ -1,13 +1,5 @@
 # rule<TAB>file<TAB>token<TAB>count
 # 由 scripts/check-layering.sh --init 生成；只减不增。
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.app.AlarmManager	1
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.app.AppOpsManager	1
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.app.NotificationManager	1
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.content.Context	1
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.os.Build	1
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.os.PowerManager	1
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.os.Process	1
-core_no_android	app/src/main/java/plus/xiaoi/module/core/PermissionProbe.java	android.provider.Settings	1
 ui_no_control	app/src/main/java/plus/xiaoi/module/ui/screen/me/DiagnosticsScreen.kt	plus.xiaoi.module.control.BridgeControlService	1
 ui_no_control	app/src/main/java/plus/xiaoi/module/ui/screen/me/LogsScreen.kt	plus.xiaoi.module.control.BridgeControlService	1
 ui_no_control	app/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt	plus.xiaoi.module.control.BridgeControlService	1

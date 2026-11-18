@@ -20,7 +20,8 @@
 - `:domain` 模型/策略/协议 DTO/端口，无 I/O、无 Android、无 Xposed
 - `:application` 用例/编排 + 端口定义，零 I/O（禁 `java.io|net|nio`），依赖 `:domain`
 - `:infra` I/O 实现（`Http`/`ConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`），依赖 `:application` + `:domain`，禁 Android/Xposed
-- `:app` Android / Xposed / Compose UI，依赖全部下层
+- `:platform` Android 适配器（`ConfigRepository`/`Bridge`/控制面/`AgentService`/执行器/通知/`PermissionProbe`），依赖 `:infra` + `:application` + `:domain`，**禁 Compose/Miuix/ui**；namespace 为 `plus.xiaoi.module.platform`
+- `:app` 壳：`AndroidManifest` + `res/` + `MainActivity.kt` + `Hook.java`，依赖全部下层
 
 ## 改动约定
 

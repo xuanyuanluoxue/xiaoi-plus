@@ -24,4 +24,5 @@ rootProject.name = "xiaoi-plus"
 include(":domain")
 include(":application")
 include(":infra")
+include(":platform")
 include(":app")

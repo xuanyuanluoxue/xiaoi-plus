@@ -19,7 +19,7 @@ javac -nowarn -source 1.8 -target 1.8 -d "$OUT" \
     "$ROOT/libs/xposed-stub-src/robv/android/xposed/XposedBridge.java" \
     "$ROOT/libs/xposed-stub-src/robv/android/xposed/XC_MethodHook.java" \
     $(find "$ROOT/domain/src/main/java" "$ROOT/application/src/main/java" "$ROOT/infra/src/main/java" -name '*.java') \
-    "$ROOT/app/src/main/java/plus/xiaoi/module/Logs.java" \
+    "$ROOT/platform/src/main/java/plus/xiaoi/module/Logs.java" \
     $(find "$ROOT/tests/src" -name '*.java')
 
 java --add-modules jdk.httpserver -cp "$OUT" plus.xiaoi.module.TestMain

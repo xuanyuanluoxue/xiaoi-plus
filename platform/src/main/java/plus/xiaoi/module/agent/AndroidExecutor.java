@@ -29,8 +29,9 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import plus.xiaoi.module.AppLaunch;
 import plus.xiaoi.module.Json;
-import plus.xiaoi.module.R;
+import plus.xiaoi.module.platform.R;
 
 /**
  * App 进程内的 Android 执行器：普通 App 权限能完成的动作都在这里。
@@ -332,7 +333,7 @@ public final class AndroidExecutor implements ActionExecutor {
                 PendingIntent.FLAG_UPDATE_CURRENT
                         | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         PendingIntent show = PendingIntent.getActivity(ctx, requestCode,
-                new Intent(ctx, plus.xiaoi.module.MainActivity.class)
+                AppLaunch.intent(ctx)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT
                         | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));

@@ -1,6 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.api.tasks.compile.JavaCompile
-import org.gradle.jvm.tasks.Jar
 
 plugins {
     alias(libs.plugins.android.application)
@@ -104,30 +103,19 @@ kotlin {
     }
 }
 
-// Xposed 桩只用于编译，不进入 APK。
-val xposedStubClasses = layout.buildDirectory.dir("xposed-stub/classes")
-val xposedStubJar = tasks.register<Jar>("xposedStubJar") {
-    archiveFileName.set("xposed-stub.jar")
-    destinationDirectory.set(layout.buildDirectory.dir("xposed-stub"))
-    from(xposedStubClasses)
-}
-val compileXposedStub = tasks.register<JavaCompile>("compileXposedStub") {
-    source(fileTree("$rootDir/libs/xposed-stub-src") { include("**/*.java") })
-    classpath = files(androidComponents.sdkComponents.bootClasspath.get())
-    destinationDirectory.set(xposedStubClasses)
-    sourceCompatibility = "1.8"
-    targetCompatibility = "1.8"
-    options.encoding = "UTF-8"
-}
-xposedStubJar.configure { dependsOn(compileXposedStub) }
+// Xposed 桩由 :platform 生成（Bridge/Config/Logs 在那边，Hook 在 :app）；
+// 这里只消费同一个 jar，避免两处各编一次。
+val xposedStubJar = rootProject.project(":platform").layout.buildDirectory
+    .file("xposed-stub/xposed-stub.jar")
 tasks.withType<JavaCompile>().configureEach {
-    if (name != "compileXposedStub") dependsOn(xposedStubJar)
+    dependsOn(":platform:xposedStubJar")
 }
 
 dependencies {
     implementation(project(":domain"))
     implementation(project(":application"))
     implementation(project(":infra"))
+    implementation(project(":platform"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.preference)
@@ -140,5 +128,5 @@ dependencies {
     implementation(libs.compose.ui)
     debugImplementation(libs.compose.ui.tooling)
 
-    compileOnly(files(xposedStubJar.flatMap { it.archiveFile }))
+    compileOnly(files(xposedStubJar))
 }
