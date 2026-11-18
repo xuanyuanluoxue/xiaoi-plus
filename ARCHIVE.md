@@ -75,9 +75,16 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 
 ## 6. 备份
 
-- `C:\Users\Chatxavier\code\xiaoi-plus-dev\artifacts\2026-11-17\xiaoi-plus-wp6.bundle`
-- `C:\Users\Chatxavier\code\xiaoi-plus-dev\artifacts\2026-11-17\xiaoi-plus-wp6.apk`
-- 归档 tag 后建议再生成一份 `xiaoi-plus-archive-2026-11-17.bundle`。
+0.16.0 起备份统一放在仓库内 `artifacts/legacy/`（已 gitignore），不再散在 `~/xiaoi-plus-dev`：
+
+- `artifacts/legacy/xiaoi-plus-clone-2026-11-19.bundle`
+  — 旧克隆的完整历史（`main` / `refactor/layering` / tag `archive-2026-11-17`）。
+  恢复：`git clone artifacts/legacy/xiaoi-plus-clone-2026-11-19.bundle <dir>`
+- `artifacts/legacy/xiaoi-plus-dev/2026-11-17/`、`2026-11-18/`
+  — 归档 APK 与 WP5/WP6/main 的 bundle
+- `artifacts/legacy/xiaoi-plus-dev/artifacts/{apk,releases,logs,configs,notes}/`
+  — 发布级产物与配置快照
+- `artifacts/legacy/xiaoi-plus-dev/ui-tests/` — UI 验收报告与 uiautomator dump
 
 ## 7. 如何恢复开发
 
@@ -94,3 +101,15 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 | `build.sh` | 无 Gradle 的旧构建（javac + aapt2 + d8），分层重构后已无法编译；构建只剩 `./gradlew :app:assembleRelease` |
 | `opencode.json` | AOCI MCP 的本机配置，路径是 WSL 时代且 `enabled:false`（本机工具不存在） |
 | `HANDOVER.md` → `docs/archive/HANDOVER-2026-11-08.md` | 0.14 时代的交接说明，文件自己也标注为历史；移入 `docs/archive/` 保留历史 |
+
+### 项目外目录清理（2026-11-19）
+
+删除（约 2.0 GB），内容先迁到 `artifacts/legacy/`：
+
+| 路径 | 大小 | 处理 |
+|---|---|---|
+| `C:\Users\Chatxavier\code\xiaoi-plus` | 112 MB | 旧克隆 → 打成 `artifacts/legacy/xiaoi-plus-clone-2026-11-19.bundle` 后删除 |
+| `C:\Users\Chatxavier\code\xiaoi-plus-dev` | 16 MB | 归档 APK/bundle 复制到 `artifacts/legacy/xiaoi-plus-dev/` 后删除 |
+| `/home/chatxavier/xiaoi-plus-dev`（WSL） | 1.8 GB | 保留 artifacts 发布级产物 + UI 报告，worktrees/tmp/截图删除 |
+| `/home/chatxavier/code/xiaoi-plus`（WSL） | 120 MB | 历史已包含在上面的 bundle 里，直接删除 |
+| `~/.config/xiaoi/` | — | token / keystore_pass / ime_prev 迁入 `.secrets/` 后删除 |
