@@ -232,6 +232,12 @@ public final class TestMain {
             System.out.println("  FAIL ConfigServiceTest 套件异常: " + t);
         }
         try {
+            failed += ConfigPortTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ConfigPortTest 套件异常: " + t);
+        }
+        try {
             failed += XiaoiHookPolicyTest.run();
         } catch (Throwable t) {
             failed++;

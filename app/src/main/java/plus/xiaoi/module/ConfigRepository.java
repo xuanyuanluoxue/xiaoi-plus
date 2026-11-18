@@ -16,6 +16,7 @@ import plus.xiaoi.module.application.config.ConfigPrefsPort;
 import plus.xiaoi.module.application.config.ConfigService;
 import plus.xiaoi.module.core.BridgeEndpoint;
 import plus.xiaoi.module.core.ConfigStore;
+import plus.xiaoi.module.core.FileConfigStore;
 import plus.xiaoi.module.core.config.ConfigBackupInfo;
 import plus.xiaoi.module.core.config.ConfigGateway;
 import plus.xiaoi.module.core.config.ConfigLoadResult;
@@ -43,17 +44,18 @@ public final class ConfigRepository implements ConfigGateway {
 
     private final Context ctx;
     private final File legacyExternalFile;
+    private final ConfigStore store;
     private final ConfigService service;
 
     private ConfigRepository(Context c) {
         this.ctx = c.getApplicationContext();
         this.legacyExternalFile = resolveLegacyExternalFile(ctx);
+        this.store = new ConfigStore(ctx.getFilesDir());
         this.service = new ConfigService(
-                new ConfigStore(ctx.getFilesDir()),
+                new FileConfigStore(store, legacyExternalFile),
                 new Prefs(ctx),
                 new Effects(ctx),
-                new Log(),
-                legacyExternalFile);
+                new Log());
     }
 
     public static synchronized ConfigRepository get(Context c) {
@@ -68,7 +70,7 @@ public final class ConfigRepository implements ConfigGateway {
 
     /** 事实源：App 私有目录下的 config.json。 */
     public File configFile() {
-        return service.configFile();
+        return store.file();
     }
 
     /** beta.4 的外部配置位置，仅用于一次性迁移；外部存储不可用时返回 null。 */
@@ -116,11 +118,12 @@ public final class ConfigRepository implements ConfigGateway {
     }
 
     public List<File> legacyBackups() {
-        return service.legacyBackups();
+        return store.list(ConfigStore.LEGACY_PREFIX);
     }
 
     public AppConfig restoreLegacy(File backup) throws Exception {
-        return service.restoreLegacy(backup);
+        if (backup == null) throw new IllegalArgumentException("备份为空");
+        return service.restoreLegacyName(backup.getName());
     }
 
     public AppConfig resetToDefaultsAfterCorruption() throws Exception {

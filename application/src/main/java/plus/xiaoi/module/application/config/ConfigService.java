@@ -1,12 +1,10 @@
 package plus.xiaoi.module.application.config;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.ConfigCodec;
-import plus.xiaoi.module.core.ConfigStore;
 import plus.xiaoi.module.core.LogSettings;
 import plus.xiaoi.module.core.config.ConfigBackupInfo;
 import plus.xiaoi.module.core.config.ConfigGateway;
@@ -16,22 +14,21 @@ import plus.xiaoi.module.core.config.ConfigSaveResult;
 import plus.xiaoi.module.core.config.ConfigStorageInfo;
 
 /**
- * 配置用例（WP1b，纯 JVM）。
+ * 配置用例（WP1b，纯 JVM；WP7 起彻底零 IO）。
  *
  * <p>承接原来散在 {@code ConfigRepository} 里的规则：加载/迁移、损坏只读、
- * 骨架拒绝、rev CAS、原子写、prefs 镜像、恢复/重置。文件字节操作仍由
- * {@link ConfigStore} 完成，prefs 与“已应用/重新加载”通过端口注入。</p>
+ * 骨架拒绝、rev CAS、原子写、prefs 镜像、恢复/重置。字节读写全部经
+ * {@link ConfigStorePort}，因此本类不 import {@code java.io}，也没有
+ * {@code File}/{@code InputStream} 出现在签名里。</p>
  *
  * <p>不依赖 Android；Android 适配器（{@code ConfigRepository}）只负责组装。</p>
  */
 public final class ConfigService implements ConfigGateway {
 
-    private final ConfigStore store;
+    private final ConfigStorePort store;
     private final ConfigPrefsPort prefs;
     private final ConfigEffectsPort effects;
     private final ConfigLogPort log;
-    /** beta.4 的外部配置位置；null = 没有外部目录。只用于一次性迁移。 */
-    private final File legacyExternalFile;
 
     /** 解析失败后为 true：save/saveQuiet 必须拒绝写入，直到恢复/重置。 */
     private volatile boolean readOnly;
@@ -41,9 +38,8 @@ public final class ConfigService implements ConfigGateway {
     private volatile long corruptStamp = Long.MIN_VALUE;
     private volatile boolean corruptBackedUp;
 
-    public ConfigService(ConfigStore store, ConfigPrefsPort prefs,
-                         ConfigEffectsPort effects, ConfigLogPort log,
-                         File legacyExternalFile) {
+    public ConfigService(ConfigStorePort store, ConfigPrefsPort prefs,
+                         ConfigEffectsPort effects, ConfigLogPort log) {
         if (store == null) throw new IllegalArgumentException("store == null");
         if (prefs == null) throw new IllegalArgumentException("prefs == null");
         this.store = store;
@@ -59,7 +55,6 @@ public final class ConfigService implements ConfigGateway {
             }
         } : effects;
         this.log = log == null ? ConfigLogPort.NONE : log;
-        this.legacyExternalFile = legacyExternalFile;
     }
 
     // ------------------------------------------------------------- 读取
@@ -72,15 +67,12 @@ public final class ConfigService implements ConfigGateway {
      * - 都不存在：返回默认骨架（skeleton=true，rev=0），**不写文件**
      */
     public synchronized AppConfig load() {
-        File f = store.file();
-        boolean existed = f.isFile();
-        if (legacyExternalFile != null && legacyExternalFile.isFile()) {
+        boolean existed = store.exists();
+        try {
             // 外部旧文件只要还在就处理：私有已存在时归档为 .legacy，绝不覆盖私有。
-            try {
-                store.migrateFrom(legacyExternalFile);
-            } catch (Throwable t) {
-                log.warn("xiaoi-sync", "旧配置迁移失败（已忽略）: " + t.getClass().getSimpleName());
-            }
+            store.migrateLegacy();
+        } catch (Throwable t) {
+            log.warn("xiaoi-sync", "旧配置迁移失败（已忽略）: " + t.getClass().getSimpleName());
         }
         if (existed) {
             String raw;
@@ -94,7 +86,7 @@ public final class ConfigService implements ConfigGateway {
         }
 
         // 私有目录原本没有文件：如果刚完成迁移，解析后统一到当前 schema 并写回。
-        if (store.file().isFile()) {
+        if (store.exists()) {
             try {
                 String raw = store.read();
                 if (raw != null) {
@@ -257,23 +249,22 @@ public final class ConfigService implements ConfigGateway {
 
     @Override
     public List<ConfigBackupInfo> backupInfos() {
-        return toBackupInfos(legacyBackups(), true);
+        return toBackupInfos(legacyBackupNames(), true);
     }
 
     @Override
     public List<ConfigBackupInfo> corruptInfos() {
-        return toBackupInfos(store.list(ConfigStore.CORRUPT_PREFIX), false);
+        return toBackupInfos(store.listNames(ConfigStorePort.CORRUPT_PREFIX), false);
     }
 
     @Override
     public ConfigStorageInfo storage() {
-        File f = store.file();
-        boolean exists = f.isFile();
+        boolean exists = store.exists();
         return new ConfigStorageInfo(
-                f.getAbsolutePath(),
+                store.path(),
                 exists,
-                exists ? f.length() : 0L,
-                exists ? f.lastModified() : 0L);
+                exists ? store.size() : 0L,
+                exists ? store.lastModified() : 0L);
     }
 
     @Override
@@ -281,12 +272,10 @@ public final class ConfigService implements ConfigGateway {
         if (backup == null || !backup.restorable) {
             throw new IllegalArgumentException("该备份不可恢复");
         }
-        if (!backup.name.startsWith(ConfigStore.LEGACY_PREFIX)) {
+        if (!backup.name.startsWith(ConfigStorePort.LEGACY_PREFIX)) {
             throw new IllegalArgumentException("不是 legacy 备份");
         }
-        File f = ConfigStore.resolve(store.dir(), backup.name);
-        if (!f.isFile()) throw new java.io.IOException("备份文件不存在");
-        return restoreLegacy(f);
+        return restoreLegacyName(backup.name);
     }
 
     @Override
@@ -294,25 +283,22 @@ public final class ConfigService implements ConfigGateway {
         return resetToDefaultsAfterCorruption();
     }
 
-    public File configFile() {
-        return store.file();
-    }
-
-    /** 列出可恢复的 legacy 备份（时间倒序）。 */
-    public List<File> legacyBackups() {
-        return store.list(ConfigStore.LEGACY_PREFIX);
+    /** 列出可恢复的 legacy 备份（时间倒序，只有名字，不含路径）。 */
+    public List<String> legacyBackupNames() {
+        return store.listNames(ConfigStorePort.LEGACY_PREFIX);
     }
 
     /**
      * 用一份 legacy 备份恢复事实源：解析 → 校验 → 原子写回 → 写 prefs → 清只读。
      * 任何一步失败都抛异常，且不删除/不截断原文件。
      */
-    public synchronized AppConfig restoreLegacy(File backup) throws Exception {
-        if (backup == null || !backup.isFile()) {
-            throw new java.io.IOException("备份文件不存在");
+    public synchronized AppConfig restoreLegacyName(String name) throws Exception {
+        if (name == null || !name.startsWith(ConfigStorePort.LEGACY_PREFIX)) {
+            throw new IllegalArgumentException("不是 legacy 备份");
         }
-        String raw = store.read(backup);
-        if (raw == null) throw new java.io.IOException("备份文件为空");
+        String raw = store.readNamed(name);
+        if (raw == null) throw new IllegalStateException("备份文件不存在");
+        if (raw.length() == 0) throw new IllegalStateException("备份文件为空");
         AppConfig c = ConfigCodec.fromJson(raw);
         String err = ConfigCodec.validate(c);
         if (err != null) throw new IllegalStateException("备份配置无效：" + err);
@@ -324,9 +310,9 @@ public final class ConfigService implements ConfigGateway {
         } catch (Throwable ignored) {
             // 当前文件可能已损坏；以 prefs 记录的上一次 rev 作为下限。
         }
-        store.restoreFrom(backup);
+        store.restoreNamed(name);
         String restored = store.read();
-        if (restored == null) throw new java.io.IOException("恢复后文件不可读");
+        if (restored == null) throw new IllegalStateException("恢复后文件不可读");
         AppConfig written = ConfigCodec.fromJson(restored);
         written.rev = ConfigRevRules.nextRev(
                 Math.max(Math.max(written.rev, c.rev), priorRev), 0L);
@@ -402,8 +388,7 @@ public final class ConfigService implements ConfigGateway {
 
     private void backupCorruptOnce(String raw) {
         try {
-            File f = store.file();
-            long stamp = f.isFile() ? (f.lastModified() * 31L + f.length()) : 0L;
+            long stamp = store.exists() ? (store.lastModified() * 31L + store.size()) : 0L;
             if (corruptBackedUp && stamp == corruptStamp) return;
             store.backupCorrupt(raw == null ? "" : raw);
             corruptStamp = stamp;
@@ -434,10 +419,11 @@ public final class ConfigService implements ConfigGateway {
         return ConfigCodec.validate(c);
     }
 
-    private static List<ConfigBackupInfo> toBackupInfos(List<File> files, boolean restorable) {
+    private List<ConfigBackupInfo> toBackupInfos(List<String> names, boolean restorable) {
         List<ConfigBackupInfo> out = new ArrayList<ConfigBackupInfo>();
-        for (File f : files) {
-            out.add(new ConfigBackupInfo(f.getName(), f.lastModified(), f.length(), restorable));
+        for (String name : names) {
+            if (name == null) continue;
+            out.add(new ConfigBackupInfo(name, store.lastModified(name), store.size(name), restorable));
         }
         return out;
     }

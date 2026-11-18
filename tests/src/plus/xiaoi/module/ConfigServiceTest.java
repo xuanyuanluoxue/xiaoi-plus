@@ -13,6 +13,7 @@ import plus.xiaoi.module.application.config.ConfigLogPort;
 import plus.xiaoi.module.application.config.ConfigPrefsPort;
 import plus.xiaoi.module.application.config.ConfigService;
 import plus.xiaoi.module.core.ConfigStore;
+import plus.xiaoi.module.core.FileConfigStore;
 import plus.xiaoi.module.core.config.ConfigBackupInfo;
 import plus.xiaoi.module.core.config.ConfigLoadResult;
 import plus.xiaoi.module.core.config.ConfigSaveResult;
@@ -219,7 +220,8 @@ public final class ConfigServiceTest {
     // ---------------------------------------------------------------- 工具
 
     private static ConfigService service(File dir, FakePrefs prefs, FakeEffects fx, File legacy) {
-        return new ConfigService(new ConfigStore(dir), prefs, fx, new FakeLog(), legacy);
+        return new ConfigService(new FileConfigStore(new ConfigStore(dir), legacy), prefs, fx,
+                new FakeLog());
     }
 
     private static ConfigDefaults defaults(long rev) {

@@ -57,6 +57,7 @@ RULES=(
     'application_no_android|application/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
     'application_no_xposed|application/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
     'application_no_orgjson|application/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'
+    'application_no_io|application/src/main/java|import|^[[:space:]]*import[[:space:]]+java\.(io|net|nio)\.'
 )
 
 # 输出所有违规行：rule<TAB>file<TAB>token<TAB>count

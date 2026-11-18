@@ -33,6 +33,14 @@
 - **`:domain` / `:application` 拆分（WP6）**：`:core` 拆成 domain（53）与 application（29）；
   `:app -> {domain, application}`，`application -> domain`。domain 用空 classpath
   单独编译验证无 I/O/Android/Xposed，Windows 三模块构建与 APK 校验通过。
+- **第二阶段分层计划（LAYERING-2，2026-11-18）**：目标从 3 模块拆到 6 模块
+  （新增 `:infra` / `:platform` / `:ui`），工作包 WP7–WP13 见
+  `docs/refactor/LAYERING-2.md`；NEXT.md 的 P0–P4 保留为路线索引。
+- **配置存储端口化（WP7）**：新增 `ConfigStorePort` 与 `FileConfigStore`，
+  `ConfigService` 不再 import `java.io`、构造参数去掉 `File`（旧外部配置迁移改由
+  端口 `migrateLegacy()` 负责），`ConfigRepository` 保留 `configFile()` 过渡门面。
+  新增 `application_no_io` 门禁（基线 38 条 = 待 WP8 迁走的 10 个文件）与
+  28 条纯内存端口用例；配置文件格式、rev 公式、prefs 镜像与 8771/8770 报文不变。
 - **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
   已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
   下一阶段优化见 `docs/refactor/NEXT.md`。
