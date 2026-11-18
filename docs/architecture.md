@@ -89,16 +89,20 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
 
 ## 分层与依赖方向
 
-代码已拆成三个 Gradle 模块（WP6，2026-11-17）：
+代码已拆成四个 Gradle 模块（WP6 三模块 → WP8 增加 `:infra`，2026-11-18）：
 
 ```
 :domain      模型 / 策略 / 协议 DTO / 端口        纯 JVM：无 I/O、无 Android、无 Xposed
-:application 用例 / 编排 / 纯 JVM 适配器          只依赖 :domain
-:app         Android / Xposed / Compose UI        依赖 :domain + :application
+:application 用例 / 编排 / 端口定义               零 I/O（禁 java.io|net|nio）
+:infra       I/O 实现：Http / ConfigStore / 传输   纯 JVM：无 Android、无 Xposed
+:app         Android / Xposed / Compose UI        依赖全部下层
 ```
 
-- 依赖方向固定：`:app -> {domain, application}`、`:application -> domain`。
+- 依赖方向固定：`:app -> {ui 未拆, infra, application, domain}`、
+  `:infra -> {application, domain}`、`:application -> domain`。
 - `tests/run.sh` 先用空 classpath 单独编译 `:domain`，以此证明它不依赖上层。
+- `:application` 的 `java.io|net|nio` 由门禁锁死（`application_no_io`），
+  所有字节读写只经端口（`ConfigStorePort` 等）由 `:infra` 实现。
 - 边界由 `scripts/check-layering.sh` 守（`domain_no_*` / `application_no_*` / UI 规则）。
 - 设备侧端口：配置 `ConfigGateway`、进程 `XiaoiProcessHost`、桥 `BridgeRuntime`、
   MCP `Mcp.Hosts`、UI `AppRuntime`。

@@ -127,6 +127,7 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":application"))
+    implementation(project(":infra"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.preference)

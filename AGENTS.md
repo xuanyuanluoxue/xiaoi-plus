@@ -5,21 +5,22 @@
 ## 构建与测试
 
 - 构建（Windows 原生，当前主环境）：
-  `gradlew.bat :domain:compileJava :application:compileJava :app:assembleRelease`
+  `gradlew.bat :domain:compileJava :application:compileJava :infra:compileJava :app:assembleRelease`
   → `app/build/outputs/apk/release/app-release.apk`
-- 构建（Linux / WSL）：`./gradlew :domain:compileJava :application:compileJava :app:assembleRelease`
+- 构建（Linux / WSL）：`./gradlew :domain:compileJava :application:compileJava :infra:compileJava :app:assembleRelease`
   （`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，不再用于发版）
 - 单测：`bash tests/run.sh`（纯 JVM，无需设备；Windows 用 Git Bash/WSL）
 - 门禁：`bash scripts/check-consistency.sh`（版本/SDK/资源引用/线程/提示/分层）
 - 分层：`bash scripts/check-layering.sh --strict`（基线见 `scripts/layering-baseline.tsv`）
 - 真机契约（可选）：`bash scripts/contract-test.sh --check`
-- 下一阶段优化计划：`docs/refactor/NEXT.md`
+- 下一阶段优化计划：`docs/refactor/LAYERING-2.md`（路线索引 `docs/refactor/NEXT.md`）
 
 ## 模块
 
 - `:domain` 模型/策略/协议 DTO/端口，无 I/O、无 Android、无 Xposed
-- `:application` 用例/编排/纯 JVM 适配器，依赖 `:domain`
-- `:app` Android / Xposed / Compose UI，依赖 `:domain` + `:application`
+- `:application` 用例/编排 + 端口定义，零 I/O（禁 `java.io|net|nio`），依赖 `:domain`
+- `:infra` I/O 实现（`Http`/`ConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`），依赖 `:application` + `:domain`，禁 Android/Xposed
+- `:app` Android / Xposed / Compose UI，依赖全部下层
 
 ## 改动约定
 

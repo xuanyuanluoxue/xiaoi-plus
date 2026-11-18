@@ -10,11 +10,11 @@
 - JDK 21：`C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot`
 - Android SDK：`C:\Users\Chatxavier\AppData\Local\Android\Sdk`
 - `local.properties`：`sdk.dir=C:/Users/Chatxavier/AppData/Local/Android/Sdk`
-- 模块：`:domain`、`:application`、`:app`
+- 模块：`:domain`、`:application`、`:infra`、`:app`
 
 ```bat
 set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
-gradlew.bat :domain:compileJava :application:compileJava :app:assembleRelease
+gradlew.bat :domain:compileJava :application:compileJava :infra:compileJava :app:assembleRelease
 ```
 
 脚本用 Git Bash 或 WSL：`bash tests/run.sh`、`bash scripts/check-consistency.sh`。

@@ -41,6 +41,12 @@
   端口 `migrateLegacy()` 负责），`ConfigRepository` 保留 `configFile()` 过渡门面。
   新增 `application_no_io` 门禁（基线 38 条 = 待 WP8 迁走的 10 个文件）与
   28 条纯内存端口用例；配置文件格式、rev 公式、prefs 镜像与 8771/8770 报文不变。
+- **`:infra` 物理模块（WP8）**：新增 `:infra` java-library，承接 `Http`/`ConfigStore`/
+  `FileConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/
+  `AgentHttpServer`/`BridgeAskHost` 共 9 个 I/O 实现；依赖方向固定为
+  `:infra -> :application -> :domain`，端口留在 `:application`、实现下沉。`:application`
+  的 `java.io|net|nio` 归零，`application_no_io` 门禁生效；删除 `ConfigCodec.fromStream`
+  与 `ConfigRepository.parse/toJson` 静态门面（改由适配器读流）。分层基线 49 → **11 行**。
 - **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
   已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
   下一阶段优化见 `docs/refactor/NEXT.md`。

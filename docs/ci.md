@@ -10,7 +10,7 @@
 1. 装 JDK 21 + Android SDK（`android-actions/setup-android`，SDK 37 / build-tools 37.0.0）
 2. **JVM 单测**（`bash tests/run.sh`，含 domain 空 classpath 单编；测试红则不构建）
 3. `bash scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/Hook-Bridge 依赖方向/死资源）
-4. `./gradlew :domain:compileJava :application:compileJava :app:assembleRelease`
+4. `./gradlew :domain:compileJava :application:compileJava :infra:compileJava :app:assembleRelease`
    （Windows 本地为 `gradlew.bat`；0.14 起 R8 + 资源收缩，Gradle wrapper 固定 9.9.0）
 5. 无 `KEYSTORE_PASSWORD` 时产出未签名 APK；有 `KEYSTORE_BASE64` 时由
    `scripts/ci-sign.sh` 签名，否则警告 + 临时签名

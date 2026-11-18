@@ -1,6 +1,5 @@
 package plus.xiaoi.module;
 
-import java.io.InputStream;
 import java.util.List;
 
 import plus.xiaoi.module.core.LogLevel;
@@ -285,14 +284,5 @@ public final class ConfigCodec {
         c.activeProviderId = "deepseek";
         c.activeModelId = model;
         return c;
-    }
-
-    /** 从输入流读取全文后解析（供 ConfigRepository 使用）。 */
-    public static AppConfig fromStream(InputStream in) throws Exception {
-        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n;
-        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-        return fromJson(new String(out.toByteArray(), "UTF-8"));
     }
 }

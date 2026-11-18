@@ -3,10 +3,7 @@ package plus.xiaoi.module;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import org.json.JSONObject;
-
 import java.io.File;
-import java.io.InputStream;
 import java.util.List;
 
 import plus.xiaoi.module.application.config.ConfigDefaults;
@@ -178,16 +175,6 @@ public final class ConfigRepository implements ConfigGateway {
     @Override
     public AppConfig resetAfterCorruption() throws Exception {
         return service.resetAfterCorruption();
-    }
-
-    // ------------------------------------------------------------- 纯静态门面
-
-    public static AppConfig parse(InputStream in) throws Exception {
-        return ConfigCodec.fromStream(in);
-    }
-
-    public static JSONObject toJson(AppConfig c) throws Exception {
-        return new JSONObject(ConfigCodec.toJson(c));
     }
 
     // ------------------------------------------------------------- Android 适配器

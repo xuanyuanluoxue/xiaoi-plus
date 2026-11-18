@@ -374,4 +374,5 @@ domain/registry   CapabilityRegistry · Actions · BridgeRegistry · ControlLogR
 | 日期 | WP | 内容 | 门禁结果 |
 |---|---|---|---|
 | 2026-11-18 | 计划建立 | — | — |
-| 2026-11-18 | WP7 | `ConfigStorePort` + `FileConfigStore`；`ConfigService` 不再 import `java.io`（构造参数去掉 `File`，迁移改由端口 `migrateLegacy()`）；`ConfigRepository` 保留 `configFile()/legacyBackups()` 过渡门面；新增 `ConfigPortTest`（纯内存端口，28 断言）；新增门禁 `application_no_io`（基线 38 条 = 待 WP8 迁走的 10 个文件） | 单测 2017 断言全绿（48 套件）；`check-layering --strict`、`check-consistency`、三模块构建、`verify-apk` PASS；真机配置读写：rev 31→33、字段不变、无崩溃 |
+| 2026-11-18 | WP7 | `ConfigStorePort` + `FileConfigStore`；`ConfigService` 不再 import `java.io`（构造参数去掉 `File`，迁移改由端口 `migrateLegacy()`）；`ConfigRepository` 保留 `configFile()/legacyBackups()` 过渡门面；新增 `ConfigPortTest`（纯内存端口，28 断言）；新增门禁 `application_no_io`（基线 38 条） | 单测 2017 断言（48 套件）；分层 `--strict`、一致性、三模块构建、`verify-apk` PASS；真机配置读写 rev 31→33、字段不变、无崩溃 |
+| 2026-11-18 | WP8 | 新建 `:infra`（9 文件）：`Http`/`ConfigStore`/`FileConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`；`ConfigCodec.fromStream` 删除、`ConfigRepository` 的 `parse/toJson` 静态门面删除；门禁新增 `infra_no_android`/`infra_no_xposed`，`application_no_io` 基线 38 → **0**，总基线 49 → **11** | 单测 2017 断言；分层 `--strict`、一致性、四模块构建、`verify-apk` PASS；真机契约 **47/47**（8771 + leader election 正常） |

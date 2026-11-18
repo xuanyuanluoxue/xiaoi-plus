@@ -139,7 +139,7 @@ public final class EditSection {
                         : "已导出（含明文密钥，请用完立即删除）");
             } else if (req == REQ_IMPORT) {
                 InputStream in = host.resolver().openInputStream(uri);
-                AppConfig c = ConfigCodec.fromStream(in);
+                AppConfig c = ConfigCodec.fromJson(readAll(in));
                 in.close();
                 // 脱敏文件（密钥被写成 ***）不能用于恢复：直接阻断，避免把 *** 写成有效 key
                 if (ConfigCodec.containsMaskedSecrets(c)) {
@@ -198,6 +198,15 @@ public final class EditSection {
         sb.append("版本：v").append(c.version).append(" · rev ").append(c.rev);
         if (host.dirty()) sb.append("\n\n当前未保存编辑会被覆盖。");
         return sb.toString();
+    }
+
+    /** 读取导入流全文；旧 Java 页专用（Compose 侧走 RuntimeConfigImporter）。 */
+    private static String readAll(InputStream in) throws Exception {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        return new String(out.toByteArray(), "UTF-8");
     }
 
     /** 只取端点 host；解析失败时也去掉 query/path/userinfo，绝不把完整 URL/密钥展示出来。 */

@@ -288,18 +288,19 @@ WSL 通过 `/mnt/d/code/Android/xiaoi-plus` 访问同一份源码跑脚本/单�
 
 ```
 :domain      模型/策略/协议 DTO/端口（纯 JVM，无 I/O）
-:application 用例/编排/纯 JVM 适配器（依赖 :domain）
-:app         Android / Xposed / UI（依赖 :domain + :application）
+:application 用例/编排/端口定义（零 I/O，依赖 :domain）
+:infra       I/O 实现：Http/ConfigStore/传输（纯 JVM，依赖 :application + :domain）
+:app         Android / Xposed / UI（依赖全部下层）
 ```
 
-`tests/run.sh` 会先用空 classpath 单独编译 `:domain`，再合并编译 application/app 纯层，
+`tests/run.sh` 会先用空 classpath 单独编译 `:domain`，再合并编译 application/infra/app 纯层，
 以此证明 domain 不依赖 application/Android/Xposed。
 
 Windows（CMD / PowerShell）：
 
 ```bat
 set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
-gradlew.bat :domain:compileJava :application:compileJava :app:assembleDebug
+gradlew.bat :domain:compileJava :application:compileJava :infra:compileJava :app:assembleDebug
 gradlew.bat :app:assembleRelease
 ```
 

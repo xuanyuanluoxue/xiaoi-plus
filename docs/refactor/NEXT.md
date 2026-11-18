@@ -13,11 +13,11 @@
 | WSL 路径 | `/mnt/d/code/Android/xiaoi-plus` |
 | JDK | `C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot` |
 | Android SDK | `C:\Users\Chatxavier\AppData\Local\Android\Sdk` |
-| 模块 | `:domain` / `:application` / `:app` |
+| 模块 | `:domain` / `:application` / `:infra` / `:app` |
 
 ```bat
 set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"
-gradlew.bat :domain:compileJava :application:compileJava :app:assembleRelease --offline
+gradlew.bat :domain:compileJava :application:compileJava :infra:compileJava :app:assembleRelease --offline
 ```
 
 脚本用 Git Bash 或 WSL：
@@ -33,7 +33,8 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 
 ```
 :domain       53 文件 / 5.3k 行   模型/策略/协议 DTO/端口；无 I/O、无 Android、无 Xposed
-:application  29 文件 / 5.7k 行   用例/编排/纯 JVM 适配器
+:application  29 文件 / 5.5k 行   用例/编排/端口定义；零 I/O
+:infra         9 文件 / 1.5k 行   Http/ConfigStore/传输/探测/文件锁；纯 JVM
 :app         108 文件 / 22.5k 行  Android/Xposed/Compose UI
 ```
 
@@ -53,15 +54,18 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 - 目标：app 层减少约 6%，消除两套配置页行为分叉。
 - 验收：19 条路由仍可用；主题/配置保存/导入导出/诊断全走新页面；无 `ConfigActivity` 引用。
 
-### P1：拆 `:infra`（application 纯化）
+### P1：拆 `:infra`（application 纯化）— ✅ 已完成（WP8，2026-11-18）
 
 把纯 JVM 适配器从 `:application` 移出：
 
-- `Http`、`ConfigStore`、`BridgeClient`、`ModelValidator`、`LeaderElection`
-- `:application` 只保留用例/端口/协议编排，依赖 `:infra`
+- `Http`、`ConfigStore`、`FileConfigStore`、`BridgeClient`、`ModelValidator`、
+  `LeaderElection`、`Lan`、`AgentHttpServer`、`BridgeAskHost`（9 个文件）
+- `:application` 只保留用例/端口/协议编排；`ConfigStorePort` 端口留在 `:application`，
+  实现下沉 `:infra`（方向 `infra -> application`）
 - `:app -> {domain, application, infra}`
 
-验收：`:application:compileJava` 不依赖 `java.io/net/nio`（或仅端口签名）。
+验收结果：`:application` 内 `java.io|net|nio` = 0（`application_no_io` 门禁上线），
+基线从 49 行降到 11 行；`ConfigCodec.fromStream` 删除，改由适配器读流。
 
 ### P2：清掉 `ui_no_control` 3 条
 
