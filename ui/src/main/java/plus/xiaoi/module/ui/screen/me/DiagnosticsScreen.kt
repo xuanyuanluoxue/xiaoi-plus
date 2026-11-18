@@ -29,7 +29,6 @@ import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
 import plus.xiaoi.module.application.runtime.AppRuntime
-import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.core.IssueInputFactory
 import plus.xiaoi.module.core.IssueResolver
@@ -111,7 +110,7 @@ fun DiagnosticsScreen(
 
     fun exportLogs() {
         scope.launch {
-            val dump = withContext(Dispatchers.IO) { BridgeControlService.logDump().orEmpty() }
+            val dump = withContext(Dispatchers.IO) { appRuntime.controlLog.dump() }
             if (dump.isBlank()) {
                 onMessage("暂无可导出的日志")
                 return@launch
@@ -319,7 +318,7 @@ fun DiagnosticsScreen(
         danger = true,
         onConfirm = {
             showClearLogs = false
-            BridgeControlService.clearLogs()
+            appRuntime.controlLog.clear()
             onMessage("已清空本机日志缓冲（不删除小爱落盘日志）")
             refresh++
         },
@@ -365,7 +364,7 @@ private fun capture(
         ),
     )
     val input = IssueInputFactory.from(facts, bridge, agent, permissions, System.currentTimeMillis())
-    val dump = BridgeControlService.logDump().orEmpty()
+    val dump = appRuntime.controlLog.dump()
     val errors = dump.split('\n').count { line ->
         line.length >= 14 && line[12] == ' ' && line[13] == 'E'
     }

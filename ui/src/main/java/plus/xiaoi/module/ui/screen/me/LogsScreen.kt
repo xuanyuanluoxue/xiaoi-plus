@@ -34,10 +34,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.core.LogLevel
 import plus.xiaoi.module.core.LogSettings
 import plus.xiaoi.module.ui.components.FilterChips
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
 import plus.xiaoi.module.ui.components.XiaoiConfirmDialog
 import plus.xiaoi.module.ui.components.XiaoiEmptyState
@@ -104,6 +104,7 @@ private fun parseLine(line: String): LogLine {
 fun LogsScreen(onMessage: (String) -> Unit) {
     val context = LocalContext.current
     val configGateway = LocalConfigGateway.current
+    val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
     var lines by remember { mutableStateOf<List<LogLine>>(emptyList()) }
     var filter by rememberSaveable { mutableStateOf(0) } // 0 全部 / 1 信息 / 2 警告 / 3 错误 / 4 调试
@@ -118,8 +119,8 @@ fun LogsScreen(onMessage: (String) -> Unit) {
     val listState = rememberLazyListState()
 
     val reload: () -> Unit = {
-        val dump = BridgeControlService.logDump()
-        val parsed = if (dump.isNullOrBlank()) emptyList() else dump.split("\n")
+        val dump = appRuntime.controlLog.dump()
+        val parsed = if (dump.isBlank()) emptyList() else dump.split("\n")
             .filter { it.isNotEmpty() }
             .map { parseLine(it) }
         lines = parsed
@@ -422,7 +423,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         secondaryNote = "新的日志会在小爱再次上报后继续出现。",
         danger = true,
         onConfirm = {
-            BridgeControlService.clearLogs()
+            appRuntime.controlLog.clear()
             lines = emptyList()
             confirmClear = false
             onMessage("已清空本机日志缓冲（不删除小爱落盘日志）")

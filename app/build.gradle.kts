@@ -116,6 +116,7 @@ dependencies {
     implementation(project(":application"))
     implementation(project(":infra"))
     implementation(project(":platform"))
+    implementation(project(":ui"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.preference)

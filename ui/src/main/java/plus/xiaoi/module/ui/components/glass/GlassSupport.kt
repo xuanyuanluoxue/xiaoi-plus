@@ -6,7 +6,6 @@ import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import plus.xiaoi.module.Prefs
 
 /**
  * 底栏能力分级。
@@ -56,20 +55,12 @@ object GlassSupport {
         false
     }
 
-    /** 用户开关；当前没有外观页入口，默认开启。 */
-    fun userEnabled(context: Context): Boolean = try {
-        context.getSharedPreferences(Prefs.UI_PREFS, Context.MODE_PRIVATE)
-            .getBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, false)
-    } catch (t: Throwable) {
-        false
-    }
-
     fun resolve(context: Context): GlassMode = resolve(
         sdkInt = Build.VERSION.SDK_INT,
         runtimeShader = isGlassSupported(),
         userEnabled = true, // 用户要求：玻璃默认开启，不提供开关
         animationsDisabled = animationsDisabled(context),
-    ).also { android.util.Log.i("GlassSupport", "mode=$it sdk=${Build.VERSION.SDK_INT} shader=${isGlassSupported()} user=${userEnabled(context)} ALL=${context.getSharedPreferences(Prefs.NAME, 0).all} DIR=${context.dataDir} animOff=${animationsDisabled(context)}") }
+    ).also { android.util.Log.i("GlassSupport", "mode=$it sdk=${Build.VERSION.SDK_INT} shader=${isGlassSupported()} animOff=${animationsDisabled(context)}") }
 
     /** 纯函数，便于单测按 SDK/开关组合覆盖三分支。 */
     fun resolve(

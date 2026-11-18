@@ -10,7 +10,7 @@
 - JDK 21：`C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot`
 - Android SDK：`C:\Users\Chatxavier\AppData\Local\Android\Sdk`
 - `local.properties`：`sdk.dir=C:/Users/Chatxavier/AppData/Local/Android/Sdk`
-- 模块：`:domain`、`:application`、`:infra`、`:platform`、`:app`
+- 模块：`:domain`、`:application`、`:infra`、`:platform`、`:ui`、`:app`
 
 ```bat
 set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"

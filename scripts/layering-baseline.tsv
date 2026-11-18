@@ -1,5 +1,2 @@
 # rule<TAB>file<TAB>token<TAB>count
 # 由 scripts/check-layering.sh --init 生成；只减不增。
-ui_no_control	app/src/main/java/plus/xiaoi/module/ui/screen/me/DiagnosticsScreen.kt	plus.xiaoi.module.control.BridgeControlService	1
-ui_no_control	app/src/main/java/plus/xiaoi/module/ui/screen/me/LogsScreen.kt	plus.xiaoi.module.control.BridgeControlService	1
-ui_no_control	app/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt	plus.xiaoi.module.control.BridgeControlService	1

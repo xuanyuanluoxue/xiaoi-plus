@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ConfigCodec
-import plus.xiaoi.module.ShareProvider
+import plus.xiaoi.module.application.runtime.FileShare
 import plus.xiaoi.module.core.ErrorCatalog
 import plus.xiaoi.module.core.config.ConfigBackupInfo
 import plus.xiaoi.module.ui.components.LocalAppRuntime
@@ -250,7 +250,7 @@ fun ConfigManageScreen(
                     if (!dir.exists() && !dir.mkdirs()) throw IllegalStateException("无法创建导出目录")
                     val file = File(dir, "xiaoi-plus-config-masked.json")
                     file.writeText(MeSupport.maskedForExport(cfg), Charsets.UTF_8)
-                    Uri.parse("content://${ShareProvider.AUTHORITY}/${file.name}")
+                    Uri.parse("content://${FileShare.AUTHORITY}/${file.name}")
                 }
             }
             val uri = outcome.getOrNull()

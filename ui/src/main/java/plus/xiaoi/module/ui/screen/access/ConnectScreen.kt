@@ -24,13 +24,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import plus.xiaoi.module.Bridge
-import plus.xiaoi.module.Lan
 import plus.xiaoi.module.Mcp
-import plus.xiaoi.module.agent.AgentHttpServer
 import plus.xiaoi.module.agent.AgentLanPolicy
 import plus.xiaoi.module.agent.AgentMcp
 import plus.xiaoi.module.core.BridgePolicy
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.XiaoiBadge
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiCodeBlock
@@ -56,6 +54,7 @@ fun ConnectScreen(
     onMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
     val loaded = rememberAccessConfig()
     val bridge = rememberBridgeSnapshot()
@@ -64,7 +63,7 @@ fun ConnectScreen(
     var lanIp by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        lanIp = withContext(Dispatchers.IO) { Lan.ipv4() }
+        lanIp = withContext(Dispatchers.IO) { appRuntime.network.lanIpv4() }
     }
 
     if (facts == null) {
@@ -84,8 +83,8 @@ fun ConnectScreen(
     val cfg = facts.config
     val token = cfg?.mcpToken.orEmpty()
     val mcpEnabled = cfg?.mcpEnabled == true
-    val bridgePort = bridge.port.takeIf { it > 0 } ?: Bridge.PORT_START
-    val agentPort = agent.port.takeIf { it > 0 } ?: AgentHttpServer.DEFAULT_PORT
+    val bridgePort = bridge.port.takeIf { it > 0 } ?: appRuntime.network.defaultBridgePort()
+    val agentPort = agent.port.takeIf { it > 0 } ?: appRuntime.network.defaultAgentPort()
     val mcpLanEffective = mcpEnabled && BridgePolicy.bindHost(
         cfg?.mcpLan == true,
         mcpEnabled,

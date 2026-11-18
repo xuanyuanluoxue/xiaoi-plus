@@ -291,6 +291,7 @@ WSL 通过 `/mnt/d/code/Android/xiaoi-plus` 访问同一份源码跑脚本/单�
 :application 用例/编排/端口定义（零 I/O，依赖 :domain）
 :infra       I/O 实现：Http/ConfigStore/传输（纯 JVM，依赖 :application + :domain）
 :platform    Android 适配器：配置仓库/桥/服务/通知（Android library，禁 Compose）
+:ui          Compose 表现层：20 路由/玻璃底栏（Android library，只依赖 application+domain）
 :app         壳：清单/资源/MainActivity/Hook（依赖全部下层）
 ```
 

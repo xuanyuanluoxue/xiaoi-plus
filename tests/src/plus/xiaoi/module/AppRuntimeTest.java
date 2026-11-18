@@ -5,10 +5,16 @@ import java.util.Map;
 
 import plus.xiaoi.module.application.runtime.AgentControl;
 import plus.xiaoi.module.application.runtime.AppRuntime;
+import plus.xiaoi.module.application.runtime.BackgroundTasks;
 import plus.xiaoi.module.application.runtime.ConfigWatcher;
+import plus.xiaoi.module.application.runtime.ControlLogStore;
+import plus.xiaoi.module.application.runtime.ModelProbe;
+import plus.xiaoi.module.application.runtime.NetworkInfo;
 import plus.xiaoi.module.application.runtime.PermissionReader;
 import plus.xiaoi.module.application.runtime.RuntimeConfigImporter;
 import plus.xiaoi.module.application.runtime.StatusProbeStore;
+import plus.xiaoi.module.application.runtime.UiPrefs;
+import plus.xiaoi.module.application.runtime.UsageStats;
 import plus.xiaoi.module.core.PermissionSnapshot;
 import plus.xiaoi.module.StatusResolver;
 
@@ -23,7 +29,10 @@ public final class AppRuntimeTest {
         FakePermissions permissions = new FakePermissions();
         FakeImporter importer = new FakeImporter();
         FakeWatcher watcher = new FakeWatcher();
-        AppRuntime runtime = new AppRuntime(agent, status, permissions, importer, watcher);
+        FakeControlLog controlLog = new FakeControlLog();
+        FakeHost host = new FakeHost();
+        AppRuntime runtime = new AppRuntime(agent, status, permissions, importer, watcher,
+                controlLog, host, host, host, host, host);
 
         runtime.agent.startIfEnabled();
         runtime.agent.startIfEnabled();
@@ -45,13 +54,63 @@ public final class AppRuntimeTest {
         runtime.watcher.start();
         T.eq("watcher start 次数", 1, watcher.starts);
 
+        controlLog.text = "10:00:00.000 bridge|mcp ok";
+        T.eq("controlLog 读回镜像", "10:00:00.000 bridge|mcp ok", runtime.controlLog.dump());
+        runtime.controlLog.clear();
+        T.eq("controlLog 清空后为空", "", runtime.controlLog.dump());
+        T.eq("controlLog clear 次数", 1, controlLog.clears);
+
+        T.ok("prefs 默认关玻璃", !runtime.prefs.glassBottomBar());
+        runtime.prefs.setGlassBottomBar(true);
+        T.ok("prefs 写入后可读", runtime.prefs.glassBottomBar());
+
+        runtime.tasks.io(new Runnable() {
+            @Override
+            public void run() {
+                host.ioRuns++;
+            }
+        });
+        runtime.tasks.main(new Runnable() {
+            @Override
+            public void run() {
+                host.mainRuns++;
+            }
+        });
+        T.eq("tasks.io 走端口", 1, host.ioRuns);
+        T.eq("tasks.main 走端口", 1, host.mainRuns);
+
+        T.eq("network 默认桥端口", 8771, runtime.network.defaultBridgePort());
+        T.eq("network 默认 Agent 端口", 8770, runtime.network.defaultAgentPort());
+
+        T.eq("usage 走端口", "{\"today\":{}}", runtime.usage.fetch(8771, "t", 1));
+        T.ok("probe 走端口", runtime.probe.probe("https://api", "sk", "m1").ok);
+
         boolean threw = false;
         try {
-            new AppRuntime(null, status, permissions, importer, watcher);
+            new AppRuntime(null, status, permissions, importer, watcher,
+                    controlLog, host, host, host, host, host);
         } catch (IllegalArgumentException e) {
             threw = true;
         }
         T.ok("空端口被拒绝", threw);
+
+        boolean threwLog = false;
+        try {
+            new AppRuntime(agent, status, permissions, importer, watcher,
+                    null, host, host, host, host, host);
+        } catch (IllegalArgumentException e) {
+            threwLog = true;
+        }
+        T.ok("空日志端口被拒绝", threwLog);
+
+        boolean threwProbe = false;
+        try {
+            new AppRuntime(agent, status, permissions, importer, watcher,
+                    controlLog, host, host, host, host, null);
+        } catch (IllegalArgumentException e) {
+            threwProbe = true;
+        }
+        T.ok("空探测端口被拒绝", threwProbe);
 
         return T.report("AppRuntimeTest");
     }
@@ -115,6 +174,75 @@ public final class AppRuntimeTest {
         @Override
         public void start() {
             starts++;
+        }
+    }
+
+    private static final class FakeControlLog implements ControlLogStore {
+        String text = "";
+        int clears;
+
+        @Override
+        public String dump() {
+            return text;
+        }
+
+        @Override
+        public void clear() {
+            text = "";
+            clears++;
+        }
+    }
+
+    /** WP11：一次实现 5 个新端口（UI 偏好/线程/网络/用量/探测）。 */
+    private static final class FakeHost implements UiPrefs, BackgroundTasks,
+            NetworkInfo, UsageStats, ModelProbe {
+        boolean glass;
+        int ioRuns;
+        int mainRuns;
+
+        @Override
+        public boolean glassBottomBar() {
+            return glass;
+        }
+
+        @Override
+        public void setGlassBottomBar(boolean enabled) {
+            glass = enabled;
+        }
+
+        @Override
+        public void io(Runnable task) {
+            task.run();
+        }
+
+        @Override
+        public void main(Runnable task) {
+            task.run();
+        }
+
+        @Override
+        public int defaultBridgePort() {
+            return 8771;
+        }
+
+        @Override
+        public int defaultAgentPort() {
+            return 8770;
+        }
+
+        @Override
+        public String lanIpv4() {
+            return "192.168.0.118";
+        }
+
+        @Override
+        public String fetch(int port, String token, int days) {
+            return "{\"today\":{}}";
+        }
+
+        @Override
+        public ModelProbe.Result probe(String baseUrl, String apiKey, String model) {
+            return new ModelProbe.Result(true, "ok", "通过");
         }
     }
 }

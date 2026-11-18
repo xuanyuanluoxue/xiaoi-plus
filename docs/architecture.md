@@ -96,16 +96,18 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
 :application 用例 / 编排 / 端口定义               零 I/O（禁 java.io|net|nio）
 :infra       I/O 实现：Http / ConfigStore / 传输   纯 JVM：无 Android、无 Xposed
 :platform    Android 适配器：配置仓库/桥/服务/通知  禁 Compose / Miuix / ui
+:ui          Compose 表现层：20 路由 / 玻璃底栏     只依赖 application + domain
 :app         壳：清单 + 资源 + MainActivity + Hook  依赖全部下层
 ```
 
-- 依赖方向固定：`:app -> {platform, infra, application, domain}`、
-  `:platform -> {infra, application, domain}`、`:infra -> {application, domain}`、
-  `:application -> domain`。
-- `:platform` 的 `namespace` 是 `plus.xiaoi.module.platform`（AGP 要求模块间唯一），
-  因此它的 `R` 是 `plus.xiaoi.module.platform.R`；源码包名仍与 `:app` 一致。
+- 依赖方向固定：`:app -> {ui, platform, infra, application, domain}`、
+  `:ui -> {application, domain}`、`:platform -> {infra, application, domain}`、
+  `:infra -> {application, domain}`、`:application -> domain`。
+- `:platform` / `:ui` 的 `namespace` 分别是 `plus.xiaoi.module.platform` /
+  `plus.xiaoi.module.ui`（AGP 要求模块间唯一），源码包名仍与 `:app` 一致。
 - 打开设置页走 `AppLaunch.intent(ctx)`（按包名拼 `MainActivity`），
   下层不引用上层 Activity 类。
+- 分层基线已清零：`scripts/layering-baseline.tsv` 只剩表头。
 - `tests/run.sh` 先用空 classpath 单独编译 `:domain`，以此证明它不依赖上层。
 - `:application` 的 `java.io|net|nio` 由门禁锁死（`application_no_io`），
   所有字节读写只经端口（`ConfigStorePort` 等）由 `:infra` 实现。

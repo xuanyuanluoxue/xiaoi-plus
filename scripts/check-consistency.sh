@@ -71,7 +71,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 2) 运行时资源查找
-HITS="$(grep -rn 'getIdentifier' app/src/main/java domain/src/main/java application/src/main/java infra/src/main/java platform/src/main/java 2>/dev/null || true)"
+HITS="$(grep -rn 'getIdentifier' app/src/main/java ui/src/main/java platform/src/main/java domain/src/main/java application/src/main/java infra/src/main/java 2>/dev/null || true)"
 if [ -z "$HITS" ]; then
     pass "业务代码 0 处 getIdentifier（全部走 R）"
 else
@@ -80,7 +80,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 3) 统一实现路径
-THREADS="$(grep -rn 'new Thread(' app/src/main/java domain/src/main/java application/src/main/java infra/src/main/java platform/src/main/java 2>/dev/null \
+THREADS="$(grep -rn 'new Thread(' app/src/main/java ui/src/main/java platform/src/main/java domain/src/main/java application/src/main/java infra/src/main/java 2>/dev/null \
     | grep -v 'AppExecutors.java' | grep -v 'Bridge.java' || true)"
 if [ -z "$THREADS" ]; then
     pass "业务代码后台任务统一走 AppExecutors（无裸 new Thread）"
@@ -89,7 +89,7 @@ else
     echo "$THREADS" | sed 's/^/      /'
 fi
 
-HTTP="$(grep -rln 'HttpURLConnection' app/src/main/java domain/src/main/java application/src/main/java infra/src/main/java platform/src/main/java 2>/dev/null \
+HTTP="$(grep -rln 'HttpURLConnection' app/src/main/java ui/src/main/java platform/src/main/java domain/src/main/java application/src/main/java infra/src/main/java 2>/dev/null \
     | grep -v 'BridgeClient.java' | grep -v 'ModelValidator.java' || true)"
 if [ -z "$HTTP" ]; then
     pass "HTTP 客户端收敛（桥访问走 BridgeClient，模型探测走 ModelValidator）"
@@ -98,7 +98,7 @@ else
     echo "$HTTP" | sed 's/^/      /'
 fi
 
-TOAST="$(grep -rn 'Toast.makeText' app/src/main/java domain/src/main/java application/src/main/java infra/src/main/java platform/src/main/java 2>/dev/null || true)"
+TOAST="$(grep -rn 'Toast.makeText' app/src/main/java ui/src/main/java platform/src/main/java domain/src/main/java application/src/main/java infra/src/main/java 2>/dev/null || true)"
 if [ -z "$TOAST" ]; then
     pass "提示统一走 Compose Snackbar（无系统 Toast）"
 else
@@ -108,7 +108,7 @@ fi
 
 # ---------------------------------------------------------------- 4) 分层边界
 if LAYER_OUT="$("$ROOT/scripts/check-layering.sh" 2>&1)"; then
-    pass "分层边界检查（domain/application/core/ui）"
+    pass "分层边界检查（domain/application/infra/platform/ui）"
 else
     fail "分层边界检查失败（见 scripts/check-layering.sh）"
     echo "$LAYER_OUT" | sed 's/^/      /'
@@ -161,23 +161,37 @@ else
     echo "$LIFECYCLE_LEAK" | sed 's/^/      /'
 fi
 
-# ---------------------------------------------------------------- 5) 死资源
+# ---------------------------------------------------------------- 5) 分享 authority 单一来源
+AUTH_SRC="$(grep -oE 'AUTHORITY = "[^"]+"' application/src/main/java/plus/xiaoi/module/application/runtime/FileShare.java 2>/dev/null | head -1 | sed 's/.*"\(.*\)"/\1/')"
+AUTH_MAN="$(grep -oE 'android:authorities="[^"]+"' app/src/main/AndroidManifest.xml 2>/dev/null | head -1 | sed 's/.*"\(.*\)"/\1/')"
+if [ -n "$AUTH_SRC" ] && [ "$AUTH_SRC" = "$AUTH_MAN" ]; then
+    pass "分享 authority 单一来源（$AUTH_SRC）"
+else
+    fail "分享 authority 不一致：FileShare=$AUTH_SRC manifest=$AUTH_MAN"
+fi
+
+# ---------------------------------------------------------------- 6) 死资源
 dead=0
-for f in app/src/main/res/layout/*.xml; do
-    [ -e "$f" ] || continue
-    n="$(basename "$f" .xml)"
-    if ! grep -rqE "R\.layout\.$n|@layout/$n" app/src/main/java app/src/main/res; then
-        fail "无人引用的 layout：$n"
-        dead=$((dead+1))
-    fi
-done
-for f in app/src/main/res/drawable/*.xml; do
-    [ -e "$f" ] || continue
-    n="$(basename "$f" .xml)"
-    if ! grep -rqE "R\.drawable\.$n|@drawable/$n" app/src/main/java app/src/main/res; then
-        fail "无人引用的 drawable：$n"
-        dead=$((dead+1))
-    fi
+SRC_DIRS="app/src/main/java ui/src/main/java platform/src/main/java domain/src/main/java application/src/main/java infra/src/main/java"
+RES_DIRS="app/src/main/res ui/src/main/res platform/src/main/res"
+for res in $RES_DIRS; do
+    [ -d "$res" ] || continue
+    for f in "$res"/layout/*.xml; do
+        [ -e "$f" ] || continue
+        n="$(basename "$f" .xml)"
+        if ! grep -rqE "R\.layout\.$n|@layout/$n" $SRC_DIRS $RES_DIRS; then
+            fail "无人引用的 layout：$n（$res）"
+            dead=$((dead+1))
+        fi
+    done
+    for f in "$res"/drawable*/*.xml; do
+        [ -e "$f" ] || continue
+        n="$(basename "$f" .xml)"
+        if ! grep -rqE "R\.drawable\.$n|@drawable/$n" $SRC_DIRS $RES_DIRS; then
+            fail "无人引用的 drawable：$n（$res）"
+            dead=$((dead+1))
+        fi
+    done
 done
 [ "$dead" -eq 0 ] && pass "layout / drawable 无死资源"
 

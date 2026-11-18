@@ -50,7 +50,7 @@ fun rememberGlassBackdrop(mode: GlassMode, surfaceColor: Color): GlassBackdropSo
  * 内容区接线：FULL/ BLUR 在这里挂采样，SOLID 原样返回。
  * 调用方只需要把本 Modifier 加在页面内容根节点上。
  */
-internal fun Modifier.glassBackdropSource(source: GlassBackdropSource): Modifier =
+fun Modifier.glassBackdropSource(source: GlassBackdropSource): Modifier =
     when (source.mode) {
         GlassMode.FULL -> miuixLayerBackdrop(source)
         GlassMode.BLUR -> recordContentBackdrop(source.contentLayer ?: return this)

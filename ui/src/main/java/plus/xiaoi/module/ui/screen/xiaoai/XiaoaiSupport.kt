@@ -1,21 +1,22 @@
 package plus.xiaoi.module.ui.screen.xiaoai
 
 import androidx.activity.ComponentActivity
-import plus.xiaoi.module.AppExecutors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
+import plus.xiaoi.module.application.runtime.AppRuntime
 
 /**
  * 小爱/模型页共用的 IO 与格式化。
  *
- * 后台任务统一走 [AppExecutors]（AGENTS.md：禁止裸 `new Thread` / `Dispatchers.IO`），
+ * 后台任务统一走 [AppRuntime.tasks]（AppExecutors 的端口，WP11）：表现层不再
+ * 直接引用 `AppExecutors`，`:ui` 也就不依赖 `:platform`。
  * 结果回到调用方协程（主线程）后再写 Compose 状态。
  */
-internal suspend fun <T> xiaoaiIo(block: () -> T): T = suspendCancellableCoroutine { cont ->
-    AppExecutors.io {
+internal suspend fun <T> AppRuntime.xiaoaiIo(block: () -> T): T = suspendCancellableCoroutine { cont ->
+    tasks.io {
         try {
             cont.resume(block())
         } catch (t: Throwable) {

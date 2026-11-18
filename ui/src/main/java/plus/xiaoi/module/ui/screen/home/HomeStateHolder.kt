@@ -5,8 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.util.concurrent.atomic.AtomicBoolean
 import plus.xiaoi.module.AppConfig
-import plus.xiaoi.module.AppExecutors
-import plus.xiaoi.module.BridgeClient
 import plus.xiaoi.module.Json
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.agent.AgentRuntimeStatus
@@ -78,7 +76,7 @@ internal data class HomeUiState(
 /**
  * 首页只读状态持有者：进入页面读一次配置 + 快照，之后每 5 秒重读。
  *
- * <p>配置读取在 [AppExecutors.io]，不阻塞主线程；判读全部交给
+ * <p>配置读取在 [AppRuntime.tasks.io]，不阻塞主线程；判读全部交给
  * StateModel / IssueInputFactory / IssueResolver。未知事实保持“未确认/—”，
  * 不把 0 当成离线，也不把旧快照当成在线。</p>
  */
@@ -94,7 +92,7 @@ internal class HomeStateHolder(
 
     fun refresh() {
         if (!busy.compareAndSet(false, true)) return
-        AppExecutors.io {
+        appRuntime.tasks.io {
             val next = try {
                 read()
             } catch (t: Throwable) {
@@ -106,7 +104,7 @@ internal class HomeStateHolder(
                     cta = HomeCta("查看诊断", "Diagnostics"),
                 )
             }
-            AppExecutors.ui {
+            appRuntime.tasks.main {
                 state = next
                 busy.set(false)
             }
@@ -251,7 +249,7 @@ internal class HomeStateHolder(
         val token = config.mcpToken.orEmpty().trim()
         if (token.isEmpty() || bridge.port <= 0) return null to null
         return try {
-            val body = BridgeClient.stats(bridge.port, token, 1) ?: return null to null
+            val body = appRuntime.usage.fetch(bridge.port, token, 1) ?: return null to null
             val root = Json.read(body) as? Map<*, *> ?: return null to null
             val today = root["today"] as? Map<*, *> ?: return null to null
             Json.optLong(today, "third", 0L) to Json.optLong(today, "official", 0L)

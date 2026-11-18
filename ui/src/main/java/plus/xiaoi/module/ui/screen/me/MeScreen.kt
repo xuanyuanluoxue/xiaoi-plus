@@ -26,7 +26,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.ThemeMode
 import plus.xiaoi.module.core.config.ConfigGateway
-import plus.xiaoi.module.control.BridgeControlService
 import plus.xiaoi.module.core.BridgeStatus
 import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.LocalConfigGateway
@@ -92,7 +91,7 @@ fun MeScreen(
     }
     LaunchedEffect(Unit) {
         errorCount = withContext(Dispatchers.IO) {
-            val dump = BridgeControlService.logDump().orEmpty()
+            val dump = appRuntime.controlLog.dump()
             dump.split('\n').count { line ->
                 line.length >= 14 && line[12] == ' ' && line[13] == 'E'
             }

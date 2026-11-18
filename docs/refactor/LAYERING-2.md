@@ -262,7 +262,7 @@ adb install -r ... && 手工：8770 开关、8771 开关、控制面 reload、�
 
 ---
 
-### WP11：新建 `:ui`（Compose 表现层）
+### WP11：新建 `:ui`（Compose 表现层）—— ✅ 已完成（2026-11-18）
 
 **目标**：62 个 UI 文件独立成 android-library，`:ui` 不依赖 infra/platform。
 
@@ -378,3 +378,4 @@ domain/registry   CapabilityRegistry · Actions · BridgeRegistry · ControlLogR
 | 2026-11-18 | WP8 | 新建 `:infra`（9 文件）：`Http`/`ConfigStore`/`FileConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`；`ConfigCodec.fromStream` 与 `ConfigRepository.parse/toJson` 删除；新增 `infra_no_android`/`infra_no_xposed` 门禁，`application_no_io` 基线 38 → **0**，总基线 49 → **11** | 单测 2017 断言；分层 `--strict`、一致性、四模块构建、`verify-apk` PASS；真机契约 **47/47** |
 | 2026-11-18 | WP9 | 删旧 Java 页面（`ConfigActivity` 1049 行 / `HomeActivity` / `AboutActivity` / `LogsActivity` / `BaseActivity` / `Nav` / `ui/config` 6 文件 / `SpikeActivity` / `LegacyScreen`，约 -1.5k 行）；4 处「打开 App」改指 `MainActivity`；删 6 布局 + 22 drawable + `dimens.xml` + `Widget.*`/`Dialog` 样式，`strings.xml` 只留 `app_name`；路由 20 → 19；版本 `0.15.1` (23) | 单测 2017 断言；一致性（死资源清零）、分层 `--strict`、构建、`verify-apk`（versionCode 23）全绿；真机：4 个 tab 正常、`我的` 无「兼容模式」、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP10 | 新建 `:platform` Android library（namespace `.platform`），搬 30 个适配器（配置/桥/控制面/8770/通知/执行器/`PermissionProbe`/`ShareProvider`/`ThemeManager`/`Logs`）；`:app` 只剩清单+资源+`MainActivity`+`Hook`；Xposed 桩改由 `:platform` 产出；新增 `AppLaunch` 替代 `MainActivity` 直接引用；新增 `platform_no_compose`/`platform_no_miuix`/`platform_no_ui` 门禁，基线 11 → **3 行** | 单测 2017 断言；分层 `--strict`、一致性、五模块构建、`verify-apk` PASS；真机：启动 328ms、`我的` 页正常、契约 **47/47**、无崩溃 |
+| 2026-11-18 | WP11 | 新增 `:ui` Android library（namespace `.ui`），搬 62 个 Compose 文件 + `sponsor_wechat`；`:app` 只剩 `MainActivity.kt` + `Hook.java` + 清单 + 资源；前置把 7 处 platform/infra 耦合端口化（`ControlLogStore`/`UiPrefs`/`BackgroundTasks`/`NetworkInfo`/`UsageStats`/`ModelProbe`/`FileShare.AUTHORITY`），`AppRuntime` 6 → **11 端口**；删 `GlassSupport.userEnabled` 死代码；新增 `ui_no_infra`/`ui_no_bridge_pkg` 与 authority 一致性检查，**基线清零（0 行）** | 单测 2017+ 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS；真机：启动 104ms、进程存活、契约 **47/47**、无崩溃 |

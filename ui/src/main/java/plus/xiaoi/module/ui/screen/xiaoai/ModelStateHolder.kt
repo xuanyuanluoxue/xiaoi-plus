@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import plus.xiaoi.module.AppConfig
 import plus.xiaoi.module.ConfigCodec
-import plus.xiaoi.module.ModelValidator
 import plus.xiaoi.module.StatusResolver
 import plus.xiaoi.module.application.runtime.AppRuntime
 import plus.xiaoi.module.core.config.ConfigGateway
@@ -69,7 +68,7 @@ internal class ModelStateHolder(
     suspend fun load() {
         loading = true
         val loaded = runCatching {
-            xiaoaiIo { configGateway.loadState() }
+            appRuntime.xiaoaiIo { configGateway.loadState() }
         }.getOrNull()
         if (loaded != null) applyLoaded(loaded.config, loaded.readOnly, loaded.error)
         loading = false
@@ -261,7 +260,7 @@ internal class ModelStateHolder(
         }
         check = CheckUi(running = true, message = "正在请求 $base")
         val result = runCatching {
-            xiaoaiIo { ModelValidator.check(base, key, modelId) }
+            appRuntime.xiaoaiIo { appRuntime.probe.probe(base, key, modelId) }
         }.getOrNull()
         if (result == null) {
             check = CheckUi(message = "校验失败：无法完成请求")
@@ -270,7 +269,7 @@ internal class ModelStateHolder(
         }
         check = CheckUi(ok = result.ok, message = result.message)
         // 只记录 D2 结论；配置一变指纹失配，缓存自动作废。
-        xiaoaiIo {
+        appRuntime.xiaoaiIo {
             appRuntime.status.save(
                 base, key, modelId,
                 when (result.code) {
@@ -292,7 +291,7 @@ internal class ModelStateHolder(
         }
         saving = true
         return try {
-            val latest = xiaoaiIo { configGateway.loadState() }
+            val latest = appRuntime.xiaoaiIo { configGateway.loadState() }
             if (latest.readOnly) {
                 readOnly = true
                 loadError = latest.error
@@ -306,7 +305,7 @@ internal class ModelStateHolder(
                     errors = errors.copy(general = invalid)
                     SaveOutcome.Invalid(invalid)
                 } else {
-                    val result = xiaoaiIo {
+                    val result = appRuntime.xiaoaiIo {
                         configGateway.saveIfRev(cfg, if (force) -1L else baseRev)
                     }
                     when {

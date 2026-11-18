@@ -16,9 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import plus.xiaoi.module.Prefs
 import plus.xiaoi.module.ThemeMode
 import plus.xiaoi.module.ui.components.FilterChips
+import plus.xiaoi.module.ui.components.LocalAppRuntime
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
@@ -42,11 +42,9 @@ fun AppearanceScreen(
 ) {
     val colors = XiaoiTheme.colors
     val context = LocalContext.current
+    val appRuntime = LocalAppRuntime.current
     var glassEnabled by remember {
-        mutableStateOf(
-            context.getSharedPreferences(Prefs.UI_PREFS, android.content.Context.MODE_PRIVATE)
-                .getBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, false),
-        )
+        mutableStateOf(appRuntime.prefs.glassBottomBar())
     }
     val current = when (themeMode) {
         ThemeMode.LIGHT -> ThemeMode.LIGHT
@@ -108,8 +106,7 @@ fun AppearanceScreen(
                 checked = glassEnabled,
                 onCheckedChange = { on ->
                     glassEnabled = on
-                    context.getSharedPreferences(Prefs.UI_PREFS, android.content.Context.MODE_PRIVATE)
-                        .edit().putBoolean(Prefs.KEY_GLASS_BOTTOM_BAR, on).apply()
+                    appRuntime.prefs.setGlassBottomBar(on)
                     (context as? Activity)?.recreate()
                 },
             )

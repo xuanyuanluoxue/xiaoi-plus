@@ -62,6 +62,15 @@
   让下层按包名打开设置页，不再引用 `MainActivity` 类。新增
   `platform_no_compose` / `platform_no_miuix` / `platform_no_ui` 门禁，
   分层基线 **11 → 3 行**（只剩 `ui_no_control`）。
+- **`:ui` 表现层模块（WP11）**：新增 `:ui` Android library（namespace `plus.xiaoi.module.ui`），
+  迁入 62 个 Compose 文件与 `sponsor_wechat` 图标；`:app` 只剩 `MainActivity.kt` +
+  `Hook.java` + 清单 + 资源。前置的 7 处 platform/infra 耦合全部端口化：
+  `ControlLogStore`（日志读写）、`UiPrefs`（玻璃底栏）、`BackgroundTasks`（`AppExecutors`）、
+  `NetworkInfo`（默认端口/本机 IP）、`UsageStats`（8771 `/stats`）、`ModelProbe`
+  （`ModelValidator`）与 `FileShare.AUTHORITY` 常量；`AppRuntime` 6 → 11 个端口。
+  删除 `GlassSupport.userEnabled` 死代码；`glassBackdropSource` 改为 public。
+  **分层基线清零（0 行）**，新增 `ui_no_infra` / `ui_no_bridge_pkg` 与
+  「分享 authority 单一来源」一致性检查。
 - **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
   已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
   下一阶段优化见 `docs/refactor/NEXT.md`。

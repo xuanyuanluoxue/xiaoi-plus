@@ -14,7 +14,8 @@ import java.io.FileNotFoundException;
 /** 只暴露 exports/ 目录的极简 FileProvider（不依赖 androidx）。 */
 public class ShareProvider extends ContentProvider {
 
-    public static final String AUTHORITY = "plus.xiaoi.module.files";
+    /** 必须与清单的 android:authorities 一致；单一来源见 {@code application.runtime.FileShare}。 */
+    public static final String AUTHORITY = plus.xiaoi.module.application.runtime.FileShare.AUTHORITY;
 
     @Override public boolean onCreate() { return true; }
 

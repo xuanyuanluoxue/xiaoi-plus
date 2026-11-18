@@ -55,7 +55,7 @@ internal class XiaoaiStateHolder(
     suspend fun refresh() {
         // 保存期间不要把乐观开关状态覆盖回文件旧值。
         if (state.saving) return
-        val next = runCatching { xiaoaiIo { read() } }.getOrNull() ?: return
+        val next = runCatching { appRuntime.xiaoaiIo { read() } }.getOrNull() ?: return
         state = next.copy(saving = state.saving)
     }
 
@@ -67,7 +67,7 @@ internal class XiaoaiStateHolder(
         if (state.saving || state.readOnly) return
         state = state.copy(enabled = enable, saving = true)
         val result = runCatching {
-            xiaoaiIo {
+            appRuntime.xiaoaiIo {
                 val loaded = configGateway.loadState()
                 if (loaded.readOnly) {
                     return@xiaoaiIo "配置已损坏，保存被阻止"

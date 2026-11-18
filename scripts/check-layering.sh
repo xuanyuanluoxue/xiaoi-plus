@@ -41,14 +41,15 @@ done
 
 # rule id | 相对目录 | 类型(import|literal) | grep 正则
 RULES=(
-    'core_no_android|app/src/main/java/plus/xiaoi/module/core|import|^[[:space:]]*import[[:space:]]+android\.'
-    'ui_no_repository_import|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ConfigRepository'
-    'ui_no_repository_get|app/src/main/java/plus/xiaoi/module/ui|literal|ConfigRepository\.get\('
-    'ui_no_control|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.control\.'
-    'ui_no_agent_service|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.agent\.AgentService'
-    'ui_no_permission_probe|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.core\.PermissionProbe'
-    'ui_no_status_cache|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.StatusCache'
-    'ui_no_config_sync|app/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ConfigSync'
+    'ui_no_repository_import|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ConfigRepository'
+    'ui_no_repository_get|ui/src/main/java/plus/xiaoi/module/ui|literal|ConfigRepository\.get\('
+    'ui_no_control|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.control\.'
+    'ui_no_agent_service|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.agent\.AgentService'
+    'ui_no_permission_probe|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.core\.PermissionProbe'
+    'ui_no_status_cache|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.StatusCache'
+    'ui_no_config_sync|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.ConfigSync'
+    'ui_no_bridge_pkg|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.bridge\.'
+    'ui_no_infra|ui/src/main/java/plus/xiaoi/module/ui|import|^[[:space:]]*import[[:space:]]+plus\.xiaoi\.module\.(Http|BridgeClient|ModelValidator|Lan|ConfigStore)$'
     'domain_no_android|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+android\.'
     'domain_no_xposed|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+de\.robv\.'
     'domain_no_orgjson|domain/src/main/java|import|^[[:space:]]*import[[:space:]]+org\.json\.'
