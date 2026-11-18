@@ -1,6 +1,46 @@
 # 更新日志
 
-## 未发布
+## 未发布（0.16.0）
+
+**单端口统一 MCP**
+
+- **8771 与 8772 现在互相补齐工具**：两个端点都返回同一套工具（按
+  `ToolOwnership` 归属表转发，谁拥有谁执行），客户端只配一个端口即可。
+  推荐把 `http://127.0.0.1:8772/mcp` 作为主端点（App 进程可被拉起保活），
+  8771 继续作为兼容镜像长期保留，**没有移除计划**。
+- 转发走本机回环 + `/health` 自证身份发现端口（`8770~8779` / `8771~8779`
+  逐端口探测并缓存 10 秒），所以 8770 被小爱自身占用、Agent 顺延到 8772 时
+  依然能找到。
+- 对端不可用时返回稳定错误：`AGENT_UNAVAILABLE`（8771 侧）/ `BRIDGE_UNAVAILABLE`
+  （8772 侧），`retryable:true`；本端自己的工具不受影响。
+
+**P0 / P1 修复**
+
+- **`xiaoai_submit` 可以拿到 sessionId**：新增 `structured:true`，返回
+  `{"ok":true,"text":...,"sessionId":...}`；默认仍返回纯文本，旧提示词不变。
+  `text` 上限 4000 字符。
+- **请求体超限回 413**：>64 KB 不再报 `-32700 empty body`，而是
+  `413 payload too large (max 65536 bytes)`。
+- **8771 不再静默忽略错参数**：所有工具都做未知参数校验，
+  返回 `unknown argument: xxx（可用：...）` + `isError:true`。
+- **审计 `requestId` 有值**：调用方没传时使用 `ActionRegistry` 生成的 id，
+  与动作结果里的 `requestId` 对齐，便于逐条对账。
+- **`xiaoai_switch_model` 回 `lastGoodModel`**：切换成功后在结果里回显，
+  便于调用方判断是否需要回滚（自动连续失败回滚仍留到后续版本）。
+- **TTL 与 `expiresInMs` 统一**：都取自 `Contract.CONFIRM_TTL_MS`（60 秒）。
+
+**P2 顺手修**
+
+- `stats.days > 90` 显式夹到 90 并回 `clamped:true`（不再静默回 7）。
+- `logs.limit=0` 返回空数组；上限 300；缺省 80。
+- `xiaoai_audit.limit` 夹到 1~200。
+- **CORS + OPTIONS**：两个端点都回 204 预检，所有响应带
+  `Access-Control-Allow-*`，浏览器面板/网页 Agent 可直接调用。
+- `xiaoai_island` 默认文案从「当前模型名」改为「小爱同学plus」。
+- `xiaoai_config` 新增 `authMode`（`off` / `weak` / `token`）；
+  `/health` 新增 `auth` / `tools` / `agent` / `version` 字段。
+- 新增 `Contract.java`：请求体上限、各 `maxLength`、查询上限、TTL、端口
+  集中定义，测试与文档引用同一份。
 
 **新功能**
 

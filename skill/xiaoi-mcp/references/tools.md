@@ -3,6 +3,16 @@
 协议：JSON-RPC 2.0 over HTTP，单端点 `POST /mcp`，无会话。
 鉴权：`Authorization: Bearer <token>`。
 
+**0.16.0 单端口统一**：`8771`（小爱进程能力桥）与 `8772`（App 进程动作面）互相补齐
+工具，两个端点返回同一套 15 个工具，配哪个都行。推荐 `http://127.0.0.1:8772/mcp`；
+`8771` 是长期保留的兼容镜像。对端不可用时返回 `AGENT_UNAVAILABLE`（8771 侧）或
+`BRIDGE_UNAVAILABLE`（8772 侧），带 `retryable:true`。
+
+约束（全部来自 `Contract.java`）：请求体 ≤64 KB；`submit.text` ≤4000；
+`ask.text` ≤8000；`notify.text` ≤2000；`todo.title` ≤200 / `content` ≤8192；
+`logs.limit` 缺省 80 / 上限 300 / `0`=空；`stats.days` 上限 90；
+`audit.limit` 1~200；确认 token 60 秒一次性。
+
 ## 协议方法
 
 ### initialize
@@ -30,10 +40,12 @@
     "protocolVersion": "2025-03-26",
     "capabilities": {"tools": {"listChanged": false}},
     "serverInfo": {"name": "xiaoi-plus", "version": "0.12.0-beta.1"},
-    "instructions": "小爱同学（手机端）能力桥..."
+    "instructions": "小爱同学+ 统一 MCP 端点（小爱进程能力桥，8771）：与 8772 动作面共享同一套工具清单..."
   }
 }
 ```
+
+`serverInfo.version` 是当前 APK 版本（0.16.0 起是 `0.16.0`）。
 
 ### tools/list
 
@@ -80,12 +92,14 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 
 ### xiaoai_submit
 
-让小爱执行一句话任务，返回回复文本。
+让小爱执行一句话任务。默认返回回复文本；`structured:true` 时返回
+`{"ok":true,"text":"...","sessionId":"..."}`，便于多轮复用。
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `text` | string | 是 | 要说给小爱的话 |
+| `text` | string | 是 | 要说给小爱的话（≤4000 字符） |
 | `sessionId` | string | 否 | 复用已有会话以保留上下文；不传则自动 `session.open` |
+| `structured` | boolean | 否 | true 返回 JSON（含 sessionId）；默认 false 只返回文本 |
 
 ```json
 {"name":"xiaoai_submit","arguments":{"text":"把蓝牙关掉"}}
@@ -98,14 +112,22 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 }}
 ```
 
+```json
+{"name":"xiaoai_submit","arguments":{"text":"记住 42","structured":true}}
+```
+
 可能耗时较长（小爱内部多轮工具调用），客户端超时建议 ≥120 秒。
 
 失败文本：
 
 - `missing argument: text`
+- `text too long (max 4000)`
 - `session.open failed: ...`
 - `ERR cli service not ready`
+- `unknown argument: xxx（可用：text, sessionId, structured）`
 - 其他 `isError=true` 文本
+
+> 需要稳定拿 `sessionId` 时也可以用 App 侧的 `xiaoai_ask`（它一直返回 JSON）。
 
 ### xiaoai_todo_create
 
@@ -149,14 +171,18 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
   "markerTemplate": "",
   "bridge": true,
   "lan": false,
+  "noAuth": false,
+  "weakToken": false,
+  "authMode": "token",
   "apiKeySet": true,
   "tokenSet": true,
   "port": 8771,
-  "version": "0.12.0-beta.1"
+  "version": "0.16.0"
 }
 ```
 
-不会返回 apiKey/token 明文。
+不会返回 apiKey/token 明文。`authMode`：`off`（免鉴权）/ `weak`（任意非空密码）/
+`token`（默认，局域网要求 32 位十六进制）。`noAuth` / `weakToken` 是原始开关。
 
 ### xiaoai_switch_model
 
@@ -175,8 +201,12 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 成功：
 
 ```json
-{"ok":true,"model":"deepseek-v4.1-flash","baseUrl":"https://...","apiKeySet":true,"changed":true}
+{"ok":true,"model":"deepseek-v4.1-flash","lastGoodModel":"deepseek-v4.1-flash",
+ "baseUrl":"https://...","apiKeySet":true,"changed":true}
 ```
+
+`lastGoodModel` 是本次落盘的模型名，便于调用方判断是否需要回滚
+（自动「连续 3 次上游失败回滚」尚未实现，留到后续版本）。
 
 拒绝：
 
@@ -191,8 +221,10 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `text` | string | 否 | 提示文案，默认当前模型 |
+| `text` | string | 否 | 提示文案，默认「小爱同学plus」 |
 | `force` | boolean | 否 | 忽略单次限制，默认 true |
+
+> deprecated：新代码请用 `xiaoai_notify`（`channel=island`）。
 
 ```json
 {"name":"xiaoai_island","arguments":{"text":"任务完成"}}
@@ -206,7 +238,7 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `limit` | integer | 否 | 尾部条数，默认 80；服务端上限 300 |
+| `limit` | integer | 否 | 尾部条数：缺省 80；`0` 返回空数组；上限 300 |
 | `since` | integer | 否 | 只返回 seq 大于该值的日志 |
 
 ```json
@@ -221,7 +253,7 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `days` | integer | 否 | 1~90，默认 7 |
+| `days` | integer | 否 | 1~90，缺省 7；超过 90 夹到 90 并回 `clamped:true` |
 
 ```json
 {"name":"xiaoai_stats","arguments":{"days":1}}
@@ -244,22 +276,48 @@ facade=true cli=true port=8771 version=0.12.0-beta.1
 
 返回小爱 CLI 的原始响应文本。
 
+## App 侧工具（8772 归属，从 8771 也能调）
+
+这 6 个工具由 App 进程执行；详细 schema 与动作清单见 `skill/xiaoi-agent/references/actions.md`。
+从 8771 调用时会被转发到 8772。
+
+| 工具 | 参数 | 说明 |
+|---|---|---|
+| `xiaoai_capabilities` | `includeUnavailable`（默认 true） | 列出设备动作、schema、风险、可用性 |
+| `xiaoai_action` | `action`（必填）+ 动作参数 | 执行动作；`risk=confirm` 首次返回 `NEEDS_CONFIRMATION` + `confirmToken` |
+| `xiaoai_confirm` | `confirmToken`、`approve` | 批准/拒绝；token 一次性、60 秒过期；已用 → `CONFLICT`，过期 → `CONFIRMATION_EXPIRED`，拒绝后复用 → `CONFIRMATION_DENIED` |
+| `xiaoai_audit` | `limit`（1~200，默认 50） | 审计摘要，含 `requestId`（未传时由服务端生成并回显在动作结果里） |
+| `xiaoai_notify` | `text`（≤2000）、`channel`、`force` | 超级岛优先，失败自动降级普通通知；只提醒，不能批准危险动作 |
+| `xiaoai_ask` | `text`（≤8000）、`sessionId`、`context`（≤8KB）、`timeoutMs`（≤180000） | 代理小爱，返回 `{ok,text,sessionId,via,timeoutMs}` |
+
+```json
+{"name":"xiaoai_ask","arguments":{"text":"记住 42"}}
+{"name":"xiaoai_notify","arguments":{"text":"构建完成","channel":"island"}}
+{"name":"xiaoai_action","arguments":{"action":"device.info","args":{},"dryRun":true}}
+```
+
 ## 其他 HTTP 端点
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |---|---|---|---|
-| GET | `/health` | Bearer | `ok facade=... port=...` |
-| GET | `/logs?limit=&since=` | Bearer | 日志 JSON |
-| GET | `/stats?days=` | Bearer | 调用量 JSON |
-| GET | `/cli?cmd=` | Bearer | 原始 CLI |
+| GET | `/health` | Bearer | `ok facade=<b> port=<n> auth=<mode> tools=<n> agent=<port> version=<v>`（8771）/ `ok agent=true port=<n> bind=<h> auth=... tools=... version=...`（8772） |
+| GET | `/logs?limit=&since=` | Bearer | 日志 JSON；`limit=0` 返回空数组 |
+| GET | `/stats?days=` | Bearer | 调用量 JSON；超 90 回 `clamped:true` |
+| GET | `/cli?cmd=` | Bearer | 原始 CLI（仅 8771） |
 | POST | `/mcp` | Bearer | MCP JSON-RPC |
-| POST | `/island` | 仅 loopback，无 token | 弹岛 |
+| OPTIONS | 任意 | 无 | `204` 预检（CORS），所有响应带 `Access-Control-Allow-*` |
+| POST | `/island` | 仅 loopback，无 token | 弹岛（仅 8771） |
 | POST | `/config` | 无 | **固定 410 Gone** |
+
+请求体 >64 KB 一律 `413 payload too large (max 65536 bytes)`。
 
 ## 安全说明
 
-- 外部 Agent 只应连接 App 显示的端口，不要扫描 8771~8775 逐个发 token。
+- 外部 Agent 只应连接 App 显示的端口，不要扫描 8771~8779 逐个发 token。
 - 局域网必须使用 32 位十六进制 token；短 token 自动回退仅本机。
+  （App 里可显式打开「允许弱密码」/「免鉴权」，属于测试便利选项，默认关闭。）
 - token 轮换后旧客户端立即 401。
 - 远程写配置的能力被刻意限制为 `model` / `marker`；端点和密钥只能在手机 App 内改。
 - 不要把 `apiKey` / `mcp.token` 写入日志、提交或分享文件。
+- **CORS 是刻意开放的**：浏览器面板可直接调用。但「局域网 + 免鉴权 + 浏览器」同时成立时，
+  任何网页都能驱动设备（`xiaoai_action`），见 `docs/security.md §3.1.1`。

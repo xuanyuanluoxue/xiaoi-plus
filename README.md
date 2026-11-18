@@ -32,8 +32,8 @@
 | 图片理解 | 让第三方模型正常收到截图/图片（hook `getSupportsVision`），不再被换成占位文本 | ✅ 已验证 |
 | 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1`；全机只由 leader 进程监听一个端口；`POST /config` 已停用（410） | 🧪 实验性，默认关闭 |
 | 局域网 MCP | 显式打开「允许局域网访问」且 token 为 32 位 hex 时才监听 `0.0.0.0`，同一 Wi-Fi 的电脑可直接连；短/弱 token 自动回退 loopback；关闭开关立即回到仅本机。测试便利选项：「允许弱密码」放任意非空密码，「免鉴权」连 token 都不要（都可随时关） | 🧪 实验性，默认关闭 |
-| 设备操作接口 | App 进程内 `8770`（打开应用/通知/闹钟/音量/设备信息/小爱代理），默认仅本机；独立开关「设备操作接口允许局域网访问」，复用同一个 token，弱 token 自动回退 | 🧪 实验性，默认关闭 |
-| MCP 端点 | `POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），MCP 客户端可直接接入 | 🧪 实验性，随桥一起开启 |
+| 设备操作接口 | App 进程内 `8770~8779`（打开应用/通知/闹钟/音量/设备信息/小爱代理），默认仅本机；独立开关「设备操作接口允许局域网访问」，复用同一个 token，弱 token 自动回退 | 🧪 实验性，默认关闭 |
+| MCP 端点 | `POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），MCP 客户端可直接接入。**0.16.0 单端口统一**：8771 与动作面端点互相补齐工具（各 15 个），配哪个都行 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |
 
 已验证的小爱版本见 [兼容性矩阵](docs/compatibility.md)，目前只有 **8.2.65.4714**。
@@ -199,25 +199,41 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 
 ### MCP 端点（可选，随桥开启）
 
-桥启动后同时暴露一个标准 MCP 服务端：单端点 `POST /mcp`，JSON-RPC 2.0，无会话、无 SSE。
+0.16.0 起是**单端口统一**的：8771（小爱进程能力桥）与 8772 附近（App 进程动作面）
+互相补齐工具，**两个端点都返回同一套 15 个工具**，客户端只配一个即可。
 
+- 端点不写死：桥从 `8771` 起、动作面从 `8770` 起，被占用都会顺延（实测动作面
+  可能在 8770、也可能顺延到 8772~8779）。**以「接入 › 连接信息」或 `/health` 的
+  `port=` 为准**；两边的工具完全相同，配哪个都能用。
 - 协议版本 `2025-03-26`，支持 `initialize`、`notifications/initialized`、`ping`、`tools/list`、`tools/call`
 - 鉴权与 `/cli` 相同：`Authorization: Bearer <token>`；`GET /mcp` 返回 `405`
+- 支持 CORS：`OPTIONS` 回 `204` 预检，响应都带 `Access-Control-Allow-*`，浏览器面板可直接调用
+- 请求体上限 64 KB；超限回 `413 payload too large (max 65536 bytes)`
+- 未知参数不再静默忽略：返回 `unknown argument: xxx（可用：...）` + `isError:true`
+- 对端进程不可用时返回 `AGENT_UNAVAILABLE` / `BRIDGE_UNAVAILABLE`（`retryable:true`），本端工具不受影响
 - 默认只监听 loopback；打开「允许局域网访问」且 token 为 32 hex 后同一 Wi-Fi 可直连，
   `/island` 仍只接受本机请求
 - `POST /config` 已停用：固定返回 `410 Gone`（不解析 body、不写配置）；配置只能在小爱同学+ App 修改
 
-| 工具 | 参数 | 作用 |
-|---|---|---|
-| `xiaoai_status` | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` |
-| `xiaoai_submit` | `text`（必填）、`sessionId`（可选） | 让小爱执行一句话任务并返回回复；不传 sessionId 自动 `session.open` |
-| `xiaoai_todo_create` | `title`（必填）、`content`（可选） | 确定性创建小米笔记待办卡片，不经 LLM；content 留空自动生成 `- [ ] <title>`，失败建议改用 `xiaoai_submit` 兜底 |
-| `xiaoai_cli` | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
-| `xiaoai_config` | 无 | 读当前生效配置：model / baseUrl / marker / bridge / lan / 密钥是否已设 |
-| `xiaoai_switch_model` | `model`（必填）、`marker`（可选） | 热切换已有端点的模型；**拒绝** `baseUrl`/`apiKey`/`bridge`/`lan`（端点和密钥只能在手机 App 设置） |
-| `xiaoai_logs` | `limit`（默认 80）、`since`（可选） | 读运行日志：最近 300 条环形缓冲，同时落盘 `files/xiaoi_plus.log`（滚动 256KB） |
-| `xiaoai_island` | `text`（可选）、`force`（默认 true） | 手动发一次超级岛提示，用于验证岛通路；自动路径在首次走第三方模型时弹一次 |
-| `xiaoai_stats` | `days`（默认 7，1~90） | 调用量统计：按天返回三方 / 官方模型的调用次数，主对话与子调用分开 |
+| 工具 | 归属 | 参数 | 作用 |
+|---|---|---|---|
+| `xiaoai_status` | 桥 | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` |
+| `xiaoai_submit` | 桥 | `text`（必填，≤4000）、`sessionId`、`structured` | 让小爱执行一句话任务；默认回文本，`structured:true` 时回 `{ok,text,sessionId}` |
+| `xiaoai_todo_create` | 桥 | `title`（必填，≤200）、`content`（≤8192） | 确定性创建小米笔记待办卡片，不经 LLM |
+| `xiaoai_cli` | 桥 | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
+| `xiaoai_config` | 桥 | 无 | 读当前生效配置：model / baseUrl / marker / bridge / lan / `noAuth` / `weakToken` / `authMode` / 密钥是否已设 |
+| `xiaoai_switch_model` | 桥 | `model`（必填）、`marker`（可选） | 热切换已有端点的模型，回 `lastGoodModel`；**拒绝** `baseUrl`/`apiKey`/`bridge`/`lan` |
+| `xiaoai_logs` | 桥 | `limit`（缺省 80，0=空，上限 300）、`since` | 读运行日志：最近 300 条环形缓冲，同时落盘 `files/xiaoi_plus.log` |
+| `xiaoai_island` | 桥 | `text`（默认「小爱同学plus」）、`force` | 手动发一次超级岛提示（deprecated，建议用 `xiaoai_notify`） |
+| `xiaoai_stats` | 桥 | `days`（默认 7，上限 90，超出回 `clamped:true`） | 调用量统计：按天返回三方 / 官方模型的调用次数 |
+| `xiaoai_capabilities` | App | `includeUnavailable` | 列出设备动作、schema、风险与可用性 |
+| `xiaoai_action` | App | `action`（必填）+ 动作参数 | 执行设备动作；`risk=confirm/danger` 需确认 |
+| `xiaoai_confirm` | App | `confirmToken`、`approve` | 批准/拒绝待确认动作；token 一次性、60 秒过期 |
+| `xiaoai_audit` | App | `limit`（1~200，默认 50） | 动作审计摘要（不含参数值/token/apiKey） |
+| `xiaoai_notify` | App | `text`（≤2000）、`channel=island\|notification`、`force` | 发提醒：超级岛优先，失败自动降级普通通知 |
+| `xiaoai_ask` | App | `text`（≤8000）、`sessionId`、`context`（≤8KB）、`timeoutMs`（≤180000） | 代理手机小爱并返回 `sessionId`，支持多轮 |
+
+> 上限、TTL、端口都来自 `Contract.java` 单一来源；改契约要同时改测试与本文档。
 
 手机上自测（`127.0.0.1` 只有手机自己能访问）：
 
@@ -231,9 +247,12 @@ curl -s -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' \
 
 **A. 同一 Wi-Fi 直连（推荐）**
 
-在「接入 › 令牌与局域网」打开「允许局域网访问」，保证 Token 非空并保存。把「连接信息」里显示的
-`http://<手机IP>:8771/mcp` 连同 `Authorization: Bearer <token>` 头注册到 MCP 客户端即可，
-不需要 adb、不需要 root、不需要数据线。桥随小爱进程启动，请保持小爱在后台运行。
+在「接入 › 令牌与局域网」打开「允许局域网访问」，保证 Token 非空并保存。把「接入 › 连接信息」里
+显示的 MCP 地址（`http://<手机IP>:8771/mcp` 或动作面端口）连同 `Authorization: Bearer <token>` 头
+注册到 MCP 客户端即可，不需要 adb、不需要 root、不需要数据线。
+8771 随小爱进程启动；动作面属于 App 进程，只有「设备操作接口」在跑时存在。
+两者工具相同、共用同一个 token，端口都以 `/health` 或设置页显示为准
+（`8770` 可能被小爱自身占用，此时动作面顺延到 `8772~8779`）。
 
 **B. adb 隧道（USB/无线 adb）**
 
@@ -242,6 +261,8 @@ adb forward tcp:8771 tcp:8771
 # MCP URL: http://127.0.0.1:8771/mcp
 # Header : Authorization: Bearer <TOKEN>
 ```
+
+> 也可以转发动作面端口（如 `8772`），工具完全相同。
 
 > 局域网模式只开放 `/health`、`/logs`、`/stats`、`/cli`、`/mcp`；
 > `/island`（免 token 弹提示）始终只允许本机；`/config` 已停用（410）。

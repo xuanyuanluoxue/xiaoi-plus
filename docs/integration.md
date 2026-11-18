@@ -53,21 +53,28 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
 5. 失败先查：小爱是否在运行（`ps -A | grep voiceassist`）、token 是否一致、端口是否 8771–8775
 ```
 
-## 4. MCP 接入（v0.3.0 起内置）
+## 4. MCP 接入（v0.3.0 起内置，0.16.0 单端口统一）
 
 桥同时是标准 MCP 服务端：`POST /mcp`，JSON-RPC 2.0，协议版本 `2025-03-26`。
 
-- 传输：Streamable HTTP，只回 JSON（不提供 SSE，`GET /mcp` → 405）
+- 传输：Streamable HTTP，只回 JSON（不提供 SSE，`GET /mcp` → 405）；`OPTIONS` 回 204 预检
 - 鉴权：与 `/cli` 相同，`Authorization: Bearer <TOKEN>`
-- 工具（9 个）：`xiaoai_status` / `xiaoai_submit` / `xiaoai_todo_create` / `xiaoai_cli` /
-  `xiaoai_config` / `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats`，
-  语义与 README 的 MCP 工具表一致；`xiaoai_todo_create` 直接绑定 Notes provider，确定性建待办
+- **单端口统一**：8771（小爱进程）与动作面（App 进程）互相补齐工具，两个端点都返回 15 个工具，
+  客户端只需要配一个。端点不要写死：桥从 `8771`、动作面从 `8770` 起，被占用都会顺延，
+  以 `/health` 的 `port=` 或设置页「连接信息」为准。
+- 工具（15 个）：
+  - 桥侧 9 个：`xiaoai_status` / `xiaoai_submit` / `xiaoai_todo_create` / `xiaoai_cli` /
+    `xiaoai_config` / `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats`
+  - App 侧 6 个：`xiaoai_capabilities` / `xiaoai_action` / `xiaoai_confirm` / `xiaoai_audit` /
+    `xiaoai_notify` / `xiaoai_ask`
+  - 语义与 README 的工具表一致；上限/TTL/端口统一来自 `Contract.java`
+- 转发失败的错误码：8771 侧 `AGENT_UNAVAILABLE`、8772 侧 `BRIDGE_UNAVAILABLE`，都带 `retryable:true`
 
 电脑上接入有两种方式：
 
 ```bash
 # A. 同一 Wi-Fi 直连（设置页打开「允许局域网访问」，Token 非空）
-# MCP URL: http://<手机IP>:8771/mcp
+# MCP URL: http://<手机IP>:8771/mcp   （或动作面端口，工具相同）
 # Header : Authorization: Bearer <TOKEN>
 
 # B. adb 隧道（USB / 无线 adb）
@@ -83,7 +90,6 @@ adb forward tcp:8771 tcp:8771
 打开「允许免令牌调用」后本机与局域网都不再要求 `Authorization`；打开「允许弱密码」
 后任意非空密码（如 `test1234`）都能作为 Bearer 并绑定 `0.0.0.0`。关闭后 1~2 秒恢复。
 风险与边界见 [security.md §3.1](security.md)。
-`/mcp` 的 `xiaoai_island` 工具在局域网下可用（需 Bearer token）；
 `xiaoai_switch_model` 只能改 model/marker，端点/密钥/开关必须在小爱同学+ App 修改。
 手机直连时不要在公共 Wi-Fi 上长期开启；不用时把开关关掉即可立即回到 loopback。
 
@@ -93,12 +99,13 @@ adb forward tcp:8771 tcp:8771
 
 | 脚本 | 用途 |
 |---|---|
-| `scripts/contract-test.sh --check` | 47 项回归：鉴权、MCP 形状、免鉴权 401/405/410、`/island`、工具表；会重启小爱并对比基线 |
+| `scripts/contract-test.sh --check` | 45 项回归（开免鉴权时 3 项 401 断言按配置跳过）：鉴权、MCP 形状、`tools/list`（own + 合并）、`/island`、工具表；会重启小爱并对比基线 |
 | `scripts/mcp-call.sh` | 手工调单个工具：端口发现（自动排除 8770 Agent 面）+ `adb forward` + Bearer 鉴权 |
 
 ```bash
-bash scripts/mcp-call.sh health                    # GET /health，自证端口bash scripts/mcp-call.sh init                      # initialize + ping
-bash scripts/mcp-call.sh tools                     # 9 个工具名
+bash scripts/mcp-call.sh health                    # GET /health，自证端口
+bash scripts/mcp-call.sh init                      # initialize + ping
+bash scripts/mcp-call.sh tools                     # 9 个桥侧工具名
 bash scripts/mcp-call.sh call xiaoai_status
 bash scripts/mcp-call.sh call xiaoai_logs '{"limit":5}'
 bash scripts/mcp-call.sh raw '{"jsonrpc":"2.0","id":1,"method":"ping"}'
