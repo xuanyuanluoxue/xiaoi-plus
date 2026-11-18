@@ -16,6 +16,13 @@ public final class TestMain {
             System.out.println("  FAIL HttpTest 套件异常: " + t);
         }
         failed += McpTest.run();
+        failed += ToolOwnershipTest.run();
+        try {
+            failed += LoopbackMcpClientTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL LoopbackMcpClientTest 套件异常: " + t);
+        }
         failed += LogLevelTest.run();
         failed += RedactTest.run();
         failed += AgentCallLogTest.run();

@@ -21,17 +21,22 @@ public final class BridgeHttpPolicyTest {
         T.ok("config 路径", BridgeHttpPolicy.isConfig("/config"));
         T.ok("MCP 大写不匹配", !BridgeHttpPolicy.isMcp("/MCP"));
 
-        T.eq("log limit 0 → 80", 80, BridgeHttpPolicy.clampLogLimit(0));
-        T.eq("log limit -1 → 80", 80, BridgeHttpPolicy.clampLogLimit(-1));
-        T.eq("log limit 301 → 80", 80, BridgeHttpPolicy.clampLogLimit(301));
-        T.eq("log limit 1 保留", 1, BridgeHttpPolicy.clampLogLimit(1));
-        T.eq("log limit 300 保留", 300, BridgeHttpPolicy.clampLogLimit(300));
+        T.eq("log limit 缺省 → 80", 80, BridgeHttpPolicy.logLimit(BridgeHttpPolicy.ABSENT));
+        T.eq("log limit 0 → 0（空数组）", 0, BridgeHttpPolicy.logLimit(0));
+        T.eq("log limit -1 → 80", 80, BridgeHttpPolicy.logLimit(-1));
+        T.eq("log limit 301 → 300", 300, BridgeHttpPolicy.logLimit(301));
+        T.ok("log limit 301 标记 clamped", BridgeHttpPolicy.logLimitClamped(301));
+        T.eq("log limit 1 保留", 1, BridgeHttpPolicy.logLimit(1));
+        T.eq("log limit 300 保留", 300, BridgeHttpPolicy.logLimit(300));
+        T.ok("log limit 300 不标 clamped", !BridgeHttpPolicy.logLimitClamped(300));
 
-        T.eq("stats days 0 → 7", 7, BridgeHttpPolicy.clampStatsDays(0));
-        T.eq("stats days -1 → 7", 7, BridgeHttpPolicy.clampStatsDays(-1));
-        T.eq("stats days 91 → 7", 7, BridgeHttpPolicy.clampStatsDays(91));
-        T.eq("stats days 1 保留", 1, BridgeHttpPolicy.clampStatsDays(1));
-        T.eq("stats days 90 保留", 90, BridgeHttpPolicy.clampStatsDays(90));
+        T.eq("stats days 0 → 7", 7, BridgeHttpPolicy.statsDays(0));
+        T.eq("stats days -1 → 7", 7, BridgeHttpPolicy.statsDays(-1));
+        T.eq("stats days 91 → 90", 90, BridgeHttpPolicy.statsDays(91));
+        T.ok("stats days 91 标记 clamped", BridgeHttpPolicy.statsDaysClamped(91));
+        T.eq("stats days 1 保留", 1, BridgeHttpPolicy.statsDays(1));
+        T.eq("stats days 90 保留", 90, BridgeHttpPolicy.statsDays(90));
+        T.ok("stats days 90 不标 clamped", !BridgeHttpPolicy.statsDaysClamped(90));
 
         return T.report("BridgeHttpPolicyTest");
     }

@@ -70,6 +70,20 @@ public final class Mcp {
     }
 
     /**
+     * 8772 动作面转发端口（0.16.0 单端口统一）。
+     *
+     * <p>能力桥只按 {@link plus.xiaoi.module.core.mcp.ToolOwnership} 决定转发哪些工具，
+     * 实现方负责发现 8772 的实际端口（8770 常被小爱占用，会顺延）。</p>
+     */
+    public interface AgentPort {
+        /** 对端工具清单（MCP {@code result.tools} 的 List）；不可用返回 null。 */
+        Object tools();
+
+        /** 转发一次 tools/call；不可用或失败返回 null。 */
+        Map<String, Object> callTool(String name, Map<?, ?> arguments);
+    }
+
+    /**
      * 8771 工具后端（WP3）：把原 11 方法 god 接口拆成 5 个能力端口。
      * Bridge 用同一实现填满五个槽位；测试可分别注入。
      */
@@ -79,9 +93,16 @@ public final class Mcp {
         public final CliPort cli;
         public final IslandPort island;
         public final TelemetryPort telemetry;
+        /** 8772 转发；null = 只提供 8771 自己的工具（单测/未启用）。 */
+        public final AgentPort agent;
 
         public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
                      IslandPort island, TelemetryPort telemetry) {
+            this(runtime, config, cli, island, telemetry, null);
+        }
+
+        public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
+                     IslandPort island, TelemetryPort telemetry, AgentPort agent) {
             if (runtime == null || config == null || cli == null
                     || island == null || telemetry == null) {
                 throw new IllegalArgumentException("Mcp.Hosts 端口不能为空");
@@ -91,6 +112,7 @@ public final class Mcp {
             this.cli = cli;
             this.island = island;
             this.telemetry = telemetry;
+            this.agent = agent;
         }
     }
 
@@ -193,7 +215,11 @@ public final class Mcp {
                 return rpcResult(id, Json.obj());
             }
             if ("tools/list".equals(m)) {
-                return rpcResult(id, toolsList());
+                // 单端口统一合并时会请求对端的 tools/list；对端必须只回自己的工具，
+                // 否则 A→B→A 无限递归。对端由 LoopbackMcpClient 带 params.own=true。
+                Object p = req.get("params");
+                boolean own = p instanceof Map && Json.optBoolean((Map<?, ?>) p, "own", false);
+                return rpcResult(id, own ? toolsList() : toolsListMerged(hosts));
             }
             if ("tools/call".equals(m)) {
                 Object p = req.get("params");
@@ -265,7 +291,8 @@ public final class Mcp {
         r.put("protocolVersion", PROTOCOL);
         r.put("capabilities", caps);
         r.put("serverInfo", info);
-        r.put("instructions", "小爱同学（手机端）能力桥：xiaoai_submit 让小爱执行一句话任务，"
+        r.put("instructions", "小爱同学+ 统一 MCP 端点（小爱进程能力桥，8771）：与 8772 动作面共享同一套"
+                + "工具清单（互相转发），客户端只配一个端口即可。xiaoai_submit 让小爱执行一句话任务，"
                 + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，xiaoai_stats 看三方/官方模型调用量。"
                 + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。");
         return r;
@@ -273,8 +300,10 @@ public final class Mcp {
 
     /** 工具表（顺序：status / submit / todo_create / cli / config / island / switch_model / logs / stats）。 */
     /** xiaoai_todo_create 的输入上限：防止超长文本穿过 binder/HTTP。 */
-    public static final int TODO_TITLE_MAX = 200;
-    public static final int TODO_CONTENT_MAX = 8192;
+    public static final int TODO_TITLE_MAX = plus.xiaoi.module.core.Contract.TODO_TITLE_MAX;
+    public static final int TODO_CONTENT_MAX = plus.xiaoi.module.core.Contract.TODO_CONTENT_MAX;
+    /** xiaoai_submit.text 上限。 */
+    public static final int SUBMIT_TEXT_MAX = plus.xiaoi.module.core.Contract.SUBMIT_TEXT_MAX;
 
     public static Map<String, Object> toolsList() {
         List<Object> tools = Json.arr();
@@ -286,11 +315,17 @@ public final class Mcp {
 
         Map<String, Object> submit = Json.obj();
         submit.put("name", "xiaoai_submit");
-        submit.put("description", "让小爱（手机端语音助手）执行一句话任务，返回它的回复文本。"
+        submit.put("description", "让小爱（手机端语音助手）执行一句话任务。默认返回它的回复文本；"
+                + "structured=true 时返回 {\"ok\",\"text\",\"sessionId\"}，可用 sessionId 续聊。"
                 + "不传 sessionId 时自动开新会话。");
         Map<String, Object> submitProps = Json.obj();
-        submitProps.put("text", prop("string", "要说给小爱的话"));
+        Map<String, Object> submitText = prop("string", "要说给小爱的话");
+        submitText.put("minLength", 1L);
+        submitText.put("maxLength", (long) SUBMIT_TEXT_MAX);
+        submitProps.put("text", submitText);
         submitProps.put("sessionId", prop("string", "可选；复用已有会话以获得上下文"));
+        submitProps.put("structured", prop("boolean",
+                "可选；true 返回 JSON（含 sessionId），默认 false 只返回文本（兼容旧提示词）"));
         Map<String, Object> submitSchema = Json.obj();
         submitSchema.put("type", "object");
         submitSchema.put("properties", submitProps);
@@ -334,9 +369,10 @@ public final class Mcp {
 
         Map<String, Object> isl = Json.obj();
         isl.put("name", "xiaoai_island");
-        isl.put("description", "手动触发一次超级岛提示（单次，6 秒后自动消失），用于验证岛通路。");
+        isl.put("description", "手动触发一次超级岛提示（单次，6 秒后自动消失），用于验证岛通路。"
+                + "deprecated：新代码请用 xiaoai_notify（channel=island）。");
         Map<String, Object> islProps = Json.obj();
-        islProps.put("text", prop("string", "可选；提示文案，默认显示当前模型"));
+        islProps.put("text", prop("string", "可选；提示文案，默认「小爱同学plus」"));
         islProps.put("force", prop("boolean", "是否忽略单次限制（调试用，默认 true）"));
         Map<String, Object> islSchema = Json.obj();
         islSchema.put("type", "object");
@@ -362,7 +398,11 @@ public final class Mcp {
         lg.put("name", "xiaoai_logs");
         lg.put("description", "读取模块运行日志（最近 300 条环形缓冲，落盘在 files/xiaoi_plus.log）。");
         Map<String, Object> lgProps = Json.obj();
-        lgProps.put("limit", prop("integer", "返回尾部多少条，默认 80"));
+        Map<String, Object> lgLimit = prop("integer",
+                "返回尾部多少条；缺省 80，0 = 空数组，上限 300");
+        lgLimit.put("minimum", 0L);
+        lgLimit.put("maximum", (long) plus.xiaoi.module.core.Contract.LOGS_LIMIT_MAX);
+        lgProps.put("limit", lgLimit);
         lgProps.put("since", prop("integer", "只返回 seq 大于该值的日志"));
         Map<String, Object> lgSchema = Json.obj();
         lgSchema.put("type", "object");
@@ -373,9 +413,13 @@ public final class Mcp {
         Map<String, Object> st = Json.obj();
         st.put("name", "xiaoai_stats");
         st.put("description", "调用量统计：按天返回三方 / 官方模型的调用次数。"
-                + "默认只算主对话（请求含 tools 或消息数 ≥6），记忆抽取等子调用单独记在 sub 里。");
+                + "默认只算主对话（请求含 tools 或消息数 ≥6），记忆抽取等子调用单独记在 sub 里。"
+                + "days 超过 90 会夹到 90 并在结果里回 clamped=true。");
         Map<String, Object> stProps = Json.obj();
-        stProps.put("days", prop("integer", "统计最近多少天，默认 7，范围 1~90"));
+        Map<String, Object> stDays = prop("integer", "统计最近多少天，默认 7，范围 1~90");
+        stDays.put("minimum", 1L);
+        stDays.put("maximum", (long) plus.xiaoi.module.core.Contract.STATS_DAYS_MAX);
+        stProps.put("days", stDays);
         Map<String, Object> stSchema = Json.obj();
         stSchema.put("type", "object");
         stSchema.put("properties", stProps);
@@ -394,6 +438,41 @@ public final class Mcp {
 
         Map<String, Object> r = Json.obj();
         r.put("tools", tools);
+        return r;
+    }
+
+    /**
+     * 单端口统一：本机（8771）工具 + 从 8772 转发来的动作面工具。
+     *
+     * <p>只追加归属为 {@code app} 的工具，并按名字去重；对端不可用时静默退化为
+     * 只有能力桥工具，保证 8771 本身永远可用。</p>
+     */
+    public static Map<String, Object> toolsListMerged(Hosts hosts) {
+        Map<String, Object> r = toolsList();
+        if (hosts == null || hosts.agent == null) return r;
+        Object extra;
+        try {
+            extra = hosts.agent.tools();
+        } catch (Throwable t) {
+            return r;
+        }
+        if (!(extra instanceof List)) return r;
+        Object mineObj = r.get("tools");
+        if (!(mineObj instanceof List)) return r;
+        @SuppressWarnings("unchecked")
+        List<Object> mine = (List<Object>) mineObj;
+        java.util.Set<String> seen = new java.util.HashSet<String>();
+        for (Object o : mine) {
+            if (o instanceof Map) seen.add(Json.optString((Map<?, ?>) o, "name", ""));
+        }
+        for (Object o : (List<?>) extra) {
+            if (!(o instanceof Map)) continue;
+            String name = Json.optString((Map<?, ?>) o, "name", "");
+            if (!plus.xiaoi.module.core.mcp.ToolOwnership.isApp(name)) continue;
+            if (seen.contains(name)) continue;
+            seen.add(name);
+            mine.add(o);
+        }
         return r;
     }
 
@@ -463,6 +542,8 @@ public final class Mcp {
         }
         try {
             if ("xiaoai_status".equals(name)) {
+                String bad = unexpectedArg(args);
+                if (bad != null) return toolText(bad, true);
                 String t = "facade=" + hosts.runtime.facadeReady()
                         + " cli=" + hosts.runtime.cliReady()
                         + " port=" + hosts.runtime.port()
@@ -470,8 +551,13 @@ public final class Mcp {
                 return toolText(t, false);
             }
             if ("xiaoai_submit".equals(name)) {
+                String bad = unexpectedArg(args, "text", "sessionId", "structured");
+                if (bad != null) return toolText(bad, true);
                 String text = Json.optString(args, "text", "").trim();
                 if (text.length() == 0) return toolText("missing argument: text", true);
+                if (text.length() > SUBMIT_TEXT_MAX) {
+                    return toolText("text too long (max " + SUBMIT_TEXT_MAX + ")", true);
+                }
                 String sid = Json.optString(args, "sessionId", "").trim();
                 if (sid.length() == 0) {
                     String open = hosts.cli.callCli(cliJson("session.open", Json.obj()));
@@ -483,9 +569,19 @@ public final class Mcp {
                 p.put("text", text);
                 String out = hosts.cli.callCli(cliJson("agent.submit", p));
                 if (out == null) return toolText("ERR cli service not ready", true);
-                return toolText(out, false);
+                if (!Json.optBoolean(args, "structured", false)) {
+                    // 默认仍是纯文本：很多现有提示词直接展示 xiaoai_submit 的返回。
+                    return toolText(out, false);
+                }
+                Map<String, Object> r = Json.obj();
+                r.put("ok", true);
+                r.put("text", out);
+                r.put("sessionId", sid);
+                return toolText(Json.write(r), false);
             }
             if ("xiaoai_todo_create".equals(name)) {
+                String bad = unexpectedArg(args, "title", "content");
+                if (bad != null) return toolText(bad, true);
                 String title = Json.optString(args, "title", "").trim();
                 if (title.length() == 0) return toolText("missing argument: title", true);
                 if (title.length() > TODO_TITLE_MAX) {
@@ -511,6 +607,8 @@ public final class Mcp {
                 return toolText(r.text, !r.ok);
             }
             if ("xiaoai_cli".equals(name)) {
+                String bad = unexpectedArg(args, "cmd");
+                if (bad != null) return toolText(bad, true);
                 String cmd = Json.optString(args, "cmd", "").trim();
                 if (cmd.length() == 0) return toolText("missing argument: cmd", true);
                 String out = hosts.cli.callCli(cmd);
@@ -518,6 +616,8 @@ public final class Mcp {
                 return toolText(out, false);
             }
             if ("xiaoai_config".equals(name)) {
+                String bad = unexpectedArg(args);
+                if (bad != null) return toolText(bad, true);
                 Snapshot c = hosts.config.config();
                 Map<String, Object> r = Json.obj();
                 r.put("model", c.model);
@@ -529,6 +629,8 @@ public final class Mcp {
                 r.put("lan", c.lan);
                 r.put("noAuth", c.noAuth);
                 r.put("weakToken", c.weakToken);
+                // 鉴权模式：off（免 token）/ weak（任意非空密码）/ token（要求 32 hex）
+                r.put("authMode", plus.xiaoi.module.core.BridgePolicy.authMode(c.noAuth, c.weakToken));
                 r.put("apiKeySet", c.apiKey.length() > 0);
                 r.put("tokenSet", c.token.length() > 0);
                 r.put("port", (long) hosts.runtime.port());
@@ -542,6 +644,10 @@ public final class Mcp {
                 if (rejected != null) return toolText(rejected, true);
                 String model = Json.optString(args, "model", "").trim();
                 if (model.length() == 0) return toolText("missing argument: model", true);
+                if (model.length() > plus.xiaoi.module.core.Contract.MODEL_MAX) {
+                    return toolText("model too long (max "
+                            + plus.xiaoi.module.core.Contract.MODEL_MAX + ")", true);
+                }
                 boolean marker = Json.has(args, "marker")
                         ? Json.optBoolean(args, "marker", cur.marker) : cur.marker;
                 if (cur.baseUrl.length() == 0) {
@@ -554,34 +660,45 @@ public final class Mcp {
                 Map<String, Object> r = Json.obj();
                 r.put("ok", true);
                 r.put("model", model);
+                r.put("lastGoodModel", model);
                 r.put("baseUrl", cur.baseUrl);
                 r.put("apiKeySet", cur.apiKey.length() > 0);
                 r.put("changed", !model.equals(cur.model) || marker != cur.marker);
                 return toolText(Json.write(r), false);
             }
             if ("xiaoai_island".equals(name)) {
-                Snapshot c = hosts.config.config();
+                String bad = unexpectedArg(args, "text", "force");
+                if (bad != null) return toolText(bad, true);
                 String t = Json.optString(args, "text", "").trim();
-                String model = t.length() > 0 ? t : c.model;
-                boolean ok = hosts.island.showIsland(model, Json.optBoolean(args, "force", true));
+                // 0.16.0：默认文案不再是模型名（模型名对用户没有意义）。
+                String text = t.length() > 0 ? t : ISLAND_DEFAULT_TEXT;
+                boolean ok = hosts.island.showIsland(text, Json.optBoolean(args, "force", true));
                 Map<String, Object> r = Json.obj();
                 r.put("ok", ok);
                 r.put("alreadyShown", !ok);
-                r.put("text", model);
+                r.put("text", text);
                 return toolText(Json.write(r), false);
             }
             if ("xiaoai_logs".equals(name)) {
-                int limit = (int) Json.optLong(args, "limit", 80);
-                if (limit <= 0) limit = 80;
+                String bad = unexpectedArg(args, "limit", "since");
+                if (bad != null) return toolText(bad, true);
+                int limit = Json.has(args, "limit")
+                        ? (int) Json.optLong(args, "limit", 0)
+                        : plus.xiaoi.module.core.Contract.LOGS_LIMIT_DEFAULT;
+                limit = plus.xiaoi.module.core.bridge.BridgeHttpPolicy.logLimit(limit);
                 long since = Json.optLong(args, "since", 0);
                 return toolText(hosts.telemetry.logs(limit, since), false);
             }
             if ("xiaoai_stats".equals(name)) {
-                int days = (int) Json.optLong(args, "days", 7);
-                if (days <= 0 || days > 90) days = 7;
+                String bad = unexpectedArg(args, "days");
+                if (bad != null) return toolText(bad, true);
+                long raw = Json.optLong(args, "days",
+                        plus.xiaoi.module.core.Contract.STATS_DAYS_DEFAULT);
+                // 不在这里夹：上层要能看出「请求值被夹过」并回 clamped=true。
+                int days = raw > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) raw;
                 return toolText(hosts.telemetry.stats(days), false);
             }
-            return toolText("unknown tool: " + name, true);
+            return forwardOrUnknown(name, args, hosts);
         } catch (Throwable t) {
             try {
                 return toolText("tool failed: " + t, true);
@@ -589,6 +706,65 @@ public final class Mcp {
                 return Json.obj();
             }
         }
+    }
+
+    /** xiaoai_island 的默认文案（0.16.0 起不再用模型名）。 */
+    public static final String ISLAND_DEFAULT_TEXT = "小爱同学plus";
+
+    /**
+     * 单端口统一：动作面归属的工具转发给 8772；其余仍报 unknown tool。
+     */
+    private static Map<String, Object> forwardOrUnknown(String name, Map<?, ?> args, Hosts hosts) {
+        if (hosts != null && hosts.agent != null
+                && plus.xiaoi.module.core.mcp.ToolOwnership.isApp(name)) {
+            Map<String, Object> out = null;
+            try {
+                out = hosts.agent.callTool(name, args);
+            } catch (Throwable ignored) {
+            }
+            if (out != null) return out;
+            Map<String, Object> o = Json.obj();
+            o.put("ok", false);
+            o.put("code", "AGENT_UNAVAILABLE");
+            o.put("message", "8772 动作面暂不可用（App 进程未运行或 AgentService 已停止），可稍后重试");
+            o.put("retryable", true);
+            return toolText(Json.write(o), true);
+        }
+        return toolText("unknown tool: " + name, true);
+    }
+
+    /**
+     * 未知参数校验：0.16.0 起 8771 不再静默忽略错参数，模型传错会看到明确错误。
+     *
+     * @return null = 可以继续；否则是 isError 文案
+     */
+    static String unexpectedArg(Map<?, ?> args, String... allowed) {
+        if (args == null || args.isEmpty()) return null;
+        for (Object k : args.keySet()) {
+            String key = k == null ? "" : String.valueOf(k);
+            boolean ok = false;
+            for (String a : allowed) {
+                if (a.equals(key)) {
+                    ok = true;
+                    break;
+                }
+            }
+            if (!ok) {
+                return "unknown argument: " + key
+                        + (allowed.length == 0 ? "（该工具不接受参数）"
+                        : "（可用：" + join(allowed) + "）");
+            }
+        }
+        return null;
+    }
+
+    private static String join(String... items) {
+        StringBuilder sb = new StringBuilder();
+        for (String s : items) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(s);
+        }
+        return sb.toString();
     }
 
     /**

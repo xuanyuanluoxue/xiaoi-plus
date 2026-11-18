@@ -32,9 +32,9 @@ public final class AgentHttpServer {
 
     public static final String HOST = "127.0.0.1";
     /** 首选端口；被别的进程占用时按 PORT_MIN~PORT_MAX 依次顺延。 */
-    public static final int DEFAULT_PORT = 8770;
-    public static final int PORT_MIN = 8770;
-    public static final int PORT_MAX = 8775;
+    public static final int DEFAULT_PORT = plus.xiaoi.module.core.Contract.AGENT_PORT;
+    public static final int PORT_MIN = plus.xiaoi.module.core.Contract.AGENT_PORT_MIN;
+    public static final int PORT_MAX = plus.xiaoi.module.core.Contract.AGENT_PORT_MAX;
     /** 兼容旧引用（等于首选端口）。 */
     public static final int PORT = DEFAULT_PORT;
 
@@ -244,6 +244,21 @@ public final class AgentHttpServer {
                 respondQuietly(socket, 400, "text/plain; charset=utf-8", "bad request");
                 return;
             }
+            // 0.16.0：请求体超限明确回 413，而不是当空体解析后报 -32700。
+            if (req.tooLarge) {
+                logHttp(socket, "413 " + req.path + " too large");
+                respondQuietly(socket, 413, "text/plain; charset=utf-8",
+                        "payload too large (max " + Http.MAX_BODY + " bytes)");
+                return;
+            }
+            // CORS 预检：浏览器面板/网页 Agent 带 Authorization 前要先 OPTIONS。
+            if ("OPTIONS".equals(req.method)) {
+                try {
+                    Http.respondPreflight(socket.getOutputStream());
+                } catch (Throwable ignored) {
+                }
+                return;
+            }
 
             if ("/mcp".equals(req.path)) {
                 if (!"POST".equals(req.method)) {
@@ -281,7 +296,10 @@ public final class AgentHttpServer {
                 // 改报本实例实际绑定成功的端口（AgentService 上报到 AgentRuntimeStatus 的同一值）。
                 Http.respond(socket.getOutputStream(), 200,
                         "text/plain; charset=utf-8",
-                        "ok agent=true port=" + port + " bind=" + boundHost);
+                        "ok agent=true port=" + port + " bind=" + boundHost
+                                + " auth=" + BridgePolicy.authMode(noAuth, weakToken)
+                                + " tools=" + toolCount()
+                                + " version=" + (mcp == null ? "0" : mcp.version()));
                 return;
             }
 
@@ -295,9 +313,15 @@ public final class AgentHttpServer {
         }
     }
 
+    /** /health 里的 tools 数：本端点自己提供的工具数（不触发对端探测）。 */
+    private int toolCount() {
+        if (mcp == null) return 0;
+        Object v = mcp.toolsList().get("tools");
+        return v instanceof java.util.List ? ((java.util.List<?>) v).size() : 0;
+    }
+
     /** 来源只分本机/局域网，不记录原始 IP。 */
-    private static String source(Socket s) {
-        try {
+    private static String source(Socket s) {        try {
             return s != null && s.getInetAddress() != null && s.getInetAddress().isLoopbackAddress()
                     ? "loopback" : "lan";
         } catch (Throwable t) {

@@ -26,24 +26,28 @@ public final class AgentMcp {
     public static final String SERVER = "xiaoi-plus-agent";
 
     /** xiaoai_notify.text 的协议上限（超过直接拒绝，不静默吞掉）。 */
-    public static final int NOTIFY_TEXT_MAX = 2000;
+    public static final int NOTIFY_TEXT_MAX = plus.xiaoi.module.core.Contract.NOTIFY_TEXT_MAX;
     /** 超级岛正文建议上限；超出截断并标记 truncated。 */
-    public static final int NOTIFY_ISLAND_MAX = 60;
+    public static final int NOTIFY_ISLAND_MAX = plus.xiaoi.module.core.Contract.NOTIFY_ISLAND_MAX;
     /** 超级岛右侧大字建议上限（仅作为文案提示，实际由岛渲染决定）。 */
-    public static final int NOTIFY_ISLAND_TITLE_MAX = 22;
+    public static final int NOTIFY_ISLAND_TITLE_MAX =
+            plus.xiaoi.module.core.Contract.NOTIFY_ISLAND_TITLE_MAX;
 
     /** xiaoai_ask.text 的协议上限。 */
-    public static final int ASK_TEXT_MAX = 8000;
+    public static final int ASK_TEXT_MAX = plus.xiaoi.module.core.Contract.ASK_TEXT_MAX;
     /** context 的 UTF-8 字节上限。 */
-    public static final int ASK_CONTEXT_MAX_BYTES = 8 * 1024;
-    public static final long ASK_TIMEOUT_DEFAULT_MS = 120000L;
-    public static final long ASK_TIMEOUT_MAX_MS = 180000L;
+    public static final int ASK_CONTEXT_MAX_BYTES =
+            plus.xiaoi.module.core.Contract.ASK_CONTEXT_MAX_BYTES;
+    public static final long ASK_TIMEOUT_DEFAULT_MS =
+            plus.xiaoi.module.core.Contract.ASK_TIMEOUT_DEFAULT_MS;
+    public static final long ASK_TIMEOUT_MAX_MS =
+            plus.xiaoi.module.core.Contract.ASK_TIMEOUT_MAX_MS;
 
     private static final String INSTRUCTIONS =
-            "这是小爱+ App 进程内的 Agent 动作面（127.0.0.1:8770），不是小爱对话服务。"
-                    + "先用 xiaoai_capabilities 查看动作、参数 schema、风险与可用性，"
-                    + "再用 xiaoai_action 执行。Agent 的长期记忆真相在 PC Agent，"
-                    + "手机端默认无状态；context 只用于本次请求。"
+            "这是小爱同学+ 的统一 MCP 端点（App 进程动作面），同时提供 App 侧动作与 8771 "
+                    + "能力桥的工具（转发到小爱进程）。先用 xiaoai_capabilities 查看动作、"
+                    + "参数 schema、风险与可用性，再用 xiaoai_action 执行。Agent 的长期记忆"
+                    + "真相在 PC Agent，手机端默认无状态；context 只用于本次请求。"
                     + "risk=confirm/danger 的动作需要确认：confirmToken 一次性、60 秒过期，"
                     + "只能用 xiaoai_confirm 或带同一 token 的 xiaoai_action 消费一次；"
                     + "idempotencyKey 在 24 小时内重复返回首次结果，不会重复执行。"
@@ -58,27 +62,51 @@ public final class AgentMcp {
     private final AuditLog audit;
     private final NotifyHost notifyHost;
     private final AskHost askHost;
+    /** 8771 能力桥转发（单端口统一）；null = 纯本地（单测）。 */
+    private final BridgePort bridgePort;
 
     /** 兼容 WP1.2 的构造：没有确认/幂等/审计，confirm 动作退回旧行为。 */
     public AgentMcp(String version) {
-        this(version, null, null, null, null, null);
+        this(version, null, null, null, null, null, null);
     }
 
     public AgentMcp(String version, ConfirmationManager confirmations,
                     IdempotencyStore idempotency, AuditLog audit) {
-        this(version, confirmations, idempotency, audit, null, null);
+        this(version, confirmations, idempotency, audit, null, null, null);
     }
 
     /** WP1.3b：附带提醒与小爱代理宿主；host 为 null 时对应工具返回 INTERNAL。 */
     public AgentMcp(String version, ConfirmationManager confirmations,
                     IdempotencyStore idempotency, AuditLog audit,
                     NotifyHost notifyHost, AskHost askHost) {
+        this(version, confirmations, idempotency, audit, notifyHost, askHost, null);
+    }
+
+    /** 0.16.0：额外接收 8771 转发端口；null 时只暴露 App 侧工具。 */
+    public AgentMcp(String version, ConfirmationManager confirmations,
+                    IdempotencyStore idempotency, AuditLog audit,
+                    NotifyHost notifyHost, AskHost askHost, BridgePort bridgePort) {
         this.version = version == null || version.length() == 0 ? "0" : version;
         this.confirmations = confirmations;
         this.idempotency = idempotency;
         this.audit = audit;
         this.notifyHost = notifyHost;
         this.askHost = askHost;
+        this.bridgePort = bridgePort;
+    }
+
+    /**
+     * 8771 能力桥的转发端口（单端口统一）。
+     *
+     * <p>实现方负责发现 8771 的实际端口并在不可用时快速失败；本类只按
+     * {@link plus.xiaoi.module.core.mcp.ToolOwnership} 决定是否转发。</p>
+     */
+    public interface BridgePort {
+        /** 对端工具清单（MCP {@code result.tools} 的 List）；不可用返回 null。 */
+        Object tools();
+
+        /** 转发一次 tools/call；不可用或失败返回 null。 */
+        Map<String, Object> callTool(String name, Map<?, ?> arguments);
     }
 
     public String version() {
@@ -120,7 +148,11 @@ public final class AgentMcp {
                 return rpcResult(id, Json.obj());
             }
             if ("tools/list".equals(method)) {
-                return rpcResult(id, toolsList());
+                // 对端转发来的合并请求只回本端工具，避免 A→B→A 递归。
+                Object p = req.get("params");
+                Map<?, ?> listParams = p instanceof Map ? (Map<?, ?>) p : null;
+                boolean own = listParams != null && Json.optBoolean(listParams, "own", false);
+                return rpcResult(id, own ? toolsList() : toolsListMerged());
             }
             if ("tools/call".equals(method)) {
                 if (registry == null) {
@@ -264,6 +296,41 @@ public final class AgentMcp {
         return r;
     }
 
+    /**
+     * 单端口统一：本机工具 + 从 8771 转发来的能力桥工具。
+     *
+     * <p>只追加归属为 {@code bridge} 的工具，且按名字去重，避免对端异常时出现重复项。
+     * 对端不可用时静默退化为只有 App 侧工具（不影响本机功能）。</p>
+     */
+    public Map<String, Object> toolsListMerged() {
+        Map<String, Object> r = toolsList();
+        if (bridgePort == null) return r;
+        Object extra;
+        try {
+            extra = bridgePort.tools();
+        } catch (Throwable t) {
+            return r;
+        }
+        if (!(extra instanceof List)) return r;
+        Object mineObj = r.get("tools");
+        if (!(mineObj instanceof List)) return r;
+        @SuppressWarnings("unchecked")
+        List<Object> mine = (List<Object>) mineObj;
+        java.util.Set<String> seen = new java.util.HashSet<String>();
+        for (Object o : mine) {
+            if (o instanceof Map) seen.add(Json.optString((Map<?, ?>) o, "name", ""));
+        }
+        for (Object o : (List<?>) extra) {
+            if (!(o instanceof Map)) continue;
+            String name = Json.optString((Map<?, ?>) o, "name", "");
+            if (!plus.xiaoi.module.core.mcp.ToolOwnership.isBridge(name)) continue;
+            if (seen.contains(name)) continue;
+            seen.add(name);
+            mine.add(o);
+        }
+        return r;
+    }
+
     private Map<String, Object> toolsCall(Map<?, ?> params, ActionRegistry registry) {
         String name = params == null ? "" : Json.optString(params, "name", "");
         Map<?, ?> logArgs = null;
@@ -315,10 +382,31 @@ public final class AgentMcp {
             if ("xiaoai_ask".equals(name)) {
                 return ask(arguments);
             }
-            return toolText("unknown tool: " + name, true);
+            return forwardOrUnknown(name, arguments);
         } catch (Throwable t) {
             return toolText("tool failed: " + t.getClass().getSimpleName(), true);
         }
+    }
+
+    /**
+     * 单端口统一：能力桥归属的工具转发给 8771；其余仍报 unknown tool（保持旧行为）。
+     */
+    private Map<String, Object> forwardOrUnknown(String name, Map<?, ?> arguments) {
+        if (bridgePort != null && plus.xiaoi.module.core.mcp.ToolOwnership.isBridge(name)) {
+            Map<String, Object> out = null;
+            try {
+                out = bridgePort.callTool(name, arguments);
+            } catch (Throwable ignored) {
+            }
+            if (out != null) return out;
+            Map<String, Object> o = Json.obj();
+            o.put("ok", false);
+            o.put("code", "BRIDGE_UNAVAILABLE");
+            o.put("message", "8771 能力桥暂不可用（小爱未运行或 MCP 未开启），可稍后重试");
+            o.put("retryable", true);
+            return toolText(Json.write(o), true);
+        }
+        return toolText("unknown tool: " + name, true);
     }
 
     // ------------------------------------------------------------- xiaoai_action
@@ -521,7 +609,9 @@ public final class AgentMcp {
         }
         long raw = arguments == null ? AuditLog.DEFAULT_LIMIT
                 : Json.optLong(arguments, "limit", AuditLog.DEFAULT_LIMIT);
-        int limit = raw > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) raw;
+        int limit = raw > plus.xiaoi.module.core.Contract.AUDIT_LIMIT_MAX
+                ? plus.xiaoi.module.core.Contract.AUDIT_LIMIT_MAX : (int) raw;
+        if (limit < 1) limit = plus.xiaoi.module.core.Contract.AUDIT_LIMIT_DEFAULT;
         return toolText(Json.write(audit.recentJson(limit)), false);
     }
 
@@ -687,6 +777,11 @@ public final class AgentMcp {
     private void record(ActionRequest request, ActionDescriptor d, ActionResult r,
                         String event, long elapsedMs) {
         if (audit == null) return;
+        // 0.16.0：调用方没给 requestId 时，ActionRegistry 会自己生成一个并写进结果；
+        // 审计要跟着用同一个，否则每条记录的 requestId 都是空的、无法和结果对账。
+        String requestId = r != null && r.requestId.length() > 0
+                ? r.requestId
+                : (request == null ? "" : request.requestId);
         audit.record(request == null ? "" : request.clientId,
                 request == null ? "" : request.action,
                 r == null ? "" : r.executor,
@@ -695,7 +790,7 @@ public final class AgentMcp {
                 request == null ? "" : CanonicalArgs.shortHash(request.args),
                 r == null || r.ok,
                 r == null || r.error == null ? null : r.error.code.wire,
-                elapsedMs, request == null ? "" : request.requestId, event);
+                elapsedMs, requestId, event);
     }
 
     /** token 校验失败时没有 request；只记录事件与错误码，不记录 token。 */

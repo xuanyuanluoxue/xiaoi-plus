@@ -9,25 +9,40 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import plus.xiaoi.module.core.Contract;
+
 /**
  * HTTP 线协议的纯读写层（无 android 依赖）。
  *
- * 请求解析、Bearer 匹配、响应写出集中在这里，方便 JVM 单测；
+ * <p>请求解析、Bearer 匹配、响应写出集中在这里，方便 JVM 单测；
  * socket 生命周期与鉴权策略（哪个端点要 token、哪些只允许 loopback）仍由 Bridge 决定。
- * 输出字节格式与 v0.7 及之前手写的版本完全一致，由契约基线保证。
+ *
+ * <p>0.16.0：
+ * <ul>
+ *   <li>请求体超限不再「静默当空体」——{@link Req#tooLarge} 为 true，调用方回 413；</li>
+ *   <li>所有响应统一带 CORS 头，配合 OPTIONS 预检，浏览器面板/网页 Agent 可直接调用；</li>
+ *   <li>上限常量统一来自 {@link Contract}。</li>
+ * </ul>
  */
 public final class Http {
 
     private Http() {}
 
-    /** 请求体上限；Content-Length 缺失或超限时按空体处理。 */
-    public static final int MAX_BODY = 64 * 1024;
+    /** 请求体上限；Content-Length 超限时 {@link Req#tooLarge} 为 true（body 为空）。 */
+    public static final int MAX_BODY = Contract.MAX_BODY_BYTES;
 
     /** 单行（请求行/header）字符上限；超过直接抛 IOException，绝不无限读。 */
-    public static final int MAX_LINE = 8192;
+    public static final int MAX_LINE = Contract.MAX_HEADER_LINE;
 
     /** header 总行数上限（含末尾空行之前的字段行）。 */
-    public static final int MAX_HEADER_LINES = 128;
+    public static final int MAX_HEADER_LINES = Contract.MAX_HEADER_LINES;
+
+    /** 浏览器面板需要的最小 CORS 集合；不含 credentials，所以可以用 *。 */
+    private static final String CORS =
+            "Access-Control-Allow-Origin: *\r\n"
+            + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+            + "Access-Control-Allow-Headers: authorization, content-type\r\n"
+            + "Access-Control-Max-Age: 600\r\n";
 
     /** 一条已解析的 HTTP 请求。 */
     public static final class Req {
@@ -41,17 +56,20 @@ public final class Http {
         public final Map<String, String> headers;
         /** query 参数，key/value 已 URL 解码。 */
         public final Map<String, String> query;
-        /** 请求体（按 Content-Length 读取）。 */
+        /** 请求体（按 Content-Length 读取）；超限时为空串。 */
         public final String body;
+        /** Content-Length 超过 {@link #MAX_BODY}：调用方应回 413 而不是 -32700。 */
+        public final boolean tooLarge;
 
         Req(String method, String target, String path, Map<String, String> headers,
-            Map<String, String> query, String body) {
+            Map<String, String> query, String body, boolean tooLarge) {
             this.method = method;
             this.target = target;
             this.path = path;
             this.headers = headers;
             this.query = query;
             this.body = body;
+            this.tooLarge = tooLarge;
         }
     }
 
@@ -85,10 +103,20 @@ public final class Http {
             method = parts[0];
             target = parts[1];
         }
-        String body = readBody(in, headers);
+        int declared = declaredLength(headers);
+        boolean tooLarge = declared > MAX_BODY;
+        String body;
+        if (tooLarge) {
+            // 先把超限的正文读掉（有上限），再交给调用方回 413：
+            // 直接 close 会让客户端在写完前收到 RST，看不到 413。
+            drain(in, Math.min(declared, MAX_BODY * 16));
+            body = "";
+        } else {
+            body = readBody(in, declared);
+        }
         int qi = target.indexOf('?');
         String path = qi < 0 ? target : target.substring(0, qi);
-        return new Req(method, target, path, headers, parseQuery(target), body);
+        return new Req(method, target, path, headers, parseQuery(target), body, tooLarge);
     }
 
     /** 解析 target 的 query 参数（URL 解码；畸形键值忽略）。 */
@@ -129,7 +157,7 @@ public final class Http {
         }
     }
 
-    /** 写一条 text/plain 响应（字节格式与旧实现一致）。 */
+    /** 写一条 text/plain 响应（字节格式与旧实现一致，额外带 CORS 头）。 */
     public static void respond(OutputStream os, int code, String contentType, String body)
             throws IOException {
         byte[] out = (body == null ? "" : body).getBytes("UTF-8");
@@ -137,6 +165,7 @@ public final class Http {
                 + "Content-Type: " + contentType + "\r\n"
                 + "Content-Length: " + out.length + "\r\n"
                 + "Cache-Control: no-store\r\n"
+                + CORS
                 + "Connection: close\r\n\r\n";
         os.write(head.getBytes("UTF-8"));
         os.write(out);
@@ -146,6 +175,15 @@ public final class Http {
     /** JSON-RPC 通知的 202 空体响应。 */
     public static void respondAccepted(OutputStream os) throws IOException {
         os.write(("HTTP/1.1 202 Accepted\r\nContent-Length: 0\r\n"
+                + CORS
+                + "Connection: close\r\n\r\n").getBytes("UTF-8"));
+        os.flush();
+    }
+
+    /** CORS 预检：204 无正文，允许浏览器带 Authorization 调用。 */
+    public static void respondPreflight(OutputStream os) throws IOException {
+        os.write(("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n"
+                + CORS
                 + "Connection: close\r\n\r\n").getBytes("UTF-8"));
         os.flush();
     }
@@ -155,12 +193,14 @@ public final class Http {
         switch (code) {
             case 200: return "OK";
             case 202: return "Accepted";
+            case 204: return "No Content";
             case 400: return "Bad Request";
             case 401: return "Unauthorized";
             case 403: return "Forbidden";
             case 404: return "Not Found";
             case 405: return "Method Not Allowed";
             case 410: return "Gone";
+            case 413: return "Payload Too Large";
             case 429: return "Too Many Requests";
             case 431: return "Request Header Fields Too Large";
             case 503: return "Service Unavailable";
@@ -168,11 +208,32 @@ public final class Http {
         }
     }
 
-    static String readBody(InputStream in, Map<String, String> headers) {
+    private static int declaredLength(Map<String, String> headers) {
+        String cl = headers == null ? null : headers.get("content-length");
+        if (cl == null) return 0;
         try {
-            int len = 0;
-            String cl = headers.get("content-length");
-            if (cl != null) len = Integer.parseInt(cl.trim());
+            return Integer.parseInt(cl.trim());
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    /** 丢弃最多 len 字节（超限请求体用，保证客户端能收到 413 而不是 RST）。 */
+    static void drain(InputStream in, int len) {
+        try {
+            byte[] buf = new byte[4096];
+            int left = len;
+            while (left > 0) {
+                int n = in.read(buf, 0, Math.min(buf.length, left));
+                if (n < 0) break;
+                left -= n;
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    static String readBody(InputStream in, int len) {
+        try {
             if (len <= 0 || len > MAX_BODY) return "";
             byte[] buf = new byte[len];
             int off = 0;

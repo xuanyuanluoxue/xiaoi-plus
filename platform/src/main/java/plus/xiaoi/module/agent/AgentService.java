@@ -15,11 +15,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import plus.xiaoi.module.AppConfig;
 import plus.xiaoi.module.AppLaunch;
 import plus.xiaoi.module.AppExecutors;
 import plus.xiaoi.module.ConfigRepository;
+import plus.xiaoi.module.LoopbackMcpClient;
 import plus.xiaoi.module.application.log.LogSettings;
 import plus.xiaoi.module.Logs;
 import plus.xiaoi.module.platform.R;
@@ -235,7 +237,8 @@ public final class AgentService extends Service {
         AgentHttpServer next = new AgentHttpServer(token,
                 new AgentMcp(versionName(), confirmations, idempotencyStore, audit,
                         new AndroidNotifyHost(this, token),
-                        new BridgeAskHost(token)), registry, c.agentLan,
+                        new BridgeAskHost(token),
+                        bridgePort(token, c.mcpNoAuth)), registry, c.agentLan,
                 c.mcpNoAuth, c.mcpWeakToken);
         String err = next.start();
         if (err.length() > 0) {
@@ -258,6 +261,37 @@ public final class AgentService extends Service {
             ActivityHub.warn(ActivityFeed.Domain.AGENT, next.lastError());
         }
         updateNotification(runningText(c.agentLan, next));
+    }
+
+    /**
+     * 0.16.0 单端口统一：8771 能力桥的工具从本端点也能看到/调用。
+     *
+     * <p>用与 8771 相同的 token（免鉴权时索性不带头）；端口按 {@code /health}
+     * 自证身份探测，所以 8771 被占用顺延后也能找到。</p>
+     */
+    private static AgentMcp.BridgePort bridgePort(final String token, final boolean noAuth) {
+        final LoopbackMcpClient client = new LoopbackMcpClient(
+                noAuth ? "" : token, "ok facade=", bridgeCandidates());
+        return new AgentMcp.BridgePort() {
+            @Override
+            public Object tools() {
+                Map<String, Object> r = client.tools();
+                return r == null ? null : r.get("tools");
+            }
+
+            @Override
+            public Map<String, Object> callTool(String name, Map<?, ?> arguments) {
+                return client.callTool(name, arguments);
+            }
+        };
+    }
+
+    private static int[] bridgeCandidates() {
+        int[] out = new int[9];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = plus.xiaoi.module.core.Contract.BRIDGE_PORT + i;
+        }
+        return out;
     }
 
     /** 只在运行事实变化时写快照/活动，避免每次 onStartCommand 都产生"刚启动"。 */

@@ -566,6 +566,8 @@ public final class BridgeControlClient {
             o.put("enabled", t.enabledFlag());
             o.put("lan", t.lan());
             o.put("bridge", t.bridge());
+            o.put("noAuth", t.noAuth());
+            o.put("weakToken", t.weakToken());
             return Json.write(o);
         } catch (Throwable t) {
             return "{}";

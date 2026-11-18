@@ -61,8 +61,12 @@ public final class Usage {
         }
     }
 
-    /** 统计最近 days 天的调用量（JSON，结构见 {@link UsageCounter#stats}）。 */
-    public static String stats(int days) {
+    /**
+     * 统计最近 {@code requestedDays} 天的调用量（JSON，结构见 {@link UsageCounter#stats}）。
+     *
+     * <p>0.16.0：超出 1~90 的请求值夹到 90 并回 {@code clamped:true}，不再静默回默认 7。</p>
+     */
+    public static String stats(int requestedDays) {
         List<String> lines = new ArrayList<String>();
         try {
             File f = file();
@@ -72,7 +76,10 @@ public final class Usage {
         synchronized (LOCK) {
             lines.addAll(sMemory);
         }
-        return UsageCounter.stats(lines, System.currentTimeMillis(), days);
+        int days = plus.xiaoi.module.core.bridge.BridgeHttpPolicy.statsDays(requestedDays);
+        boolean clamped = plus.xiaoi.module.core.bridge.BridgeHttpPolicy
+                .statsDaysClamped(requestedDays);
+        return UsageCounter.stats(lines, System.currentTimeMillis(), days, clamped);
     }
 
     /** 当前累计写入的行数（诊断用）。 */

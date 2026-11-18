@@ -22,9 +22,23 @@ public final class BridgePolicy {
         return shouldListen(mcpEnabled, token, false);
     }
 
-    /** @param noAuth 本机免鉴权开关（只影响 loopback，见 {@link #allowsAnonymous}） */
+    /** @param noAuth 免鉴权开关（打开后本机与局域网都不校验 Bearer） */
     public static boolean shouldListen(boolean mcpEnabled, String token, boolean noAuth) {
         return mcpEnabled && (normalize(token).length() > 0 || noAuth);
+    }
+
+    /**
+     * 鉴权模式（对外可读标签，用于 /health 与 xiaoai_config，日志也用它）。
+     *
+     * <ul>
+     *   <li>{@code off}：免鉴权，本机与局域网都不校验 Bearer；</li>
+     *   <li>{@code weak}：允许任意非空密码作为 Bearer（LAN 也能绑 0.0.0.0）；</li>
+     *   <li>{@code token}：默认，LAN 要求 32 位十六进制 token。</li>
+     * </ul>
+     */
+    public static String authMode(boolean noAuth, boolean weakToken) {
+        if (noAuth) return "off";
+        return weakToken ? "weak" : "token";
     }
 
     /**

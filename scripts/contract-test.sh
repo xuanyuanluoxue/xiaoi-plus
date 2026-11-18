@@ -73,12 +73,15 @@ normalize() {
         -e 's/\\"model\\":\\"[^"\\]*\\"/\\"model\\":\\"M\\"/g' \
         -e 's/"markerTemplate":"[^"]*"/"markerTemplate":"T"/g' \
         -e 's/\\"markerTemplate\\":\\"[^"\\]*\\"/\\"markerTemplate\\":\\"T\\"/g' \
-        -e 's/"text":"[^"]*"/"text":"T"/g' \
-        -e 's/\\"text\\":\\"[^"\\]*\\"/\\"text\\":\\"T\\"/g' \
         -e 's/version=[0-9][0-9.]*/version=V/g' \
         -e 's/port=[0-9][0-9]*/port=P/g' \
         -e 's/facade=\(true\|false\)/facade=B/g' \
-        -e 's/ cli=\(true\|false\)/ cli=B/g'
+        -e 's/ cli=\(true\|false\)/ cli=B/g' \
+        -e 's/auth=\(off\|weak\|token\)/auth=A/g' \
+        -e 's/\\"authMode\\":\\"[a-z]*\\"/\\"authMode\\":\\"A\\"/g' \
+        -e 's/"authMode":"[a-z]*"/"authMode":"A"/g' \
+        -e 's/agent=[0-9][0-9]*/agent=P/g' \
+        -e 's/ tools=[0-9][0-9]*/ tools=N/g'
 }
 
 # 基线存/比：$TMP/body 与 $STATUS 由调用方先填好
@@ -86,7 +89,8 @@ save_or_check() {
     local key="$1" fatal="${2:-true}"
     if [ "$MODE" = "save" ]; then
         mkdir -p "$BASELINE_DIR"
-        cp "$TMP/body" "$BASELINE_DIR/$key.body"
+        # 存「归一化后」的正文：基线会进仓库，不能带真实 baseUrl/model/token 状态。
+        normalize < "$TMP/body" > "$BASELINE_DIR/$key.body"
         printf '%s\n' "$STATUS" > "$BASELINE_DIR/$key.status"
         note "基线已存：$key"
     elif [ "$MODE" = "check" ]; then
@@ -257,12 +261,24 @@ if [ -n "$PORT" ]; then
             && pass "MCP ping" || fail "MCP ping 异常：$(cat "$TMP/body")"
         save_or_check mcp_ping
 
-        http_post /mcp '{"jsonrpc":"2.0","id":3,"method":"tools/list"}' "${A_HDR[@]}"
+        # own=true：只回 8771 自己的工具，基线因此与「对端是否在线」无关。
+        http_post /mcp '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{"own":true}}' "${A_HDR[@]}"
         [ "$STATUS" = "200" ] && jq -e '(.result.tools|length)==9' "$TMP/body" >/dev/null \
-            && pass "tools/list 共 9 个工具" || fail "tools/list 工具数异常：$(cat "$TMP/body")"
+            && pass "tools/list(own) 共 9 个桥工具" || fail "tools/list(own) 工具数异常：$(cat "$TMP/body")"
         jq -e '[.result.tools[].name] | sort == (["xiaoai_cli","xiaoai_config","xiaoai_island","xiaoai_logs","xiaoai_stats","xiaoai_status","xiaoai_submit","xiaoai_switch_model","xiaoai_todo_create"] | sort)' "$TMP/body" >/dev/null \
             && pass "工具名单齐全" || fail "工具名单不齐：$(jq -r '.result.tools[].name' "$TMP/body" | tr '\n' ' ')"
         save_or_check mcp_tools_list
+
+        # 0.16.0 单端口统一：合并视图 9（对端离线）~ 15（两端齐全）
+        http_post /mcp '{"jsonrpc":"2.0","id":31,"method":"tools/list"}' "${A_HDR[@]}"
+        MERGED=$(jq -r '.result.tools|length' "$TMP/body" 2>/dev/null || echo 0)
+        if [ "$STATUS" = "200" ] && [ "$MERGED" -ge 9 ] && [ "$MERGED" -le 15 ]; then
+            pass "合并工具数 $MERGED（9=App 未运行，15=两端齐全）"
+            jq -e '[.result.tools[].name] | contains(["xiaoai_status","xiaoai_config","xiaoai_logs"])' "$TMP/body" >/dev/null \
+                && pass "合并视图含桥工具" || fail "合并视图缺少桥工具"
+        else
+            fail "合并工具数异常：$MERGED"
+        fi
 
         http_post /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"xiaoai_status","arguments":{}}}' "${A_HDR[@]}"
         [ "$STATUS" = "200" ] && jq -e '.result.isError==false and (.result.content[0].text|test("facade=.* port="))' "$TMP/body" >/dev/null \
@@ -343,7 +359,7 @@ if [ -n "$PORT" ]; then
         http_post /island '{}' "${A_HDR[@]}"
         [ "$STATUS" = "200" ] && jq -e 'has("ok") and has("text")' "$TMP/body" >/dev/null \
             && pass "POST /island 形状正确" || fail "POST /island 异常：$(cat "$TMP/body")"
-        save_or_check island false
+        # 不存基线：/island 的 text 是当前模型名，属于用户隐私且会随切换变化。
     else
         note "未提供 XIAOI_TOKEN，跳过鉴权类检查（基线只覆盖免鉴权部分）"
     fi

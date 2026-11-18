@@ -197,10 +197,15 @@ public final class Config {
         String[] t = parsePrefs("/data/data/com.miui.voiceassist/shared_prefs/" + PREFS + ".xml");
         if (t != null) {
             if (log) android.util.Log.i("xiaoi+", "配置来源：小爱 prefs");
+            // 0.16.0 新开关：小爱 prefs 里可能还没有这两个键（旧版本写的文件）。
+            // 缺失时回落到模块 prefs 的镜像，避免「UI 已勾选、桥仍按默认关」。
+            boolean noAuth = t[10].length() > 0 ? flag(t[10], false)
+                    : modulePref(KEY_MCP_NO_AUTH);
+            boolean weak = t[11].length() > 0 ? flag(t[11], false)
+                    : modulePref(KEY_MCP_WEAK_TOKEN);
             return new Config(t[0], t[1], t[2],
                     flag(t[7], true), flag(t[8], false), t[3], t[4], parseFlag(t[5]),
-                    flag(t[6], false), parseLong(t[9]), flag(t[10], false),
-                    flag(t[11], false));
+                    flag(t[6], false), parseLong(t[9]), noAuth, weak);
         }
         // 2) 次选：模块自己的 prefs（XSharedPreferences，可能被 SELinux 拦）
         try {
@@ -279,6 +284,17 @@ public final class Config {
     private static boolean hasKey(String xml, String key) {
         return java.util.regex.Pattern.compile(
                 "<(string|boolean|int|long|float|set) name=\"" + key + "\"").matcher(xml).find();
+    }
+
+    /** 从模块 prefs（App 进程镜像）读一个布尔；读不到按 false。 */
+    private static boolean modulePref(String key) {
+        try {
+            XSharedPreferences p = new XSharedPreferences("plus.xiaoi.module", PREFS);
+            p.reload();
+            return p.getBoolean(key, false);
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /** 解析缓存里的开关：空 = 用默认值；"0"/"false" = 关。 */

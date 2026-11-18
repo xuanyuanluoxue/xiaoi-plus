@@ -126,7 +126,8 @@ public final class McpTest {
         eq("initialize", "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-03-26\","
                         + "\"capabilities\":{\"tools\":{\"listChanged\":false}},"
                         + "\"serverInfo\":{\"name\":\"xiaoi-plus\",\"version\":\"9.9.9\"},"
-                        + "\"instructions\":\"小爱同学（手机端）能力桥：xiaoai_submit 让小爱执行一句话任务，"
+                        + "\"instructions\":\"小爱同学+ 统一 MCP 端点（小爱进程能力桥，8771）：与 8772 动作面共享同一套"
+                        + "工具清单（互相转发），客户端只配一个端口即可。xiaoai_submit 让小爱执行一句话任务，"
                         + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，xiaoai_stats 看三方/官方模型调用量。"
                         + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。\"}}",
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", hs));
@@ -176,12 +177,14 @@ public final class McpTest {
 
         Map<?, ?> submit = (Map<?, ?>) tools.get(1);
         eq("submit description independent transcription",
-                "让小爱（手机端语音助手）执行一句话任务，返回它的回复文本。不传 sessionId 时自动开新会话。",
+                "让小爱（手机端语音助手）执行一句话任务。默认返回它的回复文本；"
+                        + "structured=true 时返回 {\"ok\",\"text\",\"sessionId\"}，可用 sessionId 续聊。"
+                        + "不传 sessionId 时自动开新会话。",
                 submit.get("description"));
         Map<?, ?> submitSchema = (Map<?, ?>) submit.get("inputSchema");
         eq("submit required", "[text]", ((List<?>) submitSchema.get("required")).toString());
         eq("submit additionalProperties", Boolean.FALSE, submitSchema.get("additionalProperties"));
-        eq("submit props", "[text, sessionId]",
+        eq("submit props", "[text, sessionId, structured]",
                 ((Map<?, ?>) submitSchema.get("properties")).keySet().toString());
 
         Map<?, ?> todo = (Map<?, ?>) tools.get(2);
@@ -246,6 +249,36 @@ public final class McpTest {
                 "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"missing argument: text\"}],\"isError\":true}}",
                 call(hs, 7, "xiaoai_submit", null));
+
+        // 0.16.0：structured=true 时把 sessionId 一并返回（默认仍是纯文本，兼容旧提示词）
+        h.cliCalls.clear();
+        eq("xiaoai_submit structured",
+                "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"content\":[{\"type\":\"text\","
+                        + "\"text\":\"{\\\"ok\\\":true,\\\"text\\\":\\\"好的，收到\\\",\\\"sessionId\\\":\\\"sid-1\\\"}\"}],"
+                        + "\"isError\":false}}",
+                call(hs, 7, "xiaoai_submit",
+                        "{\"text\":\"打开支付宝\",\"structured\":true}"));
+        // structured 也复用传入的 sessionId
+        String structuredReuse = textOf(call(hs, 7, "xiaoai_submit",
+                "{\"text\":\"继续\",\"sessionId\":\"sid-9\",\"structured\":true}"));
+        ok("submit structured 复用 sessionId",
+                ((Map<?, ?>) Json.read(structuredReuse)).get("sessionId").equals("sid-9"));
+
+        StringBuilder longSubmit = new StringBuilder();
+        for (int i = 0; i < Mcp.SUBMIT_TEXT_MAX + 1; i++) longSubmit.append('x');
+        ok("submit text length cap",
+                call(hs, 7, "xiaoai_submit", "{\"text\":\"" + longSubmit + "\"}")
+                        .contains("text too long (max " + Mcp.SUBMIT_TEXT_MAX + ")"));
+
+        // 0.16.0：未知参数不再静默忽略
+        String unknownArg = call(hs, 7, "xiaoai_logs", "{\"count\":3}");
+        ok("未知参数报错", unknownArg.contains("\"isError\":true"));
+        ok("未知参数文案", textOf(unknownArg).contains("unknown argument: count"));
+        String unknownArgSubmit = call(hs, 7, "xiaoai_submit",
+                "{\"text\":\"hi\",\"sessonId\":\"typo\"}");
+        ok("submit 未知参数报错", textOf(unknownArgSubmit).contains("unknown argument: sessonId"));
+        ok("status 不接受参数",
+                textOf(call(hs, 7, "xiaoai_status", "{\"x\":1}")).contains("unknown argument: x"));
 
         // session.open 失败 → 错误并带摘要
         h.cliResponses.put("session.open", "ERR boom");
@@ -334,10 +367,10 @@ public final class McpTest {
         call(hs, 14, "xiaoai_stats", "{\"days\":3}");
         eq("xiaoai_stats honors days", 3, h.statsDays);
         call(hs, 14, "xiaoai_stats", "{\"days\":999}");
-        eq("xiaoai_stats clamps days", 7, h.statsDays);
+        eq("xiaoai_stats 透传原始 days（由上层夹到 90 + clamped）", 999, h.statsDays);
 
         call(hs, 13, "xiaoai_island", null);
-        eq("island default text", "deepseek-chat", h.islandText);
+        eq("island default text", "小爱同学plus", h.islandText);
         eq("island default force", true, h.islandForce);
         call(hs, 13, "xiaoai_island", "{\"text\":\"自定义\",\"force\":false}");
         eq("island custom text", "自定义", h.islandText);
@@ -347,14 +380,14 @@ public final class McpTest {
         eq("xiaoai_config",
                 "{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"{\\\"model\\\":\\\"deepseek-chat\\\",\\\"baseUrl\\\":\\\"https://api.deepseek.com/v1\\\","
-                        + "\\\"enabled\\\":true,\\\"marker\\\":true,\\\"markerTemplate\\\":\\\"\\\",\\\"bridge\\\":true,\\\"lan\\\":false,\\\"noAuth\\\":false,\\\"weakToken\\\":false,\\\"apiKeySet\\\":true,\\\"tokenSet\\\":true,"
+                        + "\\\"enabled\\\":true,\\\"marker\\\":true,\\\"markerTemplate\\\":\\\"\\\",\\\"bridge\\\":true,\\\"lan\\\":false,\\\"noAuth\\\":false,\\\"weakToken\\\":false,\\\"authMode\\\":\\\"token\\\",\\\"apiKeySet\\\":true,\\\"tokenSet\\\":true,"
                         + "\\\"port\\\":8771,\\\"version\\\":\\\"9.9.9\\\"}\"}],\"isError\":false}}",
                 call(hs, 5, "xiaoai_config", null));
 
         // ------------------------------------------------------------ tools/call：switch_model
         eq("switch_model model only",
                 "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":{\"content\":[{\"type\":\"text\","
-                        + "\"text\":\"{\\\"ok\\\":true,\\\"model\\\":\\\"m2\\\",\\\"baseUrl\\\":\\\"https://api.deepseek.com/v1\\\","
+                        + "\"text\":\"{\\\"ok\\\":true,\\\"model\\\":\\\"m2\\\",\\\"lastGoodModel\\\":\\\"m2\\\",\\\"baseUrl\\\":\\\"https://api.deepseek.com/v1\\\","
                         + "\\\"apiKeySet\\\":true,\\\"changed\\\":true}\"}],\"isError\":false}}",
                 call(hs, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
         eq("switch_model keeps baseUrl", "https://api.deepseek.com/v1", h.written.baseUrl);

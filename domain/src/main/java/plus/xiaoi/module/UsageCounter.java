@@ -74,9 +74,17 @@ public final class UsageCounter {
      * @param days      窗口天数 1~90
      * @return JSON：days / generatedAt / today / total / sub / series / models
      */
-    public static String stats(List<String> lines, long nowMillis, int days) {
+    public static String stats(List<String> lines, long nowMillis, int requestedDays) {
+        int days = requestedDays;
+        // 超出 1~90 时夹到边界并回 clamped=true，不静默改成默认 7（0.16.0）。
         if (days < 1) days = 1;
-        if (days > 90) days = 90;
+        boolean clamped = days > plus.xiaoi.module.core.Contract.STATS_DAYS_MAX;
+        if (clamped) days = plus.xiaoi.module.core.Contract.STATS_DAYS_MAX;
+        return stats(lines, nowMillis, days, clamped);
+    }
+
+    /** @param clamped 调用方已判定「请求值被夹到上限」，直接回给客户端 */
+    public static String stats(List<String> lines, long nowMillis, int days, boolean clamped) {
 
         List<String> keys = new ArrayList<String>();
         Set<String> window = new LinkedHashSet<String>();
@@ -128,6 +136,7 @@ public final class UsageCounter {
         Map<String, Object> root = Json.obj();
         root.put("days", (long) days);
         root.put("generatedAt", nowMillis);
+        root.put("clamped", clamped);
 
         Map<String, Object> today = Json.obj();
         today.put("day", todayKey);

@@ -89,14 +89,17 @@ public final class Logs {
         }
     }
 
-    /** JSON 数组；since>0 时只返回该序号之后的，limit 取尾部。 */
+    /** JSON 数组；since>0 时只返回该序号之后的，limit 取尾部；limit=0 返回空数组。 */
     public static synchronized String dump(int limit, long since) {
         ArrayList<Entry> list = new ArrayList<Entry>();
         for (Entry e : BUF) {
             if (since > 0 && e.seq <= since) continue;
             list.add(e);
         }
-        if (limit > 0 && list.size() > limit) {
+        if (limit <= 0) {
+            // 0.16.0：limit=0 明确表示「不要日志」，返回空数组而不是全部。
+            list = new ArrayList<Entry>();
+        } else if (list.size() > limit) {
             list = new ArrayList<Entry>(list.subList(list.size() - limit, list.size()));
         }
         SimpleDateFormat f = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);

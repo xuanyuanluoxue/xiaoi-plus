@@ -20,8 +20,8 @@ import java.util.Map;
  */
 public final class ConfirmationManager {
 
-    /** 默认有效期：60 秒（PLAN 5.3）。 */
-    public static final long DEFAULT_TTL_MS = 60_000L;
+    /** 默认有效期：60 秒（契约值见 {@link plus.xiaoi.module.core.Contract#CONFIRM_TTL_MS}）。 */
+    public static final long DEFAULT_TTL_MS = plus.xiaoi.module.core.Contract.CONFIRM_TTL_MS;
     /** 同时在途的确认上限，防止内存无限增长。 */
     public static final int MAX_PENDING = 256;
     /** clientId 为空时的审计/绑定标签。 */

@@ -98,8 +98,48 @@ public final class Bridge {
 
     /** 工具执行的 Android 侧后端（WP3：五个小端口，由同一实现填充）。 */
     private static final McpHostsImpl MCP_HOSTS = new McpHostsImpl();
+    /** 0.16.0 单端口统一：8772（App 进程动作面）的转发端口。 */
+    private static final Mcp.AgentPort MCP_AGENT = new Mcp.AgentPort() {
+        @Override
+        public Object tools() {
+            Map<String, Object> r = agentClient().tools();
+            return r == null ? null : r.get("tools");
+        }
+
+        @Override
+        public Map<String, Object> callTool(String name, Map<?, ?> arguments) {
+            return agentClient().callTool(name, arguments);
+        }
+    };
     private static final Mcp.Hosts HOSTS = new Mcp.Hosts(
-            MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS);
+            MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_AGENT);
+
+    /** 8770~8779 里按 /health 自证身份找动作面；找不到返回 null（不阻塞本机能力）。 */
+    private static volatile LoopbackMcpClient sAgentClient;
+
+    private static LoopbackMcpClient agentClient() {
+        LoopbackMcpClient c = sAgentClient;
+        if (c == null) {
+            c = new LoopbackMcpClient(sToken, "ok agent=true", agentCandidates());
+            sAgentClient = c;
+        }
+        c.setToken(sToken);
+        return c;
+    }
+
+    private static int[] agentCandidates() {
+        int from = plus.xiaoi.module.core.Contract.AGENT_PORT_MIN;
+        int to = plus.xiaoi.module.core.Contract.AGENT_PORT_MAX;
+        int[] out = new int[to - from + 1];
+        for (int i = 0; i < out.length; i++) out[i] = from + i;
+        return out;
+    }
+
+    /** /health 里的 tools 数：本进程自己提供的工具数（不触发对端探测）。 */
+    private static int bridgeToolCount() {
+        Object v = Mcp.toolsList().get("tools");
+        return v instanceof java.util.List ? ((java.util.List<?>) v).size() : 0;
+    }
 
     private static final class McpHostsImpl implements Mcp.RuntimePort, Mcp.ConfigPort,
             Mcp.CliPort, Mcp.IslandPort, Mcp.TelemetryPort {
@@ -782,6 +822,17 @@ public final class Bridge {
                 respondText(s, 400, "bad request");
                 return;
             }
+            // 0.16.0：请求体超限明确回 413，而不是当空体解析后报 -32700。
+            if (req.tooLarge) {
+                Logs.event(LogLevel.STANDARD, "W", "http", "413 " + req.path + " too large");
+                respondText(s, 413, "payload too large (max " + Http.MAX_BODY + " bytes)");
+                return;
+            }
+            // CORS 预检：浏览器面板/网页 Agent 带 Authorization 前要先 OPTIONS。
+            if ("OPTIONS".equals(req.method)) {
+                Http.respondPreflight(s.getOutputStream());
+                return;
+            }
 
             // 低信任端点限流：每源 IP 每 10s 最多 30 次；/mcp 有 Bearer，不参与。
             if (BridgeHttpPolicy.isLowTrust(req.path)) {
@@ -818,7 +869,11 @@ public final class Bridge {
                     respondText(s, 401, "unauthorized");
                     return;
                 }
-                respondText(s, 200, "ok facade=" + (sFacade != null) + " port=" + sPort);
+                respondText(s, 200, "ok facade=" + (sFacade != null) + " port=" + sPort
+                        + " auth=" + BridgePolicy.authMode(sNoAuth, sWeakToken)
+                        + " tools=" + bridgeToolCount()
+                        + " agent=" + agentClient().port()
+                        + " version=" + versionName());
                 return;
             }
             if (!authorized(s, req.headers)) {
@@ -827,19 +882,17 @@ public final class Bridge {
             }
 
             if ("/logs".equals(req.path)) {
-                int limit = 80;
+                int limit = BridgeHttpPolicy.ABSENT;
                 long since = 0;
                 try { limit = Integer.parseInt(req.query.get("limit")); } catch (Throwable ignored) {}
                 try { since = Long.parseLong(req.query.get("since")); } catch (Throwable ignored) {}
-                limit = BridgeHttpPolicy.clampLogLimit(limit);
-                respondJson(s, 200, Logs.dump(limit, since));
+                respondJson(s, 200, Logs.dump(BridgeHttpPolicy.logLimit(limit), since));
                 return;
             }
-            // 调用量统计：?days=1..90（默认 7），总量来自小爱各进程共享的追加日志。
+            // 调用量统计：?days=1..90（默认 7）；超上限夹到 90 并在结果里回 clamped:true。
             if ("/stats".equals(req.path)) {
-                int days = 7;
+                int days = BridgeHttpPolicy.ABSENT;
                 try { days = Integer.parseInt(req.query.get("days")); } catch (Throwable ignored) {}
-                days = BridgeHttpPolicy.clampStatsDays(days);
                 respondJson(s, 200, Usage.stats(days));
                 return;
             }
@@ -1021,6 +1074,8 @@ public final class Bridge {
                     .putBoolean(Config.KEY_MARKER, c.marker())
                     .putBoolean(Config.KEY_BRIDGE, c.bridge())
                     .putBoolean(Config.KEY_MCP_LAN, c.lan())
+                    .putBoolean(Config.KEY_MCP_NO_AUTH, c.noAuth())
+                    .putBoolean(Config.KEY_MCP_WEAK_TOKEN, c.weakToken())
                     .putString(Config.KEY_TOKEN, c.token())
                     .putString(Config.KEY_MARKER_TPL, c.markerTemplate())
                     .putString(Config.KEY_ENABLED, c.enabledFlag() ? "1" : "0")

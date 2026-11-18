@@ -43,6 +43,9 @@ public final class HttpTest {
 
         r = Http.read(stream("POST /mcp HTTP/1.1\r\nContent-Length: 999999\r\n\r\n"));
         eq("oversized body", "", r.body);
+        ok("oversized body 标记 tooLarge", r.tooLarge);
+        r = Http.read(stream("POST /mcp HTTP/1.1\r\nContent-Length: 10\r\n\r\n0123456789"));
+        ok("正常 body 不标记 tooLarge", !r.tooLarge);
 
         r = Http.read(stream("GET\r\n"));
         eq("malformed request line method", "", r.method);
@@ -98,6 +101,10 @@ public final class HttpTest {
                 + "Content-Type: text/plain; charset=utf-8\r\n"
                 + "Content-Length: 12\r\n"
                 + "Cache-Control: no-store\r\n"
+                + "Access-Control-Allow-Origin: *\r\n"
+                + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                + "Access-Control-Allow-Headers: authorization, content-type\r\n"
+                + "Access-Control-Max-Age: 600\r\n"
                 + "Connection: close\r\n"
                 + "\r\n"
                 + "unauthorized",
@@ -110,6 +117,10 @@ public final class HttpTest {
                 + "Content-Type: application/json; charset=utf-8\r\n"
                 + "Content-Length: 11\r\n"
                 + "Cache-Control: no-store\r\n"
+                + "Access-Control-Allow-Origin: *\r\n"
+                + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                + "Access-Control-Allow-Headers: authorization, content-type\r\n"
+                + "Access-Control-Max-Age: 600\r\n"
                 + "Connection: close\r\n"
                 + "\r\n"
                 + "{\"ok\":true}",
@@ -120,13 +131,23 @@ public final class HttpTest {
         eq("respond 202 bytes",
                 "HTTP/1.1 202 Accepted\r\n"
                 + "Content-Length: 0\r\n"
+                + "Access-Control-Allow-Origin: *\r\n"
+                + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                + "Access-Control-Allow-Headers: authorization, content-type\r\n"
+                + "Access-Control-Max-Age: 600\r\n"
                 + "Connection: close\r\n"
                 + "\r\n",
                 new String(os.toByteArray(), StandardCharsets.UTF_8));
 
+        os = new ByteArrayOutputStream();
+        Http.respondPreflight(os);
+        ok("OPTIONS 预检 204", new String(os.toByteArray(), StandardCharsets.UTF_8)
+                .startsWith("HTTP/1.1 204 No Content\r\n"));
+
         eq("reason 405", "Method Not Allowed", Http.reason(405));
         eq("reason 403", "Forbidden", Http.reason(403));
         eq("reason 410", "Gone", Http.reason(410));
+        eq("reason 413", "Payload Too Large", Http.reason(413));
         eq("reason 429", "Too Many Requests", Http.reason(429));
         eq("reason 500", "Internal Server Error", Http.reason(500));
 
