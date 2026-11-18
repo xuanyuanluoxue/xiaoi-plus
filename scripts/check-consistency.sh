@@ -211,6 +211,15 @@ for res in $RES_DIRS; do
 done
 [ "$dead" -eq 0 ] && pass "layout / drawable 无死资源"
 
+# ---------------------------------------------------------------- 7) :app 保持为壳
+APP_FILES="$(find app/src/main/java -name '*.java' -o -name '*.kt' | wc -l | tr -d ' ')"
+APP_LINES="$(find app/src/main/java -name '*.java' -o -name '*.kt' | xargs cat 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$APP_FILES" -le 8 ] && [ "$APP_LINES" -le 1500 ]; then
+    pass "app 壳瘦身（${APP_FILES} 文件 / ${APP_LINES} 行 ≤ 8 / 1500）"
+else
+    fail "app 壳变胖：${APP_FILES} 文件 / ${APP_LINES} 行（上限 8 / 1500）——业务代码请放 :ui / :platform"
+fi
+
 echo
 if [ "$FAIL" -eq 0 ]; then
     echo "==> 一致性检查通过"

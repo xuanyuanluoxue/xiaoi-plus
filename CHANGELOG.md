@@ -78,6 +78,8 @@
   `AgentLanPolicy` 归入 `core`、`IssueInputFactory` 改用同包快照 →
   `core ↔ agent` 包环清零。新增 `core_no_agent` / `agent_no_core` 门禁与
   「领域层无进程级可变状态」检查。包级重命名（model/policy/port/…）本轮不做。
+- **`:app` 壳软门禁（WP12）**：一致性检查新增「app 源码 ≤ 8 文件 / ≤ 1500 行」，
+  当前 **2 文件 / 975 行**；业务代码再放回 `:app` 会被门禁拦下。
 - **归档（2026-11-17）**：WP0–WP6 架构重构完成，Windows 原生构建/单测/分层/APK 全绿；
   已打 `archive-2026-11-17` 快照 tag（非正式 Release）。项目随后恢复开发，
   下一阶段优化见 `docs/refactor/NEXT.md`。

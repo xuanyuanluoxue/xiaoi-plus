@@ -285,7 +285,7 @@ bash scripts/ui-screenshot.sh --route Home --review   # 6 条一级路由视觉�
 
 ---
 
-### WP12：`:app` 瘦身为壳
+### WP12：`:app` 瘦身为壳 —— ✅ 已完成（2026-11-18）
 
 **目标**：`:app` 只剩 8 个左右文件，业务代码软上限 1500 行。
 
@@ -382,4 +382,5 @@ bash scripts/ui-screenshot.sh --route Home --review   # 6 条一级路由视觉�
 | 2026-11-18 | WP9 | 删旧 Java 页面（`ConfigActivity` 1049 行 / `HomeActivity` / `AboutActivity` / `LogsActivity` / `BaseActivity` / `Nav` / `ui/config` 6 文件 / `SpikeActivity` / `LegacyScreen`，约 -1.5k 行）；4 处「打开 App」改指 `MainActivity`；删 6 布局 + 22 drawable + `dimens.xml` + `Widget.*`/`Dialog` 样式，`strings.xml` 只留 `app_name`；路由 20 → 19；版本 `0.15.1` (23) | 单测 2017 断言；一致性（死资源清零）、分层 `--strict`、构建、`verify-apk`（versionCode 23）全绿；真机：4 个 tab 正常、`我的` 无「兼容模式」、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP10 | 新建 `:platform` Android library（namespace `.platform`），搬 30 个适配器（配置/桥/控制面/8770/通知/执行器/`PermissionProbe`/`ShareProvider`/`ThemeManager`/`Logs`）；`:app` 只剩清单+资源+`MainActivity`+`Hook`；Xposed 桩改由 `:platform` 产出；新增 `AppLaunch` 替代 `MainActivity` 直接引用；新增 `platform_no_compose`/`platform_no_miuix`/`platform_no_ui` 门禁，基线 11 → **3 行** | 单测 2017 断言；分层 `--strict`、一致性、五模块构建、`verify-apk` PASS；真机：启动 328ms、`我的` 页正常、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP11 | 新增 `:ui` Android library（namespace `.ui`），搬 62 个 Compose 文件 + `sponsor_wechat`；`:app` 只剩 `MainActivity.kt` + `Hook.java` + 清单 + 资源；前置把 7 处 platform/infra 耦合端口化（`ControlLogStore`/`UiPrefs`/`BackgroundTasks`/`NetworkInfo`/`UsageStats`/`ModelProbe`/`FileShare.AUTHORITY`），`AppRuntime` 6 → **11 端口**；删 `GlassSupport.userEnabled` 死代码；新增 `ui_no_infra`/`ui_no_bridge_pkg` 与 authority 一致性检查，**基线清零（0 行）** | 单测 2017+ 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS；真机：启动 104ms、进程存活、契约 **47/47**、无崩溃 |
+| 2026-11-18 | WP12 | `:app` 壳软门禁：一致性检查断言 app 源码 ≤ 8 文件 / ≤ 1500 行（当前 **2 文件 / 975 行**），业务代码必须放 `:ui`/`:platform` | 一致性通过 |
 | 2026-11-18 | WP13 | domain 去静态化 + 消环：`BridgeEndpoint` → `:infra`；`LogSettings` → `:application`；`AgentRuntimeStatus`/`BridgeStatus` 拆成「domain 不可变快照 + application 持有者」；`AgentLanPolicy` → `core`、`IssueInputFactory` 改用同包快照 → `core↔agent` 边清零；新增 `core_no_agent`/`agent_no_core` 门禁与「领域层无进程级可变状态」检查（包重组按记录推迟） | 单测 2030 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS |
