@@ -148,17 +148,25 @@ for i in $(seq 1 15); do
     CANDIDATES="$($ADB shell ss -ltn 2>/dev/null | awk 'NR>1{print $4}' | grep -oE '877[0-9]$' | sort -u | tr '\n' ' ' || true)"
     for p in $CANDIDATES; do
         $ADB forward "tcp:$p" "tcp:$p" >/dev/null 2>&1 || continue
-        BODY=$(curl -s -m 2 "http://127.0.0.1:$p/health" 2>/dev/null || true)
-        # 严格身份：我们的桥带 token 时返回 "ok facade=true port=N"（其它服务
-        # 可能也回 ok facade=true，但没有 port= 字段，实测 8770 就是这样）
-        if echo "$BODY" | grep -qE '^ok facade=(true|false) port=[0-9]+'; then
-            PORT="$p"; break
-        fi
-        # 无 token 路径：只认精确的 "unauthorized" 401 体
-        CODE=$(curl -s -m 2 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$p/health" 2>/dev/null || true)
-        BODY2=$(curl -s -m 2 "http://127.0.0.1:$p/health" 2>/dev/null || true)
-        if [ "$CODE" = "401" ] && [ "$BODY2" = "unauthorized" ]; then
-            PORT="$p"; break
+        if [ -n "${XIAOI_TOKEN:-}" ]; then
+            # 带 token：直接看身份。桥回 "ok facade=<b> port=N"；
+            # Agent 动作面（8770）回 "ok agent=true port=N bind=..."，必须排除。
+            BODY=$(curl -s -m 2 -H "Authorization: Bearer $XIAOI_TOKEN" \
+                "http://127.0.0.1:$p/health" 2>/dev/null || true)
+            if echo "$BODY" | grep -qE '^ok facade=(true|false) port=[0-9]+'; then
+                PORT="$p"; break
+            fi
+        else
+            # 无 token：401 体两边都一样（unauthorized），再用 /stats 区分——
+            # 桥对 /stats 回 401（路径存在），Agent 动作面回 404 not found。
+            CODE=$(curl -s -m 2 -o /dev/null -w '%{http_code}' \
+                "http://127.0.0.1:$p/health" 2>/dev/null || true)
+            BODY2=$(curl -s -m 2 "http://127.0.0.1:$p/health" 2>/dev/null || true)
+            STATS=$(curl -s -m 2 -o /dev/null -w '%{http_code}' \
+                "http://127.0.0.1:$p/stats" 2>/dev/null || true)
+            if [ "$CODE" = "401" ] && [ "$BODY2" = "unauthorized" ] && [ "$STATS" = "401" ]; then
+                PORT="$p"; break
+            fi
         fi
         $ADB forward --remove "tcp:$p" >/dev/null 2>&1 || true
     done
