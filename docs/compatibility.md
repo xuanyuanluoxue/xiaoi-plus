@@ -19,6 +19,37 @@
 adb shell dumpsys package com.miui.voiceassist | grep -m1 versionName
 ```
 
+## 陌生设备自查（0.16.1+）
+
+同一 `versionName` 的小爱，dex 是同一份（同签名、同构建），混淆名不随机型变化，
+所以**一台机器验证通过，同版本的其它机型通常也能用**。差异主要来自：小爱版本、
+是否国际版/裁剪包、是否有 root、Android 版本、端口占用。
+
+换设备时先只跑一条：
+
+```bash
+curl -s -X POST http://127.0.0.1:8771/mcp \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"xiaoai_status","arguments":{}}}'
+```
+
+```text
+facade=true cli=true port=8771 version=0.16.1 hooks=ok compat=whitelist xiaoai=8.2.70.8421
+```
+
+| 结果 | 含义 | 下一步 |
+|---|---|---|
+| `hooks=ok` | 四个关键 hook 全挂上 | 功能应完整；回复不对就查配置（模型/端点/密钥） |
+| `hooks=partial` | 部分类没找到 | 该版本类名/签名变了，按下面清单适配 |
+| `hooks=none compat=none` | 版本不在白名单，主动 no-op | 需要适配；把 `xiaoai=` 的版本报上来 |
+| `hooks=none compat=probe` | 早期加载读不到版本而放行，但 hook 全失败 | 通常也是版本不兼容；看 logcat 的「hook 失败」行 |
+| 无 `hooks=` 字段 | 模块 ≤0.16.0，或请求被 App 进程服务 | 升级模块；或确认 MCP 由小爱进程提供 |
+
+> `compat=probe` 是历史行为：`handleLoadPackage` 执行时 Application 还没就绪，
+> `PackageManager` 读不到 versionName，于是「未知版本」按放行处理（fail-open）。
+> 0.16.1 起版本在 `xiaoai_status` 上报时惰性补读，`compat` 会修正成真实结论。
+
 ## 契约测试
 
 装完模块后问小爱一句话，检查：

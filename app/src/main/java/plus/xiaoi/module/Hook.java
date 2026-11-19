@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 
 import plus.xiaoi.module.core.hook.UsageSignal;
 import plus.xiaoi.module.core.hook.XiaoiOverridePolicy;
+import plus.xiaoi.module.application.hook.HookStatus;
 
 /**
  * 模块入口。全部 hook 包 try/catch，失败只记日志，不影响小爱主流程。
@@ -28,6 +29,7 @@ public class Hook implements IXposedHookLoadPackage {
     private static volatile boolean sResponsesHooked;
     private static volatile boolean sChatHooked;
     private static volatile boolean sChatMarkerLogged;
+    private static volatile boolean sVisionHooked;
     private static volatile boolean sFacadeHooked;
     private static volatile boolean sLlmHooked;
     private static volatile boolean sProviderHooked;
@@ -55,6 +57,20 @@ public class Hook implements IXposedHookLoadPackage {
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lp) {
         if (lp == null || !TARGET.equals(lp.packageName)) return;
         try {
+            // 先注册版本来源：这里 Application 还没就绪，读不到 versionName，
+            // 所以白名单判定可能退化成「放行但未知」；真正的版本在 xiaoai_status
+            // 上报时才惰性补读（见 HookStatus.resolve）。
+            HookStatus.setProbe(new HookStatus.Probe() {
+                @Override
+                public String versionName() {
+                    return readVersionName();
+                }
+
+                @Override
+                public boolean whitelisted(String version) {
+                    return isWhitelisted(version);
+                }
+            });
             if (!isSupported(lp)) return;
 
             sCl = lp.classLoader;
@@ -76,6 +92,7 @@ public class Hook implements IXposedHookLoadPackage {
             hookLlmClients(lp.classLoader);
             // hookResponsePrefix 暂禁用：多进程下同一条回复会被注入多次（详见 CHANGELOG 已知问题）
             hookFacade(lp.classLoader);
+            refreshHookStatus();
         } catch (Throwable t) {
             Logs.i("初始化失败（已忽略）: " + t);
         }
@@ -100,6 +117,7 @@ public class Hook implements IXposedHookLoadPackage {
                 hookLlmClients(cl);
                 // hookResponsePrefix 暂禁用，同上
                 hookFacade(cl);
+                refreshHookStatus();
             }
             host().updateToken(c.token());
             Logs.i("配置已热更新 model=" + c.model()
@@ -109,23 +127,41 @@ public class Hook implements IXposedHookLoadPackage {
         }
     }
 
+    /** 读小爱 versionName；早期加载（Application 未就绪）返回 null。 */
+    private static String readVersionName() {
+        try {
+            Class<?> at = Class.forName("android.app.ActivityThread");
+            Object app = at.getMethod("currentApplication").invoke(null);
+            android.content.pm.PackageManager pm =
+                    (android.content.pm.PackageManager) app.getClass()
+                            .getMethod("getPackageManager").invoke(app);
+            return pm.getPackageInfo(TARGET, 0).versionName;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static boolean isWhitelisted(String version) {
+        for (String s : SUPPORTED_VERSIONS) {
+            if (s.equals(version)) return true;
+        }
+        return false;
+    }
+
     private boolean isSupported(XC_LoadPackage.LoadPackageParam lp) {
         try {
-            String v = null;
-            try {
-                Class<?> at = Class.forName("android.app.ActivityThread");
-                Object app = at.getMethod("currentApplication").invoke(null);
-                android.content.pm.PackageManager pm =
-                        (android.content.pm.PackageManager) app.getClass()
-                                .getMethod("getPackageManager").invoke(app);
-                v = pm.getPackageInfo(TARGET, 0).versionName;
-            } catch (Throwable ignored) {}
+            String v = readVersionName();
             if (v == null) {
                 Logs.i("版本未知（早期加载），降级放行");
+                HookStatus.reset("", HookStatus.COMPAT_PROBE);
                 return true;
             }
-            for (String s : SUPPORTED_VERSIONS) if (s.equals(v)) return true;
+            if (isWhitelisted(v)) {
+                HookStatus.reset(v, HookStatus.COMPAT_WHITELIST);
+                return true;
+            }
             Logs.i("版本不在白名单: " + v + "，不启用");
+            HookStatus.reset(v, HookStatus.COMPAT_NONE);
             return false;
         } catch (Throwable ignored) {}
         return true;
@@ -147,9 +183,22 @@ public class Hook implements IXposedHookLoadPackage {
                 }
             });
             Logs.i("supportsVision=true 已启用");
+            sVisionHooked = true;
         } catch (Throwable t) {
             Logs.i("supportsVision hook 失败: " + t);
         }
+    }
+
+    /**
+     * 汇总本进程各 hook 的安装结果，供 {@code xiaoai_status} 上报。
+     * 只反映"挂上了没有"，不代表 hook 逻辑在运行时一定被调用。
+     */
+    private static void refreshHookStatus() {
+        HookStatus.markConfig(sConfigHooked);
+        HookStatus.markProvider(sProviderHooked);
+        HookStatus.markVision(sVisionHooked);
+        HookStatus.markFacade(sFacadeHooked);
+        HookStatus.markUsage(sLlmHooked);
     }
 
     private static void hookConfigObject(ClassLoader cl) {

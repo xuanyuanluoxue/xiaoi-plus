@@ -23,6 +23,7 @@ public final class McpTest {
         boolean facade = true;
         boolean cli = true;
         int port = 8771;
+        String hookSummary = "";
         String cfgBase = "https://api.deepseek.com/v1";
         String cfgKey = "sk-test";
         String cfgModel = "deepseek-chat";
@@ -63,6 +64,7 @@ public final class McpTest {
         public boolean cliReady() { return cli; }
         public int port() { return port; }
         public String versionName() { return version; }
+        public String hookSummary() { return hookSummary; }
 
         public String callCli(String cmd) {
             cliCalls.add(cmd);
@@ -227,6 +229,15 @@ public final class McpTest {
                 "{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"content\":[{\"type\":\"text\","
                         + "\"text\":\"facade=true cli=true port=8771 version=9.9.9\"}],\"isError\":false}}",
                 call(hs, 4, "xiaoai_status", null));
+
+        // hook 摘要非空时追加在末尾；空串表示宿主未装载 hook，保持原样
+        h.hookSummary = "hooks=partial compat=probe xiaoai=8.3.0";
+        eq("xiaoai_status + hook 摘要",
+                "{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"content\":[{\"type\":\"text\","
+                        + "\"text\":\"facade=true cli=true port=8771 version=9.9.9"
+                        + " hooks=partial compat=probe xiaoai=8.3.0\"}],\"isError\":false}}",
+                call(hs, 5, "xiaoai_status", null));
+        h.hookSummary = "";
 
         // ------------------------------------------------------------ tools/call：submit（自动开会话）
         h.cliCalls.clear();

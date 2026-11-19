@@ -1,6 +1,6 @@
 # 更新日志
 
-## 未发布（0.16.1）
+## 0.16.1 — 2026-11-19
 
 **适配小爱 8.2.70.8421**
 
@@ -15,6 +15,17 @@
   「qm.i/j/b、um.h 调用统计 hook 完成」「能力桥 hook 完成」；
   `xiaoai_submit` 有正常回复且 `xiaoai_stats` 记为三方调用 1 次；
   日志出现「模型标识已改走请求头 X-Model-Provider-Id=xiaoi-plus」。
+
+**hook 状态可观测（换设备排查用）**
+
+- `xiaoai_status` 追加三个字段：`hooks=ok|partial|none`（本进程实际挂上了几个关键 hook）、
+  `compat=whitelist|probe|none`（启用依据）、`xiaoai=<版本>`（设备上小爱真实 versionName）。
+  以前只能看到 `facade=false`，无法区分「版本没进白名单」「类没找到」还是「挂上了没生效」。
+- 修正一个此前不可见的问题：`handleLoadPackage` 执行时 Application 尚未就绪，
+  `PackageManager` 读不到 versionName，白名单判定会退化为「放行但未知」（fail-open）。
+  现在版本改为在 `xiaoai_status` 上报时惰性补读，`compat` 也随之修正为真实结论。
+- 新增 `HookStatusTest`（17 条），覆盖「零 hook 必须 none」「补读成功/失败/抛异常」
+  「reset 清空打点」等负例。
 
 ## 0.16.0 — 2026-11-19
 

@@ -158,6 +158,11 @@ public final class Bridge {
         public String versionName() { return Bridge.versionName(); }
 
         @Override
+        public String hookSummary() {
+            return plus.xiaoi.module.application.hook.HookStatus.summary();
+        }
+
+        @Override
         public String callCli(String cmd) { return Bridge.callCli(cmd); }
 
         @Override

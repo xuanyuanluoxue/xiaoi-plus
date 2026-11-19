@@ -35,6 +35,12 @@ public final class Mcp {
         int port();
 
         String versionName();
+
+        /**
+         * hook 就绪度摘要：{@code hooks=ok|partial|none compat=whitelist|probe|none xiaoai=<版本>}。
+         * 宿主未装载 hook 时返回空串（不把「不适用」报成 none）。
+         */
+        String hookSummary();
     }
 
     /** 配置读写：只读快照 + 受限写入（远程只能改 model/marker）。 */
@@ -549,6 +555,8 @@ public final class Mcp {
                         + " cli=" + hosts.runtime.cliReady()
                         + " port=" + hosts.runtime.port()
                         + " version=" + hosts.runtime.versionName();
+                String hook = hosts.runtime.hookSummary();
+                if (hook != null && hook.length() > 0) t = t + " " + hook;
                 return toolText(t, false);
             }
             if ("xiaoai_submit".equals(name)) {

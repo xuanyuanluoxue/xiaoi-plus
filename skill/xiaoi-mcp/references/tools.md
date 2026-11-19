@@ -84,11 +84,24 @@ App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可�
 返回示例：
 
 ```text
-facade=true cli=true port=8771 version=0.12.0-beta.1
+facade=true cli=true port=8771 version=0.16.1 hooks=ok compat=whitelist xiaoai=8.2.70.8421
 ```
 
 - `facade=false` 或 `cli=false`：小爱进程未就绪。
 - `port=0`：没有数据面 leader（MCP 关闭或正在切换）。
+- `hooks=ok|partial|none`：本进程实际挂上了几个关键 hook（配置改写 / provider 标识 /
+  视觉声明 / 能力桥）。`ok` 才算功能完整；`partial` 说明部分类没找到；`none` 说明
+  一个都没挂上，功能等于没生效。
+- `compat=whitelist|probe|none`：启用依据。`whitelist` 是版本在已验证白名单；
+  `probe` 是早期加载读不到版本而放行；`none` 是版本不在白名单、已主动 no-op。
+- `xiaoai=<版本>`：设备上小爱实际的 versionName。这一项是判断「要不要适配新版本」
+  的唯一依据——把它连同 `hooks`/`compat` 一起回报即可。
+
+排查顺序：`hooks=none` + `compat=none` → 版本没进白名单，需要适配（把 `xiaoai=`
+的版本报上来）；`hooks=partial` → 该版本类名或签名变了；`hooks=ok` 但回复不对 →
+问题在配置（模型/端点/密钥），不在 hook。
+
+旧版本（≤0.16.0）不返回后三个字段。
 
 ### xiaoai_submit
 

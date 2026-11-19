@@ -16,6 +16,7 @@ public final class TestMain {
             System.out.println("  FAIL HttpTest 套件异常: " + t);
         }
         failed += McpTest.run();
+        failed += HookStatusTest.run();
         failed += ToolOwnershipTest.run();
         failed += LogLevelTest.run();
         failed += RedactTest.run();
