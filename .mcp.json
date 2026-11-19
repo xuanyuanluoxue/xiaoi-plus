@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "aoci": {
+      "command": "/home/chatxavier/.local/bin/aoci",
+      "args": [
+        "--repo",
+        "/mnt/d/code/Android/xiaoi-plus",
+        "mcp"
+      ]
+    }
+  }
+}
