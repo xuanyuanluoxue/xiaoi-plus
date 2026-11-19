@@ -1,20 +1,35 @@
 # 架构说明
 
+0.16.0 起是**单端口**：模块只在 8771 上监听一个 HTTP/MCP 端点，App 进程不开任何 socket，
+设备动作通过控制面 Binder 从 8771 转发过去执行。
+
 ```
-┌─────────────────────────────┐
-│ 设置页（模块自己的进程）      │
-│  SharedPreferences: xiaoi_plus│
-└──────────────┬──────────────┘
-               │ XSharedPreferences（LSPosed 提供跨进程读）
-┌──────────────▼──────────────┐
-│ 小爱进程（com.miui.voiceassist）│
-│  Hook：                       │
-│   sm.a.getBaseUrl/getApiKey   │  → 模型重定向
-│   qm.j.buildResponsesRequest  │  → instructions 追加标记规则
-│   （可选）8771~8775 桥         │  → /health /cli /mcp，Bearer token
-│     默认 127.0.0.1；可显式开局域网 │
-└─────────────────────────────┘
+        PC Agent ──HTTP+Bearer──▶ :8771
+                                   │
+┌──────────────────────────────────┴──────────────────────────┐
+│ 小爱进程（com.miui.voiceassist）                               │
+│  Hook（数据面）：                                             │
+│   sm.a.getBaseUrl/getApiKey      → 模型重定向                 │
+│   getSupportsVision              → 图片直传                   │
+│   buildResponsesRequest          → 提示词/标记                 │
+│   ChatRequestBuilder / LLM 客户端 → 用量统计 + 前缀           │
+│                                                              │
+│  Bridge（8771，唯一监听）：                                   │
+│   /mcp  → 15 个工具（桥 9 + 设备动作 6）                       │
+│   /health /logs /stats /cli /island，POST /config → 410      │
+│   默认 127.0.0.1；可显式开局域网                               │
+└───────────────┬──────────────────────────────────────────────┘
+                │ 控制面 Binder（只允许 voiceassist 的 UID）
+┌───────────────▼──────────────────────────────────────────────┐
+│ 设置 App 进程（plus.xiaoi.module）                             │
+│  Compose UI（20 路由） + AgentService（**不监听**）             │
+│   AgentService：ActionRegistry / 执行器 / 确认 / 幂等 / 审计    │
+│   BridgeControlService：配置 pull、状态上报、C2S_AGENT_*       │
+└──────────────────────────────────────────────────────────────┘
 ```
+
+配置事实源是 App 私有目录的 `config.json`；小爱进程通过控制面 pull，再镜像到
+target prefs 作为降级缓存。
 
 ## 设计原则
 
@@ -24,14 +39,24 @@
 4. **默认不暴露**：桥默认只绑 loopback，token 为空一律 401；
    局域网必须显式打开开关且 token 为 32 hex（128 bit）
 
-## MCP 端点的位置
+## MCP 端点：一个端口，两段执行
 
-`POST /mcp` 由能力桥进程内的同一个 HTTP server 提供，不新增 hook、不扩大作用域。
-它只是把已有的 `/cli`（CliDispatcher 透传）按 MCP 的 `tools/call` 语义包装了一层，
-因此权限边界与 `/cli` 完全一致：同一 Bearer token、同样的本机/局域网准入规则、
-同一个“驱动小爱”的能力。裸端点 `/island` 始终只允许 loopback；`POST /config` 自 WP4 起
-固定 `410 Gone`，数据面不再接收配置。MCP 的 `xiaoai_island` 工具在局域网下仍可用（需 token）；
-`xiaoai_switch_model` 只允许 model/marker，端点、密钥、bridge/lan 只能在手机 App 设置。
+`POST /mcp` 由能力桥进程内的 HTTP server 提供，不新增 hook、不扩大作用域。
+它把两类工具放在同一个端点上：
+
+- **归属桥的 9 个**（`xiaoai_status` / `submit` / `todo_create` / `cli` / `config` /
+  `switch_model` / `logs` / `stats` / `island`）：在 8771 进程内执行，权限边界与
+  `/cli` 完全一致——同一 Bearer token、同样的本机/局域网准入规则。
+- **归属 App 的 6 个**（`capabilities` / `action` / `confirm` / `audit` / `notify` / `ask`）：
+  由 `ToolOwnership` 判定后走控制面 Binder（`C2S_AGENT_CALL`）到 App 进程执行。
+  App 进程**不监听端口**，所以设备动作不再有独立的 8770/8772 端点。
+
+`/health` 的 `agent=ipc|down` 表示这条 Binder 是否已连上；未连上时调用设备动作返回
+`AGENT_UNAVAILABLE`（`retryable:true`），桥自己的 9 个工具不受影响。
+
+裸端点 `/island` 始终只允许 loopback；`POST /config` 自 WP4 起固定 `410 Gone`，
+数据面不再接收配置。`xiaoai_switch_model` 只允许 model/marker，端点、密钥、bridge/lan
+只能在手机 App 设置。工具上限/TTL/端口等契约值统一在 `domain/core/Contract.java`。
 
 ## 控制面（0.12.0 WP1，增量）
 
@@ -43,6 +68,8 @@
 - `C2S_PULL_CONFIG` 在 App 的 HandlerThread 上读 `config.json`，返回 JSON + SHA-256。
 - `C2S_REGISTER` 保存 callback `Messenger`、pid、进程名、端口、0.11 `legacyJson`。
 - `C2S_REPORT_STATE` 保存 model/enabled/port/version/pid/process；`C2S_APPEND_LOGS` 只进内存环形缓冲。
+- `C2S_AGENT_TOOLS` / `C2S_AGENT_CALL`（0.16.0）：8771 取 App 侧工具表 / 执行一个
+  设备动作，请求与回复都是 Bundle 里的 JSON 字符串，逐条走 UID 白名单。
 - App → 小爱侧预留 `reload` / `showIsland` / `clearSafeMode` / `flushLogs`。
 
 WP4 起删除旧 `BridgePusher` 与 `POST /config`：App 保存后只写文件/prefs，并通过
@@ -79,8 +106,9 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
   App 重新开启也能通过控制面在 10s 内恢复监听。
 - WP4：App 不再扫描端口。leader 的 port 经控制面 register/reportState 写入
   `core/BridgeEndpoint`，`BridgeClient.discover()` 只读该值；`/config` 固定 410。
-- HTTP 有界：单行 8192、header 128 行、请求体 64KB；线程池 core=4/max=8/queue=32；
-  `/health`、`/island` 每源 IP 30 次/10s（429）。
+- HTTP 有界：单行 8192、header 128 行、请求体 64 KB（超限先 drain 再回 413）；
+  线程池 core=4/max=8/queue=32；`/health`、`/island` 每源 IP 30 次/10s（429）；
+  `OPTIONS` 回 204 且所有响应带 CORS 头。
 - target prefs 里 `cfg_rev` 相同的情况下以 target prefs 的 `bridge` 为准，
   避免 leader 释放锁后其他进程用陈旧的内存状态误接管。
 
@@ -89,7 +117,8 @@ beta.4 的外部 `config.json` 在首次加载时一次性迁移到私有目录�
 
 ## 分层与依赖方向
 
-代码已拆成四个 Gradle 模块（WP6 三模块 → WP8 增加 `:infra`，2026-11-18）：
+代码已拆成六个 Gradle 模块（WP6 三模块 → WP8 增加 `:infra` → WP10–13 增加
+`:platform` / `:ui`，2026-11-18）：
 
 ```
 :domain      模型 / 策略 / 协议 DTO / 端口        纯 JVM：无 I/O、无 Android、无 Xposed

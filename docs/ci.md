@@ -38,7 +38,7 @@ bash scripts/check-all.sh --no-device  # 跳过设备契约
 | JVM 单测 | `bash tests/run.sh`（全部断言） | ✅ |
 | APK 签名门禁 | `bash scripts/verify-apk.sh`（已签名/包名/versionCode/固定指纹；`--self-test` 覆盖负向用例） | ✅ |
 | 认知检查 | `aoci check`（漂移/待策展/字典/格式/草稿五净） | ✅ |
-| 真机契约 | `bash scripts/contract-test.sh --check`（45 断言，会重启小爱） | ✅ beta.4 基线；0.12 P0 矩阵待主 Agent 补跑 |
+| 真机契约 | `bash scripts/contract-test.sh --check`（44 项，会重启小爱） | ✅ 每次改动后本地跑 |
 
 CI 与本地共用的发布门禁：
 
@@ -55,16 +55,18 @@ CI 与本地共用的发布门禁：
 git config core.hooksPath .githooks   # 每台克隆执行一次
 ```
 
-推送前自动跑「工程一致性 + JVM 单测 + aoci check」，失败则拒绝推送。设备契约较重（会重启小爱），不放进 hook。
+推送前自动跑「工程一致性 + JVM 单测」，失败则拒绝推送。设备契约较重（会重启小爱），
+`aoci check` 依赖本机 aoci，两者都不放进 hook。
 
 ## 4. 桥 token 的存放
 
-契约测试的 token 优先取 `XIAOI_TOKEN` 环境变量；未设置时回退读本机文件：
+契约测试的 token 优先取 `XIAOI_TOKEN` 环境变量；未设置时读项目内的
+`.secrets/xiaoi-token`（0.16.0 起，已 gitignore），再回退旧的 `~/.config/xiaoi/token`：
 
 ```bash
-mkdir -p ~/.config/xiaoi
-printf '%s\n' '<你的桥 token>' > ~/.config/xiaoi/token
-chmod 600 ~/.config/xiaoi/token
+mkdir -p .secrets
+printf '%s\n' '<你的桥 token>' > .secrets/xiaoi-token
+chmod 600 .secrets/xiaoi-token   # Windows 盘不生效，依赖仓库目录 ACL
 ```
 
 该文件不进仓库；自建 runner 也用它，避免把 token 传到 GitHub secrets。

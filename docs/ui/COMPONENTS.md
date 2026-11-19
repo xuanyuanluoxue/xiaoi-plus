@@ -3,6 +3,9 @@
 > 状态：**生效**（0.14 起）
 > 规则：页面只能使用本文件列出的组件；新增/修改组件先改本文件。
 > 关联：[CONVENTIONS.md](CONVENTIONS.md)、[SCREENS.md](SCREENS.md)、[design-system.md](../design-system.md)。
+>
+> ⚠️ **0.16.0**：设备操作并入 8771，`AgentStatus` / 端口行只展示一个端点；
+> 文中「8770 状态」相关表述按「设备操作（与 8771 同端口）」理解。
 
 ## 0. 通用约定
 

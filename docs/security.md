@@ -107,12 +107,12 @@ curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8771~8775/health
 
 #### 3.1.1 CORS 与「浏览器也能调」的风险（0.16.0）
 
-两个 MCP 端点都回 `Access-Control-Allow-Origin: *`，并支持 `OPTIONS` 预检 ——
+唯一的 MCP 端点（8771）回 `Access-Control-Allow-Origin: *`，并支持 `OPTIONS` 预检 ——
 这是为了让浏览器里的面板/网页 Agent 能直接调用。代价必须写清楚：
 
 - **只影响浏览器**：跨域放开不等于绕过鉴权，默认仍然需要 `Bearer` token。
 - **`noAuth` + 浏览器 = 真实风险**：开了免鉴权时，用户访问的任意网页都能向
-  `http://<手机IP>:8771/mcp` 或 `:8772/mcp` 发 `tools/call`，包括
+  `http://<手机IP>:8771/mcp` 发 `tools/call`，包括
   `xiaoai_action`（执行设备动作）。**局域网 + 免鉴权 + 浏览器**三者同时成立时，
   建议只在隔离的测试网络上使用，用完立刻关闭。
 - **弱密码同样可被网页试出来**：`test1234` 这类密码在局域网广播下没有实际保护力，

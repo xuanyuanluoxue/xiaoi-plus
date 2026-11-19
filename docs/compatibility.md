@@ -113,8 +113,8 @@ grep -rn --include=*.java "static.*Json " /tmp/xiaoi-dec/sources | head
 然后：
 
 ```bash
-./build.sh
-adb install -r build/xiaoi-plus.apk
+./gradlew :app:assembleRelease
+adb install -r app/build/outputs/apk/release/app-release.apk
 adb shell am force-stop com.miui.voiceassist
 adb logcat -c && adb logcat -s VectorLegacyBridge | grep "xiaoi+"
 ```

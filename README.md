@@ -51,7 +51,7 @@
 | 接入 | 接入、端口与服务、令牌与局域网、连接信息、能力清单/详情、工具清单、权限 | 看 8771 通道、改令牌与 LAN、复制连接信息；能力与工具只读 |
 | 我的 | 我的、外观、配置管理、诊断、日志、关于、开源许可 | 主题三档、备份/还原/脱敏导出、诊断/日志、危险区「停用全部」 |
 
-- 共 **19 条路由**；一级页显示底栏，二级/三级页隐藏底栏并显示返回箭头。
+- 共 **20 条路由**；一级页显示底栏，二级/三级页隐藏底栏并显示返回箭头。
 - 深浅色跟随系统或手动三档；颜色/字号来自 `XiaoiTheme`，组件优先用 Miuix
   （`Scaffold`、`SmallTopAppBar`、`NavigationBar`、`Card`、`Button`、`Switch`、
   `TextField`、`SnackbarHost`），只有 Miuix 没有的筛选 chip、空态、状态 Hero 自绘。
@@ -290,9 +290,17 @@ App 保存配置后会通知小爱重新拉取（不再有 `/config` HTTP 推送
 
 只有**首次启用**需要在 LSPosed 里勾一次作用域；之后全部可远程完成。
 
-## 从源码构建（0.14）
+## 从源码构建
 
-0.14 起用 Gradle wrapper 构建，不再用 `build.sh`（`build.sh` 只覆盖 ≤0.13 的纯 Java 构建）。
+**0.16.0 起 Gradle 是唯一构建入口**（旧的 `build.sh` 已删除，历史见
+[docs/archive/build-sh-legacy.md](docs/archive/build-sh-legacy.md)）：
+
+```bash
+gradlew.bat :app:assembleRelease     # Windows
+./gradlew :app:assembleRelease       # Linux / WSL
+```
+
+产物：`app/build/outputs/apk/release/app-release.apk`。
 
 **当前主开发环境是 Windows 原生**：`D:\code\Android\xiaoi-plus`；
 WSL 通过 `/mnt/d/code/Android/xiaoi-plus` 访问同一份源码跑脚本/单测。
@@ -318,8 +326,9 @@ WSL 通过 `/mnt/d/code/Android/xiaoi-plus` 访问同一份源码跑脚本/单�
 :app         壳：清单/资源/MainActivity/Hook（依赖全部下层）
 ```
 
-`tests/run.sh` 会先用空 classpath 单独编译 `:domain`，再合并编译 application/infra/app 纯层，
-以此证明 domain 不依赖 application/Android/Xposed。
+`tests/run.sh` 会先用空 classpath 单独编译 `:domain`，再合并编译
+`domain + application + infra`（外加 `platform/Logs`）与 `tests/`，以此证明
+domain 不依赖 application/Android/Xposed、application 不碰 I/O。
 
 Windows（CMD / PowerShell）：
 
@@ -385,9 +394,9 @@ APK 从 8.4 MiB 降到 **1.9 MiB**（实测）。版本号单一来源是
 |---|---|
 | [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md) | 0.14 版本内容、页面清单、验收、限制、截图索引 |
 | [docs/ui/BUILD.md](docs/ui/BUILD.md) | 0.14 Gradle/Compose 构建、门禁、截图命令 |
-| [docs/ui/SCREENS.md](docs/ui/SCREENS.md) | 19 条路由、页面区块与 0.14 不做项 |
+| [docs/ui/SCREENS.md](docs/ui/SCREENS.md) | 20 条路由、页面区块与 0.14 不做项 |
 | [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md) | Miuix 组件契约、`FilterChips`、设备操作状态判定 |
-| [docs/build.md](docs/build.md) | 旧版 `build.sh` 构建（≤0.13，0.14 不用） |
+| [docs/archive/build-sh-legacy.md](docs/archive/build-sh-legacy.md) | 历史：≤0.13 的 `build.sh` 构建（脚本已在 0.16.0 删除） |
 | [docs/release.md](docs/release.md) | 版本号、签名密钥、发 tag、回滚 |
 | [docs/security.md](docs/security.md) | 密钥存哪、数据去向、桥的边界、回滚与风险 |
 | [docs/compatibility.md](docs/compatibility.md) | 版本矩阵、适配新版本的操作清单 |

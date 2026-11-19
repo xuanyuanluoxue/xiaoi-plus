@@ -91,7 +91,7 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 1. `main` 已建立在真实历史之上（`D:\code\Android\xiaoi-plus`）；
    网络可用时把 `main` 推送到 `origin`（remote URL 目前是 gitclone 镜像，需要先修正）。
 2. 真机安装归档 APK，按 `docs/refactor/LAYERING.md` 各 WP 的 P0 清单验收。
-3. 若要发正式版：先跑 45 项契约与真机 P0，再按 `docs/release.md` 定版本/tag/签名。
+3. 若要发正式版：先跑 44 项契约与真机 P0，再按 `docs/release.md` 定版本/tag/签名。
 
 ## 8. 已删除的历史文件（0.16.0 清理）
 

@@ -2,7 +2,7 @@
 
 0.14 起用 Gradle wrapper 构建（Windows 原生 `gradlew.bat :app:assembleRelease`，
 Linux/WSL `./gradlew :app:assembleRelease`），CI 与本地发版都走 Gradle；
-`build.sh` 只覆盖 ≤0.13 的纯 Java 构建，**不要再用于发版**。
+旧的 `build.sh` 已在 0.16.0 删除（历史见 [archive/build-sh-legacy.md](archive/build-sh-legacy.md)）。
 发版额外做三件事：定版本、用固定密钥签名、把产物和校验和挂到 GitHub Release。
 
 > 当前主环境是 Windows 原生；`scripts/*.sh` 用 Git Bash 或 WSL 执行。
@@ -51,8 +51,9 @@ keytool -genkeypair -keystore keystore/xiaoi.keystore -alias xiaoi \
   -dname "CN=XiaoAi Plus, O=OpenSource, C=CN"
 ```
 
-口令自己定，别用仓库里的示例值。本地构建从 `KEYSTORE_PASSWORD` 或
-`~/.config/xiaoi/keystore_pass` 读取，不写进源码。生成后**立刻离线备份**
+口令自己定，别用仓库里的示例值。本地构建按 `KEYSTORE_PASSWORD` →
+`.secrets/keystore_pass` → 旧的 `~/.config/xiaoi/keystore_pass` 顺序读取
+（0.16.0 起凭据放项目内 `.secrets/`，已 gitignore），不写进源码。生成后**立刻离线备份**
 （密码管理器 + 仓库外的备份盘）。
 密钥丢失＝无法覆盖安装，只能换包名或让所有用户卸载重装。
 

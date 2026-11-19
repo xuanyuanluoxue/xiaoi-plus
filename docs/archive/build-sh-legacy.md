@@ -1,8 +1,11 @@
-# 从零构建
+# 从零构建（≤0.13 的 build.sh，已删除）
 
-> 当前主构建方式是 Gradle wrapper（Windows 原生 `gradlew.bat` / Linux `./gradlew`），
-> 见 [README「从源码构建」](../README.md#从源码构建014)。
-> 本文的 `build.sh` 是 ≤0.13 的纯 Java 遗留路径，新版本发版不要使用。
+> **历史文档**：`build.sh` 已在 **0.16.0 删除**，本文只保留当时的构建方式，
+> 里面的命令全部不可用。
+>
+> 当前唯一构建入口是 Gradle wrapper——Windows 用 `gradlew.bat`，Linux/WSL 用
+> `./gradlew`，见 [README「从源码构建」](../../README.md#从源码构建014)
+> 与 [docs/ui/BUILD.md](../ui/BUILD.md)。
 
 ## 0. 当前主环境（Windows）
 

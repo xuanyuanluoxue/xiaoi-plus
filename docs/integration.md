@@ -100,7 +100,7 @@ adb forward tcp:8771 tcp:8771
 
 | 脚本 | 用途 |
 |---|---|
-| `scripts/contract-test.sh --check` | 45 项回归（开免鉴权时 3 项 401 断言按配置跳过）：鉴权、MCP 形状、`tools/list`（own + 合并）、`/island`、工具表；会重启小爱并对比基线 |
+| `scripts/contract-test.sh --check` | 44 项回归（开免鉴权时 3 项 401 断言按配置跳过）：鉴权、MCP 形状、`tools/list`（own + 合并）、`/island`、工具表；会重启小爱并对比基线 |
 | `scripts/mcp-call.sh` | 手工调单个工具：端口发现 + `adb forward` + Bearer 鉴权 |
 
 ```bash

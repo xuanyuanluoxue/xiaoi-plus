@@ -20,8 +20,8 @@ adb connect <PHONE_IP>:5555
 ## 2. 安装与重启
 
 ```bash
-./build.sh                      # 产物 build/xiaoi-plus.apk
-adb install -r build/xiaoi-plus.apk
+./gradlew :app:assembleRelease   # 产物 app/build/outputs/apk/release/app-release.apk
+adb install -r app/build/outputs/apk/release/app-release.apk
 adb shell am force-stop com.miui.voiceassist
 adb shell "monkey -p com.miui.voiceassist -c android.intent.category.LAUNCHER 1"
 ```
@@ -70,7 +70,7 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 ```
 
 > `adb forward` 的生命周期跟着 adb server；adb 重启后要重跑，MCP 会表现为超时。
-> 局域网模式不受 adb 影响，但端口可能在重绑后落到 8772~8775，客户端应按设置页显示的地址填。
+> 局域网模式不受 adb 影响；端口 8771 被占用时会顺延到 8771~8775，客户端应按设置页或 `/health` 显示的地址填。
 
 ## 5. root 操作
 
@@ -106,7 +106,7 @@ chcon u:object_r:app_data_file:s0:c512,c768 $F
 | 现象 | 处理 |
 |---|---|
 | `unauthorized` | token 不对，或请求没带 `Authorization` |
-| 连不上 8771 | 先 `adb forward`；或换 8772（多进程时端口会错开） |
+| 连不上 8771 | 先 `adb forward`；端口被占用会顺延，按 `/health` 或设置页显示的端口填 |
 | 模块不生效 | 小爱没重启；或 LSPosed 作用域没勾 `com.miui.voiceassist` |
 | 配置为空 | prefs 写失败 / SELinux 标签不对 |
 | 岛不折叠成胶囊 | 缺 RemoteViews，属已知限制 |

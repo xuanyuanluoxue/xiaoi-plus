@@ -395,7 +395,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 adb shell am start -n plus.xiaoi.module/.MainActivity --es route Home
 ```
 
-19 条路由：`Home`、`Xiaoai`、`Model`、`Access`、`Bridge`、`Token`、`Connect`、
+20 条路由：`Home`、`Xiaoai`、`Model`、`Access`、`Bridge`、`Token`、`Connect`、
 `Capabilities`、`CapabilityDetail:<id>`、`Tools`、`Permissions`、`Me`、`Appearance`、
 `ConfigManage`、`Diagnostics`、`Logs`、`About`、`Licenses`、`Legacy`。未知路由回首页。
 
