@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-19T11:08:08Z",
+  "updated_at": "2026-11-19T11:19:49Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "b901291a89d7c957717e2d7d5d5fcd1fe5ffee5205d9437d0d0195ed81a5473c",
-      "size": 74972,
-      "normalized_sha256": "b901291a89d7c957717e2d7d5d5fcd1fe5ffee5205d9437d0d0195ed81a5473c"
+      "sha256": "e3e5af91760e525136435e874e23abcbe734d348cc03c64ea32aa9947fd844a9",
+      "size": 75929,
+      "normalized_sha256": "e3e5af91760e525136435e874e23abcbe734d348cc03c64ea32aa9947fd844a9"
     },
     "LICENSE": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "e4da208179f5b7cfbacbcee22f5cca6c3029c35d1fa5b27b0630d43977f3d2c3",
-      "size": 102746,
-      "normalized_sha256": "e4da208179f5b7cfbacbcee22f5cca6c3029c35d1fa5b27b0630d43977f3d2c3"
+      "sha256": "2cbd4164da054ecbdfafa229a53b13af75db2ea813cd59bde72feb04340af60f",
+      "size": 102822,
+      "normalized_sha256": "2cbd4164da054ecbdfafa229a53b13af75db2ea813cd59bde72feb04340af60f"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -137,9 +137,9 @@
     },
     "app/src/main/AndroidManifest.xml": {
       "role": "index",
-      "sha256": "f21d33d47a713af3b2d3823f30b0e9419a4c7d0a6e2487a929d7c8bdedaa12cd",
+      "sha256": "af78b862059b3f16e480e9b978f3c917e0f9517f89a880620753dd0aaef4aae4",
       "size": 4947,
-      "normalized_sha256": "f21d33d47a713af3b2d3823f30b0e9419a4c7d0a6e2487a929d7c8bdedaa12cd"
+      "normalized_sha256": "af78b862059b3f16e480e9b978f3c917e0f9517f89a880620753dd0aaef4aae4"
     },
     "app/src/main/assets/xposed_init": {
       "role": "index",
@@ -149,9 +149,9 @@
     },
     "app/src/main/java/plus/xiaoi/module/Hook.java": {
       "role": "index",
-      "sha256": "b956b63ae85c45f5db6792da6754ad302e7a15fbd2829334cba1764b6749f914",
-      "size": 21244,
-      "normalized_sha256": "b956b63ae85c45f5db6792da6754ad302e7a15fbd2829334cba1764b6749f914"
+      "sha256": "33a2a13058131313e42a666b89fe440cc97933f6f69217fd65e62eee65941b75",
+      "size": 21259,
+      "normalized_sha256": "33a2a13058131313e42a666b89fe440cc97933f6f69217fd65e62eee65941b75"
     },
     "app/src/main/java/plus/xiaoi/module/MainActivity.kt": {
       "role": "index",
@@ -503,9 +503,9 @@
     },
     "docs/compatibility.md": {
       "role": "index",
-      "sha256": "9435e8b66cd3f19798e09805199e5fefd6bcf95f524c2f0c0da0750891d8e109",
-      "size": 5453,
-      "normalized_sha256": "9435e8b66cd3f19798e09805199e5fefd6bcf95f524c2f0c0da0750891d8e109"
+      "sha256": "e9254467e6e844883ee41ca598f6afe2b2da0e5a840e890e223ed7b252b8aef2",
+      "size": 5499,
+      "normalized_sha256": "e9254467e6e844883ee41ca598f6afe2b2da0e5a840e890e223ed7b252b8aef2"
     },
     "docs/design-system.md": {
       "role": "index",

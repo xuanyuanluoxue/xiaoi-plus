@@ -1,5 +1,21 @@
 # 更新日志
 
+## 未发布（0.16.1）
+
+**适配小爱 8.2.70.8421**
+
+- 版本白名单新增 `8.2.70.8421`（原只有 `8.2.65.4714`）。设备升级后模块此前整体 no-op，
+  `/health` 显示 `facade=false`。
+- 逆向确认 hook 目标未迁移：`sm.a`（getBaseUrl/getApiKey/getModel/getModelProviderId）、
+  `sm.f`（getSupportsVision）、`qm.i/qm.j/qm.b` 与 `um.h`（streamCompletion）、
+  `OsbotFacadeImpl` 构造器均在 8.2.70 中存在，因此只补白名单即可。
+- 真机验证（M332BF / Android 17 / 小爱 8.2.70.8421）：
+  `xiaoai_status` 返回 `facade=true cli=true port=8771`；
+  日志出现「配置 hook 完成」「provider 标识 hook 完成」「supportsVision=true 已启用」
+  「qm.i/j/b、um.h 调用统计 hook 完成」「能力桥 hook 完成」；
+  `xiaoai_submit` 有正常回复且 `xiaoai_stats` 记为三方调用 1 次；
+  日志出现「模型标识已改走请求头 X-Model-Provider-Id=xiaoi-plus」。
+
 ## 0.16.0 — 2026-11-19
 
 > **不兼容变更**：设备动作端口并入 8771（App 进程不再监听 8770/8772）；

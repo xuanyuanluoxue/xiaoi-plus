@@ -5,7 +5,7 @@
 .gitignore[FV6T]: F:忽略构建产物、本地凭据、临时目录、AOCI 主机配置与本地虚拟环境 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库否则 scan 拒绝；.mcp.json 等主机配置含绝对路径必须忽略；.venv 是 deploy.cmd 的本地环境
 AGENTS.md[SG8S]: F:Agent 仓库规约：构建命令、分层边界、产物落点与根目录纪律 | R:code:scripts/check-layering.sh | A:根目录纪律 | S:新文件只能进 scripts/docs/tmp/artifacts；根目录禁止新建 md/sh/txt；末尾 aoci 托管区块不要手改
 ARCHIVE.md[SG5S]: F:归档快照：0.15.0 的模块、验证与限制，以及 0.16.0 的清理与备份去向 | R:code:docs/refactor/NEXT.md | A:artifacts/legacy/ | S:备份已迁进仓库 artifacts/legacy/，不要再引用 ~/xiaoi-plus-dev 这类仓外路径
-CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.16.0 | S:小节标题必须与 versionName 完全一致，否则 Notes 退化成空模板；发版前把「未发布」改成「## <version> — YYYY-MM-DD」
+CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.16.1 | S:小节标题必须与 versionName 完全一致，否则 Notes 退化成空模板；发版前把「未发布」改成「## <version> — YYYY-MM-DD」
 LICENSE[SV4L]: F:GPLv3 许可证全文 | R:code:README.md | A:GPLv3 | S:分发修改版须沿用同一许可；本项目不改原包，只做运行时注入
 README.md[SG8L]: F:对外主页：功能矩阵、设置页、接入方式、15 个 MCP 工具表、构建与一键部署、已知限制 | R:code:docs/architecture.md | A:MCP端点 | S:工具表、上限与端口必须与 Contract.java 和 Mcp 的工具表同步，漂移会被真机契约测试暴露
 build.gradle.kts[FV6T]: F:根构建声明：四个 AGP 与 Compose 插件只 apply false，由子模块各自启用 | R:code:app/build.gradle.kts | A:alias(libs.plugins.android.application) | S:版本全部来自 gradle/libs.versions.toml；在根模块真正 apply 插件会破坏按模块启用
@@ -50,7 +50,7 @@ AndroidManifest.xml[FV8T]: F:壳清单：versionName 与 versionCode 唯一来�
 xposed_init[FV6T]: F:Xposed 入口声明：一行写 Hook 类全名 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:plus.xiaoi.module.Hook | S:类改名必须同步这里，否则 LSPosed 找不到入口且不报任何错
 
 ===/<repository>/app/src/main/java/plus/xiaoi/module/===
-Hook.java[EI8L]: F:LSPosed 入口：按版本判定后安装数据面 hook（重定向、视觉、用量、前缀、标识） | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:handleLoadPackage | S:每个 hook 必须 try/catch 且只写日志；版本没验证就 no-op，避免升级后 bootloop
+Hook.java[EI8L]: F:LSPosed 入口：按版本白名单判定后安装数据面 hook（模型重定向、视觉、用量、provider 标识、facade） | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:handleLoadPackage | S:每个 hook 必须 try/catch 且只写日志；版本不在白名单直接 no-op（现含 8.2.65.4714 与 8.2.70.8421），新增版本前先确认 sm.a/sm.f/qm.*/um.h 仍在
 MainActivity.kt[EU8L]: F:单 Activity 壳：4 tab 加 20 路由、统一返回栈、玻璃底栏与 Snackbar 宿主 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/home/HomeStateHolder.kt | A:XiaoiRoute | S:路由名必须与 ui 页面一一对应；提示走 message() 到 SnackbarHost，禁用 Toast；返回只走普通 BackHandler，预测性返回已移除
 
 ===/<repository>/app/src/main/res/drawable/===
@@ -126,7 +126,7 @@ UsageStats.java[AO5T]: F:用量查询端口：拉取本机 8771 的 stats 原始
 README.md[SG7T]: F:文档索引：当前环境说明加全部文档的一行摘要表 | R:code:docs/refactor/NEXT.md | A:继续开发入口 | S:docs/agent 与 docs/ui 的 *-REPORT、DEVICE-CHECK、drafts 是历史存档，里面 ~/xiaoi-plus-dev 等路径已失效，不代表当前环境
 architecture.md[SG9S]: F:架构说明：单端口拓扑、hook 点、控制面 Binder、配置事实源、生命周期决策与分层依赖方向 | R:code:docs/integration.md | A:单端口 | S:0.16.0 起只有 8771 监听，App 进程不开 socket；POST /config 恒回 410，写配置只能走 App
 ci.md[OQ7T]: F:CI 与本地门禁说明：托管 CI 步骤、本地全量门禁、pre-push hook、token 存放、可选自建 runner | R:code:.github/workflows/build.yml | A:GitHub 托管 CI | S:tag 构建只有 signed=true 才创建 Release；无正式密钥时只上传 artifact 并打 warning，不会失败
-compatibility.md[SG7S]: F:小爱版本兼容性矩阵与适配流程：白名单匹配、已适配版本与混淆名、新版本适配步骤 | R:code:docs/architecture.md | A:兼容性矩阵 | S:只精确匹配白名单里的 versionName，其它版本 no-op 且不报错；设备已出现 8.2.70.8421，未加白名单时模块整体不生效
+compatibility.md[SG7S]: F:小爱版本兼容性矩阵与适配流程：白名单匹配、已适配版本与混淆名、新版本适配步骤 | R:code:docs/architecture.md | A:兼容性矩阵 | S:只精确匹配白名单里的 versionName，其它版本 no-op 且不报错；8.2.70.8421 已加入白名单并真机验证
 design-system.md[SU8M]: F:UI 声明：19 个颜色令牌、字体与间距、15 个组件、状态矩阵、主题实现与自绘例外 | R:code:app/src/main/res/values/colors.xml | A:颜色令牌 | S:令牌是唯一允许的引用方式，页面里禁止裸 #RRGGBB；深浅两套只换颜色，布局与尺寸必须一致
 feature-candidates.md[SA5S]: F:功能候选调研：root 生态 18 项能力评估、Top5 推荐、独占组合与不建议做清单 | R:code:docs/refactor/NEXT.md | A:结论先行 | S:结论是不要把小爱做成第二个 Thanox；优先级入口与编排高于单点系统能力，全局治理类重复造轮子收益低
 integration.md[SG8S]: F:接入文案：cURL、零依赖 Python 客户端、Agent 用 skill 文本、MCP 两种接入方式与本机测试脚本 | R:code:README.md | A:MCP 接入 | S:0.16.0 起只有一个端口 8771；关掉免鉴权后任何缺 Bearer 的请求都是 401，示例里的 <TOKEN> 必须真的替换

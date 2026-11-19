@@ -19,7 +19,7 @@ public class Hook implements IXposedHookLoadPackage {
     private static final String TAG = "[xiaoi+] ";
     private static final String TARGET = "com.miui.voiceassist";
     /** 已验证的版本白名单，其他版本一律 no-op */
-    private static final String[] SUPPORTED_VERSIONS = {"8.2.65.4714"};
+    private static final String[] SUPPORTED_VERSIONS = {"8.2.65.4714", "8.2.70.8421"};
 
     private static volatile Config sConfig;
     /** 供配置热更新（控制面 reload / MCP switch_model）重新安装 hook 使用。 */
