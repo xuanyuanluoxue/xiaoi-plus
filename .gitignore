@@ -18,6 +18,9 @@ tmp/
 .secrets/
 .worktrees/
 
+# scripts/deploy.cmd 用的仓库内 Python 虚拟环境（一次创建，不入库）
+.venv/
+
 # AOCI agent host integration (machine-bound; do not commit)
 # 官方要求：init 写出的 .mcp.json / .codex/config.toml / opencode.json 含绝对路径，
 # 入库后在别的机器上必坏，且 init 按 key 存在判断会静默保留坏路径。

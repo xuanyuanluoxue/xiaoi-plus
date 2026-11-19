@@ -302,6 +302,27 @@ gradlew.bat :app:assembleRelease     # Windows
 
 产物：`app/build/outputs/apk/release/app-release.apk`。
 
+### 一键构建 + 装到手机 + 打开
+
+```bat
+scripts\deploy.cmd
+```
+
+它按顺序做：构建 release → 用 `scripts/expected-signer.sha256` 校验签名指纹 →
+选设备（`--serial` / `XIAOI_SERIAL` / 唯一在线设备）→ `install -r` → 打开
+`MainActivity` → 启动设备动作服务 → 探活并报 15 个工具是否齐全。
+
+| 参数 | 作用 |
+|---|---|
+| `--serial 192.168.0.118:5555` | 指定设备（多设备时必填） |
+| `--skip-build` | 直接装现有 APK |
+| `--no-verify` | 跳过指纹比对（临时密钥构建用） |
+| `--no-agent` / `--no-launch` / `--no-health` | 跳过对应步骤 |
+
+脚本用仓库内 `.venv`（Python 3.10+，已 gitignore，首次运行自动创建），
+实现见 `scripts/deploy.py`。没有在线设备时可设 `XIAOI_DEPLOY_CONNECT=192.168.0.118:5555`，
+脚本会先 `adb connect` 再安装。
+
 **当前主开发环境是 Windows 原生**：`D:\code\Android\xiaoi-plus`；
 WSL 通过 `/mnt/d/code/Android/xiaoi-plus` 访问同一份源码跑脚本/单测。
 原 WSL 仓库在 2026-11-17 被异常清空，但原始历史（v0.15.0 及 WP0–WP3）在

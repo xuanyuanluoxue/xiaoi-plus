@@ -2,12 +2,12 @@
 
 ===/<repository>/===
 .gitattributes[FV4T]: F:git 属性表：文本按 LF 存储、二进制不转换 | R:code:.gitignore | A:text=auto | S:换行策略的唯一来源；Windows 脚本依赖 LF，改这里会让全仓库 diff 抖动
-.gitignore[FV6T]: F:忽略构建产物、本地凭据、临时目录与 AOCI 主机配置 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库否则 scan 拒绝；.mcp.json 等主机配置含绝对路径必须忽略；AGENTS.md.backup.* 是 aoci 改 AGENTS 的备份
+.gitignore[FV6T]: F:忽略构建产物、本地凭据、临时目录、AOCI 主机配置与本地虚拟环境 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库否则 scan 拒绝；.mcp.json 等主机配置含绝对路径必须忽略；.venv 是 deploy.cmd 的本地环境
 AGENTS.md[SG8S]: F:Agent 仓库规约：构建命令、分层边界、产物落点与根目录纪律 | R:code:scripts/check-layering.sh | A:根目录纪律 | S:新文件只能进 scripts/docs/tmp/artifacts；根目录禁止新建 md/sh/txt；末尾 aoci 托管区块不要手改
 ARCHIVE.md[SG5S]: F:归档快照：0.15.0 的模块、验证与限制，以及 0.16.0 的清理与备份去向 | R:code:docs/refactor/NEXT.md | A:artifacts/legacy/ | S:备份已迁进仓库 artifacts/legacy/，不要再引用 ~/xiaoi-plus-dev 这类仓外路径
 CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:未发布 | S:小节标题必须与 versionName 完全一致，否则 Notes 退化成空模板
 LICENSE[SV4L]: F:GPLv3 许可证全文 | R:code:README.md | A:GPLv3 | S:分发修改版须沿用同一许可；本项目不改原包，只做运行时注入
-README.md[SG8L]: F:对外主页：功能矩阵、设置页、接入方式、15 个 MCP 工具表、构建与已知限制 | R:code:docs/architecture.md | A:MCP端点 | S:工具表、上限与端口必须与 Contract.java 和 Mcp 的工具表同步，漂移会被真机契约测试暴露
+README.md[SG8L]: F:对外主页：功能矩阵、设置页、接入方式、15 个 MCP 工具表、构建与一键部署、已知限制 | R:code:docs/architecture.md | A:MCP端点 | S:工具表、上限与端口必须与 Contract.java 和 Mcp 的工具表同步，漂移会被真机契约测试暴露
 build.gradle.kts[FV6T]: F:根构建声明：四个 AGP 与 Compose 插件只 apply false，由子模块各自启用 | R:code:app/build.gradle.kts | A:alias(libs.plugins.android.application) | S:版本全部来自 gradle/libs.versions.toml；在根模块真正 apply 插件会破坏按模块启用
 gradle.properties[FV5T]: F:Gradle 与 Android 全局开关：守护进程堆、并行、构建缓存、AndroidX 与 R 类策略 | R:code:gradle/libs.versions.toml | A:org.gradle.jvmargs | S:useAndroidX 与 nonTransitiveRClass 必须为 true；关掉后者会让每个模块生成全量 R 类，编译显著变慢
 gradlew[FV5M]: F:POSIX 启动脚本：定位 APP_HOME、处理软链与 Cygwin 路径、组装 JVM 参数并 exec wrapper jar | R:code:gradle/wrapper/gradle-wrapper.properties | A:DEFAULT_JVM_OPTS | S:Gradle 生成的脚本不要手改；这里的堆只有 64m，真正的守护进程堆来自 gradle.properties 的 jvmargs
@@ -365,6 +365,8 @@ release.sh[OV8S]: F:一键发版：干净检查、tag 冲突、keystore 存在�
 ui-screenshot.sh[OO5S]: F:UI 截图与 UI dump：直接写到 PC 的 artifacts 目录，支持指定路由、归档与清理 | R:code:docs/ui/DEVICE-CHECK-0.15.md | A:--route | S:用 exec-out 直接落 PC，手机不留图；默认写 tmp，只有 --review 才归档到 review 日期目录
 verify-apk.sh[OV8L]: F:发布门禁：校验已签名、包名与 versionCode，并比对固定证书指纹，支持自测 | R:code:scripts/expected-signer.sha256 | A:--allow-any-signer | S:--allow-any-signer 只跳过指纹比对，仍强制已签名加包名加版本；全程不打印 keystore 口令
 version.sh[OV6T]: F:版本号唯一读取入口：manifest 优先、gradle 回退，输出 name、code、json 或 print | R:code:app/src/main/AndroidManifest.xml | A:code | S:name 与 code 都从这里取，不要在别的脚本里再解析一次清单，否则两处口径会漂移
+deploy.cmd[OV5T]: F:一键部署的 Windows 入口：确保仓库内 .venv 存在后转交 deploy.py | R:code:scripts/deploy.py | A:scripts\deploy.cmd | S:本文件必须保持纯 ASCII——cmd.exe 按 OEM 代码页解析，中文注释或 echo 会把脚本拆坏
+deploy.py[OV7M]: F:一键部署主体：构建 release、校验签名指纹、选设备、install -r、打开 App、启动设备动作服务并探活 | R:code:scripts/expected-signer.sha256 | A:python scripts/deploy.py | S:只用标准库；指纹不符直接中止（仅 --no-verify 跳过）；health 的 tools 只算桥工具，合并数要看 tools/list
 
 ===/<repository>/skill/===
 README.md[SG6T]: F:skill 目录说明：两个 skill 的用途、端点与与 .opencode/skills 的关系 | R:code:.opencode/skills/xiaoi-mcp/SKILL.md | A:skill/ | S:skill/ 与 .opencode/skills/ 是两份实体副本，没有软链接，改一份必须同步另一份
