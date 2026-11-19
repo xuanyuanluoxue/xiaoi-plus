@@ -29,7 +29,7 @@
 - 不新增提示词、工具注入、技能包、记忆、ASR/TTS、场景路由功能（只做占位）。
 - 不改 Xiaoai 注入逻辑（`Hook/Bridge/AgentService`）。
 - 不引入 navigation-compose、DI、图片加载库、blur、Monet。
-- 0.14 不上调 targetSdk；0.15 为预测性返回升到 34（不升 35）；不重打包小爱；不改包名/签名。
+- 0.14 不上调 targetSdk；0.15 起 targetSdk 34（不升 35）；不重打包小爱；不改包名/签名。
 - 不做平板双栏、横屏专用布局（0.15 再评估）。
 
 ---
@@ -46,7 +46,7 @@
 | D6 | 保存模型 | 一级主开关即时保存；二级表单显式保存；无全局 FAB |
 | D7 | 旧 Config 只读 | 放“我的 > 诊断 > 兼容模式”，0.15 删除 |
 | D8 | 0.14 parity | 能力页只读；审计/确认/测试台占位；危险区只做“停用全部” |
-| D9 | targetSdk 34 | 0.15 起升到 34 以开启预测性返回；不升 35（edge-to-edge） |
+| D9 | targetSdk 34 | 0.15 起为 34；不升 35（edge-to-edge）。预测性返回已在 0.16.0 移除 |
 | D10 | 8770 无独立开关 | 跟随 `mcpEnabled + token`；LAN 由 `agentLan` 独立控制 |
 
 ---
@@ -63,7 +63,7 @@
 | Compose Multiplatform | 1.12.2 | Android 目标 |
 | Miuix | 0.9.4 | `miuix-ui` + `miuix-preference` |
 | compileSdk | 37 | Miuix AAR `minCompileSdk=37` |
-| minSdk / targetSdk | 26 / 34 | minSdk 保持；targetSdk 34 用于预测性返回 |
+| minSdk / targetSdk | 26 / 34 | minSdk 保持；targetSdk 34（预测性返回已在 0.16.0 移除） |
 | JDK | 21（构建） | Java/Kotlin target=11（Compose 1.12 要求；源码不用 11+ 语言特性） |
 | build-tools | 37.0.0（Gradle 默认即可） | 不再手工调用 aapt2/d8 |
 

@@ -93,7 +93,7 @@ android {
     }
 
     lint {
-        // 本模块不是 Play 分发应用；targetSdk 用于预测性返回，其他 lint 仍照常执行。
+        // 本模块不是 Play 分发应用；lint 的 targetSdk 检查不阻断构建，其他 lint 仍照常执行。
     }
 
     packaging {

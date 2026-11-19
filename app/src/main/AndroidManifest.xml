@@ -23,12 +23,11 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <!-- minSdk 26 / targetSdk 34 由 app/build.gradle.kts 声明（AGP 9 禁止在 Manifest
-         写 uses-sdk）。targetSdk 34 用于开启预测性返回；未升 35，避免强制
-         edge-to-edge 影响状态栏/底栏。 -->
+         写 uses-sdk）。未升 35，避免强制 edge-to-edge 影响状态栏/底栏。
+         预测性返回已移除，因此不再声明 enableOnBackInvokedCallback（默认走旧返回路径）。 -->
 
     <application
         android:allowBackup="false"
-        android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true"
         android:label="@string/app_name"
         android:theme="@style/Theme.XiaoiPlus"

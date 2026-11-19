@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-19T06:36:30Z",
+  "updated_at": "2026-11-19T10:29:23Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "52b01f3668e00a6b3b2674407fc9d7373fc7ce0505fcc0060f7c07a2a2daf7eb",
-      "size": 74199,
-      "normalized_sha256": "52b01f3668e00a6b3b2674407fc9d7373fc7ce0505fcc0060f7c07a2a2daf7eb"
+      "sha256": "86d775d312169361772f1edebd33e83296948ac56678ee595198f82a054577e5",
+      "size": 74566,
+      "normalized_sha256": "86d775d312169361772f1edebd33e83296948ac56678ee595198f82a054577e5"
     },
     "LICENSE": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "c5b4bde96107df389c57827fba693ab9345c7ac7be8028ac223e754186e9a85c",
-      "size": 101958,
-      "normalized_sha256": "c5b4bde96107df389c57827fba693ab9345c7ac7be8028ac223e754186e9a85c"
+      "sha256": "d152b41a2d72287bce1390476724a0ed40d586911b8d1b536adcd020be4e63ed",
+      "size": 102043,
+      "normalized_sha256": "d152b41a2d72287bce1390476724a0ed40d586911b8d1b536adcd020be4e63ed"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -125,9 +125,9 @@
     },
     "app/build.gradle.kts": {
       "role": "index",
-      "sha256": "a16cfeb62d5d6dd42783f8c9f3bb1c41e7b80aab784c805422228a16fb5ca7a3",
-      "size": 4695,
-      "normalized_sha256": "a16cfeb62d5d6dd42783f8c9f3bb1c41e7b80aab784c805422228a16fb5ca7a3"
+      "sha256": "94c296acde5f92db65e0260c82cf1a9ea89cfc6a226117fd9f216b08c8036316",
+      "size": 4704,
+      "normalized_sha256": "94c296acde5f92db65e0260c82cf1a9ea89cfc6a226117fd9f216b08c8036316"
     },
     "app/proguard-rules.pro": {
       "role": "index",
@@ -137,9 +137,9 @@
     },
     "app/src/main/AndroidManifest.xml": {
       "role": "index",
-      "sha256": "23c1a2afb6d9ee114ce22950b19ec486e1b8c1819e242bd613573dec8f7070fa",
-      "size": 4934,
-      "normalized_sha256": "23c1a2afb6d9ee114ce22950b19ec486e1b8c1819e242bd613573dec8f7070fa"
+      "sha256": "f21d33d47a713af3b2d3823f30b0e9419a4c7d0a6e2487a929d7c8bdedaa12cd",
+      "size": 4947,
+      "normalized_sha256": "f21d33d47a713af3b2d3823f30b0e9419a4c7d0a6e2487a929d7c8bdedaa12cd"
     },
     "app/src/main/assets/xposed_init": {
       "role": "index",
@@ -155,9 +155,9 @@
     },
     "app/src/main/java/plus/xiaoi/module/MainActivity.kt": {
       "role": "index",
-      "sha256": "dad81a6d400962fdb7e65a5eafd56387020b849931704e79fec762ccb9cda483",
-      "size": 22115,
-      "normalized_sha256": "dad81a6d400962fdb7e65a5eafd56387020b849931704e79fec762ccb9cda483"
+      "sha256": "082caeb7357201a3eaef75e0306bec08399a1143847fa7dc1ce5b2645042bab1",
+      "size": 21333,
+      "normalized_sha256": "082caeb7357201a3eaef75e0306bec08399a1143847fa7dc1ce5b2645042bab1"
     },
     "app/src/main/res/drawable/ic_launcher_background.xml": {
       "role": "index",
@@ -671,9 +671,9 @@
     },
     "docs/ui/CONVENTIONS.md": {
       "role": "index",
-      "sha256": "01894fb7d892ee22f90d5db13b00024236ecc04de8569bf83dbd2076de7a3acd",
-      "size": 9958,
-      "normalized_sha256": "01894fb7d892ee22f90d5db13b00024236ecc04de8569bf83dbd2076de7a3acd"
+      "sha256": "29c90dd56e21aad5d9f5b1599fb5dc9acdd0f09f6b2747ab05ddae694d1c7061",
+      "size": 9956,
+      "normalized_sha256": "29c90dd56e21aad5d9f5b1599fb5dc9acdd0f09f6b2747ab05ddae694d1c7061"
     },
     "docs/ui/CORE-DATA-REPORT.md": {
       "role": "index",
@@ -683,9 +683,9 @@
     },
     "docs/ui/DEVICE-CHECK-0.15.md": {
       "role": "index",
-      "sha256": "0cfb13d1a1f40bb8b17546581b147fa07c8a6e8b4bb6d3a1db9a84df19b24119",
-      "size": 3154,
-      "normalized_sha256": "0cfb13d1a1f40bb8b17546581b147fa07c8a6e8b4bb6d3a1db9a84df19b24119"
+      "sha256": "9984c7ba57868dfeaf9c5073f426b862505771a14c2be528cbde86af37d2aefb",
+      "size": 3446,
+      "normalized_sha256": "9984c7ba57868dfeaf9c5073f426b862505771a14c2be528cbde86af37d2aefb"
     },
     "docs/ui/DEVICE-CHECK-2026-11-10.md": {
       "role": "index",
@@ -713,9 +713,9 @@
     },
     "docs/ui/PLAN.md": {
       "role": "index",
-      "sha256": "06f01a9f7c5f06f02b474aac7e9e26ca00d062569b59846887c3ddd28ef7993e",
-      "size": 28059,
-      "normalized_sha256": "06f01a9f7c5f06f02b474aac7e9e26ca00d062569b59846887c3ddd28ef7993e"
+      "sha256": "1ddba2462ec2e779d8e25d35a34bd365e1769d0b52b081ee20bf4ea39c2e6029",
+      "size": 28077,
+      "normalized_sha256": "1ddba2462ec2e779d8e25d35a34bd365e1769d0b52b081ee20bf4ea39c2e6029"
     },
     "docs/ui/RELEASE-0.14.1.md": {
       "role": "index",
@@ -1438,9 +1438,9 @@
     },
     "scripts/check-consistency.sh": {
       "role": "index",
-      "sha256": "0140bae81473f7180f98d9b359e7aa9bb1a25c2aa3ea5fd0cf31bb31a9bd454f",
-      "size": 11067,
-      "normalized_sha256": "0140bae81473f7180f98d9b359e7aa9bb1a25c2aa3ea5fd0cf31bb31a9bd454f"
+      "sha256": "0ada102322d8fa70b6116b0a2a73bb001d4a32abbb9895e88ef2c3f654d321f1",
+      "size": 11040,
+      "normalized_sha256": "0ada102322d8fa70b6116b0a2a73bb001d4a32abbb9895e88ef2c3f654d321f1"
     },
     "scripts/check-layering.sh": {
       "role": "index",

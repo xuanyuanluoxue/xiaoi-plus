@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,12 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import plus.xiaoi.module.application.runtime.AppRuntime
@@ -260,21 +256,9 @@ private fun XiaoiApp(
         }
     }
 
-    // 一级页返回由普通 BackHandler 处理（非首页回首页，首页退出）；
-    // 二级页交给 PredictiveBackHandler，API 34+ 播放系统预测性返回动画。
-    BackHandler(enabled = nav.isRoot()) { back() }
-
-    var backProgress by remember { mutableFloatStateOf(0f) }
-    PredictiveBackHandler(enabled = !nav.isRoot()) { progress ->
-        try {
-            progress.collect { event -> backProgress = event.progress }
-            backProgress = 0f
-            back()
-        } catch (c: CancellationException) {
-            backProgress = 0f
-            throw c
-        }
-    }
+    // 返回统一由普通 BackHandler 处理：二级页回上一页，非首页根页回首页，首页退出。
+    // 页面内部的脏数据拦截（如模型页）用各自的 BackHandler，组合顺序上更靠内，优先级更高。
+    BackHandler { back() }
 
     val key = Routes.keyOf(route)
     val dimensions = XiaoiTheme.dimens
@@ -323,12 +307,6 @@ private fun XiaoiApp(
             Modifier
                 .fillMaxSize()
                 .onGloballyPositioned { if (it.isAttached) contentCoordinates = it }
-                .graphicsLayer {
-                    val p = backProgress.coerceIn(0f, 1f)
-                    scaleX = 1f - 0.06f * p
-                    scaleY = 1f - 0.06f * p
-                    alpha = 1f - 0.18f * p
-                }
                 // 页面内容整块作为玻璃采样源：顶栏模糊带与底栏都从这里取像素。
                 .glassBackdropSource(glassBackdrop),
         ) {

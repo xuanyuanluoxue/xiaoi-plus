@@ -44,14 +44,14 @@ build.gradle.kts[FV7S]: F:应用模块构建：版本号读 Manifest、release �
 proguard-rules.pro[FV6T]: F:R8 keep 规则：Xposed 入口、反射组件名与序列化用到的类 | R:code:app/src/main/assets/xposed_init | A:xposed_init | S:删掉 keep 会让 Hook 类被裁剪，真机表现为模块静默不生效而不是崩溃
 
 ===/<repository>/app/src/main/===
-AndroidManifest.xml[FV8S]: F:壳清单：versionName 与 versionCode 唯一来源、控制面 Service、ShareProvider 与接收器 | R:code:platform/src/main/java/plus/xiaoi/module/control/BridgeControlService.java | A:versionName | S:版本号只在这里改；verify-apk 与 version.sh 都从这里读，改别处会三方不一致
+AndroidManifest.xml[FV8T]: F:壳清单：versionName 与 versionCode 唯一来源、控制面 Service、ShareProvider 与接收器 | R:code:platform/src/main/java/plus/xiaoi/module/control/BridgeControlService.java | A:versionName | S:版本号只在这里改；verify-apk 与 version.sh 都从这里读；不声明 enableOnBackInvokedCallback，预测性返回已移除
 
 ===/<repository>/app/src/main/assets/===
 xposed_init[FV6T]: F:Xposed 入口声明：一行写 Hook 类全名 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:plus.xiaoi.module.Hook | S:类改名必须同步这里，否则 LSPosed 找不到入口且不报任何错
 
 ===/<repository>/app/src/main/java/plus/xiaoi/module/===
 Hook.java[EI8L]: F:LSPosed 入口：按版本判定后安装数据面 hook（重定向、视觉、用量、前缀、标识） | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:handleLoadPackage | S:每个 hook 必须 try/catch 且只写日志；版本没验证就 no-op，避免升级后 bootloop
-MainActivity.kt[EU8L]: F:单 Activity 壳：4 tab 加 20 路由、预测性返回、玻璃底栏与 Snackbar 宿主 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/home/HomeStateHolder.kt | A:XiaoiRoute | S:路由名必须与 ui 页面一一对应；所有提示走 message() 到 SnackbarHost，禁用系统 Toast
+MainActivity.kt[EU8L]: F:单 Activity 壳：4 tab 加 20 路由、统一返回栈、玻璃底栏与 Snackbar 宿主 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/home/HomeStateHolder.kt | A:XiaoiRoute | S:路由名必须与 ui 页面一一对应；提示走 message() 到 SnackbarHost，禁用 Toast；返回只走普通 BackHandler，预测性返回已移除
 
 ===/<repository>/app/src/main/res/drawable/===
 ic_launcher_background.xml[FV3T]: F:自适应图标背景层（矢量纯色） | R:code:app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml | A:vector | S:未被引用的 drawable 会让一致性门禁失败

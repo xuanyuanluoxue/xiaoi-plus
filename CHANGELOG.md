@@ -2,6 +2,13 @@
 
 ## 未发布（0.16.0）
 
+**UI**
+
+- **移除预测性返回**：不再声明 `android:enableOnBackInvokedCallback`，不再使用
+  `PredictiveBackHandler` 与手势进度缩放/淡出；返回统一由普通 `BackHandler` 处理
+  （二级页回上一页、非首页根页回首页、首页退出），页面内脏数据拦截仍用各自的
+  `BackHandler` 优先。targetSdk 保持 34。
+
 **单端口（只占一个监听）**
 
 - **模块现在只监听 8771**：App 进程不再开任何 socket（原先的 8770/8772 动作面端口
