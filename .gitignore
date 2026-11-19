@@ -25,11 +25,10 @@ opencode.json.backup.*
 # 构建产物与发布归档（二进制进 Release，不进源码仓）
 dist/
 
-# AOCI 认知索引（机器绑定，本地保留不进仓库）
-aoci.txt
-aoci.meta.txt
-aoci.code.txt
-.aoci/
+# AOCI 认知索引：按工具设计提交进仓库；.aoci/ 自身用 .aoci/.gitignore 白名单
+# （baseline/config/curation 入库，ledger 等运行时产物不入库）
+# aoci 每次改 AGENTS.md 都会留一份同内容备份，不要入库
+AGENTS.md.backup.*
 
 # 运行/发布敏感产物（开源仓不收录）
 logs/
