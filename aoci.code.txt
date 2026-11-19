@@ -2,8 +2,7 @@
 
 ===/mnt/d/code/Android/xiaoi-plus/===
 .gitattributes[FV4T]: F:git 属性表：文本按 LF 存储、二进制不转换 | R:code:.gitignore | A:text=auto | S:换行策略的唯一来源；Windows 脚本依赖 LF，改这里会让全仓库 diff 抖动
-.gitignore[FV6T]: F:忽略构建产物、本地凭据、aoci 运行时产物与临时目录 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库，否则 scan 直接拒绝；AGENTS.md.backup.* 是 aoci 改 AGENTS 时留下的同内容备份
-.mcp.json[FV4T]: F:官方 MCP 配置：把 aoci stdio server 接入 Claude Code 与 Qoder CLI | R:code:AGENTS.md | A:mcpServers | S:aoci 以此处的 command 作为二进制路径真相；它是 WSL 绝对路径，Windows 客户端要用 wsl -e 包装
+.gitignore[FV6T]: F:忽略构建产物、本地凭据、临时目录与 AOCI 主机配置 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库否则 scan 拒绝；.mcp.json 等主机配置含绝对路径必须忽略；AGENTS.md.backup.* 是 aoci 改 AGENTS 的备份
 AGENTS.md[SG8S]: F:Agent 仓库规约：构建命令、分层边界、产物落点与根目录纪律 | R:code:scripts/check-layering.sh | A:根目录纪律 | S:新文件只能进 scripts/docs/tmp/artifacts；根目录禁止新建 md/sh/txt；末尾 aoci 托管区块不要手改
 ARCHIVE.md[SG5S]: F:归档快照：0.15.0 的模块、验证与限制，以及 0.16.0 的清理与备份去向 | R:code:docs/refactor/NEXT.md | A:artifacts/legacy/ | S:备份已迁进仓库 artifacts/legacy/，不要再引用 ~/xiaoi-plus-dev 这类仓外路径
 CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:未发布 | S:小节标题必须与 versionName 完全一致，否则 Notes 退化成空模板

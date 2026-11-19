@@ -19,8 +19,14 @@ tmp/
 .worktrees/
 
 # AOCI agent host integration (machine-bound; do not commit)
+# 官方要求：init 写出的 .mcp.json / .codex/config.toml / opencode.json 含绝对路径，
+# 入库后在别的机器上必坏，且 init 按 key 存在判断会静默保留坏路径。
 opencode.json
 opencode.json.backup.*
+.mcp.json
+.mcp.json.backup.*
+.codex/config.toml
+.cursor/mcp.json
 
 # 构建产物与发布归档（二进制进 Release，不进源码仓）
 dist/
