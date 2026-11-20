@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import plus.xiaoi.module.core.LogLevel;
 import plus.xiaoi.module.application.log.LogSettings;
+import plus.xiaoi.module.application.log.RequestTrace;
 
 /** 环形缓冲与 dump 输出测试（依赖 XSharedPreferences/XposedBridge 桩为 no-op）。 */
 public final class LogsTest {
@@ -70,6 +71,16 @@ public final class LogsTest {
         Map<?, ?> lastLine = (Map<?, ?>) ((List<?>) root.get("lines")).get(0);
         ok("standard 记录工具元数据", ((String) lastLine.get("msg")).startsWith("[mcp] tool=test"));
         eq("structured tag", "mcp", lastLine.get("tag"));
+
+        // 请求关联标识：tag 前缀之后追加 req=<id>，便于串起同一次 tools/call。
+        RequestTrace.exit();
+        String req = RequestTrace.enter();
+        Logs.event(LogLevel.STANDARD, "I", "mcp", "tool=trace");
+        RequestTrace.exit();
+        root = (Map<?, ?>) Json.read(Logs.dump(1, 0));
+        lastLine = (Map<?, ?>) ((List<?>) root.get("lines")).get(0);
+        ok("trace 前缀带 req", ((String) lastLine.get("msg"))
+                .startsWith("[mcp] req=" + req + " tool=trace"));
         LogSettings.reset();
 
         return T.report("LogsTest");

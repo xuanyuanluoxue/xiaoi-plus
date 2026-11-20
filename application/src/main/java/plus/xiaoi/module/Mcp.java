@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import plus.xiaoi.module.agent.AppToolProtocol;
+import plus.xiaoi.module.application.log.RequestTrace;
 
 /**
  * MCP / JSON-RPC 2.0 协议层（纯 JVM，无 android 依赖）。
@@ -228,23 +229,31 @@ public final class Mcp {
                 return rpcResult(id, own ? toolsList() : toolsListMerged(hosts));
             }
             if ("tools/call".equals(m)) {
-                Object p = req.get("params");
-                Map<?, ?> params = p instanceof Map ? (Map<?, ?>) p : null;
-                String tool = params == null ? "" : Json.optString(params, "name", "");
-                int argCount = 0;
-                if (params != null) {
-                    Object a = params.get("arguments");
-                    if (a instanceof Map) argCount = ((Map<?, ?>) a).size();
-                }
-                long started = System.currentTimeMillis();
-                Map<String, Object> result = toolsCall(params, hosts);
+                // 只覆盖同进程同步调用链：工具执行期间产生的 Logs 行会带 req=<id>。
+                // 跨 Binder / 隔线程的后续动作不在这个 trace 内，避免伪造关联。
+                RequestTrace.enter();
                 try {
-                    boolean ok = !Boolean.TRUE.equals(result.get("isError"));
-                    hosts.telemetry.onToolCall(tool, ok, System.currentTimeMillis() - started, argCount);
-                } catch (Throwable ignored) {
-                    // 记录失败不能影响工具结果
+                    Object p = req.get("params");
+                    Map<?, ?> params = p instanceof Map ? (Map<?, ?>) p : null;
+                    String tool = params == null ? "" : Json.optString(params, "name", "");
+                    int argCount = 0;
+                    if (params != null) {
+                        Object a = params.get("arguments");
+                        if (a instanceof Map) argCount = ((Map<?, ?>) a).size();
+                    }
+                    long started = System.currentTimeMillis();
+                    Map<String, Object> result = toolsCall(params, hosts);
+                    try {
+                        boolean ok = !Boolean.TRUE.equals(result.get("isError"));
+                        hosts.telemetry.onToolCall(tool, ok,
+                                System.currentTimeMillis() - started, argCount);
+                    } catch (Throwable ignored) {
+                        // 记录失败不能影响工具结果
+                    }
+                    return rpcResult(id, result);
+                } finally {
+                    RequestTrace.exit();
                 }
-                return rpcResult(id, result);
             }
             return rpcError(id, -32601, "method not found: " + m);
         } catch (Throwable t) {

@@ -10,6 +10,7 @@ import java.util.Map;
 import plus.xiaoi.module.application.log.LogEntry;
 import plus.xiaoi.module.application.log.LogRing;
 import plus.xiaoi.module.application.log.LogSettings;
+import plus.xiaoi.module.application.log.RequestTrace;
 import plus.xiaoi.module.core.Contract;
 import plus.xiaoi.module.core.LogLevel;
 
@@ -67,6 +68,8 @@ public final class Logs {
         String level = severity == null || severity.length() == 0 ? "I" : severity;
         if (!"E".equals(level) && !LogSettings.allows(needed)) return;
         String body = msg == null ? "" : msg;
+        String trace = RequestTrace.current();
+        if (trace != null && trace.length() > 0) body = "req=" + trace + " " + body;
         if (tag != null && tag.length() > 0) body = "[" + tag + "] " + body;
         record(level, tag == null ? "" : tag, body);
     }

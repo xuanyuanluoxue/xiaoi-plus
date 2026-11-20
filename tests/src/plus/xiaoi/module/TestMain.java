@@ -20,6 +20,7 @@ public final class TestMain {
         failed += ToolOwnershipTest.run();
         failed += LogLevelTest.run();
         failed += LogRingTest.run();
+        failed += RequestTraceTest.run();
         failed += RedactTest.run();
         failed += AgentCallLogTest.run();
         try {
