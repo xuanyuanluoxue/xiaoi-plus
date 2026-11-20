@@ -4,39 +4,34 @@ import de.robv.android.xposed.XposedBridge;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import plus.xiaoi.module.core.LogLevel;
+import plus.xiaoi.module.application.log.LogEntry;
+import plus.xiaoi.module.application.log.LogRing;
 import plus.xiaoi.module.application.log.LogSettings;
+import plus.xiaoi.module.core.Contract;
+import plus.xiaoi.module.core.LogLevel;
 
 /**
  * 模块运行日志：内存环形缓冲（最近 300 条）+ logcat + 滚动落盘。
  * 只记录 hook 成败、配置变更、端口、调用摘要；**绝不记录 apiKey / token / 对话正文**。
+ *
+ * <p>环形缓冲的纯逻辑在 {@link LogRing}（:application）；本类只做档位过滤、logcat、
+ * 文件镜像与 JSON 装配，保持 {@code i/w/e/d/event/add/dump} 这些调用点不变。</p>
  */
 public final class Logs {
 
-    private static final int CAP = 300;
     private static final long FILE_MAX = 256 * 1024;
     private static final String TAG = "[xiaoi+] ";
 
-    private static final ArrayDeque<Entry> BUF = new ArrayDeque<Entry>();
-    private static long sSeq;
+    private static final LogRing RING = new LogRing(Contract.LOGS_CAPACITY);
     private static File sFile;
 
     private Logs() {}
 
-    private static final class Entry {
-        long seq;
-        long ts;
-        String level;
-        String msg;
-    }
-
-    public static synchronized int count() { return BUF.size(); }
+    public static synchronized int count() { return RING.count(); }
 
     /** 设置当前进程日志档位（由控制面配置/App 配置写入）。 */
     public static void setLevel(LogLevel level) {
@@ -71,18 +66,17 @@ public final class Logs {
         if (!"E".equals(level) && !LogSettings.allows(needed)) return;
         String body = msg == null ? "" : msg;
         if (tag != null && tag.length() > 0) body = "[" + tag + "] " + body;
-        add(level, body);
+        record(level, tag == null ? "" : tag, body);
     }
 
-    public static synchronized void add(String level, String msg) {
+    /** 兼容旧调用点与测试：无 tag、无档位过滤。 */
+    public static void add(String level, String msg) {
+        record(level, "", msg);
+    }
+
+    private static synchronized void record(String level, String tag, String msg) {
         try {
-            Entry e = new Entry();
-            e.seq = ++sSeq;
-            e.ts = System.currentTimeMillis();
-            e.level = level;
-            e.msg = msg == null ? "" : msg;
-            BUF.addLast(e);
-            while (BUF.size() > CAP) BUF.removeFirst();
+            LogEntry e = RING.add(level, tag, msg, System.currentTimeMillis(), pid());
             XposedBridge.log(TAG + e.msg);
             mirror(e);
         } catch (Throwable ignored) {
@@ -91,35 +85,25 @@ public final class Logs {
 
     /** JSON 数组；since>0 时只返回该序号之后的，limit 取尾部；limit=0 返回空数组。 */
     public static synchronized String dump(int limit, long since) {
-        ArrayList<Entry> list = new ArrayList<Entry>();
-        for (Entry e : BUF) {
-            if (since > 0 && e.seq <= since) continue;
-            list.add(e);
-        }
-        if (limit <= 0) {
-            // 0.16.0：limit=0 明确表示「不要日志」，返回空数组而不是全部。
-            list = new ArrayList<Entry>();
-        } else if (list.size() > limit) {
-            list = new ArrayList<Entry>(list.subList(list.size() - limit, list.size()));
-        }
+        List<LogEntry> list = RING.snapshot(limit, since);
         SimpleDateFormat f = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
         List<Object> arr = Json.arr();
-        for (Entry e : list) {
+        for (LogEntry e : list) {
             Map<String, Object> o = Json.obj();
             o.put("seq", e.seq);
-            o.put("t", f.format(new Date(e.ts)));
+            o.put("t", f.format(new Date(e.tsMillis)));
             o.put("level", e.level);
             o.put("msg", e.msg);
             arr.add(o);
         }
         Map<String, Object> root = Json.obj();
         root.put("count", arr.size());
-        root.put("lastSeq", sSeq);
+        root.put("lastSeq", RING.lastSeq());
         root.put("lines", arr);
         return Json.write(root);
     }
 
-    private static void mirror(Entry e) {
+    private static void mirror(LogEntry e) {
         try {
             File f = file();
             if (f == null) return;
@@ -129,7 +113,7 @@ public final class Logs {
                 f.renameTo(old);
             }
             String line = new SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
-                    .format(new Date(e.ts)) + " " + e.level + " " + e.msg + "\n";
+                    .format(new Date(e.tsMillis)) + " " + e.level + " " + e.msg + "\n";
             FileOutputStream out = new FileOutputStream(f, true);
             try {
                 out.write(line.getBytes("UTF-8"));
@@ -137,6 +121,17 @@ public final class Logs {
                 out.close();
             }
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** 当前进程 pid；桌面单测/反射失败返回 0。 */
+    private static int pid() {
+        try {
+            Class<?> p = Class.forName("android.os.Process");
+            Object v = p.getMethod("myPid").invoke(null);
+            return v instanceof Integer ? ((Integer) v).intValue() : 0;
+        } catch (Throwable ignored) {
+            return 0;
         }
     }
 

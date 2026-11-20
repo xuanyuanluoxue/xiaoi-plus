@@ -52,6 +52,8 @@ public final class Contract {
 
     public static final int LOGS_LIMIT_DEFAULT = 80;
     public static final int LOGS_LIMIT_MAX = 300;
+    /** 进程内日志环形缓冲容量；与 {@link #LOGS_LIMIT_MAX} 分开，便于将来单独调整。 */
+    public static final int LOGS_CAPACITY = 300;
     public static final int STATS_DAYS_DEFAULT = 7;
     public static final int STATS_DAYS_MAX = 90;
     public static final int AUDIT_LIMIT_DEFAULT = 50;
