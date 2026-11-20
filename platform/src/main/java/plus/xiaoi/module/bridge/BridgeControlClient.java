@@ -493,7 +493,8 @@ public final class BridgeControlClient {
                                 Logs.i("控制面 clearSafeMode：WP1 尚未实现安全模式");
                                 return true;
                             case ControlKeys.S2C_FLUSH_LOGS:
-                                Logs.i("控制面 flushLogs：WP1 日志只在内存，无需刷新");
+                                Logs.i("控制面 flushLogs：立即落盘");
+                                Logs.flush();
                                 return true;
                             default:
                                 return false;

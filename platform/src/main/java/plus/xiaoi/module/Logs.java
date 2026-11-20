@@ -2,7 +2,6 @@ package plus.xiaoi.module;
 
 import de.robv.android.xposed.XposedBridge;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -24,9 +23,12 @@ import plus.xiaoi.module.core.LogLevel;
 public final class Logs {
 
     private static final long FILE_MAX = 256 * 1024;
+    private static final int FLUSH_LINES = 16;
+    private static final int FLUSH_BYTES = 8 * 1024;
     private static final String TAG = "[xiaoi+] ";
 
     private static final LogRing RING = new LogRing(Contract.LOGS_CAPACITY);
+    private static volatile LogFileSink sSink;
     private static File sFile;
 
     private Logs() {}
@@ -105,22 +107,33 @@ public final class Logs {
 
     private static void mirror(LogEntry e) {
         try {
-            File f = file();
-            if (f == null) return;
-            if (f.length() > FILE_MAX) {
-                File old = new File(f.getPath() + ".1");
-                if (old.exists()) old.delete();
-                f.renameTo(old);
-            }
+            LogFileSink sink = sink();
+            if (sink == null) return;
             String line = new SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
-                    .format(new Date(e.tsMillis)) + " " + e.level + " " + e.msg + "\n";
-            FileOutputStream out = new FileOutputStream(f, true);
-            try {
-                out.write(line.getBytes("UTF-8"));
-            } finally {
-                out.close();
-            }
+                    .format(new Date(e.tsMillis)) + " " + e.level + " " + e.msg;
+            sink.append(line);
+            // 错误行立即落盘：批量写不能把唯一的失败证据留在内存里。
+            if ("E".equals(e.level)) sink.flush();
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** 把批量缓冲立即写入磁盘；控制面 flushLogs 与退出前使用。 */
+    public static void flush() {
+        LogFileSink sink = sSink;
+        if (sink != null) sink.flush();
+    }
+
+    private static LogFileSink sink() {
+        LogFileSink sink = sSink;
+        if (sink != null) return sink;
+        File f = file();
+        if (f == null) return null;
+        synchronized (Logs.class) {
+            if (sSink == null) {
+                sSink = new LogFileSink(f, FILE_MAX, FLUSH_LINES, FLUSH_BYTES);
+            }
+            return sSink;
         }
     }
 

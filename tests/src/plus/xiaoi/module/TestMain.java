@@ -29,6 +29,7 @@ public final class TestMain {
             System.out.println("  FAIL AppToolProtocolTest 套件异常: " + t);
         }
         failed += LogsTest.run();
+        failed += LogFileSinkTest.run();
         failed += ModelValidatorTest.run();
         try {
             failed += ControlKeysTest.run();
