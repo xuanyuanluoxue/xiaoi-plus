@@ -84,24 +84,29 @@ App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可�
 返回示例：
 
 ```text
-facade=true cli=true port=8771 version=0.16.1 hooks=ok compat=whitelist xiaoai=8.2.70.8421
+facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8.2.70.8421 rewrite=hit
 ```
 
 - `facade=false` 或 `cli=false`：小爱进程未就绪。
 - `port=0`：没有数据面 leader（MCP 关闭或正在切换）。
 - `hooks=ok|partial|none`：本进程实际挂上了几个关键 hook（配置改写 / provider 标识 /
-  视觉声明 / 能力桥）。`ok` 才算功能完整；`partial` 说明部分类没找到；`none` 说明
-  一个都没挂上，功能等于没生效。
+  视觉声明 / 能力桥）。`ok` 才算挂全；`partial` 说明部分类没找到；`none` 说明
+  一个都没挂上。
 - `compat=whitelist|probe|none`：启用依据。`whitelist` 是版本在已验证白名单；
   `probe` 是早期加载读不到版本而放行；`none` 是版本不在白名单、已主动 no-op。
-- `xiaoai=<版本>`：设备上小爱实际的 versionName。这一项是判断「要不要适配新版本」
-  的唯一依据——把它连同 `hooks`/`compat` 一起回报即可。
+- `xiaoai=<版本>`：设备上小爱实际的 versionName。判断「要不要适配新版本」的唯一依据。
+- `rewrite=hit|none|?`：**改写是否真的生效**。`hit` 小爱读过被覆盖的 getter；
+  `none` 已经发生过模型调用但 getter 一次没被读，说明该版本不吃这套 hook；
+  `?` 还没发生调用，暂时无法判断。
 
-排查顺序：`hooks=none` + `compat=none` → 版本没进白名单，需要适配（把 `xiaoai=`
-的版本报上来）；`hooks=partial` → 该版本类名或签名变了；`hooks=ok` 但回复不对 →
+排查顺序：`hooks=none` + `compat=none` → 版本没进白名单；`hooks=ok` + `rewrite=none`
+→ 装上了但该版本不读这些 getter（不兼容）；`hooks=ok` + `rewrite=hit` 但回复不对 →
 问题在配置（模型/端点/密钥），不在 hook。
 
-旧版本（≤0.16.0）不返回后三个字段。
+**「装上了」不等于「生效了」**：`hooks=ok` 只说明 hook 挂成功，`rewrite=hit` 才是证据。
+
+旧版本：≤0.16.0 只有前四个字段；0.16.1 有 `hooks`/`compat`/`xiaoai`；
+`rewrite` 从 0.16.2 起。
 
 ### xiaoai_submit
 

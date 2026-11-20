@@ -18,6 +18,20 @@ public final class RedactTest {
         T.eq("summarize 折叠空白", "a b", Redact.summarize("a   b", 20));
         T.eq("summarize null", "", Redact.summarize(null, 10));
 
+        // host：日志只能出现 host，路径里的租户 key 必须被丢掉
+        T.eq("host 标准", "api.crashmail.ccwu.cc",
+                Redact.host("https://api.crashmail.ccwu.cc/v1"));
+        T.eq("host 带端口", "127.0.0.1:8771",
+                Redact.host("http://127.0.0.1:8771/mcp"));
+        T.eq("host 丢路径与查询", "a.com",
+                Redact.host("https://a.com/v1/tenant-sk-123?k=1"));
+        T.eq("host 丢 userinfo", "a.com",
+                Redact.host("https://user:pass@a.com/v1"));
+        T.eq("host 无 scheme", "a.com", Redact.host("a.com/v1"));
+        T.eq("host 空", "?", Redact.host(""));
+        T.eq("host null", "?", Redact.host(null));
+        T.eq("host 只有 scheme", "?", Redact.host("https://"));
+
         return T.report("RedactTest");
     }
 }

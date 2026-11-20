@@ -31,4 +31,27 @@ public final class Redact {
         if (max > 0 && s.length() > max) s = s.substring(0, max) + "…";
         return s;
     }
+
+    /**
+     * 只保留 URL 的 host（含端口），用于日志。
+     *
+     * <p>端点路径里可能带租户 key，日志不能整条打出来；userinfo 与路径一律丢弃。
+     * 解析不出来时返回 {@code "?"}，绝不回显原串。</p>
+     */
+    public static String host(String url) {
+        if (url == null) return "?";
+        String rest = url.trim();
+        if (rest.length() == 0) return "?";
+        int scheme = rest.indexOf("://");
+        if (scheme >= 0) rest = rest.substring(scheme + 3);
+        int at = rest.indexOf('@');
+        if (at >= 0) rest = rest.substring(at + 1);
+        int end = 0;
+        while (end < rest.length()) {
+            char ch = rest.charAt(end);
+            if (ch == '/' || ch == '?' || ch == '#') break;
+            end++;
+        }
+        return end == 0 ? "?" : rest.substring(0, end);
+    }
 }

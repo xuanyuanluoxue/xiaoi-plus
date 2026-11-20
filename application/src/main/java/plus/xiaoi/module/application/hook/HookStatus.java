@@ -47,6 +47,8 @@ public final class HookStatus {
     private static volatile boolean sVision;
     private static volatile boolean sFacade;
     private static volatile boolean sUsage;
+    private static volatile boolean sRewrite;
+    private static volatile boolean sCallSeen;
 
     private HookStatus() {}
 
@@ -64,6 +66,8 @@ public final class HookStatus {
         sVision = false;
         sFacade = false;
         sUsage = false;
+        sRewrite = false;
+        sCallSeen = false;
     }
 
     public static void markConfig(boolean ok) { sConfig = ok; }
@@ -75,6 +79,26 @@ public final class HookStatus {
     public static void markFacade(boolean ok) { sFacade = ok; }
 
     public static void markUsage(boolean ok) { sUsage = ok; }
+
+    /** 配置 getter 真的被小爱读到了（改写已生效），而不是只把 hook 挂上。 */
+    public static void markRewrite() { sRewrite = true; }
+
+    /** 观察到一次模型调用（无论三方还是官方）。 */
+    public static void markCall() { sCallSeen = true; }
+
+    public static boolean rewriteHit() { return sRewrite; }
+
+    /**
+     * 改写是否真的生效。
+     *
+     * <p>{@code hit} 有 getter 被覆盖过；{@code none} 已经发生过模型调用但 getter 一次没被读
+     * （该版本不吃这套 hook）；{@code ?} 还没发生调用，无法判断。</p>
+     */
+    public static String rewrite() {
+        if (sRewrite) return "hit";
+        if (sCallSeen) return "none";
+        return "?";
+    }
 
     /**
      * 核心 hook 全中就 ok，任意一个就 partial，一个都没有就 none。
@@ -128,6 +152,7 @@ public final class HookStatus {
                 && HOOKS_NONE.equals(hooks())) return "";
         return "hooks=" + hooks()
                 + " compat=" + sCompat
-                + " xiaoai=" + (sVersion.length() == 0 ? "?" : sVersion);
+                + " xiaoai=" + (sVersion.length() == 0 ? "?" : sVersion)
+                + " rewrite=" + rewrite();
     }
 }

@@ -35,16 +35,27 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 ```
 
 ```text
-facade=true cli=true port=8771 version=0.16.1 hooks=ok compat=whitelist xiaoai=8.2.70.8421
+facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8.2.70.8421 rewrite=hit
 ```
 
 | 结果 | 含义 | 下一步 |
 |---|---|---|
-| `hooks=ok` | 四个关键 hook 全挂上 | 功能应完整；回复不对就查配置（模型/端点/密钥） |
+| `hooks=ok` + `rewrite=hit` | hook 挂全，且小爱真的读了被覆盖的 getter | 功能应完整；回复不对就查配置（模型/端点/密钥） |
+| `hooks=ok` + `rewrite=none` | **装上了但没生效**：已有模型调用，getter 一次没被读 | 该版本不吃这套 hook，按下面清单适配 |
 | `hooks=partial` | 部分类没找到 | 该版本类名/签名变了，按下面清单适配 |
 | `hooks=none compat=none` | 版本不在白名单，主动 no-op | 需要适配；把 `xiaoai=` 的版本报上来 |
 | `hooks=none compat=probe` | 早期加载读不到版本而放行，但 hook 全失败 | 通常也是版本不兼容；看 logcat 的「hook 失败」行 |
+| `rewrite=?` | 还没发生模型调用 | 先对小爱说一句话再看 |
 | 无 `hooks=` 字段 | 模块 ≤0.16.0，或请求被 App 进程服务 | 升级模块；或确认 MCP 由小爱进程提供 |
+
+对应日志（`logcat -s VectorLegacyBridge | grep 'xiaoi+'`）：
+
+| 日志 | 含义 |
+|---|---|
+| `改写命中: model=… / baseUrl=…` | getter 被读过，改写已生效 |
+| `模型调用: 三方 qm.j model=…` | 请求从三方客户端出去 |
+| `模型调用: 官方 um.h model=…` | 请求仍走小爱官方模型 |
+| `第三方模型已启用，但配置 getter 从未被读取` | 已启用却走官方：版本不兼容的硬证据 |
 
 > `compat=probe` 是历史行为：`handleLoadPackage` 执行时 Application 还没就绪，
 > `PackageManager` 读不到 versionName，于是「未知版本」按放行处理（fail-open）。

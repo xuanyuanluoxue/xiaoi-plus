@@ -34,6 +34,14 @@ public class Hook implements IXposedHookLoadPackage {
     private static volatile boolean sLlmHooked;
     private static volatile boolean sProviderHooked;
     private static volatile boolean sProviderLogged;
+    /** 每个 Kind 只记一次"改写命中"，避免每次 getter 调用都刷日志。 */
+    private static final boolean[] sKindLogged = new boolean[3];
+    /** 每个 LLM 客户端类只记一次"开始调用"，用于确认到底走的是三方还是官方。 */
+    private static final java.util.Set<String> sLlmClassLogged =
+            java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<String>());
+    /** 官方客户端只告警一次，不要每次调用都刷。 */
+    private static final java.util.Set<String> sOfficialWarned =
+            java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<String>());
     /** 请求头 X-Model-Provider-Id：用接口字段声明"当前走第三方 provider"，不碰提示词 */
     private static final String PROVIDER_ID = "xiaoi-plus";
 
@@ -313,7 +321,7 @@ public class Hook implements IXposedHookLoadPackage {
             XposedBridge.hookMethod(target, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    recordLlmCall(third, param.args);
+                    recordLlmCall(third, className, param.args);
                 }
             });
             Logs.i(className + " 调用统计 hook 完成（" + (third ? "三方" : "官方") + "）");
@@ -325,7 +333,7 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
     /** 参数固定为 (messages, tools, sm.a config, continuation)。 */
-    private static void recordLlmCall(boolean third, Object[] args) {
+    private static void recordLlmCall(boolean third, String className, Object[] args) {
         try {
             int messages = sizeOf(args, 0);
             int tools = sizeOf(args, 1);
@@ -335,6 +343,18 @@ public class Hook implements IXposedHookLoadPackage {
             if (c != null) fallback = c.model();
             String model = UsageSignal.modelOrFallback(reported, fallback);
             boolean main = UsageSignal.mainCall(messages, tools);
+            HookStatus.markCall();
+            // 每个客户端类只记一次：确认这次请求到底从哪个客户端出去。
+            if (sLlmClassLogged.add(className)) {
+                Logs.i("模型调用: " + (third ? "三方" : "官方") + " " + className + " model=" + model);
+            }
+            // 已启用三方模型，却仍然是官方客户端在跑，且 getter 从未被读取 →
+            // 这个版本装上了也不生效，是"hook 成功但功能不生效"的唯一硬证据。
+            if (!third && c != null && c.enabled() && !HookStatus.rewriteHit()
+                    && sOfficialWarned.add(className)) {
+                Logs.w("第三方模型已启用，但配置 getter 从未被读取（" + className
+                        + "）：当前小爱版本可能不兼容，请求仍走官方模型");
+            }
             Usage.record(third, main, model);
         } catch (Throwable ignored) {
         }
@@ -518,7 +538,10 @@ public class Hook implements IXposedHookLoadPackage {
                                  : kind == Kind.KEY ? c.apiKey()
                                  : c.model();
                         String applied = XiaoiOverridePolicy.override(c.enabled(), v);
-                        if (applied != null) param.setResult(applied);
+                        if (applied != null) {
+                            param.setResult(applied);
+                            onOverride(kind, applied);
+                        }
                     } catch (Throwable t) {
                         Logs.i("hook " + method + " 处理失败: " + t);
                     }
@@ -527,5 +550,36 @@ public class Hook implements IXposedHookLoadPackage {
         } catch (Throwable t) {
             Logs.i("hook " + method + " 失败: " + t);
         }
+    }
+
+    /**
+     * 记录一次"改写真的被读到了"。
+     *
+     * <p>这是区分「hook 装上了」和「hook 生效了」的唯一证据：小爱自己调用
+     * {@code sm.a} 的 getter 时才会走到这里。若日志里始终没有这一行，却出现了
+     * 官方模型的调用，就说明该版本根本不读这些 getter——装上了也是白装。</p>
+     *
+     * <p>每种 Kind 每进程只记一次；端点只记 host，密钥只记"已设置"，避免把
+     * 敏感内容写进日志。</p>
+     */
+    private static void onOverride(Kind kind, String value) {
+        HookStatus.markRewrite();
+        int idx = kind == Kind.BASE ? 0 : kind == Kind.KEY ? 1 : 2;
+        synchronized (sKindLogged) {
+            if (sKindLogged[idx]) return;
+            sKindLogged[idx] = true;
+        }
+        Logs.i("改写命中: " + label(kind) + "=" + display(kind, value));
+    }
+
+    private static String label(Kind kind) {
+        return kind == Kind.BASE ? "baseUrl" : kind == Kind.KEY ? "apiKey" : "model";
+    }
+
+    /** 端点只留 host：路径里可能带租户 key，不能整条打出来。 */
+    private static String display(Kind kind, String value) {
+        if (kind == Kind.KEY) return "已设置(" + value.length() + " 字符)";
+        if (kind == Kind.MODEL) return value;
+        return plus.xiaoi.module.core.Redact.host(value);
     }
 }

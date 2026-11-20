@@ -217,7 +217,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 
 | 工具 | 归属 | 参数 | 作用 |
 |---|---|---|---|
-| `xiaoai_status` | 桥 | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` / `hooks=` / `compat=` / `xiaoai=` |
+| `xiaoai_status` | 桥 | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` / `hooks=` / `compat=` / `xiaoai=` / `rewrite=` |
 | `xiaoai_submit` | 桥 | `text`（必填，≤4000）、`sessionId`、`structured` | 让小爱执行一句话任务；默认回文本，`structured:true` 时回 `{ok,text,sessionId}` |
 | `xiaoai_todo_create` | 桥 | `title`（必填，≤200）、`content`（≤8192） | 确定性创建小米笔记待办卡片，不经 LLM |
 | `xiaoai_cli` | 桥 | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
