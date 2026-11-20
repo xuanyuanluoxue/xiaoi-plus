@@ -142,6 +142,36 @@ public final class Bridge {
         return v instanceof java.util.List ? ((java.util.List<?>) v).size() : 0;
     }
 
+    /**
+     * 日志视图：优先 App 侧的跨进程合并视图，失败回落本进程缓冲。
+     *
+     * <p>三个小爱进程各自只有一个 partial 视图；只有 App 汇总了全部，所以
+     * 「为什么没生效」这类问题必须走合并视图，否则会漏掉另一个进程里的证据。</p>
+     *
+     * <p>{@code since>0} 时即使 0 条也必须回合并视图：否则调用方会把本地序号空间的
+     * {@code lastSeq} 当成下一次游标，跨进程增量就断了。</p>
+     */
+    static String logsView(int limit, long since) {
+        String merged = BridgeControlClient.pullMergedLogs(limit, since);
+        if (merged != null && merged.length() > 0) {
+            if (since > 0 || countOf(merged) > 0) return merged;
+        }
+        return Logs.dump(limit, since);
+    }
+
+    /** JSON 里的 {@code count}；解析失败按 0（触发本地回落）。 */
+    private static int countOf(String json) {
+        try {
+            Object root = Json.read(json);
+            if (root instanceof java.util.Map) {
+                Object v = ((java.util.Map<?, ?>) root).get("count");
+                if (v instanceof Number) return ((Number) v).intValue();
+            }
+        } catch (Throwable ignored) {
+        }
+        return 0;
+    }
+
     private static final class McpHostsImpl implements Mcp.RuntimePort, Mcp.ConfigPort,
             Mcp.CliPort, Mcp.IslandPort, Mcp.TelemetryPort {
 
@@ -205,7 +235,7 @@ public final class Bridge {
 
         @Override
         public String logs(int limit, long since) {
-            return Logs.dump(limit, since);
+            return Bridge.logsView(limit, since);
         }
 
         @Override
@@ -892,7 +922,7 @@ public final class Bridge {
                 long since = 0;
                 try { limit = Integer.parseInt(req.query.get("limit")); } catch (Throwable ignored) {}
                 try { since = Long.parseLong(req.query.get("since")); } catch (Throwable ignored) {}
-                respondJson(s, 200, Logs.dump(BridgeHttpPolicy.logLimit(limit), since));
+                respondJson(s, 200, logsView(BridgeHttpPolicy.logLimit(limit), since));
                 return;
             }
             // 调用量统计：?days=1..90（默认 7）；超上限夹到 90 并在结果里回 clamped:true。

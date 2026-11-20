@@ -19,9 +19,12 @@ public final class ControlKeysTest {
         T.eq("ControlKeys 目标包名", "com.miui.voiceassist", ControlKeys.TARGET_PACKAGE);
 
         int[] c2s = {ControlKeys.C2S_PULL_CONFIG, ControlKeys.C2S_REGISTER,
-                ControlKeys.C2S_REPORT_STATE, ControlKeys.C2S_APPEND_LOGS};
+                ControlKeys.C2S_REPORT_STATE, ControlKeys.C2S_APPEND_LOGS,
+                ControlKeys.C2S_AGENT_TOOLS, ControlKeys.C2S_AGENT_CALL,
+                ControlKeys.C2S_PULL_LOGS};
         int[] s2c = {ControlKeys.S2C_RELOAD, ControlKeys.S2C_SHOW_ISLAND,
-                ControlKeys.S2C_CLEAR_SAFE_MODE, ControlKeys.S2C_FLUSH_LOGS};
+                ControlKeys.S2C_CLEAR_SAFE_MODE, ControlKeys.S2C_FLUSH_LOGS,
+                ControlKeys.S2C_PUSH_LOGS};
         Set<Integer> seen = new HashSet<Integer>();
         boolean unique = true;
         for (int c : c2s) unique &= seen.add(c);
@@ -35,6 +38,7 @@ public final class ControlKeysTest {
                 ControlKeys.KEY_PID, ControlKeys.KEY_PROCESS, ControlKeys.KEY_PORT,
                 ControlKeys.KEY_LEGACY_JSON, ControlKeys.KEY_MODEL, ControlKeys.KEY_ENABLED,
                 ControlKeys.KEY_HAS_KEY, ControlKeys.KEY_VERSION, ControlKeys.KEY_LOGS,
+                ControlKeys.KEY_LOGS_JSON, ControlKeys.KEY_LOG_LIMIT, ControlKeys.KEY_LOG_SINCE,
                 ControlKeys.KEY_TEXT};
         Set<String> keySet = new HashSet<String>();
         boolean ok = true;

@@ -348,6 +348,27 @@ public final class BridgeControlService extends Service {
         LOG_RING.append(text.length() > MAX_TEXT_CHARS ? text.substring(0, MAX_TEXT_CHARS) : text);
     }
 
+    /**
+     * 结构化增量（优先路径）：{@code {proc, lines:[{seq,ts,pid,level,tag,msg}]}}。
+     *
+     * <p>比纯文本多带了来源进程与时间，合并视图才能排序、去重、按 pid 区分。</p>
+     */
+    void appendLogsJson(String json) {
+        if (json == null || json.length() == 0) return;
+        if (json.length() > MAX_TEXT_CHARS) json = json.substring(0, MAX_TEXT_CHARS);
+        LOG_RING.appendJson(json);
+    }
+
+    /**
+     * 合并视图：所有已推送进程的日志 + 全局 seq。
+     *
+     * @param limit 单次上限（0 = 空数组）
+     * @param since 上一次返回的 {@code lastSeq}；0 = 从当前窗口开头取
+     */
+    static String mergedLogsJson(int limit, long since) {
+        return LOG_RING.dumpJson(limit, since);
+    }
+
     // ------------------------------------------------------------- App → 小爱 callback
 
     /** 通知所有已注册进程重新拉配置（内容相同时桥侧会幂等跳过）。 */

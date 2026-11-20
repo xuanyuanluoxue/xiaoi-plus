@@ -30,6 +30,8 @@ public final class Logs {
 
     private static final LogRing RING = new LogRing(Contract.LOGS_CAPACITY);
     private static volatile LogFileSink sSink;
+    private static volatile Runnable sTail;
+    private static volatile boolean sFiringTail;
     private static File sFile;
     private static int sPid = -1;
 
@@ -85,7 +87,30 @@ public final class Logs {
             LogEntry e = RING.add(level, tag, msg, System.currentTimeMillis(), pid());
             XposedBridge.log(TAG + e.msg);
             mirror(e);
+            fireTail();
         } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * 注册「有新行」监听器，用于把增量日志推给控制面（合并视图）。
+     *
+     * <p>只在 xiaoi 进程侧注册；监听器必须非阻塞（通常只是往 Handler post 一个任务），
+     * 否则会拖慢 getter 热路径。监听器自身写日志时不会再次触发，避免递归。</p>
+     */
+    public static void setTailListener(Runnable listener) {
+        sTail = listener;
+    }
+
+    private static void fireTail() {
+        Runnable r = sTail;
+        if (r == null || sFiringTail) return;
+        sFiringTail = true;
+        try {
+            r.run();
+        } catch (Throwable ignored) {
+        } finally {
+            sFiringTail = false;
         }
     }
 
@@ -113,6 +138,8 @@ public final class Logs {
         Map<String, Object> root = Json.obj();
         root.put("count", arr.size());
         root.put("lastSeq", RING.lastSeq());
+        // 与 ControlLogRing.dumpJson 的 merged 对应：调用方据此判断游标语义。
+        root.put("scope", "local");
         root.put("lines", arr);
         return Json.write(root);
     }

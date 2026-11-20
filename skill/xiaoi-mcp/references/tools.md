@@ -252,18 +252,34 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 
 ### xiaoai_logs
 
-读模块运行日志。
+读模块运行日志（**合并视图**：App 汇总全部小爱进程，含 `:core` / `:voice_trigger`）。
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `limit` | integer | 否 | 尾部条数：缺省 80；`0` 返回空数组；上限 300 |
-| `since` | integer | 否 | 只返回 seq 大于该值的日志 |
+| `since` | integer | 否 | 只返回 `seq` 大于该值的日志（游标用返回里的 `lastSeq`） |
 
 ```json
 {"name":"xiaoai_logs","arguments":{"limit":20,"since":0}}
 ```
 
-返回 JSON 数组文本，每项包含 `seq`、`t`（本地 `HH:mm:ss.SSS`）、`level`、`msg`，并追加 `tag`（来源）、`ts`（epoch 毫秒）、`pid`（写入进程）。旧字段名与顺序不变。
+返回 JSON 数组文本，每项包含 `seq`、`t`（本地 `HH:mm:ss.SSS`）、`level`、`msg`，并追加 `tag`（来源）、`ts`（epoch 毫秒）、`pid`（写入进程）、`proc`（进程名）。旧字段名与顺序不变。
+
+顶层还带：
+
+| 字段 | 含义 |
+|---|---|
+| `count` | 本次返回条数 |
+| `lastSeq` | 下一次 `since` 用这个值 |
+| `scope` | `merged` = App 侧跨进程合并；`local` = 控制面不可达，回落到 8771 进程自己的缓冲 |
+
+注意：
+
+- `scope=merged` 的 `seq` 由 App 分配，是**跨进程**游标；`scope=local` 是本进程序号。两者不能混用——看到 `lastSeq` 比手里的 `since` 小，说明 App 重启过，把 `since` 归零重新取。
+- 合并视图按事件时间排序（各进程推送节奏不同，到达顺序不等于发生顺序）。
+- 同一 `(pid, seq)` 重复推送会被去重；来源进程重启后序号从 1 重来，按时间识别为新日志，不会误丢。
+- 合并缓冲是 600 条（三个进程共享），比单个进程的 300 条更容易被冲掉；要留证据请同时抓 logcat。
+- 控制面断开时自动回落 `scope=local`，此时只能看到 8771 leader 进程的日志。
 
 ### xiaoai_stats
 

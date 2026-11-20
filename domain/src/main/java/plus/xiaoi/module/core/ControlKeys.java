@@ -41,6 +41,11 @@ public final class ControlKeys {
     public static final int C2S_AGENT_TOOLS = 5;
     /** 0.16.0 单端口：执行动作面工具；请求 KEY_AGENT_TOOL + KEY_AGENT_ARGS_JSON。 */
     public static final int C2S_AGENT_CALL = 6;
+    /**
+     * 拉取**合并视图**日志（App 汇总所有小爱进程）。
+     * 请求 KEY_LOG_LIMIT / KEY_LOG_SINCE；回复 KEY_LOGS_JSON。
+     */
+    public static final int C2S_PULL_LOGS = 7;
 
     // ------------------------------------------------------------- S2C（回调）
     /** 配置可能已变化：桥重新 pull（内容相同则幂等跳过）。 */
@@ -51,6 +56,8 @@ public final class ControlKeys {
     public static final int S2C_CLEAR_SAFE_MODE = 103;
     /** 刷新日志上报。 */
     public static final int S2C_FLUSH_LOGS = 104;
+    /** 立即把本地增量日志推给控制面（合并视图的即时性来源）。 */
+    public static final int S2C_PUSH_LOGS = 105;
 
     // ------------------------------------------------------------- Bundle keys
     public static final String KEY_PROTOCOL = "protocol";
@@ -77,6 +84,12 @@ public final class ControlKeys {
     public static final String KEY_CFG_REV = "cfg_rev";
 
     public static final String KEY_LOGS = "logs";
+    /** 结构化日志 JSON（{count,lastSeq,scope,lines[]}）；优先于 KEY_LOGS 纯文本。 */
+    public static final String KEY_LOGS_JSON = "logs_json";
+    /** 合并视图单次返回条数上限。 */
+    public static final String KEY_LOG_LIMIT = "log_limit";
+    /** 合并视图增量游标（App 侧全局 seq）。 */
+    public static final String KEY_LOG_SINCE = "log_since";
     public static final String KEY_TEXT = "text";
 
     /** 动作面工具表（JSON 数组）。 */

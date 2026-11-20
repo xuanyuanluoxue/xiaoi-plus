@@ -223,7 +223,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 | `xiaoai_cli` | 桥 | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
 | `xiaoai_config` | 桥 | 无 | 读当前生效配置：model / baseUrl / marker / bridge / lan / `noAuth` / `weakToken` / `authMode` / 密钥是否已设 |
 | `xiaoai_switch_model` | 桥 | `model`（必填）、`marker`（可选） | 热切换已有端点的模型，回 `lastGoodModel`；**拒绝** `baseUrl`/`apiKey`/`bridge`/`lan` |
-| `xiaoai_logs` | 桥 | `limit`（缺省 80，0=空，上限 300）、`since` | 读运行日志：最近 300 条环形缓冲（每行 `seq/t/level/msg` + `tag/ts/pid`），同时落盘 `files/xiaoi_plus.log` |
+| `xiaoai_logs` | 桥 | `limit`（缺省 80，0=空，上限 300）、`since` | 读运行日志（**跨进程合并视图**，三个小爱进程共用 600 条缓冲）：每行 `seq/t/level/msg` + `tag/ts/pid/proc`，顶层带 `scope=merged|local` 与 `lastSeq`；同时落盘 `files/xiaoi_plus.log` |
 | `xiaoai_island` | 桥 | `text`（默认「小爱同学plus」）、`force` | 手动发一次超级岛提示（deprecated，建议用 `xiaoai_notify`） |
 | `xiaoai_stats` | 桥 | `days`（默认 7，上限 90，超出回 `clamped:true`） | 调用量统计：按天返回三方 / 官方模型的调用次数 |
 | `xiaoai_capabilities` | App | `includeUnavailable` | 列出设备动作、schema、风险与可用性 |

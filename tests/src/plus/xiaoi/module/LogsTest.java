@@ -34,6 +34,7 @@ public final class LogsTest {
         ok("dump ts 是 epoch 毫秒", ((Long) first.get("ts")) > 0L);
         ok("dump pid 非负", ((Long) first.get("pid")) >= 0L);
         ok("dump 字段顺序", dump.contains("\"msg\":\"msg-271\",\"tag\":\"\",\"ts\":"));
+        eq("local 视图带 scope", "local", root.get("scope"));
 
         // 字段顺序锁定（与 v0.7 的 org.json 输出一致）
         ok("dump field order", dump.startsWith("{\"count\":")

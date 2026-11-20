@@ -73,6 +73,10 @@ public final class BridgeControlClient {
     private static volatile String sVersionName = "";
     /** 已成功送到 App 的日志序号；重连/进程重启时归零重发。 */
     private static volatile long sLogSeq;
+    /** 日志尾部监听已安装（每进程一次）。 */
+    private static volatile boolean sTailInstalled;
+    /** 已排队的合并视图推送（合并突发写入，避免每行都发一次 Binder）。 */
+    private static volatile boolean sPushScheduled;
 
     private BridgeControlClient() {}
 
@@ -100,7 +104,47 @@ public final class BridgeControlClient {
             }
         }
         if (first) Logs.i("控制面客户端启动");
+        installLogTail();
         ensureBind();
+    }
+
+    /**
+     * 安装「有新日志就推」的尾部监听（每进程一次）。
+     *
+     * <p>合并视图的即时性来源：进程内 ring 一有新增行，1 秒后（合并突发）把增量推给
+     * 控制面。没有新日志时完全没有 Binder 流量；监听器只做排队，不做 I/O。</p>
+     */
+    private static void installLogTail() {
+        if (sTailInstalled) return;
+        sTailInstalled = true;
+        Logs.setTailListener(new Runnable() {
+            @Override
+            public void run() {
+                scheduleLogPush();
+            }
+        });
+    }
+
+    private static void scheduleLogPush() {
+        if (!sStarted || sFatal || sRemote == null) return;
+        if (sPushScheduled) return;
+        ScheduledExecutorService ex = sScheduler;
+        if (ex == null) return;
+        sPushScheduled = true;
+        try {
+            ex.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    sPushScheduled = false;
+                    try {
+                        pushLogs(sRemote);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }, 1, TimeUnit.SECONDS);
+        } catch (Throwable t) {
+            sPushScheduled = false;
+        }
     }
 
     /** Bridge 开始监听后调用（可能早于控制面连接，未连接时静默忽略）。 */
@@ -434,40 +478,53 @@ public final class BridgeControlClient {
         String dump = Logs.dump(80, since);
         if (dump == null || dump.length() == 0) return;
         long remoteLast = since;
-        StringBuilder sb = new StringBuilder();
+        String json = null;
         try {
             Object rootObj = Json.read(dump);
             if (!(rootObj instanceof Map)) return;
-            Map<?, ?> root = (Map<?, ?>) rootObj;
-            remoteLast = Json.optLong(root, "lastSeq", since);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> root = (Map<String, Object>) rootObj;
             Object linesObj = root.get("lines");
-            if (linesObj instanceof List) {
-                for (Object value : (List<?>) linesObj) {
-                    if (!(value instanceof Map)) continue;
-                    Map<?, ?> line = (Map<?, ?>) value;
-                    String time = Json.optString(line, "t", "");
-                    String level = Json.optString(line, "level", "I");
-                    String msg = Json.optString(line, "msg", "");
-                    if (sb.length() > 0) sb.append('\n');
-                    sb.append(time).append(' ').append(level).append(' ').append(msg);
-                }
+            if (!(linesObj instanceof List) || ((List<?>) linesObj).isEmpty()) {
+                // 没有新行：只推进游标，不发 Binder。
+                sLogSeq = Json.optLong(root, "lastSeq", since);
+                return;
             }
+            remoteLast = Json.optLong(root, "lastSeq", since);
+            // 来源进程名只发一次（行级已有 pid），App 用它给每条打 proc。
+            root.put("proc", processName());
+            json = Json.write(root);
         } catch (Throwable t) {
             return;
         }
-        if (remoteLast < since) {
-            // 小爱进程重启后 seq 从 1 开始：下一轮从 0 重新发送，不用旧上限吞掉新日志。
-            sLogSeq = 0;
-            return;
-        }
-        if (sb.length() == 0) {
-            sLogSeq = remoteLast;
-            return;
-        }
+        if (json == null) return;
         Bundle data = new Bundle();
-        data.putString(ControlKeys.KEY_LOGS, sb.toString());
+        data.putString(ControlKeys.KEY_LOGS_JSON, json);
         if (sendNoReply(b, ControlKeys.C2S_APPEND_LOGS, data)) {
             sLogSeq = remoteLast;
+        }
+    }
+
+    /**
+     * 拉取 App 侧的合并视图（三个小爱进程 + App 自身都汇总在那里）。
+     *
+     * <p>未连接、App 重启、协议不匹配时返回 null，由调用方回落到本进程 ring。
+     * 这是一次同步 Binder 调用，只在人工查询日志时发生。</p>
+     */
+    public static String pullMergedLogs(int limit, long since) {
+        IBinder b = sRemote;
+        if (b == null) return null;
+        try {
+            Bundle req = new Bundle();
+            req.putString(ControlKeys.KEY_PROTOCOL, String.valueOf(ControlKeys.PROTOCOL_VERSION));
+            req.putInt(ControlKeys.KEY_LOG_LIMIT, limit);
+            req.putLong(ControlKeys.KEY_LOG_SINCE, since);
+            Bundle reply = transact(b, ControlKeys.C2S_PULL_LOGS, req);
+            if (reply == null || !reply.getBoolean(ControlKeys.KEY_OK, false)) return null;
+            String json = reply.getString(ControlKeys.KEY_LOGS_JSON, "");
+            return json == null || json.length() == 0 ? null : json;
+        } catch (Throwable t) {
+            return null;
         }
     }
 
@@ -495,6 +552,14 @@ public final class BridgeControlClient {
                             case ControlKeys.S2C_FLUSH_LOGS:
                                 Logs.i("控制面 flushLogs：立即落盘");
                                 Logs.flush();
+                                return true;
+                            case ControlKeys.S2C_PUSH_LOGS:
+                                runAsync(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        pushLogs(sRemote);
+                                    }
+                                });
                                 return true;
                             default:
                                 return false;

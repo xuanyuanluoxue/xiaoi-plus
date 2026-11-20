@@ -144,13 +144,13 @@
 ## 8. 本次不做
 
 1. **按级别保留 / 独立错误 ring**：会破坏 `since > lastSeq` 的增量语义，除非同时改 `BridgeControlClient` 与协议；本次只记录理由。
-2. **四份事实源合并/去重**：需要 Binder 文本协议带 `pid/seq` 并定义跨进程去重键；本次只加 `pid` 字段。
+2. ~~**四份事实源合并/去重**~~：**已在 0.16.3 完成，见第 10 节**。
 3. **UI 结构化渲染（日期分组、tag 筛选、错误跳转）**：属于 UI 交互改动，先不做。
 4. **异步落盘线程/队列**：不引入新线程；批量缓冲已覆盖主要开销。
 5. **日志档位 push 通道**：现有 pull + reload 已能传播；不做新 Binder 事务。
 6. **全量 URL/手机号/设备标识脱敏器**：只扩 `Redact` 键集合，并维持「端点只记 host」的调用纪律；不扫描任意 URL 路径。
-7. **修改 300 容量 / 上限**：`LOGS_LIMIT_MAX` 与 `LOGS_CAPACITY` 保持 300，避免文档与契约漂移。
-8. **跨进程 `seq` 命名空间**：`seq` 仍是每进程从 1 开始；跨进程用 `pid + ts` 区分。
+7. **修改 300 容量 / 上限**：`LOGS_LIMIT_MAX` 与 `LOGS_CAPACITY` 保持 300。
+8. ~~**跨进程 `seq` 命名空间**~~：**合并视图已引入 App 侧全局 `seq`**（第 10 节），进程内 `seq` 仍保留给 `srcSeq` 去重。
 
 ## 9. 验收
 
@@ -162,6 +162,32 @@ wsl -e bash -c "cd /mnt/d/code/Android/xiaoi-plus && bash scripts/check-layering
 $env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"; .\gradlew.bat :app:assembleRelease --console=plain
 wsl -e bash -c "cd /mnt/d/code/Android/xiaoi-plus && ANDROID_SDK_ROOT=/mnt/c/Users/Chatxavier/AppData/Local/Android/Sdk bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk"
 ```
+
+## 10. 合并视图（0.16.3）
+
+**为什么必须合并**：三个小爱进程各自只有一个 partial ring。实测中 `xiaoai_logs` 返回的全是
+leader 进程（`pid=1346`）的行，而 `改写命中` / `模型调用` 落在另一个进程（`pid=962`）——
+「为什么没生效」的关键证据恰好不在被查询的那个进程里。
+
+**落点**：App 进程本来就是唯一的汇聚点（`C2S_APPEND_LOGS` 早已存在），所以合并放在 App，
+不新增进程间通道。
+
+| 环节 | 实现 |
+|---|---|
+| 采集 | 每个小爱进程 `Logs.setTailListener` → 1s 合并突发 → `pushLogs` 推增量 |
+| 传输 | `C2S_APPEND_LOGS` 改发结构化 JSON（`KEY_LOGS_JSON`），旧纯文本仍在兜底分支 |
+| 合并 | `domain/control/ControlLogRing`：全局 `seq`、按 `(pid,srcSeq)` 去重、600 条 |
+| 读取 | `C2S_PULL_LOGS` → `Bridge.logsView` → `xiaoai_logs` / `GET /logs` |
+| 回落 | 控制面不可达或 App 刚重启（`since=0` 且 0 条）→ 本进程 ring，`scope=local` |
+
+**去重与重启**：只比 `srcSeq` 无法区分「重发旧行」和「进程重启后从 1 开始」，所以按
+`(srcSeq, ts)` 判定——序号回退且时间更新才算重启。测试覆盖重发丢弃与重启接收两条。
+
+**排序**：到达顺序 ≠ 事件顺序（各进程推送节奏不同），窗口内按 `(ts, seq)` 排序；
+`since` 仍按全局 `seq` 过滤，两者互不干扰。
+
+**已知代价**：合并缓冲 600 条由三个进程共享，比单进程 300 条更容易被冲掉；`scope` 会在
+App 重启时切换序号空间，调用方看到 `lastSeq < since` 必须把游标归零。
 
 通过标准：
 

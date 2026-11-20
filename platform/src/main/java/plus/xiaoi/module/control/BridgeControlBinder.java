@@ -70,8 +70,26 @@ final class BridgeControlBinder extends Binder {
             }
             case ControlKeys.C2S_APPEND_LOGS: {
                 Bundle in = data.readBundle(getClass().getClassLoader());
-                service.appendLogs(in == null ? null : in.getString(ControlKeys.KEY_LOGS, ""));
+                String json = in == null ? null : in.getString(ControlKeys.KEY_LOGS_JSON, null);
+                if (json != null && json.length() > 0) {
+                    service.appendLogsJson(json);
+                } else {
+                    // 旧客户端只会发纯文本；保留兜底，避免升级窗口内丢日志。
+                    service.appendLogs(in == null ? null : in.getString(ControlKeys.KEY_LOGS, ""));
+                }
                 reply.writeNoException();
+                return true;
+            }
+            case ControlKeys.C2S_PULL_LOGS: {
+                Bundle in = data.readBundle(getClass().getClassLoader());
+                int limit = in == null ? 0 : in.getInt(ControlKeys.KEY_LOG_LIMIT, 0);
+                long since = in == null ? 0L : in.getLong(ControlKeys.KEY_LOG_SINCE, 0L);
+                String json = BridgeControlService.mergedLogsJson(limit, since);
+                Bundle out = new Bundle();
+                out.putBoolean(ControlKeys.KEY_OK, true);
+                out.putString(ControlKeys.KEY_LOGS_JSON, json);
+                reply.writeNoException();
+                reply.writeBundle(out);
                 return true;
             }
             case ControlKeys.C2S_AGENT_TOOLS: {

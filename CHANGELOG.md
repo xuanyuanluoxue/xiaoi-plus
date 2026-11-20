@@ -1,6 +1,10 @@
 # 更新日志
 
-## 未发布 — 日志子系统重构（LOGGING-1）
+## 0.16.3 — 2026-11-20
+
+**日志重构 + 合并视图：一条命令看到所有小爱进程**
+
+### 日志子系统重构（LOGGING-1）
 
 **让一次失败请求能按 seq / ts / req 串起来**
 
@@ -14,6 +18,28 @@
 - `Redact` 扩大键集合：`secret/password/oaid/imei/android_id/device_id/phone/mobile`；
   端点仍只允许 `Redact.host()`。
 - 新增 `LogRingTest` / `LogFileSinkTest` / `RequestTraceTest`，并扩充 `LogsTest` / `RedactTest`。
+
+### 合并视图（跨进程）
+
+之前 `xiaoai_logs` 只能看到服务 8771 的那个进程。实测排查「三方模型不生效」时发现死角：
+`xiaoai_logs` 返回的全是 `pid=1346` 的行，而 `改写命中` / `模型调用` 落在 `pid=962` 的
+另一个进程 —— 关键证据恰好不在被查询的进程里。
+
+- App 进程作为唯一汇聚点（复用它已有的控制面），把三个小爱进程的日志合并成一份：
+  全局 `seq`、按事件时间排序、按 `(pid, srcSeq)` 去重。合并缓冲 600 条（三进程共享）。
+- 采集改成「有新行才推」：`Logs.setTailListener` → 1 秒合并突发 → 增量推送；空闲时零
+  Binder 流量。原有 10 秒一次的 pull 仍兜底。
+- 控制面传输从纯文本升级为结构化 JSON（`KEY_LOGS_JSON`）；旧纯文本分支保留，升级窗口内
+  不丢日志。
+- 新增 `C2S_PULL_LOGS`（读取合并视图）与 `S2C_PUSH_LOGS`（按需立即推送）。
+- `xiaoai_logs` / `GET /logs` 顶层新增 `scope=merged|local`，每行新增 `proc`（进程名）；
+  `seq/t/level/msg` 与 `tag/ts/pid` 的顺序和含义不变，旧消费者不受影响。
+- 回落：控制面不可达或 App 刚重启（`since=0` 且 0 条）时自动回本进程缓冲并标 `local`，
+  不会把本地序号空间的 `lastSeq` 当成跨进程游标。
+- 去重细节：序号回退且**时间更新**才判定为进程重启（接受），否则视为重发（丢弃）——
+  单纯比序号会把重启后的日志全部误判成重复。
+- 真机验证：**待设备在线后补测**（本轮改动已过单测与门禁；合并链路的端到端验证
+  需要 `scope=merged` 且同一次结果里出现多个 `pid`）。
 
 ## 0.16.2 — 2026-11-20
 
