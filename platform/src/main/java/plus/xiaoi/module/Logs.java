@@ -85,7 +85,12 @@ public final class Logs {
         }
     }
 
-    /** JSON 数组；since>0 时只返回该序号之后的，limit 取尾部；limit=0 返回空数组。 */
+    /**
+     * JSON 数组；since>0 时只返回该序号之后的，limit 取尾部；limit=0 返回空数组。
+     *
+     * <p>每行固定前四个字段 {@code seq/t/level/msg}（兼容旧消费者），随后追加
+     * {@code tag/ts/pid}；{@code t} 是本地时间，{@code ts} 是 epoch 毫秒。</p>
+     */
     public static synchronized String dump(int limit, long since) {
         List<LogEntry> list = RING.snapshot(limit, since);
         SimpleDateFormat f = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
@@ -96,6 +101,9 @@ public final class Logs {
             o.put("t", f.format(new Date(e.tsMillis)));
             o.put("level", e.level);
             o.put("msg", e.msg);
+            o.put("tag", e.tag);
+            o.put("ts", e.tsMillis);
+            o.put("pid", (long) e.pid);
             arr.add(o);
         }
         Map<String, Object> root = Json.obj();

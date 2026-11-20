@@ -263,7 +263,7 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 {"name":"xiaoai_logs","arguments":{"limit":20,"since":0}}
 ```
 
-返回 JSON 数组文本，每项包含时间、级别、消息、`seq`。
+返回 JSON 数组文本，每项包含 `seq`、`t`（本地 `HH:mm:ss.SSS`）、`level`、`msg`，并追加 `tag`（来源）、`ts`（epoch 毫秒）、`pid`（写入进程）。旧字段名与顺序不变。
 
 ### xiaoai_stats
 

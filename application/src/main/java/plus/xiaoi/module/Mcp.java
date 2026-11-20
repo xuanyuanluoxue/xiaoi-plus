@@ -403,7 +403,8 @@ public final class Mcp {
 
         Map<String, Object> lg = Json.obj();
         lg.put("name", "xiaoai_logs");
-        lg.put("description", "读取模块运行日志（最近 300 条环形缓冲，落盘在 files/xiaoi_plus.log）。");
+        lg.put("description", "读取模块运行日志（最近 300 条环形缓冲，落盘在 files/xiaoi_plus.log）。"
+                + "每行含 seq/t/level/msg，并追加 tag/ts(epoch 毫秒)/pid。");
         Map<String, Object> lgProps = Json.obj();
         Map<String, Object> lgLimit = prop("integer",
                 "返回尾部多少条；缺省 80，0 = 空数组，上限 300");

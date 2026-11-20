@@ -29,6 +29,10 @@ public final class LogsTest {
         eq("dump msg preserved", "msg-271", first.get("msg"));
         eq("dump level preserved", "I", first.get("level"));
         ok("dump t format", ((String) first.get("t")).matches("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}"));
+        eq("dump tag 默认空", "", first.get("tag"));
+        ok("dump ts 是 epoch 毫秒", ((Long) first.get("ts")) > 0L);
+        ok("dump pid 非负", ((Long) first.get("pid")) >= 0L);
+        ok("dump 字段顺序", dump.contains("\"msg\":\"msg-271\",\"tag\":\"\",\"ts\":"));
 
         // 字段顺序锁定（与 v0.7 的 org.json 输出一致）
         ok("dump field order", dump.startsWith("{\"count\":")
@@ -65,6 +69,7 @@ public final class LogsTest {
         root = (Map<?, ?>) Json.read(Logs.dump(1, 0));
         Map<?, ?> lastLine = (Map<?, ?>) ((List<?>) root.get("lines")).get(0);
         ok("standard 记录工具元数据", ((String) lastLine.get("msg")).startsWith("[mcp] tool=test"));
+        eq("structured tag", "mcp", lastLine.get("tag"));
         LogSettings.reset();
 
         return T.report("LogsTest");
