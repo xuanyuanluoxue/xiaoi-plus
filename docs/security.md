@@ -64,7 +64,7 @@ App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/co
 - **限流与有界读取**：`/health`、`/island` 按来源 IP 30 次/10s（超限 429）；
   单行 header 上限 8192 字符、header 最多 128 行；请求线程池 core=4/max=8/queue=32，
   队列满直接 503，不阻塞 accept。
-- **日志边界**：运行日志只含 hook 成败、模型名、端口与调用摘要，**不含 apiKey / token / 对话正文**；内存保留 300 条，并滚动落盘到小爱私有目录 `files/xiaoi_plus.log`（256KB，保留 `.1`），卸载即随应用数据删除。
+- **日志边界**：运行日志只含 hook 成败、模型名、端口与调用摘要，**不含 apiKey / token / 对话正文**；每行带 `tag/ts/pid` 便于定位进程与跨天排序。内存保留 300 条，并滚动落盘到小爱私有目录 `files/xiaoi_plus.log`（256KB，保留 `.1`），卸载即随应用数据删除。
 - **端点很少**：`GET /health`（自检）、`GET /logs`（日志）、`GET /cli`（转发一条 CLI 命令）、`POST /mcp`（标准 MCP，JSON-RPC）、`POST /island`（触发一次岛提示，仅本机）。`POST /config` 已停用（410）。`/mcp` 与 `/cli` 等价，是同一 token 下的同一能力，不额外扩大权限面。
 - **默认关闭**：设置页「MCP 接口」与「允许局域网访问」默认都不勾选。
 - **失败即停**：桥启动失败只写日志，不影响模型重定向与标记。

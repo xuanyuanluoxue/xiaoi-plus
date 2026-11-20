@@ -70,6 +70,8 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
     `xiaoai_notify` / `xiaoai_ask`
   - 语义与 README 的工具表一致；上限/TTL/端口统一来自 `Contract.java`
 - 转发失败的错误码：`AGENT_UNAVAILABLE`（App 进程未就绪），带 `retryable:true`
+- `xiaoai_logs` / `GET /logs` 每行：`seq/t/level/msg`，并追加 `tag`（来源）、
+  `ts`（epoch 毫秒）、`pid`（写入进程）；旧字段名与顺序不变
 
 电脑上接入有两种方式：
 

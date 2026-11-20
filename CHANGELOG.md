@@ -1,5 +1,20 @@
 # 更新日志
 
+## 未发布 — 日志子系统重构（LOGGING-1）
+
+**让一次失败请求能按 seq / ts / req 串起来**
+
+- 环形缓冲从 `platform/Logs` 抽到纯 JVM 的 `application/log/LogRing`，
+  `Logs` 只保留档位过滤、logcat、落盘与 JSON 装配；桌面单测可直接覆盖容量/`since`/并发。
+- 落盘从「每行一次 open/write/close」改为 `infra/LogFileSink` 批量写：16 行 / 8KB
+  或 E 行时 flush，仍保持 256KB + `.1` 轮转；控制面 `flushLogs` 现在会真正落盘。
+- `/logs` 与 `xiaoai_logs` 每行在 `seq/t/level/msg` 之后追加 `tag` / `ts`（epoch 毫秒）
+  / `pid`；旧字段名、顺序与 `limit`/`since` 语义不变。
+- `tools/call` 期间日志正文前加 `req=<6hex>`，只覆盖同进程同步调用链。
+- `Redact` 扩大键集合：`secret/password/oaid/imei/android_id/device_id/phone/mobile`；
+  端点仍只允许 `Redact.host()`。
+- 新增 `LogRingTest` / `LogFileSinkTest` / `RequestTraceTest`，并扩充 `LogsTest` / `RedactTest`。
+
 ## 0.16.2 — 2026-11-20
 
 **让「生效没生效」可判定**
