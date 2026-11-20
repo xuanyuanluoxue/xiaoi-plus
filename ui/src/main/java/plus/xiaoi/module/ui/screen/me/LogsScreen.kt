@@ -1,9 +1,13 @@
 package plus.xiaoi.module.ui.screen.me
 
-import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -30,11 +34,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import plus.xiaoi.module.core.LogLevel
+import plus.xiaoi.module.application.log.LogExport
 import plus.xiaoi.module.application.log.LogSettings
 import plus.xiaoi.module.ui.components.FilterChips
 import plus.xiaoi.module.ui.components.LocalAppRuntime
@@ -46,6 +56,8 @@ import plus.xiaoi.module.ui.components.XiaoiInfoRow
 import plus.xiaoi.module.ui.components.XiaoiPageActions
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
+import plus.xiaoi.module.ui.components.XiaoiTextButton
+import plus.xiaoi.module.ui.components.XiaoiTextField
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Icon
@@ -82,6 +94,12 @@ private fun sourceOf(msg: String): Int = when {
     msg.startsWith("[agent]") -> 2
     msg.startsWith("[http]") -> 3
     else -> 0
+}
+
+/** 进程名只显示冒号后的短名：com.miui.voiceassist:core → core。 */
+private fun shortProc(proc: String): String {
+    val i = proc.lastIndexOf(':')
+    return if (i >= 0 && i + 1 < proc.length) proc.substring(i + 1) else proc
 }
 
 private fun parseLine(line: String): LogLine {
@@ -199,14 +217,115 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         }
     }
 
-    fun share() {
-        val text = "# logLevel=${level.wire}\n" +
-            lines.joinToString("\n") { "${it.time} ${it.level} ${it.message}" }
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, text)
+    // ---------------------------------------------------------------- 导出
+    var exportDialog by remember { mutableStateOf(false) }
+    /** 0=ZIP（meta+txt+json） 1=纯文本 2=JSON */
+    var exportFormat by rememberSaveable { mutableStateOf(0) }
+    /** 0=全部 1=最近 30 分钟 2=最近 2 小时 */
+    var exportRange by rememberSaveable { mutableStateOf(0) }
+    /** 级别阈值，与 LogExport.rank 同尺度：0=全部 2=警告 3=错误 */
+    var exportLevel by rememberSaveable { mutableStateOf(0) }
+    var exportKeyword by rememberSaveable { mutableStateOf("") }
+    var exportProc by rememberSaveable { mutableStateOf("") }
+    var knownProcs by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    val exportStamp = remember { SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) }
+
+    /** 把当前筛选结果写成文件；format 与 dialog 的选项一一对应。 */
+    fun runExport(uri: Uri, format: Int) {
+        scope.launch {
+            val message = withContext(Dispatchers.IO) {
+                runCatching {
+                    val now = System.currentTimeMillis()
+                    val filter = LogExport.Filter().apply {
+                        minSeverity = exportLevel
+                        proc = exportProc
+                        keyword = exportKeyword
+                        sinceTs = when (exportRange) {
+                            1 -> now - 30L * 60 * 1000
+                            2 -> now - 2L * 60 * 60 * 1000
+                            else -> 0L
+                        }
+                        rangeLabel = when (exportRange) {
+                            1 -> "最近 30 分钟"
+                            2 -> "最近 2 小时"
+                            else -> "全部时间"
+                        }
+                        limit = LogExport.MAX_LINES
+                    }
+                    val version = runCatching {
+                        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                    }.getOrNull() ?: "?"
+                    val header = listOf(
+                        "模块: $version",
+                        "Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+                        "机型: ${Build.MANUFACTURER} ${Build.MODEL}",
+                        "日志档位: ${level.wire}",
+                    )
+                    // 读合并视图而不是屏幕文本：只有它带 pid/proc/ts，能按进程和时间筛。
+                    val dump = appRuntime.controlLog.dumpJson(LogExport.MAX_LINES, 0)
+                    val result = LogExport.build(dump, filter, header)
+                    if (result.count == 0) {
+                        throw IllegalStateException("当前筛选没有日志，换个条件再试")
+                    }
+                    val out = context.contentResolver.openOutputStream(uri)
+                        ?: throw IllegalStateException("无法打开目标文件")
+                    out.use { os ->
+                        when (format) {
+                            0 -> ZipOutputStream(os).use { zos ->
+                                fun put(name: String, body: String) {
+                                    zos.putNextEntry(ZipEntry(name))
+                                    zos.write(body.toByteArray(Charsets.UTF_8))
+                                    zos.closeEntry()
+                                }
+                                put("meta.txt", result.meta)
+                                put("logs.txt", result.text)
+                                put("logs.json", result.json)
+                            }
+                            1 -> os.write(result.text.toByteArray(Charsets.UTF_8))
+                            else -> os.write(result.json.toByteArray(Charsets.UTF_8))
+                        }
+                    }
+                    "已导出 ${result.count} 条 · ${LogExport.describe(filter)}"
+                }.getOrElse {
+                    "导出失败：${it.message ?: it.javaClass.simpleName}"
+                }
+            }
+            onMessage(message)
         }
-        context.startActivity(Intent.createChooser(intent, "分享日志"))
+    }
+
+    /** 打开导出面板前先取一次进程列表，避免用固定文案猜进程名。 */
+    fun openExport() {
+        scope.launch {
+            val list = withContext(Dispatchers.IO) {
+                runCatching {
+                    LogExport.procs(appRuntime.controlLog.dumpJson(LogExport.MAX_LINES, 0))
+                }.getOrDefault(emptyList())
+            }
+            knownProcs = list
+            if (exportProc.isNotEmpty() && !list.contains(exportProc)) exportProc = ""
+            exportDialog = true
+        }
+    }
+
+    val zipLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri -> if (uri != null) runExport(uri, 0) }
+    val txtLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri -> if (uri != null) runExport(uri, 1) }
+    val jsonLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri -> if (uri != null) runExport(uri, 2) }
+
+    fun launchExport() {
+        exportDialog = false
+        when (exportFormat) {
+            0 -> zipLauncher.launch("xiaoi-logs-$exportStamp.zip")
+            1 -> txtLauncher.launch("xiaoi-logs-$exportStamp.txt")
+            else -> jsonLauncher.launch("xiaoi-logs-$exportStamp.json")
+        }
     }
 
     XiaoiPageActions {
@@ -221,12 +340,12 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             )
         }
         IconButton(
-            onClick = { share() },
+            onClick = { openExport() },
             enabled = lines.isNotEmpty(),
         ) {
             Icon(
                 MiuixIcons.Share,
-                contentDescription = "分享日志",
+                contentDescription = "导出日志",
                 tint = if (lines.isNotEmpty()) colors.text else colors.textHint,
             )
         }
@@ -430,4 +549,103 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         },
         onDismiss = { confirmClear = false },
     )
+
+    WindowDialog(
+        show = exportDialog,
+        title = "导出日志",
+        summary = "按当前条件导出合并视图（含各进程日志）；ZIP 内含 meta.txt / logs.txt / logs.json。",
+        summaryColor = colors.textSecondary,
+        backgroundColor = colors.surface2,
+        onDismissRequest = { exportDialog = false },
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Text("格式", color = colors.textSecondary, style = XiaoiTheme.typography.caption)
+            FilterChips(
+                options = listOf("ZIP", "文本", "JSON"),
+                selected = when (exportFormat) {
+                    1 -> "文本"
+                    2 -> "JSON"
+                    else -> "ZIP"
+                },
+                onSelect = {
+                    exportFormat = when (it) {
+                        "文本" -> 1
+                        "JSON" -> 2
+                        else -> 0
+                    }
+                },
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("时间范围", color = colors.textSecondary, style = XiaoiTheme.typography.caption)
+            FilterChips(
+                options = listOf("全部", "30 分钟", "2 小时"),
+                selected = when (exportRange) {
+                    1 -> "30 分钟"
+                    2 -> "2 小时"
+                    else -> "全部"
+                },
+                onSelect = {
+                    exportRange = when (it) {
+                        "30 分钟" -> 1
+                        "2 小时" -> 2
+                        else -> 0
+                    }
+                },
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("级别", color = colors.textSecondary, style = XiaoiTheme.typography.caption)
+            FilterChips(
+                options = listOf("全部", "警告以上", "仅错误"),
+                selected = when (exportLevel) {
+                    2 -> "警告以上"
+                    3 -> "仅错误"
+                    else -> "全部"
+                },
+                onSelect = {
+                    exportLevel = when (it) {
+                        "警告以上" -> 2
+                        "仅错误" -> 3
+                        else -> 0
+                    }
+                },
+            )
+            if (knownProcs.size > 1) {
+                Spacer(Modifier.height(8.dp))
+                Text("进程", color = colors.textSecondary, style = XiaoiTheme.typography.caption)
+                val labels = listOf("全部") + knownProcs.map { shortProc(it) }
+                FilterChips(
+                    options = labels,
+                    selected = if (exportProc.isEmpty()) "全部"
+                    else shortProc(exportProc),
+                    onSelect = { picked ->
+                        exportProc = if (picked == "全部") ""
+                        else knownProcs.firstOrNull { shortProc(it) == picked } ?: ""
+                    },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            XiaoiTextField(
+                value = exportKeyword,
+                onValueChange = { exportKeyword = it },
+                label = "关键字（可选）",
+                placeholder = "例如 改写命中、qm.i、某个工具名",
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "关键字匹配正文与 tag，大小写不敏感；上限 ${LogExport.MAX_LINES} 条。",
+                color = colors.textHint,
+                style = XiaoiTheme.typography.caption,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                XiaoiTextButton("取消", onClick = { exportDialog = false })
+                Spacer(Modifier.width(8.dp))
+                XiaoiTextButton("导出", onClick = { launchExport() })
+            }
+        }
+    }
 }

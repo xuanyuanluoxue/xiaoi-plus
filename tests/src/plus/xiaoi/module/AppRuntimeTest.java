@@ -179,11 +179,17 @@ public final class AppRuntimeTest {
 
     private static final class FakeControlLog implements ControlLogStore {
         String text = "";
+        String json = "";
         int clears;
 
         @Override
         public String dump() {
             return text;
+        }
+
+        @Override
+        public String dumpJson(int limit, long since) {
+            return json;
         }
 
         @Override

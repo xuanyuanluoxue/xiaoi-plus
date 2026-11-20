@@ -17,6 +17,7 @@ public final class TestMain {
         }
         failed += McpTest.run();
         failed += HookStatusTest.run();
+        failed += LogExportTest.run();
         failed += ToolOwnershipTest.run();
         failed += LogLevelTest.run();
         failed += LogRingTest.run();

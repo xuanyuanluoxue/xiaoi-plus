@@ -365,7 +365,7 @@ public final class BridgeControlService extends Service {
      * @param limit 单次上限（0 = 空数组）
      * @param since 上一次返回的 {@code lastSeq}；0 = 从当前窗口开头取
      */
-    static String mergedLogsJson(int limit, long since) {
+    public static String mergedLogsJson(int limit, long since) {
         return LOG_RING.dumpJson(limit, since);
     }
 

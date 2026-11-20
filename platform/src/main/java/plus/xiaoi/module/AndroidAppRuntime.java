@@ -131,6 +131,11 @@ public final class AndroidAppRuntime {
         }
 
         @Override
+        public String dumpJson(int limit, long since) {
+            return plus.xiaoi.module.control.BridgeControlService.mergedLogsJson(limit, since);
+        }
+
+        @Override
         public void clear() {
             plus.xiaoi.module.control.BridgeControlService.clearLogs();
         }

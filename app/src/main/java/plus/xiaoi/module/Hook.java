@@ -569,7 +569,21 @@ public class Hook implements IXposedHookLoadPackage {
             if (sKindLogged[idx]) return;
             sKindLogged[idx] = true;
         }
-        Logs.i("改写命中: " + label(kind) + "=" + display(kind, value));
+        Logs.i(logLine(kind, value));
+    }
+
+    /**
+     * 一行"改写命中"。
+     *
+     * <p>密钥故意不写成 {@code apiKey=...}：日志在 App 侧会再过一遍 {@code Redact}，
+     * 键值形状会把「已设置（51 字符）」也当成秘密值吃掉，剩下一截残句。
+     * 这里只报长度，不报内容，也不制造键值形状。</p>
+     */
+    private static String logLine(Kind kind, String value) {
+        if (kind == Kind.KEY) {
+            return "改写命中: apiKey 已设置（" + value.length() + " 字符）";
+        }
+        return "改写命中: " + label(kind) + "=" + display(kind, value);
     }
 
     private static String label(Kind kind) {
@@ -578,7 +592,6 @@ public class Hook implements IXposedHookLoadPackage {
 
     /** 端点只留 host：路径里可能带租户 key，不能整条打出来。 */
     private static String display(Kind kind, String value) {
-        if (kind == Kind.KEY) return "已设置(" + value.length() + " 字符)";
         if (kind == Kind.MODEL) return value;
         return plus.xiaoi.module.core.Redact.host(value);
     }
