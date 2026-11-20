@@ -31,6 +31,7 @@ public final class Logs {
     private static final LogRing RING = new LogRing(Contract.LOGS_CAPACITY);
     private static volatile LogFileSink sSink;
     private static File sFile;
+    private static int sPid = -1;
 
     private Logs() {}
 
@@ -148,15 +149,18 @@ public final class Logs {
         }
     }
 
-    /** 当前进程 pid；桌面单测/反射失败返回 0。 */
+    /** 当前进程 pid；桌面单测/反射失败返回 0。只解析一次。 */
     private static int pid() {
+        if (sPid >= 0) return sPid;
+        int value = 0;
         try {
             Class<?> p = Class.forName("android.os.Process");
             Object v = p.getMethod("myPid").invoke(null);
-            return v instanceof Integer ? ((Integer) v).intValue() : 0;
+            if (v instanceof Integer) value = ((Integer) v).intValue();
         } catch (Throwable ignored) {
-            return 0;
         }
+        sPid = value;
+        return value;
     }
 
     private static File file() {
