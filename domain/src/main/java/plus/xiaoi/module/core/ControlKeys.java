@@ -83,6 +83,7 @@ public final class ControlKeys {
     /** 小爱已加载的配置 rev；App 用它判断 D3「已应用」。 */
     public static final String KEY_CFG_REV = "cfg_rev";
 
+    /** 纯文本日志（旧协议）：多条以 {@code \n} 连接，App 侧只在缺 JSON 时兜底使用。 */
     public static final String KEY_LOGS = "logs";
     /** 结构化日志 JSON（{count,lastSeq,scope,lines[]}）；优先于 KEY_LOGS 纯文本。 */
     public static final String KEY_LOGS_JSON = "logs_json";
