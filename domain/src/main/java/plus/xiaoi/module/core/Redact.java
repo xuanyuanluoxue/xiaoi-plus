@@ -3,13 +3,16 @@ package plus.xiaoi.module.core;
 import java.util.regex.Pattern;
 
 /**
- * 日志脱敏（纯 JVM）：键值形式的 apiKey/token/authorization 与 Bearer 头。
+ * 日志脱敏（纯 JVM）：键值形式的 apiKey/token/authorization/secret/password、
+ * 设备标识（oaid/imei/android_id/device_id）、手机号，以及 Bearer 头。
  * 所有入库/上报的日志行都应先经过这里；调用方仍必须避免主动写正文。
  */
 public final class Redact {
 
     private static final Pattern KEY_VALUE = Pattern.compile(
-            "(?i)(api[_-]?key|token|authorization)(\\s*[\"']?\\s*[:=]\\s*[\"']?)([^\\s\"',}&;]+)");
+            "(?i)(api[_-]?key|token|authorization|secret|password|passwd"
+                    + "|oaid|imei|android[_-]?id|device[_-]?id|phone|mobile)"
+                    + "(\\s*[\"']?\\s*[:=]\\s*[\"']?)([^\\s\"',}&;]+)");
 
     private static final Pattern BEARER = Pattern.compile("(?i)(Bearer)\\s+[^\\s\"',}&;]+");
 
