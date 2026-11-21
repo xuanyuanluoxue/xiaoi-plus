@@ -5,7 +5,7 @@
 .gitignore[FV6T]: F:忽略构建产物、本地凭据、临时目录、AOCI 主机配置与本地虚拟环境 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库否则 scan 拒绝；.mcp.json 等主机配置含绝对路径必须忽略；.venv 是 deploy.cmd 的本地环境
 AGENTS.md[SG8S]: F:Agent 仓库规约：构建命令、分层边界、产物落点与根目录纪律 | R:code:scripts/check-layering.sh | A:根目录纪律 | S:新文件只能进 scripts/docs/tmp/artifacts；根目录禁止新建 md/sh/txt；末尾 aoci 托管区块不要手改
 ARCHIVE.md[SG5S]: F:归档快照：0.15.0 的模块、验证与限制，以及 0.16.0 的清理与备份去向 | R:code:docs/refactor/NEXT.md | A:artifacts/legacy/ | S:备份已迁进仓库 artifacts/legacy/，不要再引用 ~/xiaoi-plus-dev 这类仓外路径
-CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.16.3 | S:小节标题必须与 versionName 完全一致，否则 Notes 退化成空模板；发版前把「未发布」改成「## <version> — YYYY-MM-DD」；未验证的能力不要写成已验证
+CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.16.4 | S:小节标题必须与 versionName 完全一致，否则 Notes 退化成空模板；发版前把「未发布」改成「## <version> — YYYY-MM-DD」；未验证的能力不要写成已验证
 LICENSE[SV4L]: F:GPLv3 许可证全文 | R:code:README.md | A:GPLv3 | S:分发修改版须沿用同一许可；本项目不改原包，只做运行时注入
 README.md[SG8L]: F:对外主页：功能矩阵、设置页、接入方式、15 个 MCP 工具表、构建与一键部署、已知限制 | R:code:docs/architecture.md | A:MCP端点 | S:工具表、上限与端口必须与 Contract.java 和 Mcp 的工具表同步；xiaoai_status 列 hooks/compat/xiaoai/rewrite，xiaoai_logs 要写明是跨进程合并视图并带 scope
 build.gradle.kts[FV6T]: F:根构建声明：四个 AGP 与 Compose 插件只 apply false，由子模块各自启用 | R:code:app/build.gradle.kts | A:alias(libs.plugins.android.application) | S:版本全部来自 gradle/libs.versions.toml；在根模块真正 apply 插件会破坏按模块启用
@@ -109,7 +109,7 @@ LogSettings.java[DO5T]: F:进程内日志档位：读、按 wire 串设置、判
 LogEntry.java[DM4T]: F:一条日志的不可变快照：seq、epoch 毫秒、level、tag、正文、pid | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogRing.java | A:LogEntry | S:msg 不含 [tag] 前缀，前缀由 platform 的 Logs 装配；字段顺序即对外 JSON 的追加顺序，改字段要同步 dump 与文档
 LogRing.java[DR6T]: F:进程内日志环形缓冲：单调 seq、FIFO 淘汰、按 since/limit 取副本 | R:code:platform/src/main/java/plus/xiaoi/module/Logs.java | A:snapshot | S:保持严格 FIFO，不做按级别保留——留下的旧错误行 seq 小于 lastSeq，增量拉取永远看不到；容量取 Contract.LOGS_CAPACITY；clear 不回退 seq
 RequestTrace.java[DR5T]: F:单次请求的关联标识：tools/call 期间给同线程日志加 req=<6hex> | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:enter | S:只覆盖同线程同步链，跨 Binder/隔线程/跨进程不继承（不伪造关联）；无嵌套栈，enter 会覆盖外层 id，需要嵌套时先改成保存 previous 的实现
-LogExport.java[DM6M]: F:日志导出：把合并视图 JSON 按级别/进程/时间/关键字筛选，产出 meta、文本与结构化 JSON 三段 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/me/LogsScreen.kt | A:build | S:minSeverity 与 rank 同尺度（0 全部 / 2 警告 / 3 错误），不是「第几档」；limit<=0 回落到 MAX_LINES 而不是导出空；本类不做 I/O，ZIP 由 UI 写；meta 里的脱敏声明是给分享对象的提示，不要删
+LogExport.java[DM6M]: F:日志导出与自诊断：按级别/进程/时间/关键字筛选，产出 meta/文本/JSON，并从整份日志推出结论 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/me/LogsScreen.kt | A:build | S:minSeverity 与 rank 同尺度（0 全部 / 2 警告 / 3 错误）；诊断必须基于未筛选的全量日志，否则筛选会吃掉证据；结论优先级＝未装载 > 正常 > 不兼容 > 尚未测到，改顺序会误判；本类不做 I/O
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/application/runtime/===
 AgentControl.java[DR5T]: F:动作面启停端口：按配置决定启动或停止 | R:code:platform/src/main/java/plus/xiaoi/module/agent/AgentService.java | A:startIfEnabled | S:名字里的 8770 是历史叫法；0.16.0 起动作面不再监听，实现只负责 IPC 侧就绪状态
@@ -452,7 +452,7 @@ AppearanceScreen.kt[EU5S]: F:外观页：跟随系统、浅色、深色三档主
 ConfigManageScreen.kt[EU8L]: F:配置管理页：备份与还原、脱敏导出与分享、运行时导入、损坏恢复与重置 | R:code:domain/src/main/java/plus/xiaoi/module/core/config/ConfigGateway.java | A:ConfigManageScreen | S:脱敏导出的密钥是掩码因此不可还原；恢复与重置必须明确提示会覆盖当前文件，不能一键静默执行
 DiagnosticsScreen.kt[EU7L]: F:诊断页：四维状态、两个端口、配置完整性、Root 与 LSPosed、权限矩阵、复制与导出日志 | R:code:domain/src/main/java/plus/xiaoi/module/core/ErrorCatalog.java | A:DiagnosticsScreen | S:只展示已有事实，端口未知就写未知；导出日志前必须脱敏，不能把原始行直接发出去
 LicensesScreen.kt[EU3S]: F:开源许可页：本项目与依赖库的许可证与致谢 | R:code:LICENSE | A:LicensesScreen | S:三组版权声明写死在页面里，不做网络请求，断网也能看到许可信息
-LogsScreen.kt[EU7L]: F:日志页：档位切换、级别/来源筛选、跟随、清空，以及受筛选的导出（ZIP/文本/JSON） | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogExport.java | A:LogsScreen | S:导出读 dumpJson 合并视图而不是屏幕文本；SAF 三个 launcher 按格式分开；meta 必须带「模块 + 小爱 + Android + 机型 + 档位」，缺小爱版本这一份日志就配不上兼容性矩阵
+LogsScreen.kt[EU7L]: F:日志页：档位切换、级别/来源筛选、跟随、清空，以及受筛选的导出（ZIP/文本/JSON） | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogExport.java | A:LogsScreen | S:导出读 dumpJson 合并视图而不是屏幕文本；SAF 三个 launcher 按格式分开；导出完成提示用 LogExport 的结论而不是筛选描述——筛选条件在 meta 里有，提示要回答「成没成功」
 MeScreen.kt[EU7L]: F:我的页：本机信息、Root 与 LSPosed 徽章、设置入口、版本与危险区 | R:code:docs/ui/SCREENS.md | A:MeScreen | S:危险区默认折叠，展开后仍需二次确认；不显示头像或账号，避免暗示登录态
 MeSupport.kt[EU6S]: F:我的域纯工具：版本读取、地址脱敏、配置摘要、复制与 Root 检测 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:MeSupport | S:只保留 host；解析失败也要手工剥掉 query 与 userinfo，绝不把完整 URL 带进界面或剪贴板
 SponsorScreen.kt[EU3S]: F:赞助页：收款图与说明、复制口令与打开链接 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt | A:SponsorScreen | S:只做展示与复制，不在应用内加载网页或发起支付，避免把第三方页面塞进 WebView

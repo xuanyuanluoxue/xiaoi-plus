@@ -121,6 +121,39 @@ public final class LogExportTest {
         T.eq("进程含 voice_trigger", "com.miui.voiceassist:voice_trigger", procs.get(2));
         T.eq("坏 JSON 无进程", 0, LogExport.procs("{oops").size());
 
+        // ---- 诊断结论：导出包自己回答「成没成功」----
+        LogExport.Diagnosis none = LogExport.diagnose(DUMP);
+        T.ok("无 hook 记录判为未装载", none.verdict.contains("未装载"));
+        T.eq("诊断进程数", 3, none.procs);
+        T.eq("诊断 hook 进程数", 0, none.hookPids);
+
+        String installed = line(1, "I", 11, "配置 hook 完成");
+        String okCase = wrap(installed + "," + line(2, "I", 11, "改写命中: model=m")
+                + "," + line(3, "I", 11, "模型调用: 三方 qm.i model=m"));
+        LogExport.Diagnosis ok = LogExport.diagnose(okCase);
+        T.ok("改写+三方判为正常", ok.verdict.contains("正常"));
+        T.eq("改写命中计数", 1, ok.rewriteHits);
+        T.eq("三方调用计数", 1, ok.thirdCalls);
+
+        String badCase = wrap(installed + "," + line(2, "I", 11, "模型调用: 官方 um.h model=m"));
+        LogExport.Diagnosis bad = LogExport.diagnose(badCase);
+        T.ok("官方调用无改写判为不兼容", bad.verdict.contains("不兼容"));
+        T.eq("官方调用计数", 1, bad.officialCalls);
+
+        String noCall = wrap(installed);
+        T.ok("装了但没调用要提示去测", LogExport.diagnose(noCall).verdict.contains("尚未测到"));
+
+        String ignoredCase = wrap(installed + ","
+                + line(2, "I", 11, "第三方模型已启用，但配置 getter 从未被读取（um.h）"));
+        T.ok("识别 getter 告警", LogExport.diagnose(ignoredCase).getterIgnored);
+        T.ok("告警进结论", LogExport.diagnose(ignoredCase).verdict.contains("getter"));
+
+        // 结论必须进 meta 与 json，收日志的人不用再问
+        LogExport.Result withDiag = LogExport.build(okCase, new LogExport.Filter(), null);
+        T.ok("meta 含结论", withDiag.meta.contains("# 结论: 正常"));
+        T.ok("json 含 diagnosis", withDiag.json.contains("\"diagnosis\""));
+        T.eq("Result 带结论", ok.verdict, withDiag.verdict);
+
         return T.report("LogExportTest");
     }
 
@@ -128,5 +161,18 @@ public final class LogExportTest {
         LogExport.Filter f = new LogExport.Filter();
         f.minSeverity = severity;
         return f;
+    }
+
+    /** 构造一条结构化日志行（ts 随 seq 递增，便于排序）。 */
+    private static String line(int seq, String level, int pid, String msg) {
+        return "{\"seq\":" + seq + ",\"level\":\"" + level + "\",\"msg\":\"" + msg
+                + "\",\"tag\":\"\",\"ts\":" + (1000 + seq) + ",\"pid\":" + pid
+                + ",\"proc\":\"com.miui.voiceassist\"}";
+    }
+
+    private static String wrap(String csvLines) {
+        int n = csvLines.split(",").length;
+        return "{\"count\":" + n + ",\"lastSeq\":" + n
+                + ",\"scope\":\"merged\",\"lines\":[" + csvLines + "]}";
     }
 }

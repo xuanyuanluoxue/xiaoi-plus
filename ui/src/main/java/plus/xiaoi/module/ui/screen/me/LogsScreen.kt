@@ -290,7 +290,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                             else -> os.write(result.json.toByteArray(Charsets.UTF_8))
                         }
                     }
-                    "已导出 ${result.count} 条 · ${LogExport.describe(filter)}"
+                    "已导出 ${result.count} 条 · ${result.verdict}"
                 }.getOrElse {
                     "导出失败：${it.message ?: it.javaClass.simpleName}"
                 }

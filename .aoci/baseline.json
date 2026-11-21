@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-21T10:33:51Z",
+  "updated_at": "2026-11-21T14:16:34Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "6e8d8b50deba1068956231eea0e7bca4f7b911090c3ea59ad28cb295d800530f",
-      "size": 82579,
-      "normalized_sha256": "6e8d8b50deba1068956231eea0e7bca4f7b911090c3ea59ad28cb295d800530f"
+      "sha256": "395d56dbaf4de86ddc9f5cd2beef7fa7bdeb5b3cac5e8de754c172f6d68db700",
+      "size": 84072,
+      "normalized_sha256": "395d56dbaf4de86ddc9f5cd2beef7fa7bdeb5b3cac5e8de754c172f6d68db700"
     },
     "LICENSE": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "443107ab787638a33cb7db91b6a384e5e4fbbab995ee2f4468a0447716dc7345",
-      "size": 108163,
-      "normalized_sha256": "443107ab787638a33cb7db91b6a384e5e4fbbab995ee2f4468a0447716dc7345"
+      "sha256": "9c79c50a9a85aceb0700546a88a2a9301fbca8e859afaef04b16ad13a22a717c",
+      "size": 108180,
+      "normalized_sha256": "9c79c50a9a85aceb0700546a88a2a9301fbca8e859afaef04b16ad13a22a717c"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -137,9 +137,9 @@
     },
     "app/src/main/AndroidManifest.xml": {
       "role": "index",
-      "sha256": "902c695e071ff95c7cdcd13e1e7ad4d2f858b1d67ea1a83036a01617319ee54f",
+      "sha256": "da28cdeaa7cd86a7d0474bc9cbc10fb0933787780a5bd609b372b6e42ae7ffe7",
       "size": 4947,
-      "normalized_sha256": "902c695e071ff95c7cdcd13e1e7ad4d2f858b1d67ea1a83036a01617319ee54f"
+      "normalized_sha256": "da28cdeaa7cd86a7d0474bc9cbc10fb0933787780a5bd609b372b6e42ae7ffe7"
     },
     "app/src/main/assets/xposed_init": {
       "role": "index",
@@ -359,9 +359,9 @@
     },
     "application/src/main/java/plus/xiaoi/module/application/log/LogExport.java": {
       "role": "index",
-      "sha256": "5235f7c5157c1c43f89c5aaf8e0ddc6fdef100e3a279058117a4c49f5b7e4d64",
-      "size": 9562,
-      "normalized_sha256": "5235f7c5157c1c43f89c5aaf8e0ddc6fdef100e3a279058117a4c49f5b7e4d64"
+      "sha256": "6785197416bf8e070111204cc070cd6218f6065051833c82c41551981518d191",
+      "size": 15015,
+      "normalized_sha256": "6785197416bf8e070111204cc070cd6218f6065051833c82c41551981518d191"
     },
     "application/src/main/java/plus/xiaoi/module/application/log/LogRing.java": {
       "role": "index",
@@ -2031,9 +2031,9 @@
     },
     "tests/src/plus/xiaoi/module/LogExportTest.java": {
       "role": "observe",
-      "sha256": "4263a8c7f5a02843e39f9aed260fe907c9b0ae9dabb4176b8e22b9f8894852e6",
-      "size": 6258,
-      "normalized_sha256": "4263a8c7f5a02843e39f9aed260fe907c9b0ae9dabb4176b8e22b9f8894852e6"
+      "sha256": "3e70548d0456006d8008be1c905fe48a8e505f8852a72f021ea59246dd89593b",
+      "size": 8868,
+      "normalized_sha256": "3e70548d0456006d8008be1c905fe48a8e505f8852a72f021ea59246dd89593b"
     },
     "tests/src/plus/xiaoi/module/LogFileSinkTest.java": {
       "role": "observe",
@@ -2445,9 +2445,9 @@
     },
     "ui/src/main/java/plus/xiaoi/module/ui/screen/me/LogsScreen.kt": {
       "role": "index",
-      "sha256": "34f0a6d3fef4b6c099d5877e02771a53f8ada47db100ccd76403a332e4f9384f",
-      "size": 27141,
-      "normalized_sha256": "34f0a6d3fef4b6c099d5877e02771a53f8ada47db100ccd76403a332e4f9384f"
+      "sha256": "7af37fb404c470a96f8ba616f1310321acce8fe415c8801b483c073eb827d987",
+      "size": 27129,
+      "normalized_sha256": "7af37fb404c470a96f8ba616f1310321acce8fe415c8801b483c073eb827d987"
     },
     "ui/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt": {
       "role": "index",

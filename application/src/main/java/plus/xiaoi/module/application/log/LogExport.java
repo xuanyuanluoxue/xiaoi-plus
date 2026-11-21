@@ -41,7 +41,7 @@ public final class LogExport {
         public String rangeLabel = "";
     }
 
-    /** 导出结果：三段文本 + 统计。 */
+    /** 导出结果：三段文本 + 统计 + 诊断结论。 */
     public static final class Result {
         /** 实际导出条数。 */
         public final int count;
@@ -52,15 +52,102 @@ public final class LogExport {
         public final String meta;
         public final String text;
         public final String json;
+        /** 一句话结论（也写进 meta），例如「正常：已改写并走三方模型」。 */
+        public final String verdict;
 
-        Result(int count, int total, String scope, String meta, String text, String json) {
+        Result(int count, int total, String scope, String meta, String text, String json,
+               String verdict) {
             this.count = count;
             this.total = total;
             this.scope = scope;
             this.meta = meta;
             this.text = text;
             this.json = json;
+            this.verdict = verdict;
         }
+    }
+
+    /**
+     * 从整份日志（不受筛选影响）推出的运行结论。
+     *
+     * <p>为什么要有它：一份 ZIP 交给别人时，对方第一句话永远是「所以到底成没成功」。
+     * 把这些判断放在导出侧，收日志的人不用再逐行 grep，也不用回问。</p>
+     */
+    public static final class Diagnosis {
+        /** 出现过日志的进程数。 */
+        public final int procs;
+        /** 出现「配置 hook 完成」的 pid 数。 */
+        public final int hookPids;
+        /** 「改写命中」行数。 */
+        public final int rewriteHits;
+        /** 「模型调用: 三方」行数。 */
+        public final int thirdCalls;
+        /** 「模型调用: 官方」行数。 */
+        public final int officialCalls;
+        /** 是否出现「getter 从未被读取」告警。 */
+        public final boolean getterIgnored;
+        public final String verdict;
+
+        Diagnosis(int procs, int hookPids, int rewriteHits, int thirdCalls,
+                  int officialCalls, boolean getterIgnored, String verdict) {
+            this.procs = procs;
+            this.hookPids = hookPids;
+            this.rewriteHits = rewriteHits;
+            this.thirdCalls = thirdCalls;
+            this.officialCalls = officialCalls;
+            this.getterIgnored = getterIgnored;
+            this.verdict = verdict;
+        }
+    }
+
+    /**
+     * 判定规则（顺序即优先级）：
+     * <ol>
+     *   <li>没有任何 hook 装载记录 → 模块没进来</li>
+     *   <li>三方调用且改写命中 → 正常</li>
+     *   <li>有官方调用但没有改写命中 → 装上了但不生效（版本不兼容）</li>
+     *   <li>一次模型调用都没有 → 还没测（本地技能应答不产生调用）</li>
+     * </ol>
+     */
+    public static Diagnosis diagnose(String dumpJson) {
+        return diagnose(lines(dumpJson));
+    }
+
+    /** 判定规则同上；调用方已有解析结果时用它，避免二次解析。 */
+    public static Diagnosis diagnose(List<Map<?, ?>> all) {
+        java.util.Set<Integer> pids = new java.util.HashSet<Integer>();
+        java.util.Set<Integer> hookPids = new java.util.HashSet<Integer>();
+        int rewrite = 0;
+        int third = 0;
+        int official = 0;
+        boolean ignored = false;
+        for (Map<?, ?> line : all) {
+            int pid = (int) Json.optLong(line, "pid", 0L);
+            if (pid > 0) pids.add(pid);
+            String msg = Json.optString(line, "msg", "");
+            if (msg.contains("配置 hook 完成") && pid > 0) hookPids.add(pid);
+            if (msg.contains("改写命中")) rewrite++;
+            if (msg.contains("模型调用: 三方")) third++;
+            if (msg.contains("模型调用: 官方")) official++;
+            if (msg.contains("getter 从未被读取")) ignored = true;
+        }
+        String verdict;
+        if (hookPids.isEmpty()) {
+            verdict = "未装载：这段日志里没有 hook 装载记录，模块可能没启用或没生效";
+        } else if (third > 0 && rewrite > 0) {
+            verdict = "正常：已改写并走三方模型";
+        } else if (official > 0 && rewrite == 0) {
+            verdict = "异常：已启用但请求仍走官方模型，该小爱版本可能不兼容";
+        } else if (third == 0 && official == 0) {
+            verdict = "尚未测到模型调用：先说一句开放式问题，再立即导出";
+        } else if (rewrite == 0) {
+            verdict = "未判定：有调用但没有改写命中记录，请检查日志档位是否过低";
+        } else {
+            verdict = "部分生效：有改写命中但没有三方调用记录";
+        }
+        if (ignored) verdict = verdict + "（日志含「getter 从未被读取」告警）";
+        return new Diagnosis(pids.size(), hookPids.size(), rewrite, third, official,
+                ignored, verdict);
     }
 
     /** 级别权重：D < I < W < E。未知级别按 I 处理，避免被静默丢掉。 */
@@ -82,22 +169,9 @@ public final class LogExport {
         Filter f = filter == null ? new Filter() : filter;
         int limit = f.limit <= 0 ? MAX_LINES : Math.min(f.limit, MAX_LINES);
 
-        List<Map<?, ?>> all = new ArrayList<Map<?, ?>>();
-        String scope = "local";
-        try {
-            Object root = Json.read(dumpJson == null ? "" : dumpJson);
-            if (root instanceof Map) {
-                Map<?, ?> m = (Map<?, ?>) root;
-                scope = Json.optString(m, "scope", "local");
-                Object lines = m.get("lines");
-                if (lines instanceof List) {
-                    for (Object v : (List<?>) lines) {
-                        if (v instanceof Map) all.add((Map<?, ?>) v);
-                    }
-                }
-            }
-        } catch (Throwable ignored) {
-        }
+        List<Map<?, ?>> all = lines(dumpJson);
+        String scope = scopeOf(dumpJson);
+        Diagnosis diag = diagnose(all);
 
         List<Map<?, ?>> kept = new ArrayList<Map<?, ?>>();
         String kw = f.keyword == null ? "" : f.keyword.trim().toLowerCase(Locale.US);
@@ -136,6 +210,12 @@ public final class LogExport {
         StringBuilder meta = new StringBuilder();
         meta.append("# xiaoi-plus 运行日志\n");
         meta.append("# 导出时间: ").append(stamp.format(new Date())).append('\n');
+        meta.append("# 结论: ").append(diag.verdict).append('\n');
+        meta.append("# 进程: ").append(diag.procs).append(" 个")
+                .append("，hook 装载 ").append(diag.hookPids).append(" 个\n");
+        meta.append("# 改写命中: ").append(diag.rewriteHits)
+                .append("；模型调用: 三方 ").append(diag.thirdCalls)
+                .append(" / 官方 ").append(diag.officialCalls).append('\n');
         meta.append("# 数据来源: ").append(scope).append(scopeLine(scope)).append('\n');
         meta.append("# 条数: ").append(kept.size()).append(" / ").append(all.size()).append('\n');
         meta.append("# 筛选: ").append(describe(f)).append('\n');
@@ -160,10 +240,44 @@ public final class LogExport {
         desc.put("sinceTs", f.sinceTs);
         desc.put("limit", limit);
         out.put("filters", desc);
+        Map<String, Object> dg = Json.obj();
+        dg.put("verdict", diag.verdict);
+        dg.put("procs", diag.procs);
+        dg.put("hookPids", diag.hookPids);
+        dg.put("rewriteHits", diag.rewriteHits);
+        dg.put("thirdCalls", diag.thirdCalls);
+        dg.put("officialCalls", diag.officialCalls);
+        dg.put("getterIgnored", diag.getterIgnored);
+        out.put("diagnosis", dg);
         out.put("lines", arr);
 
         return new Result(kept.size(), all.size(), scope,
-                meta.toString(), text.toString(), Json.write(out));
+                meta.toString(), text.toString(), Json.write(out), diag.verdict);
+    }
+
+    /** 解析导出 JSON 里的 lines；坏输入返回空表，绝不抛。 */
+    private static List<Map<?, ?>> lines(String dumpJson) {
+        List<Map<?, ?>> out = new ArrayList<Map<?, ?>>();
+        try {
+            Object root = Json.read(dumpJson == null ? "" : dumpJson);
+            if (!(root instanceof Map)) return out;
+            Object list = ((Map<?, ?>) root).get("lines");
+            if (!(list instanceof List)) return out;
+            for (Object v : (List<?>) list) {
+                if (v instanceof Map) out.add((Map<?, ?>) v);
+            }
+        } catch (Throwable ignored) {
+        }
+        return out;
+    }
+
+    private static String scopeOf(String dumpJson) {
+        try {
+            Object root = Json.read(dumpJson == null ? "" : dumpJson);
+            if (root instanceof Map) return Json.optString((Map<?, ?>) root, "scope", "local");
+        } catch (Throwable ignored) {
+        }
+        return "local";
     }
 
     /** 合并视图里出现过的进程名（去重排序），供界面生成筛选 chips。 */
