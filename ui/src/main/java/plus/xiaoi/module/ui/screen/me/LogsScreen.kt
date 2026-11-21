@@ -256,8 +256,12 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                     val version = runCatching {
                         context.packageManager.getPackageInfo(context.packageName, 0).versionName
                     }.getOrNull() ?: "?"
+                    val xiaoiVersion = runCatching {
+                        context.packageManager.getPackageInfo("com.miui.voiceassist", 0).versionName
+                    }.getOrNull() ?: "?"
                     val header = listOf(
                         "模块: $version",
+                        "小爱: $xiaoiVersion",
                         "Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
                         "机型: ${Build.MANUFACTURER} ${Build.MODEL}",
                         "日志档位: ${level.wire}",

@@ -1159,9 +1159,9 @@ public final class Bridge {
             }
         } catch (Throwable ignored) {
         }
-        return "0.2.0";
+        // 读不到就报 "?"：写死一个旧版本号会让人以为跑的是那个版本。
+        return "?";
     }
-
     private static void respondText(Socket s, int code, String body) throws Exception {
         Http.respond(s.getOutputStream(), code, "text/plain; charset=utf-8", body);
     }

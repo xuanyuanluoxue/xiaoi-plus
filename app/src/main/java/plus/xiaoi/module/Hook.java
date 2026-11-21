@@ -30,6 +30,8 @@ public class Hook implements IXposedHookLoadPackage {
     private static volatile boolean sChatHooked;
     private static volatile boolean sChatMarkerLogged;
     private static volatile boolean sVisionHooked;
+    /** 版本行每进程只打一次（配置热更新时 Application 已就绪，读得到）。 */
+    private static volatile boolean sVersionLogged;
     private static volatile boolean sFacadeHooked;
     private static volatile boolean sLlmHooked;
     private static volatile boolean sProviderHooked;
@@ -115,6 +117,7 @@ public class Hook implements IXposedHookLoadPackage {
         try {
             sConfig = c;
             Config.setCurrent(c);
+            logVersions();
             ClassLoader cl = sCl;
             if (cl != null) {
                 hookConfigObject(cl);
@@ -137,16 +140,37 @@ public class Hook implements IXposedHookLoadPackage {
 
     /** 读小爱 versionName；早期加载（Application 未就绪）返回 null。 */
     private static String readVersionName() {
+        return versionNameOf(TARGET);
+    }
+
+    /** 读任意包的 versionName；Application 未就绪或包不存在时返回 null。 */
+    private static String versionNameOf(String pkg) {
         try {
             Class<?> at = Class.forName("android.app.ActivityThread");
             Object app = at.getMethod("currentApplication").invoke(null);
             android.content.pm.PackageManager pm =
                     (android.content.pm.PackageManager) app.getClass()
                             .getMethod("getPackageManager").invoke(app);
-            return pm.getPackageInfo(TARGET, 0).versionName;
+            return pm.getPackageInfo(pkg, 0).versionName;
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /**
+     * 每进程打一次"模块 + 小爱"版本行。
+     *
+     * <p>为什么在这里打而不是启动行：进程刚起来时 Application 还没就绪，读不到
+     * PackageManager，启动行只能写 {@code version=?}。配置热更新发生在控制面连上之后，
+     * 那时读得到——这条是"一份日志能不能对上兼容性矩阵"的唯一依据。</p>
+     */
+    private static void logVersions() {
+        if (sVersionLogged) return;
+        sVersionLogged = true;
+        String module = versionNameOf("plus.xiaoi.module");
+        String xiaoi = readVersionName();
+        Logs.i("版本: 模块 " + (module == null ? "?" : module)
+                + " · 小爱 " + (xiaoi == null ? "?" : xiaoi));
     }
 
     private static boolean isWhitelisted(String version) {

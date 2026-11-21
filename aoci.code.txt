@@ -50,7 +50,7 @@ AndroidManifest.xml[FV8T]: F:壳清单：versionName 与 versionCode 唯一来�
 xposed_init[FV6T]: F:Xposed 入口声明：一行写 Hook 类全名 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:plus.xiaoi.module.Hook | S:类改名必须同步这里，否则 LSPosed 找不到入口且不报任何错
 
 ===/<repository>/app/src/main/java/plus/xiaoi/module/===
-Hook.java[EI8L]: F:LSPosed 入口：按版本白名单判定后安装数据面 hook（模型重定向、视觉、用量、provider 标识、facade），并把安装结果打点进 HookStatus | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:handleLoadPackage | S:每个 hook 必须 try/catch 且只写日志；白名单现含 8.2.65.4714 与 8.2.70.8421；入口先 HookStatus.setProbe 再判定版本（此处读不到 versionName 是常态）；密钥那行不能写成 apiKey=...——日志到 App 侧会再过一遍 Redact，键值形状会把长度描述一起吃掉
+Hook.java[EI8L]: F:LSPosed 入口：按版本白名单判定后安装数据面 hook（模型重定向、视觉、用量、provider 标识、facade），打点进 HookStatus，并在热更新时打版本行 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:handleLoadPackage | S:每个 hook 必须 try/catch 且只写日志；白名单现含 8.2.65.4714 与 8.2.70.8421；入口先 HookStatus.setProbe 再判定版本（此处读不到 versionName 是常态）；版本行只能在 applyConfig 里打——启动阶段 Application 未就绪，PackageManager 读不到包信息
 MainActivity.kt[EU8L]: F:单 Activity 壳：4 tab 加 20 路由、统一返回栈、玻璃底栏与 Snackbar 宿主 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/home/HomeStateHolder.kt | A:XiaoiRoute | S:路由名必须与 ui 页面一一对应；提示走 message() 到 SnackbarHost，禁用 Toast；返回只走普通 BackHandler，预测性返回已移除
 
 ===/<repository>/app/src/main/res/drawable/===
@@ -317,7 +317,7 @@ build.gradle.kts[FV7T]: F:platform 模块构建：Android 库、独立 namespace
 AndroidAppRuntime.java[IU7M]: F:UI 运行时实现装配：把 11 个窄端口接到 App 进程内的具体实现 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/AppRuntime.java | A:AppRuntime | S:任一端口为 null 直接抛异常；controlLog 的 dumpJson 必须转 BridgeControlService.mergedLogsJson（App 是唯一合并节点），不要改成读本进程 Logs
 AppExecutors.java[IR6T]: F:App 进程唯一的后台执行器：固定 3 个 IO 守护线程与主线程回调 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/BackgroundTasks.java | A:io | S:执行器被关闭时退化为同步执行，保证调用方逻辑不丢；小爱进程里的 Bridge 与 Hook 不能依赖它
 AppLaunch.java[IU5T]: F:打开本 App 的唯一入口：用包名加类名拼显式 Intent | R:code:app/src/main/AndroidManifest.xml | A:ENTRY_CLASS | S:platform 不能引用 app 的 MainActivity，否则依赖倒置；改启动页必须同步这里与一致性门禁
-Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听与 leader 绑定、HTTP 路由与鉴权、MCP 分发、控制面与动作面转发、日志合并视图回落 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handle | S:只有 leader 进程才绑定端口；POST /config 恒 410；/island 仅 loopback 免 token，其它端点一律要 Bearer；/logs 与 xiaoai_logs 必须都走 logsView，只有一处走合并会造成两个接口不一致；since>0 时即使 0 条也不能回落本进程，否则游标会切到另一个序号空间
+Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听与 leader 绑定、HTTP 路由与鉴权、MCP 分发、控制面与动作面转发、日志合并视图回落 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handle | S:只有 leader 进程才绑定端口；POST /config 恒 410；/island 仅 loopback 免 token，其它端点一律要 Bearer；/logs 与 xiaoai_logs 必须都走 logsView；versionName() 读不到时返回 "?"，不要回落到写死的旧版本号
 Config.java[DC7M]: F:配置快照：模块 prefs 的键常量、不可变快照与跨进程热读缓存 | R:code:platform/src/main/java/plus/xiaoi/module/Prefs.java | A:current | S:prefs 只是跨进程快照，事实源是私有 config.json 的 rev；热读靠 prefs 文件 mtime，最多 800ms 才能跟上
 ConfigRepository.java[DC7M]: F:配置的 Android 组装点：单例、私有目录、prefs 镜像、持久化效应与旧外部文件迁移 | R:code:application/src/main/java/plus/xiaoi/module/application/config/ConfigService.java | A:get | S:规则全在 ConfigService，本类只组装；prefs 写入必须 commit 而不是 apply，因为写完立刻要通知 reload
 ConfigSync.java[DC8M]: F:config.json 文件监听与自动应用：防抖、内容哈希去环、启动对齐、从运行中小爱导入 | R:code:platform/src/main/java/plus/xiaoi/module/ConfigRepository.java | A:applyIfChanged | S:用内容哈希去环，否则自己写文件会触发回环；运行时变更绝不静默写回文件，文件永远优先
@@ -452,7 +452,7 @@ AppearanceScreen.kt[EU5S]: F:外观页：跟随系统、浅色、深色三档主
 ConfigManageScreen.kt[EU8L]: F:配置管理页：备份与还原、脱敏导出与分享、运行时导入、损坏恢复与重置 | R:code:domain/src/main/java/plus/xiaoi/module/core/config/ConfigGateway.java | A:ConfigManageScreen | S:脱敏导出的密钥是掩码因此不可还原；恢复与重置必须明确提示会覆盖当前文件，不能一键静默执行
 DiagnosticsScreen.kt[EU7L]: F:诊断页：四维状态、两个端口、配置完整性、Root 与 LSPosed、权限矩阵、复制与导出日志 | R:code:domain/src/main/java/plus/xiaoi/module/core/ErrorCatalog.java | A:DiagnosticsScreen | S:只展示已有事实，端口未知就写未知；导出日志前必须脱敏，不能把原始行直接发出去
 LicensesScreen.kt[EU3S]: F:开源许可页：本项目与依赖库的许可证与致谢 | R:code:LICENSE | A:LicensesScreen | S:三组版权声明写死在页面里，不做网络请求，断网也能看到许可信息
-LogsScreen.kt[EU7L]: F:日志页：档位切换、级别/来源筛选、跟随、清空，以及受筛选的导出（ZIP/文本/JSON） | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogExport.java | A:LogsScreen | S:导出必须读 dumpJson 的合并视图，不能拿屏幕文本充数（文本没有 pid/proc/ts）；SAF 的三个 launcher 按格式分开，mime 不能复用；筛选命中 0 条要报错而不是产出空文件
+LogsScreen.kt[EU7L]: F:日志页：档位切换、级别/来源筛选、跟随、清空，以及受筛选的导出（ZIP/文本/JSON） | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogExport.java | A:LogsScreen | S:导出读 dumpJson 合并视图而不是屏幕文本；SAF 三个 launcher 按格式分开；meta 必须带「模块 + 小爱 + Android + 机型 + 档位」，缺小爱版本这一份日志就配不上兼容性矩阵
 MeScreen.kt[EU7L]: F:我的页：本机信息、Root 与 LSPosed 徽章、设置入口、版本与危险区 | R:code:docs/ui/SCREENS.md | A:MeScreen | S:危险区默认折叠，展开后仍需二次确认；不显示头像或账号，避免暗示登录态
 MeSupport.kt[EU6S]: F:我的域纯工具：版本读取、地址脱敏、配置摘要、复制与 Root 检测 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:MeSupport | S:只保留 host；解析失败也要手工剥掉 query 与 userinfo，绝不把完整 URL 带进界面或剪贴板
 SponsorScreen.kt[EU3S]: F:赞助页：收款图与说明、复制口令与打开链接 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt | A:SponsorScreen | S:只做展示与复制，不在应用内加载网页或发起支付，避免把第三方页面塞进 WebView
