@@ -56,6 +56,16 @@ public final class Contract {
     public static final int MEMORY_INJECT_LINES_DEFAULT = 20;
     /** 记忆注入行数上限。 */
     public static final int MEMORY_INJECT_LINES_MAX = 100;
+    /** 单次追加/替换的正文上限（UTF-8 字节）。 */
+    public static final int MEMORY_APPEND_MAX_BYTES = 4 * 1024;
+    /** 记忆文件总量上限（UTF-8 字节）；超过一律拒绝写入。 */
+    public static final int MEMORY_FILE_MAX_BYTES = 512 * 1024;
+    /** 小节标题长度上限（字符）。 */
+    public static final int MEMORY_SECTION_MAX = 64;
+    /** xiaoai_memory op=get 每个小节默认返回多少条。 */
+    public static final int MEMORY_GET_LIMIT_DEFAULT = 50;
+    /** xiaoai_memory op=get 每个小节的返回上限。 */
+    public static final int MEMORY_GET_LIMIT_MAX = 200;
 
     // ------------------------------------------------------------- 查询上限
 
