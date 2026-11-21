@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 
 import plus.xiaoi.module.core.hook.UsageSignal;
 import plus.xiaoi.module.core.hook.XiaoiOverridePolicy;
+import plus.xiaoi.module.core.prompt.PromptTemplate;
 import plus.xiaoi.module.application.hook.HookStatus;
 
 /**
@@ -266,7 +267,8 @@ public class Hook implements IXposedHookLoadPackage {
             XposedBridge.hookMethod(target, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
-                    // 请求侧改写点保留为空（输出前缀已改到响应侧 hookResponsePrefix）
+                    // P2-C：Responses 链路（instructions）——任何异常都保持原结果。
+                    applyPromptInjection(param);
                 }
             });
             Logs.i("Responses 请求 hook 完成");
@@ -298,7 +300,8 @@ public class Hook implements IXposedHookLoadPackage {
             XposedBridge.hookMethod(target, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
-                    // 同上：请求侧改写点保留为空
+                    // P2-C：chat/completions 链路（messages 里的 system）——失败即原样。
+                    applyPromptInjection(param);
                 }
             });
             Logs.i("chat 请求 hook 完成");
@@ -308,9 +311,131 @@ public class Hook implements IXposedHookLoadPackage {
         }
     }
 
+    // ------------------------------------------------------------- P2-C 提示词注入
+
+    /** 记住小爱的 kotlinx {@code Json} 单例与 {@code parseToJsonElement}，只解析一次。 */
+    private static volatile Object sKotlinJson;
+    private static volatile java.lang.reflect.Method sParseToJsonElement;
+    /** 请求体顶层键只打印一次（debug 档），用于核对字段名，不打印任何值。 */
+    private static volatile boolean sRequestKeysLogged;
+
     /**
-     * 调用量统计：挂在真正的模型客户端上，一次模型调用记一行。
+     * 请求构造后的提示词注入。
      *
+     * <p>链路：{@code JsonObject.toString()} → {@link PromptInjector}（纯函数）→
+     * 小爱的 kotlinx {@code Json.parseToJsonElement} → {@code setResult}。</p>
+     *
+     * <p><b>失败即原样</b>：任何异常都只记一行日志并保持小爱好原来的请求，
+     * 绝不因为提示词配置影响对话。</p>
+     */
+    private static void applyPromptInjection(XC_MethodHook.MethodHookParam param) {
+        try {
+            Config c = Config.current();
+            if (c == null) return;
+            if (!c.promptEnabled() && !c.memoryInject()) return;
+            Object result = param.getResult();
+            if (result == null) return;
+            if (!result.getClass().getName().contains("JsonObject")) return;
+
+            String json = String.valueOf(result);
+            logRequestKeysOnce(json);
+            String outline = c.memoryInject() ? MemoryFiles.outline(c.memoryInjectLines()) : "";
+            PromptInjector.Options options = new PromptInjector.Options(
+                    c.promptEnabled(), c.promptMode(), c.promptText(),
+                    c.memoryInject(), c.memoryInjectLines(), outline);
+            PromptInjector.Result injected = PromptInjector.apply(json, options, promptVars(c));
+            if (!injected.changed) {
+                PromptRuntime.recordSkipped(injected.note);
+                return;
+            }
+            Object parsed = parseJsonElement(injected.json);
+            if (parsed == null) {
+                PromptRuntime.recordFailed("parse-" + injected.note);
+                return;
+            }
+            param.setResult(parsed);
+            PromptRuntime.recordInjected(injected.note);
+        } catch (Throwable t) {
+            PromptRuntime.recordFailed(t.getClass().getSimpleName());
+        }
+    }
+
+    /** 模板变量：只在注入时取一次。 */
+    private static PromptTemplate.Vars promptVars(Config c) {
+        String date = "";
+        String time = "";
+        try {
+            long now = System.currentTimeMillis();
+            date = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(new java.util.Date(now));
+            time = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+                    .format(new java.util.Date(now));
+        } catch (Throwable ignored) {
+        }
+        String device = "";
+        try {
+            device = android.os.Build.MODEL == null ? "" : android.os.Build.MODEL;
+        } catch (Throwable ignored) {
+        }
+        return new PromptTemplate.Vars(date, time, c.model(), device);
+    }
+
+    /**
+     * 用小爱自己的 kotlinx {@code Json} 单例把字符串解析回 {@code JsonElement}。
+     *
+     * <p>类名/字段名是版本相关的（当前 {@code s92.b} 的静态字段 {@code d}），
+     * 解析不了就返回 null，调用方保持原请求。加载失败会记一次日志，便于适配新版本。</p>
+     */
+    private static Object parseJsonElement(String text) {
+        ClassLoader cl = sCl;
+        if (cl == null || text == null || text.length() == 0) return null;
+        try {
+            Object parser = sKotlinJson;
+            if (parser == null) {
+                Class<?> holder = Class.forName("s92.b", false, cl);
+                parser = holder.getField("d").get(null);
+                if (parser == null) return null;
+                sParseToJsonElement = parser.getClass()
+                        .getMethod("parseToJsonElement", String.class);
+                sKotlinJson = parser;
+            }
+            Object element = sParseToJsonElement.invoke(parser, text);
+            if (element == null) return null;
+            if (!element.getClass().getName().contains("JsonObject")) return null;
+            return element;
+        } catch (Throwable t) {
+            // 每个进程只记一次：类名/字段名变了是适配问题，不是请求问题。
+            if (!sParseFailedLogged) {
+                sParseFailedLogged = true;
+                Logs.i("提示词注入：Json 单例不可用（" + t.getClass().getSimpleName()
+                        + "），已跳过注入");
+            }
+            return null;
+        }
+    }
+
+    private static volatile boolean sParseFailedLogged;
+
+    /** debug 档打印一次请求体顶层键名（无值），用来核对字段名是否与假设一致。 */
+    private static void logRequestKeysOnce(String json) {
+        if (sRequestKeysLogged) return;
+        sRequestKeysLogged = true;
+        try {
+            Object v = plus.xiaoi.module.Json.read(json);
+            if (!(v instanceof java.util.Map)) return;
+            StringBuilder sb = new StringBuilder();
+            for (Object k : ((java.util.Map<?, ?>) v).keySet()) {
+                if (sb.length() > 0) sb.append(',');
+                sb.append(String.valueOf(k));
+            }
+            Logs.event(plus.xiaoi.module.core.LogLevel.DEBUG, "D", "prompt",
+                    "请求顶层键=" + sb);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * 调用量统计：挂在真正的模型客户端上，一次模型调用记一行。     *
      * 实际链路是 InstrumentedLlmClient(ft.j) → DynLlmClient(qm.c) → 具体客户端，
      * 具体客户端才是发网络请求的地方：
      * <ul>
