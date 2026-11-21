@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-21T14:35:34Z",
+  "updated_at": "2026-11-21T14:56:45Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "0914c71ddeb99aa3d006a1646a780e45cf978ddc6d9eac22d19cb69b8241a3be",
-      "size": 85105,
-      "normalized_sha256": "0914c71ddeb99aa3d006a1646a780e45cf978ddc6d9eac22d19cb69b8241a3be"
+      "sha256": "8c08a2cb36f3d6be0f5a87fbd29fd311913d1be14503a86596ce8f51e4ea0d25",
+      "size": 85659,
+      "normalized_sha256": "8c08a2cb36f3d6be0f5a87fbd29fd311913d1be14503a86596ce8f51e4ea0d25"
     },
     "LICENSE": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "2eecfe83449fc128c64003f7c6a754ca4e9f172434ebc23ac6c9e638d7c85434",
+      "sha256": "3355b929a7397e3b2aa19e8794fb1b6ce158c6a49cbef1da841ae5843ee7063a",
       "size": 108342,
-      "normalized_sha256": "2eecfe83449fc128c64003f7c6a754ca4e9f172434ebc23ac6c9e638d7c85434"
+      "normalized_sha256": "3355b929a7397e3b2aa19e8794fb1b6ce158c6a49cbef1da841ae5843ee7063a"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -2463,9 +2463,9 @@
     },
     "ui/src/main/java/plus/xiaoi/module/ui/screen/me/SponsorScreen.kt": {
       "role": "index",
-      "sha256": "cc9713189014c67ecadbfcbfab6ece708234644b450664727bf76cff5623c22a",
-      "size": 5468,
-      "normalized_sha256": "cc9713189014c67ecadbfcbfab6ece708234644b450664727bf76cff5623c22a"
+      "sha256": "7462533c1161004a89401965509599ea2cc78e13bf78fde3e66d95f4741ebad7",
+      "size": 6571,
+      "normalized_sha256": "7462533c1161004a89401965509599ea2cc78e13bf78fde3e66d95f4741ebad7"
     },
     "ui/src/main/java/plus/xiaoi/module/ui/screen/xiaoai/ModelDialogs.kt": {
       "role": "index",

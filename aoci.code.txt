@@ -455,7 +455,7 @@ LicensesScreen.kt[EU3S]: F:开源许可页：本项目与依赖库的许可证�
 LogsScreen.kt[EU7L]: F:日志页：结构化列表（进程列/进程筛选）、环境自检卡、档位切换、跟随、清空，以及受筛选的导出 | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogExport.java | A:LogsScreen | S:列表读 dumpJson 而不是文本 dump（文本没有 proc/pid/tag）；来源筛选按 tag 判定，别再回去猜 msg 前缀；导出 ZIP 附带 history.txt（桥不可达就跳过）；导出提示要回答「成没成功」而不是重复筛选条件
 MeScreen.kt[EU7L]: F:我的页：本机信息、Root 与 LSPosed 徽章、设置入口、版本与危险区 | R:code:docs/ui/SCREENS.md | A:MeScreen | S:危险区默认折叠，展开后仍需二次确认；不显示头像或账号，避免暗示登录态
 MeSupport.kt[EU6S]: F:我的域纯工具：版本读取、地址脱敏、配置摘要、复制与 Root 检测 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:MeSupport | S:只保留 host；解析失败也要手工剥掉 query 与 userinfo，绝不把完整 URL 带进界面或剪贴板
-SponsorScreen.kt[EU3S]: F:赞助页：收款图与说明、复制口令与打开链接 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt | A:SponsorScreen | S:只做展示与复制，不在应用内加载网页或发起支付，避免把第三方页面塞进 WebView
+SponsorScreen.kt[EU3S]: F:赞助页：爱发电跳转与复制、微信收款码；不在应用内加载网页或支付 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt | A:SponsorScreen | S:域名 afdian.com；带 NEW_TASK；失败自动复制；链接文本可点
 
 ===/<repository>/ui/src/main/java/plus/xiaoi/module/ui/screen/xiaoai/===
 ModelDialogs.kt[EU5T]: F:模型页三个确认弹窗：放弃草稿、覆盖保存、删除服务商或模型 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/xiaoai/ModelStateHolder.kt | A:ModelDialogs | S:弹窗只负责展示与回调，真正删除与覆盖由状态持有者执行，避免两处都写文件

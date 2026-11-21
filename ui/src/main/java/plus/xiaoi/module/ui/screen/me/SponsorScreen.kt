@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -59,6 +60,28 @@ fun SponsorScreen(onMessage: (String) -> Unit) {
         }
     }
 
+    /**
+     * 打开爱发电。
+     *
+     * <p>三个细节都是踩过的坑：加 {@code NEW_TASK} 让非 Activity 上下文也能跳；
+     * 跳失败时**自动把链接放进剪贴板**，而不是只弹一句"请复制"；兜底再失败才报错。</p>
+     */
+    fun openAfDian() {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(AFDIAN_URL))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (t: Throwable) {
+            try {
+                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                cm?.setPrimaryClip(ClipData.newPlainText("afdian", AFDIAN_URL))
+                onMessage("没找到可用浏览器，链接已复制")
+            } catch (e: Throwable) {
+                onMessage("无法打开浏览器")
+            }
+        }
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -93,25 +116,27 @@ fun SponsorScreen(onMessage: (String) -> Unit) {
                 text = "打开爱发电",
                 style = XiaoiButtonStyle.PRIMARY,
                 modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    try {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(AFDIAN_URL)),
-                        )
-                    } catch (t: Throwable) {
-                        onMessage("无法打开浏览器，请复制链接")
-                    }
-                },
+                onClick = { openAfDian() },
             )
             Spacer(Modifier.height(4.dp))
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 XiaoiTextButton(text = "复制链接", onClick = { copyLink() })
             }
             Spacer(Modifier.height(2.dp))
+            // 链接本身也可点：只放一行不可点的文本，用户第一反应就是去戳它。
             Text(
                 AFDIAN_URL,
-                color = colors.textHint,
+                color = colors.primary,
                 style = XiaoiTheme.typography.mono,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { openAfDian() }
+                    .padding(vertical = 8.dp),
+            )
+            Text(
+                "点链接或按钮都能打开；打开失败会自动复制。",
+                color = colors.textHint,
+                style = XiaoiTheme.typography.caption,
             )
         }
 
