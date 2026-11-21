@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-21T14:16:34Z",
+  "updated_at": "2026-11-21T14:35:34Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "395d56dbaf4de86ddc9f5cd2beef7fa7bdeb5b3cac5e8de754c172f6d68db700",
-      "size": 84072,
-      "normalized_sha256": "395d56dbaf4de86ddc9f5cd2beef7fa7bdeb5b3cac5e8de754c172f6d68db700"
+      "sha256": "0914c71ddeb99aa3d006a1646a780e45cf978ddc6d9eac22d19cb69b8241a3be",
+      "size": 85105,
+      "normalized_sha256": "0914c71ddeb99aa3d006a1646a780e45cf978ddc6d9eac22d19cb69b8241a3be"
     },
     "LICENSE": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "9c79c50a9a85aceb0700546a88a2a9301fbca8e859afaef04b16ad13a22a717c",
-      "size": 108180,
-      "normalized_sha256": "9c79c50a9a85aceb0700546a88a2a9301fbca8e859afaef04b16ad13a22a717c"
+      "sha256": "2eecfe83449fc128c64003f7c6a754ca4e9f172434ebc23ac6c9e638d7c85434",
+      "size": 108342,
+      "normalized_sha256": "2eecfe83449fc128c64003f7c6a754ca4e9f172434ebc23ac6c9e638d7c85434"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -407,9 +407,9 @@
     },
     "application/src/main/java/plus/xiaoi/module/application/runtime/ControlLogStore.java": {
       "role": "index",
-      "sha256": "c5729c2aee0bb535552a3b250a064e4c114d245bc3324e4bc516b12487348db0",
-      "size": 936,
-      "normalized_sha256": "c5729c2aee0bb535552a3b250a064e4c114d245bc3324e4bc516b12487348db0"
+      "sha256": "371e8fbd3fe7abe9971eb14e466b76dcd1365486fc3a4261e39ebf1760e9d46a",
+      "size": 1249,
+      "normalized_sha256": "371e8fbd3fe7abe9971eb14e466b76dcd1365486fc3a4261e39ebf1760e9d46a"
     },
     "application/src/main/java/plus/xiaoi/module/application/runtime/FileShare.java": {
       "role": "index",
@@ -551,9 +551,9 @@
     },
     "docs/integration.md": {
       "role": "index",
-      "sha256": "180620223576b055cb95aea036161b5d6e9161128de0634f2e9edbb9d9754b89",
-      "size": 6105,
-      "normalized_sha256": "1ca28fd28bb30df264e7f56cc96ddcc251a8d5eed670936d59a01778ec1ad932"
+      "sha256": "a9e4965cb8eacb094007dc60dfe99915670b4e4332206dbafd0f61a071c6cfe5",
+      "size": 6320,
+      "normalized_sha256": "920b0444c2af7c171cbf19ac8db55db2c6d944f6a21bc0b95bcbcd4873c3c907"
     },
     "docs/plan-model-config.md": {
       "role": "index",
@@ -1186,9 +1186,9 @@
     },
     "infra/src/main/java/plus/xiaoi/module/BridgeClient.java": {
       "role": "index",
-      "sha256": "00b4b42ebb716496fb5deb6725ec3797820611bd92e227d9b9fc17c8d23521e8",
-      "size": 7140,
-      "normalized_sha256": "00b4b42ebb716496fb5deb6725ec3797820611bd92e227d9b9fc17c8d23521e8"
+      "sha256": "b7393d48c285bb28088ccd13e43bd258566f8497a4df1a22bc865bfe5998e782",
+      "size": 7513,
+      "normalized_sha256": "b7393d48c285bb28088ccd13e43bd258566f8497a4df1a22bc865bfe5998e782"
     },
     "infra/src/main/java/plus/xiaoi/module/Http.java": {
       "role": "index",
@@ -1288,9 +1288,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/AndroidAppRuntime.java": {
       "role": "index",
-      "sha256": "109e7238d29a67c12575f9a3ffc7498a973f6b282b74d1071040808cc20ea976",
-      "size": 6647,
-      "normalized_sha256": "109e7238d29a67c12575f9a3ffc7498a973f6b282b74d1071040808cc20ea976"
+      "sha256": "cfe103c840bbc70c6816851ec40f4186bc3e7209e11426b2012ad87db817ce80",
+      "size": 7316,
+      "normalized_sha256": "cfe103c840bbc70c6816851ec40f4186bc3e7209e11426b2012ad87db817ce80"
     },
     "platform/src/main/java/plus/xiaoi/module/AppExecutors.java": {
       "role": "index",
@@ -1306,9 +1306,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Bridge.java": {
       "role": "index",
-      "sha256": "e801927f2272b4acf05d4b035b6fcbc1f36183faf1520a56ecd5610a5c59dac8",
-      "size": 47237,
-      "normalized_sha256": "e801927f2272b4acf05d4b035b6fcbc1f36183faf1520a56ecd5610a5c59dac8"
+      "sha256": "e801d3f3e9921628fc96858635cc60eda70054413722d6c8480e0ca6b9f8ec15",
+      "size": 47564,
+      "normalized_sha256": "e801d3f3e9921628fc96858635cc60eda70054413722d6c8480e0ca6b9f8ec15"
     },
     "platform/src/main/java/plus/xiaoi/module/Config.java": {
       "role": "index",
@@ -1336,9 +1336,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Logs.java": {
       "role": "index",
-      "sha256": "8cdd0d2a10418c5ad49474e3007e88bf7c4b5cf793ba002aa645f325b56d41d2",
-      "size": 7780,
-      "normalized_sha256": "8cdd0d2a10418c5ad49474e3007e88bf7c4b5cf793ba002aa645f325b56d41d2"
+      "sha256": "aa662d12541f39ae176fbd00ff3b4058edeacb82bdbce995fd09306c734e303c",
+      "size": 9934,
+      "normalized_sha256": "aa662d12541f39ae176fbd00ff3b4058edeacb82bdbce995fd09306c734e303c"
     },
     "platform/src/main/java/plus/xiaoi/module/Prefs.java": {
       "role": "index",
@@ -1875,9 +1875,9 @@
     },
     "tests/src/plus/xiaoi/module/AppRuntimeTest.java": {
       "role": "observe",
-      "sha256": "ac9f29acc81875652de47c320337888e7e6aa16591c6da90f21d03d2643af15e",
-      "size": 8204,
-      "normalized_sha256": "ac9f29acc81875652de47c320337888e7e6aa16591c6da90f21d03d2643af15e"
+      "sha256": "11893e3d2329ad809e27225687947df9e37d9a16fb51591a6c78f0748c3bd94e",
+      "size": 8341,
+      "normalized_sha256": "11893e3d2329ad809e27225687947df9e37d9a16fb51591a6c78f0748c3bd94e"
     },
     "tests/src/plus/xiaoi/module/AppToolProtocolTest.java": {
       "role": "observe",
@@ -2445,9 +2445,9 @@
     },
     "ui/src/main/java/plus/xiaoi/module/ui/screen/me/LogsScreen.kt": {
       "role": "index",
-      "sha256": "7af37fb404c470a96f8ba616f1310321acce8fe415c8801b483c073eb827d987",
-      "size": 27129,
-      "normalized_sha256": "7af37fb404c470a96f8ba616f1310321acce8fe415c8801b483c073eb827d987"
+      "sha256": "4433e9f7e58f1c2501dbc2ee6bbe930e5ad899726f0592e6732280d12a2cefe4",
+      "size": 31265,
+      "normalized_sha256": "4433e9f7e58f1c2501dbc2ee6bbe930e5ad899726f0592e6732280d12a2cefe4"
     },
     "ui/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt": {
       "role": "index",

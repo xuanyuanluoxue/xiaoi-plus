@@ -146,6 +146,15 @@ public final class BridgeClient {
         return r != null && r.ok() ? r.body : null;
     }
 
+    /**
+     * 读取桥的落盘日志尾部（含 `.1` 轮转），用于导出补历史。
+     * 桥未开、鉴权失败、文件不存在都返回 null。
+     */
+    public static String logFile(int port, String token, int limit) {
+        Response r = get(port, "/logs?source=file&limit=" + limit, token);
+        return r != null && r.ok() ? r.body : null;
+    }
+
     /** 触发一次超级岛；/island 在桥侧免 token（只影响本机提示）。 */
     public static boolean island(int port) {
         Response r = postJson(port, "/island", "", "{}", 600, 2000);

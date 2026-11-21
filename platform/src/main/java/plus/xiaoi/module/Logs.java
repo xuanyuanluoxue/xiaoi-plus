@@ -163,6 +163,60 @@ public final class Logs {
         if (sink != null) sink.flush();
     }
 
+    /**
+     * 读取落盘日志的尾部（含轮转出来的 {@code .1}），最多 {@code maxLines} 行。
+     *
+     * <p>内存环形缓冲只有 300 条，跑久了会被冲掉；磁盘是唯一的历史。限制读取体积，
+     * 避免在低端机上把 1MB 文件整个读进内存。任何失败都返回空串。</p>
+     */
+    public static String tail(int maxLines) {
+        if (maxLines <= 0) return "";
+        try {
+            File f = file();
+            if (f == null) return "";
+            flush();
+            StringBuilder sb = new StringBuilder();
+            File old = new File(f.getPath() + ".1");
+            if (old.exists()) readTail(old, 256 * 1024, sb);
+            readTail(f, 512 * 1024, sb);
+            String all = sb.toString();
+            if (all.length() == 0) return "";
+            String[] lines = all.split("\n", -1);
+            int from = Math.max(0, lines.length - maxLines);
+            StringBuilder out = new StringBuilder();
+            for (int i = from; i < lines.length; i++) {
+                if (lines[i].length() == 0) continue;
+                if (out.length() > 0) out.append('\n');
+                out.append(lines[i]);
+            }
+            return out.toString();
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
+    /** 读文件尾部的 {@code maxBytes} 字节，追加到 {@code out}。 */
+    private static void readTail(File f, int maxBytes, StringBuilder out) {
+        java.io.RandomAccessFile raf = null;
+        try {
+            long len = f.length();
+            long skip = Math.max(0, len - maxBytes);
+            raf = new java.io.RandomAccessFile(f, "r");
+            raf.seek(skip);
+            byte[] buf = new byte[(int) (len - skip)];
+            int n = 0;
+            while (n < buf.length) {
+                int r = raf.read(buf, n, buf.length - n);
+                if (r <= 0) break;
+                n += r;
+            }
+            out.append(new String(buf, 0, n, "UTF-8"));
+        } catch (Throwable ignored) {
+        } finally {
+            try { if (raf != null) raf.close(); } catch (Throwable ignored) {}
+        }
+    }
+
     private static LogFileSink sink() {
         LogFileSink sink = sSink;
         if (sink != null) return sink;

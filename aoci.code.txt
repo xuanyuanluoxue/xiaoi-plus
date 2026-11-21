@@ -116,7 +116,7 @@ AgentControl.java[DR5T]: F:动作面启停端口：按配置决定启动或停�
 AppRuntime.java[AU7T]: F:UI 运行时端口集合：11 个窄端口一次性注入给表现层 | R:code:platform/src/main/java/plus/xiaoi/module/AndroidAppRuntime.java | A:AppRuntime | S:任一端口为 null 直接抛异常；新增能力必须同时加字段与构造参数，否则 ui 层拿不到实现
 BackgroundTasks.java[AU5T]: F:后台线程端口：阻塞任务与回主线程 | R:code:platform/src/main/java/plus/xiaoi/module/AppExecutors.java | A:io | S:UI 层禁止直接引用 AppExecutors 或裸 new Thread，这是分层门禁的一部分
 ConfigWatcher.java[AC6T]: F:config.json 文件监听端口：启动首次加载、迁移与 apply 副作用 | R:code:platform/src/main/java/plus/xiaoi/module/AndroidAppRuntime.java | A:start | S:只能在 Activity onCreate 这类明确生命周期点调用；在 composition 期间启动会造成重复加载与重复副作用
-ControlLogStore.java[AO5T]: F:控制面日志端口：读文本镜像 / 读结构化合并视图 / 清空 | R:code:platform/src/main/java/plus/xiaoi/module/AndroidAppRuntime.java | A:dumpJson | S:dump() 是给列表页的文本，dumpJson() 才是带 pid/proc/ts 的导出数据源，两者不能互相替代；clear 只清内存不删磁盘
+ControlLogStore.java[AO5T]: F:控制面日志端口：读文本镜像 / 读结构化合并视图 / 读落盘历史 / 清空 | R:code:platform/src/main/java/plus/xiaoi/module/AndroidAppRuntime.java | A:history | S:dump() 给列表页的旧文本路径，dumpJson() 才是带 pid/proc/ts 的渲染与导出数据源，history() 补内存之外的历史；三者不可互相替代；history 失败必须回空串，不能拖垮导出
 FileShare.java[AS5T]: F:分享文件的 authority 常量 | R:code:app/src/main/AndroidManifest.xml | A:AUTHORITY | S:必须与清单里 ShareProvider 的 authorities 完全一致，一致性门禁同时检查两处
 ModelProbe.java[AN5T]: F:模型端点探测端口：用 baseUrl、密钥、模型打一次探活并给出分类结论 | R:code:infra/src/main/java/plus/xiaoi/module/ModelValidator.java | A:probe | S:code 只有 ok、auth、model、endpoint、timeout、http、empty 七种取值，新增分类要同步 UI 判定与文案
 NetworkInfo.java[AN5T]: F:本机连接信息端口：能力桥与动作面的默认端口、本机 IPv4 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:lanIpv4 | S:defaultAgentPort 只用于展示，动作面已并入 8771；取不到 IPv4 返回空串，不要猜 127.0.0.1
@@ -133,7 +133,7 @@ ci.md[OQ7T]: F:CI 与本地门禁说明：托管 CI 步骤、本地全量门禁�
 compatibility.md[SG7S]: F:小爱版本兼容性矩阵与适配流程：白名单匹配、已适配版本与混淆名、陌生设备自查、新版本适配步骤 | R:code:docs/architecture.md | A:兼容性矩阵 | S:只精确匹配白名单里的 versionName，其它版本 no-op 且不报错；8.2.70.8421 已加入白名单并真机验证；自查章节要保留「compat=probe 是 fail-open 历史行为」的解释，且必须区分 hooks=ok（装上了）与 rewrite=hit（生效了）
 design-system.md[SU8M]: F:UI 声明：19 个颜色令牌、字体与间距、15 个组件、状态矩阵、主题实现与自绘例外 | R:code:app/src/main/res/values/colors.xml | A:颜色令牌 | S:令牌是唯一允许的引用方式，页面里禁止裸 #RRGGBB；深浅两套只换颜色，布局与尺寸必须一致
 feature-candidates.md[SA5S]: F:功能候选调研：root 生态 18 项能力评估、Top5 推荐、独占组合与不建议做清单 | R:code:docs/refactor/NEXT.md | A:结论先行 | S:结论是不要把小爱做成第二个 Thanox；优先级入口与编排高于单点系统能力，全局治理类重复造轮子收益低
-integration.md[SG8S]: F:外部接入指南：端点、鉴权、MCP 握手、日志与统计接口示例 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:MCP端点 | S:示例响应必须与 Mcp 实际输出一致；xiaoai_logs 与 GET /logs 共用同一视图，顶层 scope=merged|local，两者不能只改一个
+integration.md[SG8S]: F:外部接入指南：端点、鉴权、MCP 握手、日志与统计接口示例 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:MCP端点 | S:示例响应必须与 Mcp 实际输出一致；xiaoai_logs 与 GET /logs 共用合并视图（scope=merged|local），/logs?source=file 返回落盘历史且是 text/plain，两者不能只改一个
 plan-model-config.md[SC5L]: F:模型与配置规划（已执行）：现状审计、provider 两级数据模型、UI 状态机、同步与校验时序、验收标准 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:一句话结论 | S:诊断价值在开头那份根因清单：同一份配置曾有三套模型、六份字段清单、四种生效语义；回看遗留问题时先对照它
 release.md[OV8M]: F:发版流程：版本号规则、签名密钥、本地一键发版、指纹校验、打 tag 与发布、发布后验证与回滚 | R:code:scripts/release.sh | A:版本号 | S:versionCode 只增不减且唯一来源是 Manifest；没有正式密钥的 tag 只上传 artifact 不建 Release，不要手工补建
 remote-debug.md[OO7S]: F:远程调试手册：adb 连接与掉线重连、装包重启、看日志、本机桥与 MCP、root 操作、截图、prefs 写入坑与常见故障 | R:code:docs/ci.md | A:连接 | S:手机侧不需要 USB；写 prefs 必须走 run-as 或 root，直接 adb 写会被 SELinux 拒绝且不报错
@@ -281,7 +281,7 @@ gradle-wrapper.properties[FV6T]: F:Gradle wrapper 配置：分发地址、SHA-25
 build.gradle.kts[FV6T]: F:infra 模块构建：java-library、Java 8，依赖 domain 与 application | R:code:application/build.gradle.kts | A:dependencies | S:依赖方向固定 infra -> application 与 domain；端口定义在上层、实现在本层，反向依赖会破分层门禁
 
 ===/<repository>/infra/src/main/java/plus/xiaoi/module/===
-BridgeClient.java[IN7S]: F:访问本机能力桥的唯一客户端：按登记端口发 GET 或 POST、MCP 调用、日志统计与岛触发 | R:code:infra/src/main/java/plus/xiaoi/module/core/BridgeEndpoint.java | A:discover | S:discover 只读控制面登记的端口，不扫描也不向未认领端口发 Bearer；所有失败返回 null，不抛异常
+BridgeClient.java[IN7S]: F:App 侧访问本机 8771 的 HTTP 客户端：健康、统计、日志历史、超级岛 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:logFile | S:所有方法失败都返回 null/false 而不是抛异常；logFile 走 ?source=file，返回的是纯文本不是 JSON；端口无效时调用方必须先判 port>0
 Http.java[IN8M]: F:HTTP 线协议读写层：请求解析、query 解码、Bearer 常数时间匹配、响应与 CORS 预检写出 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:tooLarge | S:请求体超限必须回 413 而不是静默当空体；Bearer 匹配大小写敏感且用常数时间比较，改实现要保留这两点
 Lan.java[IN5T]: F:局域网地址探测：按接口名打分挑选私有网段 IPv4，并拼 MCP URL | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/NetworkInfo.java | A:ipv4 | S:只取站点本地地址并按接口名优先 wlan；169.254 链路本地排最后，取不到时退回 127.0.0.1
 ModelValidator.java[II8S]: F:模型连通性校验：发 max_tokens=1 的最小请求，按状态码与响应形状分类为七种结论 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/ModelProbe.java | A:check | S:200 但没有 choices 要归为 empty 而不是成功，否则不是 OpenAI 兼容端点也会显示可用
@@ -314,15 +314,15 @@ XC_LoadPackage.java[FV3T]: F:包加载回调参数的编译桩：包名、ClassL
 build.gradle.kts[FV7T]: F:platform 模块构建：Android 库、独立 namespace、SDK 37、Xposed 编译桩的编译与打包任务 | R:code:app/build.gradle.kts | A:compileXposedStub | S:namespace 必须与 app 不同，R 类生成在 .platform 包；Xposed 桩只为编译存在、不进 APK
 
 ===/<repository>/platform/src/main/java/plus/xiaoi/module/===
-AndroidAppRuntime.java[IU7M]: F:UI 运行时实现装配：把 11 个窄端口接到 App 进程内的具体实现 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/AppRuntime.java | A:AppRuntime | S:任一端口为 null 直接抛异常；controlLog 的 dumpJson 必须转 BridgeControlService.mergedLogsJson（App 是唯一合并节点），不要改成读本进程 Logs
+AndroidAppRuntime.java[IU7M]: F:UI 运行时实现装配：把窄端口接到 App 进程内的具体实现 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/AppRuntime.java | A:AppRuntime | S:任一端口为 null 直接抛异常；controlLog 的 dumpJson 转 mergedLogsJson（App 是唯一合并节点），history 转 BridgeClient.logFile（桥只在小爱进程能读文件）；不要在这里解锁更多安卓能力
 AppExecutors.java[IR6T]: F:App 进程唯一的后台执行器：固定 3 个 IO 守护线程与主线程回调 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/BackgroundTasks.java | A:io | S:执行器被关闭时退化为同步执行，保证调用方逻辑不丢；小爱进程里的 Bridge 与 Hook 不能依赖它
 AppLaunch.java[IU5T]: F:打开本 App 的唯一入口：用包名加类名拼显式 Intent | R:code:app/src/main/AndroidManifest.xml | A:ENTRY_CLASS | S:platform 不能引用 app 的 MainActivity，否则依赖倒置；改启动页必须同步这里与一致性门禁
-Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听与 leader 绑定、HTTP 路由与鉴权、MCP 分发、控制面与动作面转发、日志合并视图回落 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handle | S:只有 leader 进程才绑定端口；POST /config 恒 410；/island 仅 loopback 免 token，其它端点一律要 Bearer；/logs 与 xiaoai_logs 必须都走 logsView；versionName() 读不到时返回 "?"，不要回落到写死的旧版本号
+Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听与 leader 绑定、HTTP 路由与鉴权、MCP 分发、日志合并视图与落盘历史 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handle | S:只有 leader 才绑端口；POST /config 恒 410；/logs 与 xiaoai_logs 必须都走 logsView；?source=file 走 Logs.tail（含 .1 轮转）且返回 text/plain；versionName() 读不到返回 "?"
 Config.java[DC7M]: F:配置快照：模块 prefs 的键常量、不可变快照与跨进程热读缓存 | R:code:platform/src/main/java/plus/xiaoi/module/Prefs.java | A:current | S:prefs 只是跨进程快照，事实源是私有 config.json 的 rev；热读靠 prefs 文件 mtime，最多 800ms 才能跟上
 ConfigRepository.java[DC7M]: F:配置的 Android 组装点：单例、私有目录、prefs 镜像、持久化效应与旧外部文件迁移 | R:code:application/src/main/java/plus/xiaoi/module/application/config/ConfigService.java | A:get | S:规则全在 ConfigService，本类只组装；prefs 写入必须 commit 而不是 apply，因为写完立刻要通知 reload
 ConfigSync.java[DC8M]: F:config.json 文件监听与自动应用：防抖、内容哈希去环、启动对齐、从运行中小爱导入 | R:code:platform/src/main/java/plus/xiaoi/module/ConfigRepository.java | A:applyIfChanged | S:用内容哈希去环，否则自己写文件会触发回环；运行时变更绝不静默写回文件，文件永远优先
 Island.java[IU7M]: F:超级岛单次提醒：焦点通知渠道、miui.focus.param 参数拼装、诊断与 6 秒自动取消 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:show | S:岛走焦点通知 channel super_island 与 miui.focus.param；右侧大字限 22 字符，actions 为空所以不能用来批准动作
-Logs.java[IO7M]: F:模块运行日志门面：档位过滤、req 前缀、logcat、批量落盘与 JSON 装配（缓冲在 LogRing），并暴露 tail 监听供合并推送 | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogRing.java | A:event | S:外部 API 与 JSON 前四字段 seq/t/level/msg 只能追加不能重排；dump 顶层 scope=local，与 App 侧 merged 对应；setTailListener 的监听器必须非阻塞且不能写日志（有递归保护但不是许可）
+Logs.java[IO7M]: F:模块运行日志门面：档位过滤、req 前缀、logcat、批量落盘、历史尾部读取与 JSON 装配 | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogRing.java | A:tail | S:外部 API 与 JSON 前四字段只能追加不能重排；dump 顶层 scope=local；tail() 先 flush 再读，且限制单文件读取体积（256KB/.1 + 512KB 主文件），失败回空串；setTailListener 的监听器必须非阻塞且不写日志
 Prefs.java[DC5T]: F:App 本地偏好文件名与键名：主题、控制面开关、玻璃底栏与独立 UI prefs | R:code:platform/src/main/java/plus/xiaoi/module/ThemeManager.java | A:UI_PREFS | S:界面偏好单独放 xiaoi_ui，避开被污染的同名 prefs；实测混读会读到幽灵 false
 ShareProvider.java[IS6T]: F:只暴露 exports 目录的极简 ContentProvider：查询文件名大小、只读打开 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/FileShare.java | A:fileFor | S:文件名含斜杠或两点直接拒绝，且只读打开；authority 单一来源在 FileShare，改一处必须同步清单
 StatusCache.java[DO6T]: F:模型校验结论缓存：按端点密钥模型的指纹存取，带 10 分钟 TTL | R:code:domain/src/main/java/plus/xiaoi/module/StatusResolver.java | A:probe | S:只是缓存不是事实源；指纹不匹配或超过 10 分钟一律回 UNKNOWN，不能拿旧结论当现状
@@ -452,7 +452,7 @@ AppearanceScreen.kt[EU5S]: F:外观页：跟随系统、浅色、深色三档主
 ConfigManageScreen.kt[EU8L]: F:配置管理页：备份与还原、脱敏导出与分享、运行时导入、损坏恢复与重置 | R:code:domain/src/main/java/plus/xiaoi/module/core/config/ConfigGateway.java | A:ConfigManageScreen | S:脱敏导出的密钥是掩码因此不可还原；恢复与重置必须明确提示会覆盖当前文件，不能一键静默执行
 DiagnosticsScreen.kt[EU7L]: F:诊断页：四维状态、两个端口、配置完整性、Root 与 LSPosed、权限矩阵、复制与导出日志 | R:code:domain/src/main/java/plus/xiaoi/module/core/ErrorCatalog.java | A:DiagnosticsScreen | S:只展示已有事实，端口未知就写未知；导出日志前必须脱敏，不能把原始行直接发出去
 LicensesScreen.kt[EU3S]: F:开源许可页：本项目与依赖库的许可证与致谢 | R:code:LICENSE | A:LicensesScreen | S:三组版权声明写死在页面里，不做网络请求，断网也能看到许可信息
-LogsScreen.kt[EU7L]: F:日志页：档位切换、级别/来源筛选、跟随、清空，以及受筛选的导出（ZIP/文本/JSON） | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogExport.java | A:LogsScreen | S:导出读 dumpJson 合并视图而不是屏幕文本；SAF 三个 launcher 按格式分开；导出完成提示用 LogExport 的结论而不是筛选描述——筛选条件在 meta 里有，提示要回答「成没成功」
+LogsScreen.kt[EU7L]: F:日志页：结构化列表（进程列/进程筛选）、环境自检卡、档位切换、跟随、清空，以及受筛选的导出 | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogExport.java | A:LogsScreen | S:列表读 dumpJson 而不是文本 dump（文本没有 proc/pid/tag）；来源筛选按 tag 判定，别再回去猜 msg 前缀；导出 ZIP 附带 history.txt（桥不可达就跳过）；导出提示要回答「成没成功」而不是重复筛选条件
 MeScreen.kt[EU7L]: F:我的页：本机信息、Root 与 LSPosed 徽章、设置入口、版本与危险区 | R:code:docs/ui/SCREENS.md | A:MeScreen | S:危险区默认折叠，展开后仍需二次确认；不显示头像或账号，避免暗示登录态
 MeSupport.kt[EU6S]: F:我的域纯工具：版本读取、地址脱敏、配置摘要、复制与 Root 检测 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:MeSupport | S:只保留 host；解析失败也要手工剥掉 query 与 userinfo，绝不把完整 URL 带进界面或剪贴板
 SponsorScreen.kt[EU3S]: F:赞助页：收款图与说明、复制口令与打开链接 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/me/MeScreen.kt | A:SponsorScreen | S:只做展示与复制，不在应用内加载网页或发起支付，避免把第三方页面塞进 WebView

@@ -43,6 +43,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import plus.xiaoi.module.core.Contract
 import plus.xiaoi.module.core.LogLevel
 import plus.xiaoi.module.application.log.LogExport
 import plus.xiaoi.module.application.log.LogSettings
@@ -70,7 +71,41 @@ import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.window.WindowDialog
 
-private data class LogLine(val time: String, val level: String, val message: String)
+private data class LogRow(
+    val time: String,
+    val level: String,
+    val msg: String,
+    val tag: String,
+    val proc: String,
+    val pid: Int,
+    val ts: Long,
+)
+
+/** 解析合并视图 JSON；坏数据返回空表，页面永远不该因为日志格式崩掉。 */
+private fun parseDump(json: String): List<LogRow> {
+    if (json.isBlank()) return emptyList()
+    return try {
+        val arr = org.json.JSONObject(json).optJSONArray("lines") ?: return emptyList()
+        val out = ArrayList<LogRow>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            out.add(
+                LogRow(
+                    o.optString("t"),
+                    o.optString("level", "I"),
+                    o.optString("msg"),
+                    o.optString("tag"),
+                    o.optString("proc"),
+                    o.optInt("pid", 0),
+                    o.optLong("ts", 0L),
+                ),
+            )
+        }
+        out
+    } catch (t: Throwable) {
+        emptyList()
+    }
+}
 
 private data class LevelOption(val level: LogLevel, val label: String, val desc: String)
 
@@ -88,11 +123,11 @@ private fun levelLabel(level: LogLevel): String =
 private fun levelDesc(level: LogLevel): String =
     LEVEL_OPTIONS.firstOrNull { it.level == level }?.desc ?: ""
 
-/** 来源只看 msg 前缀：mcp=小爱任务，agent=设备操作，http=接口。 */
-private fun sourceOf(msg: String): Int = when {
-    msg.startsWith("[mcp]") -> 1
-    msg.startsWith("[agent]") -> 2
-    msg.startsWith("[http]") -> 3
+/** 来源按结构化 tag 判定（不再猜 msg 前缀）：mcp=小爱任务，agent=设备操作，http=接口。 */
+private fun sourceOf(tag: String): Int = when (tag) {
+    "mcp" -> 1
+    "agent" -> 2
+    "http" -> 3
     else -> 0
 }
 
@@ -100,16 +135,6 @@ private fun sourceOf(msg: String): Int = when {
 private fun shortProc(proc: String): String {
     val i = proc.lastIndexOf(':')
     return if (i >= 0 && i + 1 < proc.length) proc.substring(i + 1) else proc
-}
-
-private fun parseLine(line: String): LogLine {
-    if (line.length >= 16 && line[12] == ' ' && line[14] == ' ') {
-        val t = line.substring(0, 12)
-        if (t.matches(Regex("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}"))) {
-            return LogLine(t, line.substring(13, 14), line.substring(15))
-        }
-    }
-    return LogLine("", "I", line)
 }
 
 /**
@@ -124,9 +149,10 @@ fun LogsScreen(onMessage: (String) -> Unit) {
     val configGateway = LocalConfigGateway.current
     val appRuntime = LocalAppRuntime.current
     val colors = XiaoiTheme.colors
-    var lines by remember { mutableStateOf<List<LogLine>>(emptyList()) }
+    var lines by remember { mutableStateOf<List<LogRow>>(emptyList()) }
     var filter by rememberSaveable { mutableStateOf(0) } // 0 全部 / 1 信息 / 2 警告 / 3 错误 / 4 调试
     var sourceFilter by rememberSaveable { mutableStateOf(0) } // 0 全部 / 1 小爱 / 2 设备 / 3 接口
+    var procFilter by rememberSaveable { mutableStateOf("") } // "" = 全部进程
     var follow by rememberSaveable { mutableStateOf(false) }
     var level by remember { mutableStateOf(LogSettings.get()) }
     var levelDialog by remember { mutableStateOf(false) }
@@ -134,14 +160,16 @@ fun LogsScreen(onMessage: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     var received by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var diagnosis by remember { mutableStateOf<LogExport.Diagnosis?>(null) }
+    var versionLine by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     val reload: () -> Unit = {
-        val dump = appRuntime.controlLog.dump()
-        val parsed = if (dump.isBlank()) emptyList() else dump.split("\n")
-            .filter { it.isNotEmpty() }
-            .map { parseLine(it) }
+        // 用结构化合并视图渲染：文本视图没有 proc/pid/tag，页面就只剩「看个大概」。
+        val json = appRuntime.controlLog.dumpJson(Contract.LOGS_CAPACITY, 0)
+        val parsed = parseDump(json)
         lines = parsed
+        diagnosis = runCatching { LogExport.diagnose(json) }.getOrNull()
         if (parsed.isNotEmpty()) received = true
         if (parsed.isEmpty()) confirmClear = false
     }
@@ -155,6 +183,12 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             level = level0
             LogSettings.set(level0)
         }
+        versionLine = runCatching {
+            val m = context.packageManager.getPackageInfo(context.packageName, 0).versionName
+            val x = context.packageManager
+                .getPackageInfo("com.miui.voiceassist", 0).versionName
+            "模块 $m · 小爱 $x"
+        }.getOrDefault("")
         reload()
     }
 
@@ -194,6 +228,10 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         }
     }
 
+    val procs = remember(lines) {
+        lines.map { it.proc }.filter { it.isNotEmpty() }.distinct().sorted()
+    }
+
     val shown = lines.filter { line ->
         val levelOk = when (filter) {
             1 -> line.level == "I"
@@ -203,12 +241,13 @@ fun LogsScreen(onMessage: (String) -> Unit) {
             else -> true
         }
         val sourceOk = when (sourceFilter) {
-            1 -> sourceOf(line.message) == 1
-            2 -> sourceOf(line.message) == 2
-            3 -> sourceOf(line.message) == 3
+            1 -> sourceOf(line.tag) == 1
+            2 -> sourceOf(line.tag) == 2
+            3 -> sourceOf(line.tag) == 3
             else -> true
         }
-        levelOk && sourceOk
+        val procOk = procFilter.isEmpty() || line.proc == procFilter
+        levelOk && sourceOk && procOk
     }
 
     LaunchedEffect(shown.size, follow) {
@@ -272,6 +311,8 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                     if (result.count == 0) {
                         throw IllegalStateException("当前筛选没有日志，换个条件再试")
                     }
+                    // 内存缓冲只有 600 条；落盘文件补上更早的历史（桥不可达时为空）。
+                    val history = appRuntime.controlLog.history(LogExport.MAX_LINES)
                     val out = context.contentResolver.openOutputStream(uri)
                         ?: throw IllegalStateException("无法打开目标文件")
                     out.use { os ->
@@ -282,9 +323,14 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                                     zos.write(body.toByteArray(Charsets.UTF_8))
                                     zos.closeEntry()
                                 }
-                                put("meta.txt", result.meta)
+                                put("meta.txt", if (history.isEmpty()) {
+                                    result.meta
+                                } else {
+                                    result.meta + "# 历史: 已附 history.txt（落盘日志尾部）\n"
+                                })
                                 put("logs.txt", result.text)
                                 put("logs.json", result.json)
+                                if (history.isNotEmpty()) put("history.txt", history)
                             }
                             1 -> os.write(result.text.toByteArray(Charsets.UTF_8))
                             else -> os.write(result.json.toByteArray(Charsets.UTF_8))
@@ -408,16 +454,54 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                 }
             },
         )
+        if (procs.size > 1) {
+            Spacer(Modifier.height(4.dp))
+            FilterChips(
+                options = listOf("全部进程") + procs.map { shortProc(it) },
+                selected = if (procFilter.isEmpty()) "全部进程" else shortProc(procFilter),
+                onSelect = { picked ->
+                    procFilter = if (picked == "全部进程") ""
+                    else procs.firstOrNull { shortProc(it) == picked } ?: ""
+                },
+            )
+        }
         Text(
-            "${shown.size} / ${lines.size} 条 · 只读本机内存镜像",
+            "${shown.size} / ${lines.size} 条 · 合并视图（多进程）",
             color = colors.textSecondary,
             style = XiaoiTheme.typography.caption,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
         )
+        diagnosis?.let { d ->
+            XiaoiPreferenceCard {
+                XiaoiInfoRow(
+                    title = "环境自检",
+                    subtitle = d.verdict,
+                    icon = MiuixIcons.Ok,
+                    iconTone = if (d.thirdCalls > 0 && d.rewriteHits > 0)
+                        XiaoiIconTone.ACCENT else XiaoiIconTone.WARNING,
+                )
+                XiaoiInfoRow(
+                    title = "采集面",
+                    subtitle = "进程 ${d.procs} · hook 装载 ${d.hookPids} · " +
+                        "改写 ${d.rewriteHits} · 三方 ${d.thirdCalls} / 官方 ${d.officialCalls}",
+                    icon = MiuixIcons.Notes,
+                    iconTone = XiaoiIconTone.ACCENT,
+                )
+                if (versionLine.isNotEmpty()) {
+                    XiaoiInfoRow(
+                        title = "版本",
+                        subtitle = versionLine,
+                        icon = MiuixIcons.Notes,
+                        iconTone = XiaoiIconTone.ACCENT,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         XiaoiPreferenceCard {
             XiaoiSwitchRow(
                 title = "跟随最新",
-                subtitle = "每 2 秒读取 App 内存镜像，不依赖 MCP",
+                subtitle = "每 2 秒读取合并视图，不依赖 MCP",
                 checked = follow,
                 onCheckedChange = { follow = it },
                 icon = MiuixIcons.Notes,
@@ -483,8 +567,18 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                             style = XiaoiTheme.typography.mono,
                             modifier = Modifier.width(16.dp),
                         )
+                        if (procs.size > 1) {
+                            Text(
+                                shortProc(line.proc),
+                                color = colors.textHint,
+                                style = XiaoiTheme.typography.mono,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.width(64.dp),
+                            )
+                        }
                         Text(
-                            line.message,
+                            line.msg,
                             color = colors.text,
                             style = XiaoiTheme.typography.mono,
                             maxLines = 1,

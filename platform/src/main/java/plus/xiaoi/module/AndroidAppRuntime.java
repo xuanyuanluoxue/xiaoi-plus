@@ -136,6 +136,21 @@ public final class AndroidAppRuntime {
         }
 
         @Override
+        public String history(int limit) {
+            // 落盘文件在小爱自己的数据目录里，App 读不到；只能让桥（运行在小爱进程）代读。
+            try {
+                int port = plus.xiaoi.module.application.bridge.BridgeStatus.get().port;
+                Config c = Config.current();
+                String token = c == null ? "" : c.token();
+                if (port <= 0) return "";
+                String text = plus.xiaoi.module.BridgeClient.logFile(port, token, limit);
+                return text == null ? "" : text;
+            } catch (Throwable t) {
+                return "";
+            }
+        }
+
+        @Override
         public void clear() {
             plus.xiaoi.module.control.BridgeControlService.clearLogs();
         }

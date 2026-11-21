@@ -922,7 +922,13 @@ public final class Bridge {
                 long since = 0;
                 try { limit = Integer.parseInt(req.query.get("limit")); } catch (Throwable ignored) {}
                 try { since = Long.parseLong(req.query.get("since")); } catch (Throwable ignored) {}
-                respondJson(s, 200, logsView(BridgeHttpPolicy.logLimit(limit), since));
+                int safeLimit = BridgeHttpPolicy.logLimit(limit);
+                // source=file：读落盘历史（含 .1 轮转），给导出补内存缓冲之外的部分。
+                if ("file".equals(req.query.get("source"))) {
+                    respondText(s, 200, Logs.tail(safeLimit));
+                    return;
+                }
+                respondJson(s, 200, logsView(safeLimit, since));
                 return;
             }
             // 调用量统计：?days=1..90（默认 7）；超上限夹到 90 并在结果里回 clamped:true。

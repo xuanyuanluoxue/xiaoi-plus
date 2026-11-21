@@ -22,6 +22,15 @@ public interface ControlLogStore {
      */
     String dumpJson(int limit, long since);
 
+    /**
+     * 落盘历史（含 {@code .1} 轮转），补内存缓冲只有 300/600 条的不足。
+     *
+     * <p>桥不可达、未开鉴权、文件不存在都返回空串——导出不应该因为它失败。</p>
+     *
+     * @param limit 最多返回多少行
+     */
+    String history(int limit);
+
     /** 清空内存镜像（不删磁盘日志）。 */
     void clear();
 }

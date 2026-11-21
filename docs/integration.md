@@ -73,6 +73,8 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
 - `xiaoai_logs` / `GET /logs` 是**跨进程合并视图**：顶层带 `scope`（`merged`/`local`）与
   `lastSeq`，每行 `seq/t/level/msg` 后追加 `tag`（来源）、`ts`（epoch 毫秒）、`pid`（写入
   进程）、`proc`（进程名）；旧字段名与顺序不变。控制面不可达时回落 `scope=local`
+- `GET /logs?source=file&limit=N` 返回**落盘历史**（`xiaoi_plus.log` 含 `.1` 轮转的尾部，
+  `text/plain`，一行一条）；内存缓冲被冲掉后靠它补证据。参数非法按默认上限处理
 
 电脑上接入有两种方式：
 
