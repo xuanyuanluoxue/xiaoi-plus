@@ -27,6 +27,44 @@ public final class Config {
     /** 配置版本（降级缓存；事实源是私有 config.json 的 rev）。 */
     public static final String KEY_CFG_REV = "cfg_rev";
 
+    // P2：提示词与记忆。写入口只有 config.json → 模块 prefs 镜像（App 进程），
+    // 小爱进程用 XSharedPreferences 读；多行正文靠 SharedPreferences 自带的转义。
+    public static final String KEY_PROMPT_ENABLED = "prompt_enabled";
+    public static final String KEY_PROMPT_MODE = "prompt_mode";
+    public static final String KEY_PROMPT_TEXT = "prompt_text";
+    public static final String KEY_MEMORY_INJECT = "memory_inject";
+    public static final String KEY_MEMORY_INJECT_LINES = "memory_inject_lines";
+    public static final String KEY_MEMORY_WRITE = "memory_write";
+
+    /** 提示词与记忆的快照（不可变）。 */
+    public static final class Prompt {
+        public final boolean enabled;
+        public final String mode;
+        public final String text;
+        public final boolean memoryInject;
+        public final int memoryInjectLines;
+        public final boolean memoryWrite;
+
+        /** 全关：默认状态，老配置文件/读不到 prefs 时都用它。 */
+        public static final Prompt OFF = new Prompt(false, "append", "", false, 20, false);
+
+        public Prompt(boolean enabled, String mode, String text,
+                      boolean memoryInject, int memoryInjectLines, boolean memoryWrite) {
+            this.enabled = enabled;
+            this.mode = "replace".equalsIgnoreCase(mode == null ? "" : mode.trim())
+                    ? "replace" : "append";
+            this.text = text == null ? "" : text;
+            this.memoryInject = memoryInject;
+            int lines = memoryInjectLines;
+            if (lines < 1) lines = 1;
+            if (lines > plus.xiaoi.module.core.Contract.MEMORY_INJECT_LINES_MAX) {
+                lines = plus.xiaoi.module.core.Contract.MEMORY_INJECT_LINES_MAX;
+            }
+            this.memoryInjectLines = lines;
+            this.memoryWrite = memoryWrite;
+        }
+    }
+
     private final String baseUrl;
     private final String apiKey;
     private final String model;
@@ -45,6 +83,8 @@ public final class Config {
     private final String token;
     /** 配置版本（仅缓存/诊断；解析失败按 0）。 */
     private final long cfgRev;
+    /** P2：提示词与记忆（不可变快照）。 */
+    private final Prompt prompt;
 
     /** 供能力桥热更新使用；所有字段自动归一化为非 null。 */
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
@@ -93,6 +133,15 @@ public final class Config {
                 enabled, lan, cfgRev, noAuth, weakToken);
     }
 
+    /** P2：附带提示词与记忆快照的完整构造。 */
+    public static Config create(String baseUrl, String apiKey, String model, boolean marker,
+                                boolean bridge, String token, String markerTemplate,
+                                boolean enabled, boolean lan, long cfgRev, boolean noAuth,
+                                boolean weakToken, Prompt prompt) {
+        return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate,
+                enabled, lan, cfgRev, noAuth, weakToken, prompt);
+    }
+
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
                    String token, String markerTemplate, boolean enabled, boolean lan) {
         this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan, 0L, false);
@@ -113,6 +162,13 @@ public final class Config {
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
                    String token, String markerTemplate, boolean enabled, boolean lan, long cfgRev,
                    boolean noAuth, boolean weakToken) {
+        this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan,
+                cfgRev, noAuth, weakToken, Prompt.OFF);
+    }
+
+    private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
+                   String token, String markerTemplate, boolean enabled, boolean lan, long cfgRev,
+                   boolean noAuth, boolean weakToken, Prompt prompt) {
         this.baseUrl = baseUrl == null ? "" : baseUrl;
         this.apiKey = apiKey == null ? "" : apiKey;
         this.model = model == null ? "" : model;
@@ -125,6 +181,7 @@ public final class Config {
         this.noAuth = noAuth;
         this.weakToken = weakToken;
         this.cfgRev = cfgRev < 0 ? 0L : cfgRev;
+        this.prompt = prompt == null ? Prompt.OFF : prompt;
     }
 
     /** 跨进程热读缓存：prefs 文件 mtime 变了就重解析，最多 800ms 跟上。 */
@@ -179,7 +236,10 @@ public final class Config {
                 p.getBoolean(KEY_BRIDGE, false), p.getString(KEY_TOKEN, ""),
                 p.getString(KEY_MARKER_TPL, ""), parseFlag(p.getString(KEY_ENABLED, "1")),
                 p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L),
-                p.getBoolean(KEY_MCP_NO_AUTH, false), p.getBoolean(KEY_MCP_WEAK_TOKEN, false));
+                p.getBoolean(KEY_MCP_NO_AUTH, false), p.getBoolean(KEY_MCP_WEAK_TOKEN, false),
+                promptFrom(p.getBoolean(KEY_PROMPT_ENABLED, false), p.getString(KEY_PROMPT_MODE, "append"),
+                        p.getString(KEY_PROMPT_TEXT, ""), p.getBoolean(KEY_MEMORY_INJECT, false),
+                        p.getInt(KEY_MEMORY_INJECT_LINES, 20), p.getBoolean(KEY_MEMORY_WRITE, false)));
     }
 
     public static Config forTarget() {
@@ -205,7 +265,7 @@ public final class Config {
                     : modulePref(KEY_MCP_WEAK_TOKEN);
             return new Config(t[0], t[1], t[2],
                     flag(t[7], true), flag(t[8], false), t[3], t[4], parseFlag(t[5]),
-                    flag(t[6], false), parseLong(t[9]), noAuth, weak);
+                    flag(t[6], false), parseLong(t[9]), noAuth, weak, promptFromModulePrefs());
         }
         // 2) 次选：模块自己的 prefs（XSharedPreferences，可能被 SELinux 拦）
         try {
@@ -225,11 +285,18 @@ public final class Config {
                         parseFlag(p.getString(KEY_ENABLED, "1")),
                         p.getBoolean(KEY_MCP_LAN, false), p.getLong(KEY_CFG_REV, 0L),
                         p.getBoolean(KEY_MCP_NO_AUTH, false),
-                        p.getBoolean(KEY_MCP_WEAK_TOKEN, false));
+                        p.getBoolean(KEY_MCP_WEAK_TOKEN, false),
+                        promptFrom(p.getBoolean(KEY_PROMPT_ENABLED, false),
+                                p.getString(KEY_PROMPT_MODE, "append"),
+                                p.getString(KEY_PROMPT_TEXT, ""),
+                                p.getBoolean(KEY_MEMORY_INJECT, false),
+                                p.getInt(KEY_MEMORY_INJECT_LINES, 20),
+                                p.getBoolean(KEY_MEMORY_WRITE, false)));
             }
         } catch (Throwable ignored) {}
         if (log) android.util.Log.w("xiaoi+", "没有可用配置");
-        return new Config("", "", "", true, false, "", "", false, false, 0L);
+        return new Config("", "", "", true, false, "", "", false, false, 0L, false, false,
+                promptFromModulePrefs());
     }
 
     /**
@@ -297,6 +364,37 @@ public final class Config {
         }
     }
 
+    /**
+     * P2：提示词与记忆只从模块 prefs 镜像读。
+     *
+     * <p>为什么不从目标 prefs 的 XML 里 parse：正文是多行文本，Android 会把换行写成
+     * {@code &#10;}，现有的轻量正则解析会读坏。模块 prefs 用 SharedPreferences
+     * 标准 API 读取，转义由系统处理。</p>
+     */
+    private static Prompt promptFromModulePrefs() {
+        try {
+            XSharedPreferences p = new XSharedPreferences("plus.xiaoi.module", PREFS);
+            p.reload();
+            return promptFrom(p.getBoolean(KEY_PROMPT_ENABLED, false),
+                    p.getString(KEY_PROMPT_MODE, "append"),
+                    p.getString(KEY_PROMPT_TEXT, ""),
+                    p.getBoolean(KEY_MEMORY_INJECT, false),
+                    p.getInt(KEY_MEMORY_INJECT_LINES, 20),
+                    p.getBoolean(KEY_MEMORY_WRITE, false));
+        } catch (Throwable t) {
+            return Prompt.OFF;
+        }
+    }
+
+    private static Prompt promptFrom(boolean enabled, String mode, String text,
+                                     boolean memoryInject, int lines, boolean memoryWrite) {
+        try {
+            return new Prompt(enabled, mode, text, memoryInject, lines, memoryWrite);
+        } catch (Throwable t) {
+            return Prompt.OFF;
+        }
+    }
+
     /** 解析缓存里的开关：空 = 用默认值；"0"/"false" = 关。 */
     private static boolean flag(String v, boolean def) {
         if (v == null || v.length() == 0) return def;
@@ -345,6 +443,16 @@ public final class Config {
 
     /** 配置版本（降级缓存值；解析失败为 0）。 */
     public long cfgRev() { return cfgRev; }
+
+    /** P2：提示词与记忆快照。 */
+    public Prompt prompt() { return prompt; }
+
+    public boolean promptEnabled() { return prompt.enabled; }
+    public String promptMode() { return prompt.mode; }
+    public String promptText() { return prompt.text; }
+    public boolean memoryInject() { return prompt.memoryInject; }
+    public int memoryInjectLines() { return prompt.memoryInjectLines; }
+    public boolean memoryWriteEnabled() { return prompt.memoryWrite; }
 
     /** 生效 = 显式开启 且 model/baseUrl 齐全；false 时保留配置但暂停重定向。 */
     public boolean enabled() {

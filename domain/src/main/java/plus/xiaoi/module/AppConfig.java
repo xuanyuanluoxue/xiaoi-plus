@@ -93,6 +93,21 @@ public final class AppConfig {
     public String activeModelId = "";
     public List<Provider> providers = new ArrayList<Provider>();
 
+    // ------------------------------------------------------------- 提示词与记忆（P2，全部默认关）
+
+    /** true = 把用户提示词注入小爱请求（空内容时无动作）。默认 false。 */
+    public boolean promptEnabled;
+    /** {@code append}（默认）或 {@code replace}；replace 会覆盖小爱原生能力描述。 */
+    public String promptMode = "append";
+    /** 系统提示词正文；支持 date/time/model/device 四个双花括号占位符。上限 8 KB。 */
+    public String promptText = "";
+    /** true = 把记忆摘要注入提示词（围栏 + 免责句）。默认 false。 */
+    public boolean memoryInject;
+    /** 注入多少行 outline；默认 20，范围 1~100。 */
+    public int memoryInjectLines = 20;
+    /** true = 允许 MCP / UI 写 MEMORY.md（写前备份）。默认 false。 */
+    public boolean memoryWriteEnabled;
+
     public Provider activeProvider() {
         for (Provider p : providers) {
             if (p.id.equals(activeProviderId)) return p;

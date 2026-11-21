@@ -215,6 +215,12 @@ public final class ConfigRepository implements ConfigGateway {
                     .putBoolean(Config.KEY_MCP_NO_AUTH, c.mcpNoAuth)
                     .putBoolean(Config.KEY_MCP_WEAK_TOKEN, c.mcpWeakToken)
                     .putString(Config.KEY_TOKEN, c.mcpToken)
+                    .putBoolean(Config.KEY_PROMPT_ENABLED, c.promptEnabled)
+                    .putString(Config.KEY_PROMPT_MODE, c.promptMode == null ? "append" : c.promptMode)
+                    .putString(Config.KEY_PROMPT_TEXT, c.promptText == null ? "" : c.promptText)
+                    .putBoolean(Config.KEY_MEMORY_INJECT, c.memoryInject)
+                    .putInt(Config.KEY_MEMORY_INJECT_LINES, c.memoryInjectLines)
+                    .putBoolean(Config.KEY_MEMORY_WRITE, c.memoryWriteEnabled)
                     .putLong(Config.KEY_CFG_REV, c.rev)
                     .commit();
         }

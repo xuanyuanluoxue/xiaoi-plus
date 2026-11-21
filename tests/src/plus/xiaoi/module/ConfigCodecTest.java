@@ -11,6 +11,8 @@ public final class ConfigCodecTest {
     private static final String CANONICAL =
             "{\"version\":3,\"rev\":1,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
             + "\"logLevel\":\"standard\","
+            + "\"promptEnabled\":false,\"promptMode\":\"append\",\"promptText\":\"\","
+            + "\"memoryInject\":false,\"memoryInjectLines\":20,\"memoryWriteEnabled\":false,"
             + "\"activeProviderId\":\"crazyai\",\"activeModelId\":\"your-model\","
             + "\"mcp\":{\"enabled\":true,\"lan\":false,\"agentLan\":false,\"noAuth\":false,\"weakToken\":false,\"token\":\"tok-123\"},"
             + "\"providers\":[{\"id\":\"crazyai\",\"name\":\"CrashMail\","
@@ -152,6 +154,48 @@ public final class ConfigCodecTest {
         eq("旧 JSON 缺 noAuth 按 false", false,
                 ConfigCodec.fromJson("{\"mcp\":{\"enabled\":true}}").mcpNoAuth);
         eq("noAuth 不触发令牌校验", null, ConfigCodec.validate(noAuthOn));
+
+        // ------------------------------------------------------------ P2：提示词与记忆
+        AppConfig p2 = ConfigCodec.fromJson(CANONICAL);
+        eq("P2 默认关", false, p2.promptEnabled);
+        eq("P2 默认追加模式", "append", p2.promptMode);
+        eq("P2 默认无正文", "", p2.promptText);
+        eq("P2 默认不注入记忆", false, p2.memoryInject);
+        eq("P2 默认注入行数", 20, p2.memoryInjectLines);
+        eq("P2 默认禁写记忆", false, p2.memoryWriteEnabled);
+
+        String withPrompt = "{\"promptEnabled\":true,\"promptMode\":\"replace\","
+                + "\"promptText\":\"第一行\\n第二行 \\\"引号\\\"\","
+                + "\"memoryInject\":true,\"memoryInjectLines\":35,\"memoryWriteEnabled\":true}";
+        AppConfig pp = ConfigCodec.fromJson(withPrompt);
+        eq("P2 开关解析", true, pp.promptEnabled);
+        eq("P2 模式解析", "replace", pp.promptMode);
+        eq("P2 多行正文 round-trip", "第一行\n第二行 \"引号\"",
+                ConfigCodec.fromJson(ConfigCodec.toJson(pp)).promptText);
+        eq("P2 注入行数解析", 35, pp.memoryInjectLines);
+        eq("P2 写记忆开关解析", true, pp.memoryWriteEnabled);
+
+        AppConfig modeUpper = ConfigCodec.fromJson("{\"promptMode\":\"  REPLACE \"}");
+        eq("P2 模式大小写与空白归一", "replace", modeUpper.promptMode);
+        eq("P2 未知模式回落 append",
+                "append", ConfigCodec.fromJson("{\"promptMode\":\"whatever\"}").promptMode);
+        eq("P2 行数 0 归一为 1", 1,
+                ConfigCodec.fromJson("{\"memoryInjectLines\":0}").memoryInjectLines);
+        eq("P2 行数超上限归一", 100,
+                ConfigCodec.fromJson("{\"memoryInjectLines\":999}").memoryInjectLines);
+
+        StringBuilder huge = new StringBuilder();
+        for (int i = 0; i < plus.xiaoi.module.core.Contract.PROMPT_TEXT_MAX + 100; i++) huge.append('x');
+        AppConfig oversized = ConfigCodec.normalize(new AppConfig());
+        oversized.promptText = huge.toString();
+        eq("P2 正文超长截断", plus.xiaoi.module.core.Contract.PROMPT_TEXT_MAX,
+                ConfigCodec.normalize(oversized).promptText.length());
+
+        // 旧文件没有这些键：默认关 + 不丢其它字段
+        AppConfig legacyNoP2 = ConfigCodec.fromJson(
+                "{\"version\":3,\"enabled\":true,\"providers\":[]}");
+        eq("P2 旧文件默认关", false, legacyNoP2.promptEnabled);
+        ok("P2 字段不被当成未知字段", !legacyNoP2.extra.containsKey("promptEnabled"));
 
         // ------------------------------------------------------------ 默认值（升级不丢配置）
         AppConfig d = ConfigCodec.defaults("https://old/v1", "old-model", "sk-old", true, true, "tok");

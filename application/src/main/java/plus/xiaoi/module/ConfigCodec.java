@@ -14,8 +14,10 @@ import java.util.Map;
  *   migrate    读取并保留 schema 版本；未知顶层字段原样写回（前向兼容）
  *   validate   暂停（enabled=false）视为合法；检测「密钥误填成 MCP token」
  *
- * 约束：序列化顺序固定为 version/rev/enabled/marker/markerTemplate/
- * activeProviderId/activeModelId/mcp/providers，紧凑输出，保证 round-trip 稳定。
+ * 约束：序列化顺序固定为 version/rev/enabled/marker/markerTemplate/logLevel/
+ * promptEnabled/promptMode/promptText/memoryInject/memoryInjectLines/
+ * memoryWriteEnabled/activeProviderId/activeModelId/mcp/providers，紧凑输出，
+ * 保证 round-trip 稳定。
  *
  * 主题（themeMode）不在这里：它是 App 本地 UI 偏好，只存 prefs（见 ThemeManager）。
  * 旧文件的 themeMode 字段会被忽略且不再写回，避免与 prefs 形成双源。
@@ -49,6 +51,14 @@ public final class ConfigCodec {
         c.logLevel = LogLevel.parse(Json.optString(o, "logLevel", "standard")).wire;
         c.activeProviderId = Json.optString(o, "activeProviderId", "");
         c.activeModelId = Json.optString(o, "activeModelId", "");
+
+        // P2：提示词与记忆，全部有默认值，旧文件直接可读。
+        c.promptEnabled = Json.optBoolean(o, "promptEnabled", false);
+        c.promptMode = Json.optString(o, "promptMode", "append");
+        c.promptText = Json.optString(o, "promptText", "");
+        c.memoryInject = Json.optBoolean(o, "memoryInject", false);
+        c.memoryInjectLines = (int) Json.optLong(o, "memoryInjectLines", 20L);
+        c.memoryWriteEnabled = Json.optBoolean(o, "memoryWriteEnabled", false);
 
         Object mcpV = o.get("mcp");
         if (mcpV instanceof Map) {
@@ -99,6 +109,9 @@ public final class ConfigCodec {
         return "version".equals(k) || "rev".equals(k) || "enabled".equals(k) || "marker".equals(k)
                 || "markerTemplate".equals(k) || "logLevel".equals(k)
                 || "activeProviderId".equals(k) || "activeModelId".equals(k)
+                || "promptEnabled".equals(k) || "promptMode".equals(k) || "promptText".equals(k)
+                || "memoryInject".equals(k) || "memoryInjectLines".equals(k)
+                || "memoryWriteEnabled".equals(k)
                 || "mcp".equals(k) || "providers".equals(k);
     }
 
@@ -121,6 +134,14 @@ public final class ConfigCodec {
         c.activeProviderId = trim(c.activeProviderId);
         c.activeModelId = trim(c.activeModelId);
         c.mcpToken = trim(c.mcpToken);
+
+        // P2：模式只认 append/replace；正文超长按上限截断（注入侧也会再截一次）。
+        c.promptMode = normalizePromptMode(c.promptMode);
+        c.promptText = truncatePrompt(c.promptText);
+        if (c.memoryInjectLines < 1) c.memoryInjectLines = 1;
+        if (c.memoryInjectLines > plus.xiaoi.module.core.Contract.MEMORY_INJECT_LINES_MAX) {
+            c.memoryInjectLines = plus.xiaoi.module.core.Contract.MEMORY_INJECT_LINES_MAX;
+        }
 
         for (int i = 0; i < c.providers.size(); i++) {
             AppConfig.Provider p = c.providers.get(i);
@@ -174,6 +195,18 @@ public final class ConfigCodec {
         return s == null ? "" : s.trim();
     }
 
+    /** 提示词模式：只认 replace，其余一律 append（不静默打开高风险模式）。 */
+    private static String normalizePromptMode(String mode) {
+        return mode != null && "replace".equalsIgnoreCase(mode.trim()) ? "replace" : "append";
+    }
+
+    /** 提示词正文超上限时截断；null 按空串。 */
+    private static String truncatePrompt(String text) {
+        String s = text == null ? "" : text;
+        int max = plus.xiaoi.module.core.Contract.PROMPT_TEXT_MAX;
+        return s.length() <= max ? s : s.substring(0, max);
+    }
+
     // ------------------------------------------------------------- 编码
 
     /** 紧凑序列化（固定字段顺序，等价旧 org.json 输出）。 */
@@ -185,6 +218,12 @@ public final class ConfigCodec {
         o.put("marker", c.marker);
         o.put("markerTemplate", c.markerTemplate == null ? "" : c.markerTemplate);
         o.put("logLevel", LogLevel.parse(c.logLevel).wire);
+        o.put("promptEnabled", c.promptEnabled);
+        o.put("promptMode", c.promptMode == null ? "append" : c.promptMode);
+        o.put("promptText", c.promptText == null ? "" : c.promptText);
+        o.put("memoryInject", c.memoryInject);
+        o.put("memoryInjectLines", (long) c.memoryInjectLines);
+        o.put("memoryWriteEnabled", c.memoryWriteEnabled);
         o.put("activeProviderId", c.activeProviderId == null ? "" : c.activeProviderId);
         o.put("activeModelId", c.activeModelId == null ? "" : c.activeModelId);
 

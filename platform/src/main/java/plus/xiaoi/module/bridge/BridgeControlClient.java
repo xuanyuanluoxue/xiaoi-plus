@@ -416,7 +416,9 @@ public final class BridgeControlClient {
             AppConfig ac = ConfigCodec.fromJson(json);
             Config c = Config.create(ac.baseUrl(), ac.apiKey(), ac.model(), ac.marker,
                     ac.mcpEnabled, ac.mcpToken, ac.markerTemplate, ac.enabled, ac.mcpLan,
-                    ac.rev, ac.mcpNoAuth, ac.mcpWeakToken);
+                    ac.rev, ac.mcpNoAuth, ac.mcpWeakToken,
+                    new Config.Prompt(ac.promptEnabled, ac.promptMode, ac.promptText,
+                            ac.memoryInject, ac.memoryInjectLines, ac.memoryWriteEnabled));
             LogSettings.setWire(ac.logLevel);
             Logs.setLevel(LogSettings.get());
             host.onConfigReload(c);
