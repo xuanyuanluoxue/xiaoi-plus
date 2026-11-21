@@ -28,6 +28,8 @@ public final class ToolOwnership {
             "xiaoai_switch_model",
             "xiaoai_logs",
             "xiaoai_stats",
+            "xiaoai_prompt",
+            "xiaoai_memory",
     };
 
     private static final String[] APP_TOOLS = {

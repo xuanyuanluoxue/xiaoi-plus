@@ -133,8 +133,67 @@ public final class Bridge {
             }
         }
     };
+
+    /**
+     * P2：提示词状态与记忆读写。记忆文件在小爱私有目录，只有本进程能直接读，
+     * 所以这两个工具固定归属 8771（{@code ToolOwnership.BRIDGE}）。
+     */
+    private static final Mcp.MemoryPort MCP_MEMORY = new Mcp.MemoryPort() {
+        @Override
+        public String promptStatus() {
+            Config c = Config.current();
+            Map<String, Object> o = Json.obj();
+            o.put("enabled", c != null && c.promptEnabled());
+            o.put("mode", c == null ? "append" : c.promptMode());
+            String text = c == null ? "" : c.promptText();
+            o.put("text", text);
+            o.put("textLength", (long) text.length());
+            o.put("memoryInject", c != null && c.memoryInject());
+            o.put("memoryInjectLines", (long) (c == null ? 20 : c.memoryInjectLines()));
+            o.put("memoryWriteEnabled", c != null && c.memoryWriteEnabled());
+            o.put("marker", PromptInjector.MARKER);
+            o.put("stats", PromptRuntime.stats());
+            return Json.write(o);
+        }
+
+        @Override
+        public boolean writable() {
+            Config c = Config.current();
+            return c != null && c.memoryWriteEnabled();
+        }
+
+        @Override
+        public String memoryOverview(int limit) {
+            plus.xiaoi.module.application.memory.MemoryService svc = MemoryFiles.service();
+            if (svc == null) return unavailable();
+            return svc.overview(limit).json;
+        }
+
+        @Override
+        public String memoryAppend(String section, String text) {
+            plus.xiaoi.module.application.memory.MemoryService svc = MemoryFiles.service();
+            if (svc == null) return unavailable();
+            return svc.append(section, text).json;
+        }
+
+        @Override
+        public String memoryReplace(String section, String text) {
+            plus.xiaoi.module.application.memory.MemoryService svc = MemoryFiles.service();
+            if (svc == null) return unavailable();
+            return svc.replace(section, text).json;
+        }
+
+        private String unavailable() {
+            Map<String, Object> o = Json.obj();
+            o.put("ok", false);
+            o.put("code", "NO_CONTEXT");
+            o.put("message", "小爱进程上下文未就绪，读不到记忆目录");
+            return Json.write(o);
+        }
+    };
+
     private static final Mcp.Hosts HOSTS = new Mcp.Hosts(
-            MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_AGENT);
+            MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_AGENT, MCP_MEMORY);
 
     /** /health 里的 tools 数：本进程自己提供的工具数（不触发对端探测）。 */
     private static int bridgeToolCount() {

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import plus.xiaoi.module.agent.AppToolProtocol;
 import plus.xiaoi.module.application.log.RequestTrace;
+import plus.xiaoi.module.core.Contract;
 
 /**
  * MCP / JSON-RPC 2.0 协议层（纯 JVM，无 android 依赖）。
@@ -102,14 +103,22 @@ public final class Mcp {
         public final TelemetryPort telemetry;
         /** 8772 转发；null = 只提供 8771 自己的工具（单测/未启用）。 */
         public final AgentPort agent;
+        /** P2 提示词与记忆；null = 两个工具返回「不可用」（单测默认）。 */
+        public final MemoryPort memory;
 
         public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
                      IslandPort island, TelemetryPort telemetry) {
-            this(runtime, config, cli, island, telemetry, null);
+            this(runtime, config, cli, island, telemetry, null, null);
         }
 
         public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
                      IslandPort island, TelemetryPort telemetry, AgentPort agent) {
+            this(runtime, config, cli, island, telemetry, agent, null);
+        }
+
+        public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
+                     IslandPort island, TelemetryPort telemetry, AgentPort agent,
+                     MemoryPort memory) {
             if (runtime == null || config == null || cli == null
                     || island == null || telemetry == null) {
                 throw new IllegalArgumentException("Mcp.Hosts 端口不能为空");
@@ -120,7 +129,32 @@ public final class Mcp {
             this.island = island;
             this.telemetry = telemetry;
             this.agent = agent;
+            this.memory = memory;
         }
+    }
+
+    /**
+     * 提示词与记忆端口（P2）。
+     *
+     * <p>实现方是小爱进程里的 Bridge：记忆文件在小爱私有目录，只有同进程能直读。
+     * 返回的 JSON 文本由 {@code MemoryService} 生成，{@code ok=false} 时工具层置
+     * {@code isError=true}。</p>
+     */
+    public interface MemoryPort {
+        /** 提示词配置 + 注入统计（JSON 文本）。 */
+        String promptStatus();
+
+        /** false = memoryWriteEnabled 关闭，写操作必须被拒绝。 */
+        boolean writable();
+
+        /** 分节返回 MEMORY.md；{@code limit} 是每小节条数。 */
+        String memoryOverview(int limit);
+
+        /** 追加条目；{@code section} 支持 {@code 一级/二级} 路径。 */
+        String memoryAppend(String section, String text);
+
+        /** 替换小节正文（保留标题）。 */
+        String memoryReplace(String section, String text);
     }
 
     /** 配置的只读快照（Config 的纯 JVM 投影）。 */
@@ -306,10 +340,11 @@ public final class Mcp {
         r.put("protocolVersion", PROTOCOL);
         r.put("capabilities", caps);
         r.put("serverInfo", info);
-        r.put("instructions", "小爱同学+ 统一 MCP 端点（8771，唯一端口）：15 个工具都从这里调用"
-                + "（桥 9 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
+        r.put("instructions", "小爱同学+ 统一 MCP 端点（8771，唯一端口）：17 个工具都从这里调用"
+                + "（桥 11 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
                 + "xiaoai_submit 让小爱执行一句话任务，xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
-                + "xiaoai_stats 看三方/官方模型调用量。"
+                + "xiaoai_stats 看三方/官方模型调用量，xiaoai_prompt 看系统提示词状态，"
+                + "xiaoai_memory 读写记忆（写需在 App 内开启）。"
                 + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。");
         return r;
     }
@@ -452,6 +487,8 @@ public final class Mcp {
         tools.add(sw);
         tools.add(lg);
         tools.add(st);
+        tools.add(promptTool());
+        tools.add(memoryTool());
 
         Map<String, Object> r = Json.obj();
         r.put("tools", tools);
@@ -527,8 +564,49 @@ public final class Mcp {
         return sb.toString();
     }
 
-    private static Map<String, Object> emptySchema() {
-        Map<String, Object> s = Json.obj();
+    /** xiaoai_prompt：只读提示词配置与注入状态。 */
+    private static Map<String, Object> promptTool() {
+        Map<String, Object> t = Json.obj();
+        t.put("name", "xiaoai_prompt");
+        t.put("description", "读系统提示词配置与注入状态：开关 / 模式（append|replace）/ 正文 / "
+                + "变量 / 记忆注入 / 最近是否命中。只返回配置与次数，不含对话内容。"
+                + "修改提示词只能在手机 App「小爱 › 系统提示词」里做。");
+        t.put("inputSchema", emptySchema());
+        return t;
+    }
+
+    /** xiaoai_memory：记忆读写（写操作需在 App 内打开）。 */
+    private static Map<String, Object> memoryTool() {
+        Map<String, Object> t = Json.obj();
+        t.put("name", "xiaoai_memory");
+        t.put("description", "读写小爱记忆文件 MEMORY.md：op=get（默认）分节返回；"
+                + "op=append 往小节追加条目；op=replace 替换小节正文（保留标题）。"
+                + "写操作需要先在 App 内打开「允许写记忆」，每次写入前自动备份（保留 5 份）。"
+                + "不提供删除或清空；outline.md 只读。");
+        Map<String, Object> props = Json.obj();
+        Map<String, Object> op = prop("string", "操作：get / append / replace，缺省 get");
+        List<Object> ops = Json.arr();
+        ops.add("get");
+        ops.add("append");
+        ops.add("replace");
+        op.put("enum", ops);
+        props.put("op", op);
+        props.put("section", prop("string", "小节路径，例如「长期记忆/重要事实」；append/replace 必填"));
+        props.put("text", prop("string",
+                "要写入的内容，多行按条目拆分（上限 " + Contract.MEMORY_APPEND_MAX_BYTES + " 字节）"));
+        Map<String, Object> limit = prop("integer", "op=get 时每个小节返回多少条，缺省 50，上限 200");
+        limit.put("minimum", 1L);
+        limit.put("maximum", (long) Contract.MEMORY_GET_LIMIT_MAX);
+        props.put("limit", limit);
+        Map<String, Object> schema = Json.obj();
+        schema.put("type", "object");
+        schema.put("properties", props);
+        schema.put("additionalProperties", Boolean.FALSE);
+        t.put("inputSchema", schema);
+        return t;
+    }
+
+    private static Map<String, Object> emptySchema() {        Map<String, Object> s = Json.obj();
         s.put("type", "object");
         s.put("properties", Json.obj());
         s.put("additionalProperties", Boolean.FALSE);
@@ -717,6 +795,15 @@ public final class Mcp {
                 int days = raw > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) raw;
                 return toolText(hosts.telemetry.stats(days), false);
             }
+            if ("xiaoai_prompt".equals(name)) {
+                String bad = unexpectedArg(args);
+                if (bad != null) return toolText(bad, true);
+                if (hosts.memory == null) return memoryUnavailable();
+                return toolText(hosts.memory.promptStatus(), false);
+            }
+            if ("xiaoai_memory".equals(name)) {
+                return memoryToolCall(args, hosts);
+            }
             return forwardOrUnknown(name, args, hosts);
         } catch (Throwable t) {
             try {
@@ -729,6 +816,77 @@ public final class Mcp {
 
     /** xiaoai_island 的默认文案（0.16.0 起不再用模型名）。 */
     public static final String ISLAND_DEFAULT_TEXT = "小爱同学plus";
+
+    /**
+     * xiaoai_memory 的参数校验与分发。
+     *
+     * <p>写操作先看 {@link MemoryPort#writable()}：{@code memoryWriteEnabled=false}
+     * 时直接拒绝，绝不落到文件层（默认关的开关不能靠调用方绕过）。</p>
+     */
+    private static Map<String, Object> memoryToolCall(Map<?, ?> args, Hosts hosts) {
+        String bad = unexpectedArg(args, "op", "section", "text", "limit");
+        if (bad != null) return toolText(bad, true);
+        if (hosts.memory == null) return memoryUnavailable();
+
+        String op = Json.optString(args, "op", "get").trim().toLowerCase(java.util.Locale.US);
+        if (op.length() == 0) op = "get";
+        if ("get".equals(op)) {
+            int limit = Json.has(args, "limit")
+                    ? (int) Json.optLong(args, "limit", Contract.MEMORY_GET_LIMIT_DEFAULT)
+                    : Contract.MEMORY_GET_LIMIT_DEFAULT;
+            if (limit < 1) limit = 1;
+            if (limit > Contract.MEMORY_GET_LIMIT_MAX) limit = Contract.MEMORY_GET_LIMIT_MAX;
+            String text = hosts.memory.memoryOverview(limit);
+            return toolText(text, failed(text));
+        }
+        if (!"append".equals(op) && !"replace".equals(op)) {
+            return toolText("unknown op: " + op + "（可用：get, append, replace）", true);
+        }
+        if (!hosts.memory.writable()) {
+            return toolText("memoryWriteEnabled=false：请在手机 App「小爱 › 记忆」里打开"
+                    + "「允许写记忆」后再写（默认关闭）", true);
+        }
+        String section = Json.optString(args, "section", "").trim();
+        if (section.length() == 0) return toolText("missing argument: section", true);
+        if (section.length() > Contract.MEMORY_SECTION_MAX) {
+            return toolText("section too long (max " + Contract.MEMORY_SECTION_MAX + ")", true);
+        }
+        String text = Json.optString(args, "text", "");
+        if (text.trim().length() == 0) return toolText("missing argument: text", true);
+        if (utf8Length(text.trim()) > Contract.MEMORY_APPEND_MAX_BYTES) {
+            return toolText("text too large (max " + Contract.MEMORY_APPEND_MAX_BYTES + " bytes)", true);
+        }
+        String out = "append".equals(op)
+                ? hosts.memory.memoryAppend(section, text)
+                : hosts.memory.memoryReplace(section, text);
+        return toolText(out, failed(out));
+    }
+
+    /** UTF-8 字节数；编码不可用按最坏情况估算（宁可拒绝也不越界）。 */
+    private static int utf8Length(String s) {
+        try {
+            return s.getBytes("UTF-8").length;
+        } catch (Throwable t) {
+            return s.length() * 3;
+        }
+    }
+
+    /** 端口返回的 JSON 里 {@code ok=false} → 工具层置 isError。 */
+    static boolean failed(String json) {
+        if (json == null || json.length() == 0) return true;
+        try {
+            Object v = Json.read(json);
+            if (!(v instanceof Map)) return true;
+            Object ok = ((Map<?, ?>) v).get("ok");
+            return Boolean.FALSE.equals(ok);
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
+    private static Map<String, Object> memoryUnavailable() {
+        return toolText("提示词/记忆接口不可用（需要小爱进程运行，且 Application 已就绪）", true);
+    }
 
     /**
      * 单端口统一：动作面归属的工具转发给 8772；其余仍报 unknown tool。

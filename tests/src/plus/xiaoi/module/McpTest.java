@@ -128,10 +128,11 @@ public final class McpTest {
         eq("initialize", "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-03-26\","
                         + "\"capabilities\":{\"tools\":{\"listChanged\":false}},"
                         + "\"serverInfo\":{\"name\":\"xiaoi-plus\",\"version\":\"9.9.9\"},"
-                        + "\"instructions\":\"小爱同学+ 统一 MCP 端点（8771，唯一端口）：15 个工具都从这里调用"
-                        + "（桥 9 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
+                        + "\"instructions\":\"小爱同学+ 统一 MCP 端点（8771，唯一端口）：17 个工具都从这里调用"
+                        + "（桥 11 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
                         + "xiaoai_submit 让小爱执行一句话任务，xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
-                        + "xiaoai_stats 看三方/官方模型调用量。"
+                        + "xiaoai_stats 看三方/官方模型调用量，xiaoai_prompt 看系统提示词状态，"
+                        + "xiaoai_memory 读写记忆（写需在 App 内开启）。"
                         + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。\"}}",
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", hs));
 
@@ -174,8 +175,8 @@ public final class McpTest {
         eq("frame jsonrpc", "2.0", root.get("jsonrpc"));
         eq("frame id", Long.valueOf(3), root.get("id"));
         List<?> tools = (List<?>) ((Map<?, ?>) root.get("result")).get("tools");
-        eq("tool count", 9, tools.size());
-        eq("tool order", "xiaoai_status,xiaoai_submit,xiaoai_todo_create,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats",
+        eq("tool count", 11, tools.size());
+        eq("tool order", "xiaoai_status,xiaoai_submit,xiaoai_todo_create,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats,xiaoai_prompt,xiaoai_memory",
                 names(tools));
 
         Map<?, ?> submit = (Map<?, ?>) tools.get(1);
@@ -214,7 +215,7 @@ public final class McpTest {
         String toolText = Mcp.toolListText();
         ok("工具清单含 xiaoai_stats", toolText.contains("xiaoai_stats"));
         ok("工具清单含 xiaoai_todo_create", toolText.contains("xiaoai_todo_create"));
-        eq("工具清单行数", 9, toolText.split("\n").length);
+        eq("工具清单行数", 11, toolText.split("\n").length);
 
         Map<?, ?> statsTool = (Map<?, ?>) tools.get(8);
         eq("stats props", "[days]",
@@ -458,6 +459,76 @@ public final class McpTest {
                 call(hs, 10, "xiaoai_switch_model", "{\"model\":\"m2\"}"));
         h.writeOk = true;
 
+        // ------------------------------------------------------------ tools/call：prompt / memory（P2）
+        FakeMemory mem = new FakeMemory();
+        Mcp.Hosts p2 = new Mcp.Hosts(h, h, h, h, h, null, mem);
+        eq("xiaoai_prompt 返回状态",
+                "{\"jsonrpc\":\"2.0\",\"id\":30,\"result\":{\"content\":[{\"type\":\"text\","
+                        + "\"text\":\"{\\\"enabled\\\":true,\\\"mode\\\":\\\"append\\\"}\"}],\"isError\":false}}",
+                call(p2, 30, "xiaoai_prompt", null));
+        eq("xiaoai_prompt 拒绝参数", true,
+                call(p2, 30, "xiaoai_prompt", "{\"x\":1}").contains("\"isError\":true"));
+
+        call(p2, 31, "xiaoai_memory", null);
+        eq("xiaoai_memory 默认 get 用 50 条", 50, mem.limit);
+        call(p2, 31, "xiaoai_memory", "{\"op\":\"get\",\"limit\":3}");
+        eq("xiaoai_memory 透传 limit", 3, mem.limit);
+        call(p2, 31, "xiaoai_memory", "{\"limit\":9999}");
+        eq("xiaoai_memory limit 夹到 200", 200, mem.limit);
+
+        mem.writable = false;
+        mem.section = null;
+        String denied = call(p2, 32, "xiaoai_memory",
+                "{\"op\":\"append\",\"section\":\"长期记忆\",\"text\":\"x\"}");
+        ok("memoryWriteEnabled=false 时拒绝写", denied.contains("\"isError\":true"));
+        ok("拒绝文案说明怎么打开", denied.contains("memoryWriteEnabled=false"));
+        ok("被拒绝时没有落到端口", mem.section == null);
+
+        mem.writable = true;
+        ok("缺 section 被拒",
+                call(p2, 32, "xiaoai_memory", "{\"op\":\"append\",\"text\":\"x\"}")
+                        .contains("missing argument: section"));
+        ok("缺 text 被拒",
+                call(p2, 32, "xiaoai_memory", "{\"op\":\"append\",\"section\":\"长期记忆\"}")
+                        .contains("missing argument: text"));
+        ok("未知 op 被拒",
+                call(p2, 32, "xiaoai_memory", "{\"op\":\"delete\",\"section\":\"x\",\"text\":\"y\"}")
+                        .contains("unknown op: delete"));
+        ok("未知参数被拒",
+                call(p2, 32, "xiaoai_memory", "{\"op\":\"get\",\"nope\":1}")
+                        .contains("unknown argument: nope"));
+
+        StringBuilder tooLong = new StringBuilder();
+        for (int i = 0; i < plus.xiaoi.module.core.Contract.MEMORY_APPEND_MAX_BYTES + 10; i++) {
+            tooLong.append('a');
+        }
+        ok("正文超限被拒",
+                call(p2, 32, "xiaoai_memory", "{\"op\":\"append\",\"section\":\"长期记忆\",\"text\":\""
+                        + tooLong + "\"}").contains("text too large"));
+
+        String appended = call(p2, 33, "xiaoai_memory",
+                "{\"op\":\"append\",\"section\":\"长期记忆/重要事实\",\"text\":\"新条目\"}");
+        ok("append 成功不报错", !appended.contains("\"isError\":true"));
+        eq("append 透传 section", "长期记忆/重要事实", mem.section);
+        eq("append 透传 text", "新条目", mem.text);
+
+        String replaced = call(p2, 34, "xiaoai_memory",
+                "{\"op\":\"replace\",\"section\":\"长期记忆\",\"text\":\"- 全部替换\"}");
+        ok("replace 成功不报错", !replaced.contains("\"isError\":true"));
+        eq("replace 透传 section", "长期记忆", mem.section);
+
+        mem.writeResult = "{\"ok\":false,\"code\":\"WRITE_FAILED\"}";
+        ok("端口 ok=false → isError",
+                call(p2, 35, "xiaoai_memory",
+                        "{\"op\":\"append\",\"section\":\"长期记忆\",\"text\":\"x\"}")
+                        .contains("\"isError\":true"));
+
+        // 没有记忆端口时两个工具都明确报不可用，而不是伪造空结果
+        ok("无端口时 xiaoai_prompt 报不可用",
+                call(hs, 36, "xiaoai_prompt", null).contains("不可用"));
+        ok("无端口时 xiaoai_memory 报不可用",
+                call(hs, 36, "xiaoai_memory", null).contains("不可用"));
+
         // ------------------------------------------------------------ 未知工具与参数形态
         eq("unknown tool",
                 "{\"jsonrpc\":\"2.0\",\"id\":20,\"result\":{\"content\":[{\"type\":\"text\","
@@ -525,6 +596,46 @@ public final class McpTest {
             sb.append(((Map<?, ?>) t).get("name"));
         }
         return sb.toString();
+    }
+
+    /** P2：提示词/记忆端口的假实现。 */
+    private static final class FakeMemory implements Mcp.MemoryPort {
+        boolean writable = true;
+        int limit = -1;
+        String section;
+        String text;
+        String overview = "{\"ok\":true,\"code\":\"OK\",\"sections\":[]}";
+        String writeResult = "{\"ok\":true,\"code\":\"APPENDED\",\"backup\":\"MEMORY.md.bak-1\"}";
+
+        @Override
+        public String promptStatus() {
+            return "{\"enabled\":true,\"mode\":\"append\"}";
+        }
+
+        @Override
+        public boolean writable() {
+            return writable;
+        }
+
+        @Override
+        public String memoryOverview(int limit) {
+            this.limit = limit;
+            return overview;
+        }
+
+        @Override
+        public String memoryAppend(String section, String text) {
+            this.section = section;
+            this.text = text;
+            return writeResult;
+        }
+
+        @Override
+        public String memoryReplace(String section, String text) {
+            this.section = section;
+            this.text = text;
+            return writeResult;
+        }
     }
 
     private static void ok(String n, boolean c) { T.ok(n, c); }
