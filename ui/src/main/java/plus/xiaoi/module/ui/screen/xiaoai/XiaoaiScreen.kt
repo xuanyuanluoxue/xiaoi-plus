@@ -35,6 +35,7 @@ import plus.xiaoi.module.ui.components.XiaoiButton
 import plus.xiaoi.module.ui.components.XiaoiButtonStyle
 import plus.xiaoi.module.ui.components.XiaoiCard
 import plus.xiaoi.module.ui.components.XiaoiGroupHeader
+import plus.xiaoi.module.ui.components.XiaoiInfoRow
 import plus.xiaoi.module.ui.components.XiaoiLoadingSkeleton
 import plus.xiaoi.module.ui.components.XiaoiPreferenceCard
 import plus.xiaoi.module.ui.components.XiaoiSwitchRow
@@ -45,12 +46,10 @@ import plus.xiaoi.module.ui.theme.XiaoiTheme
 import plus.xiaoi.module.ui.components.xiaoiTopBarInset
 import top.yukonga.miuix.kmp.basic.Text
 
-/** 增强能力：0.14 只列规划项，不做可点击假入口。 */
+/** 增强能力：P2 已交付「系统提示词」「记忆」，其余仍是规划项。 */
 private val PLANNED_ABILITIES = listOf(
-    "系统提示词",
     "工具注入",
     "技能包",
-    "记忆",
     "语音与路由",
 )
 
@@ -217,8 +216,20 @@ fun XiaoaiScreen(
 
         XiaoiGroupHeader("增强能力")
         XiaoiCard {
+            XiaoiInfoRow(
+                title = "系统提示词",
+                subtitle = "追加或替换发给模型的系统提示词；默认关",
+                onClick = { onNavigate("Prompt") },
+            )
+            XiaoiInfoRow(
+                title = "记忆",
+                subtitle = "查看 MEMORY.md；写入默认关，写前自动备份",
+                onClick = { onNavigate("Memory") },
+            )
+        }
+        XiaoiCard {
             Text(
-                "P2 占位，暂不可用；以下能力不在 0.14 范围内。",
+                "以下能力仍为规划项，暂不可用。",
                 color = XiaoiTheme.colors.textHint,
                 style = XiaoiTheme.typography.caption,
             )

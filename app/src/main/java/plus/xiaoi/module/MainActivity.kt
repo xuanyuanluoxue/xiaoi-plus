@@ -68,7 +68,9 @@ import plus.xiaoi.module.ui.screen.me.LicensesScreen
 import plus.xiaoi.module.ui.screen.me.LogsScreen
 import plus.xiaoi.module.ui.screen.me.MeScreen
 import plus.xiaoi.module.ui.screen.me.SponsorScreen
+import plus.xiaoi.module.ui.screen.xiaoai.MemoryScreen
 import plus.xiaoi.module.ui.screen.xiaoai.ModelScreen
+import plus.xiaoi.module.ui.screen.xiaoai.PromptScreen
 import plus.xiaoi.module.ui.screen.xiaoai.XiaoaiScreen
 import plus.xiaoi.module.ui.theme.XiaoiTheme
 import top.yukonga.miuix.kmp.basic.SnackbarHost
@@ -149,6 +151,8 @@ private object Routes {
     const val HOME = "Home"
     const val XIAOAI = "Xiaoai"
     const val MODEL = "Model"
+    const val PROMPT = "Prompt"
+    const val MEMORY = "Memory"
     const val ACCESS = "Access"
     const val BRIDGE = "Bridge"
     const val TOKEN = "Token"
@@ -170,6 +174,8 @@ private object Routes {
         HOME to XiaoiRoute("首页", NavStack.MainTab.HOME),
         XIAOAI to XiaoiRoute("小爱", NavStack.MainTab.XIAOAI),
         MODEL to XiaoiRoute("模型与服务商", NavStack.MainTab.XIAOAI),
+        PROMPT to XiaoiRoute("系统提示词", NavStack.MainTab.XIAOAI),
+        MEMORY to XiaoiRoute("记忆", NavStack.MainTab.XIAOAI),
         ACCESS to XiaoiRoute("接入", NavStack.MainTab.ACCESS),
         BRIDGE to XiaoiRoute("接口状态", NavStack.MainTab.ACCESS),
         TOKEN to XiaoiRoute("令牌与局域网", NavStack.MainTab.ACCESS),
@@ -333,6 +339,10 @@ private fun XiaoiApp(
                                 onNavigate = { navigate(it) },
                                 onMessage = { message(it) },
                             )
+
+                            Routes.PROMPT -> PromptScreen(onMessage = { message(it) })
+
+                            Routes.MEMORY -> MemoryScreen(onMessage = { message(it) })
 
                             Routes.ACCESS -> AccessScreen(
                                 onNavigate = { navigate(it) },

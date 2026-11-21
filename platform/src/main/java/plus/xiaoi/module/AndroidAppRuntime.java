@@ -8,6 +8,7 @@ import plus.xiaoi.module.application.runtime.AppRuntime;
 import plus.xiaoi.module.application.runtime.BackgroundTasks;
 import plus.xiaoi.module.application.runtime.ConfigWatcher;
 import plus.xiaoi.module.application.runtime.ControlLogStore;
+import plus.xiaoi.module.application.runtime.MemoryAccess;
 import plus.xiaoi.module.application.runtime.ModelProbe;
 import plus.xiaoi.module.application.runtime.NetworkInfo;
 import plus.xiaoi.module.application.runtime.PermissionReader;
@@ -44,7 +45,8 @@ public final class AndroidAppRuntime {
                 new Tasks(),
                 new Network(),
                 new Usage(),
-                new Probe());
+                new Probe(),
+                new Memory(app));
     }
 
     private static final class Agent implements AgentControl {
@@ -222,6 +224,38 @@ public final class AndroidAppRuntime {
         public ModelProbe.Result probe(String baseUrl, String apiKey, String model) {
             ModelValidator.Result r = ModelValidator.check(baseUrl, apiKey, model);
             return new ModelProbe.Result(r.ok, r.code, r.message);
+        }
+    }
+
+    /**
+     * 记忆读写：经 8771 的 {@code xiaoai_memory}（记忆文件在小爱进程私有目录）。
+     *
+     * <p>端口与 token 与 {@link ControlLog} 的历史读取同源；桥不在线返回 null，
+     * 由 UI 显示「读不到」而不是伪造空列表。</p>
+     */
+    private static final class Memory implements MemoryAccess {
+        private final Context ctx;
+
+        private Memory(Context ctx) {
+            this.ctx = ctx;
+        }
+
+        @Override
+        public String call(String op, String section, String text, int limit) {
+            try {
+                int port = plus.xiaoi.module.core.BridgeEndpoint.port();
+                if (port <= 0) return null;
+                AppConfig cfg = ConfigRepository.get(ctx).load();
+                String token = cfg == null ? "" : cfg.mcpToken;
+                java.util.Map<String, Object> args = Json.obj();
+                args.put("op", op == null || op.length() == 0 ? "get" : op);
+                if (section != null && section.length() > 0) args.put("section", section);
+                if (text != null && text.length() > 0) args.put("text", text);
+                if (limit > 0) args.put("limit", (long) limit);
+                return BridgeClient.mcpCall(port, token, "xiaoai_memory", Json.write(args));
+            } catch (Throwable t) {
+                return null;
+            }
         }
     }
 }

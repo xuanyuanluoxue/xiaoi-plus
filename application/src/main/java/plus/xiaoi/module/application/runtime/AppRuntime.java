@@ -1,12 +1,11 @@
 package plus.xiaoi.module.application.runtime;
 
 /**
- * UI 运行时端口集合（WP4；WP11 补齐到 11 个）。
+ * UI 运行时端口集合（WP4；WP11 补齐到 11 个，P2 增加记忆读写共 12 个）。
  *
  * <p>只放「界面需要、但不该认识实现」的能力；每个字段对应一个窄端口，
  * 由 {@code :platform} 的 {@code AndroidAppRuntime} 组装。{@code :ui} 只依赖本类，
- * 因此不 import 任何 `bridge` / `control` / `agent` / infra 实现。</p>
- */
+ * 因此不 import 任何 `bridge` / `control` / `agent` / infra 实现。</p> */
 public final class AppRuntime {
 
     /** 8770 前台服务开关。 */
@@ -31,16 +30,19 @@ public final class AppRuntime {
     public final UsageStats usage;
     /** 模型端点探测。 */
     public final ModelProbe probe;
+    /** 记忆读写（经 8771 xiaoai_memory）。 */
+    public final MemoryAccess memory;
 
     public AppRuntime(AgentControl agent, StatusProbeStore status,
                       PermissionReader permissions, RuntimeConfigImporter configImport,
                       ConfigWatcher watcher, ControlLogStore controlLog,
                       UiPrefs prefs, BackgroundTasks tasks,
-                      NetworkInfo network, UsageStats usage, ModelProbe probe) {
+                      NetworkInfo network, UsageStats usage, ModelProbe probe,
+                      MemoryAccess memory) {
         if (agent == null || status == null || permissions == null
                 || configImport == null || watcher == null || controlLog == null
                 || prefs == null || tasks == null || network == null
-                || usage == null || probe == null) {
+                || usage == null || probe == null || memory == null) {
             throw new IllegalArgumentException("AppRuntime 端口不能为空");
         }
         this.agent = agent;
@@ -54,5 +56,6 @@ public final class AppRuntime {
         this.network = network;
         this.usage = usage;
         this.probe = probe;
+        this.memory = memory;
     }
 }

@@ -8,6 +8,7 @@ import plus.xiaoi.module.application.runtime.AppRuntime;
 import plus.xiaoi.module.application.runtime.BackgroundTasks;
 import plus.xiaoi.module.application.runtime.ConfigWatcher;
 import plus.xiaoi.module.application.runtime.ControlLogStore;
+import plus.xiaoi.module.application.runtime.MemoryAccess;
 import plus.xiaoi.module.application.runtime.ModelProbe;
 import plus.xiaoi.module.application.runtime.NetworkInfo;
 import plus.xiaoi.module.application.runtime.PermissionReader;
@@ -32,7 +33,7 @@ public final class AppRuntimeTest {
         FakeControlLog controlLog = new FakeControlLog();
         FakeHost host = new FakeHost();
         AppRuntime runtime = new AppRuntime(agent, status, permissions, importer, watcher,
-                controlLog, host, host, host, host, host);
+                controlLog, host, host, host, host, host, host);
 
         runtime.agent.startIfEnabled();
         runtime.agent.startIfEnabled();
@@ -85,10 +86,16 @@ public final class AppRuntimeTest {
         T.eq("usage 走端口", "{\"today\":{}}", runtime.usage.fetch(8771, "t", 1));
         T.ok("probe 走端口", runtime.probe.probe("https://api", "sk", "m1").ok);
 
+        T.ok("memory 走端口",
+                runtime.memory.call("append", "长期记忆", "x", 0).contains("\"ok\":true"));
+        T.eq("memory op 透传", "append", host.memoryOp);
+        T.eq("memory section 透传", "长期记忆", host.memorySection);
+        T.eq("memory text 透传", "x", host.memoryText);
+
         boolean threw = false;
         try {
             new AppRuntime(null, status, permissions, importer, watcher,
-                    controlLog, host, host, host, host, host);
+                    controlLog, host, host, host, host, host, host);
         } catch (IllegalArgumentException e) {
             threw = true;
         }
@@ -97,7 +104,7 @@ public final class AppRuntimeTest {
         boolean threwLog = false;
         try {
             new AppRuntime(agent, status, permissions, importer, watcher,
-                    null, host, host, host, host, host);
+                    null, host, host, host, host, host, host);
         } catch (IllegalArgumentException e) {
             threwLog = true;
         }
@@ -106,11 +113,20 @@ public final class AppRuntimeTest {
         boolean threwProbe = false;
         try {
             new AppRuntime(agent, status, permissions, importer, watcher,
-                    controlLog, host, host, host, host, null);
+                    controlLog, host, host, host, host, null, host);
         } catch (IllegalArgumentException e) {
             threwProbe = true;
         }
         T.ok("空探测端口被拒绝", threwProbe);
+
+        boolean threwMemory = false;
+        try {
+            new AppRuntime(agent, status, permissions, importer, watcher,
+                    controlLog, host, host, host, host, host, null);
+        } catch (IllegalArgumentException e) {
+            threwMemory = true;
+        }
+        T.ok("空记忆端口被拒绝", threwMemory);
 
         return T.report("AppRuntimeTest");
     }
@@ -205,12 +221,16 @@ public final class AppRuntimeTest {
         }
     }
 
-    /** WP11：一次实现 5 个新端口（UI 偏好/线程/网络/用量/探测）。 */
+    /** WP11：一次实现 5 个新端口（UI 偏好/线程/网络/用量/探测）；P2 再并入记忆端口。 */
     private static final class FakeHost implements UiPrefs, BackgroundTasks,
-            NetworkInfo, UsageStats, ModelProbe {
+            NetworkInfo, UsageStats, ModelProbe, MemoryAccess {
         boolean glass;
         int ioRuns;
         int mainRuns;
+        String memoryOp = "";
+        String memorySection = "";
+        String memoryText = "";
+        int memoryLimit = -1;
 
         @Override
         public boolean glassBottomBar() {
@@ -255,6 +275,15 @@ public final class AppRuntimeTest {
         @Override
         public ModelProbe.Result probe(String baseUrl, String apiKey, String model) {
             return new ModelProbe.Result(true, "ok", "通过");
+        }
+
+        @Override
+        public String call(String op, String section, String text, int limit) {
+            memoryOp = op;
+            memorySection = section;
+            memoryText = text;
+            memoryLimit = limit;
+            return "{\"ok\":true,\"code\":\"OK\"}";
         }
     }
 }
