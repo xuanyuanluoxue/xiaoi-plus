@@ -4,14 +4,16 @@
 鉴权：`Authorization: Bearer <token>`。
 
 **0.16.0 起只有一个端口 `8771`**：App 进程不再单独监听，设备动作工具由 App 执行但
-从同一个端点调用（共 15 个工具）。
+从同一个端点调用（共 17 个工具：桥 11 + 设备动作 6）。
 App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可判断；
 失败带 `retryable:true`。
 
 约束（全部来自 `Contract.java`）：请求体 ≤64 KB；`submit.text` ≤4000；
 `ask.text` ≤8000；`notify.text` ≤2000；`todo.title` ≤200 / `content` ≤8192；
 `logs.limit` 缺省 80 / 上限 300 / `0`=空；`stats.days` 上限 90；
-`audit.limit` 1~200；确认 token 60 秒一次性。
+`audit.limit` 1~200；确认 token 60 秒一次性；
+`prompt.text` ≤8192；`memory.text` ≤4 KB / 文件 ≤512 KB / `section` ≤64 字符 /
+`memory.limit` 缺省 50 / 上限 200。
 
 ## 协议方法
 
@@ -40,7 +42,7 @@ App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可�
     "protocolVersion": "2025-03-26",
     "capabilities": {"tools": {"listChanged": false}},
     "serverInfo": {"name": "xiaoi-plus", "version": "0.12.0-beta.1"},
-    "instructions": "小爱同学+ 统一 MCP 端点（8771）：15 个工具都从这里调用..."
+    "instructions": "小爱同学+ 统一 MCP 端点（8771）：17 个工具都从这里调用..."
   }
 }
 ```
@@ -294,6 +296,83 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 ```
 
 返回按天聚合的三方/官方调用次数，子调用单独在 `sub`。
+
+### xiaoai_prompt
+
+读用户自己的系统提示词配置与注入状态。参数：无。
+
+```json
+{"name":"xiaoai_prompt","arguments":{}}
+```
+
+返回 JSON 文本（`content[0].text`）：
+
+```json
+{
+  "enabled": false,
+  "mode": "append",
+  "text": "",
+  "textLength": 0,
+  "memoryInject": false,
+  "memoryInjectLines": 20,
+  "memoryWriteEnabled": false,
+  "marker": "<!-- xiaoi-plus:prompt v1 -->",
+  "stats": {
+    "injections": 0,
+    "skips": 3,
+    "failures": 0,
+    "lastAt": 0,
+    "lastNote": "no-target"
+  }
+}
+```
+
+- **默认全关**：`enabled=false` 时不会改小爱请求，`stats` 也不会增长。
+- `stats` 只有次数与命中位置（`instructions` / `system-message` / `system-inserted`），
+  **不含对话或提示词正文的历史**。
+- 修改提示词只能在手机 App「小爱 › 系统提示词」里做；远程只能读。
+
+### xiaoai_memory
+
+读写小爱记忆文件 `MEMORY.md`（明文 Markdown，按 `#`/`##` 分节）。
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `op` | string | 否 | `get`（默认）/ `append` / `replace` |
+| `section` | string | append/replace 必填 | 小节路径，例如 `长期记忆/重要事实`；不存在时新建 |
+| `text` | string | append/replace 必填 | 内容，多行按条目拆分；≤4 KB |
+| `limit` | integer | 否 | `get` 每小节返回条数：缺省 50，上限 200 |
+
+```json
+{"name":"xiaoai_memory","arguments":{"op":"get","limit":50}}
+{"name":"xiaoai_memory","arguments":{
+  "op":"append","section":"长期记忆/重要事实","text":"项目代号 xiaoi-plus"}}
+{"name":"xiaoai_memory","arguments":{
+  "op":"replace","section":"长期记忆/待办","text":"- 检查日志"}}
+```
+
+`get` 返回：
+
+```json
+{"ok":true,"code":"OK","exists":true,"file":"MEMORY.md","bytes":15360,"items":42,
+ "sections":[{"level":1,"title":"用户画像","count":12,"items":["- ..."]}]}
+```
+
+某个小节超过 `limit` 时该项带 `"truncated":true` 与真实 `count`。
+
+写操作返回：
+
+```json
+{"ok":true,"code":"APPENDED","op":"append","section":"长期记忆/重要事实",
+ "file":"MEMORY.md","bytes":15400,"items":43,"backup":"MEMORY.md.bak-20261121143000123"}
+```
+
+- **写操作默认关闭**：`memoryWriteEnabled=false` 时返回 `isError:true`，
+  文案提示去 App 打开；不会创建或修改任何文件。
+- 写前自动备份到同目录 `MEMORY.md.bak-<时间戳>`（保留 5 份），临时文件 + rename 原子替换。
+- 常见错误码：`TEXT_TOO_LARGE` / `FILE_TOO_LARGE` / `MISSING_SECTION` /
+  `MISSING_TEXT` / `SECTION_TOO_LONG` / `WRITE_FAILED` / `NO_CONTEXT`。
+- **不提供删除或清空**；`outline.md` 只读。
 
 ### xiaoai_cli
 

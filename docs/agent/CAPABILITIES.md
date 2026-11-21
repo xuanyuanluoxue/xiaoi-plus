@@ -40,14 +40,14 @@
 | A5 | 配置热更新 | 控制面 facade + 文件监听；小爱进程 reload | 内置控制面 | ✅ | 30 秒无上报回退“等待上报” |
 | A6 | 调用统计 | hook `qm.i/j/b`、`um.h` 计数 | LSPosed hook | ✅ | 只计数，不含内容 |
 | A7 | 运行日志 | 内存环形 300 条 + logcat + 落盘 + 控制面上报 | 内置控制面 | ✅ | 脱敏；不记 key/token/正文 |
-| A8 | 系统提示词**追加** | after hook `buildOpenAIRequest` / `buildResponsesRequest`，在原生 system 后追加 | LSPosed hook | 📋 | 占上下文；与原生规则冲突；每请求只注入一次 |
-| A9 | 系统提示词**替换** | 同上，覆盖 `instructions` / system message | LSPosed hook | 📋 | 高风险：可能破坏小爱工具协议与安全策略 |
-| A10 | 动态上下文注入 | 变量 `{time}` `{battery}` `{app}` `{model}` 拼进 A8 | hook + 普通 API | 📋 | 隐私与 token 成本；默认关闭 |
+| A8 | 系统提示词**追加** | after hook `buildOpenAIRequest` / `buildResponsesRequest`，在原生 system 后追加 | LSPosed hook | ✅ | 占上下文；与原生规则冲突；每请求只注入一次（0.17.0） |
+| A9 | 系统提示词**替换** | 同上，覆盖 `instructions` / system message | LSPosed hook | ✅ | 高风险：可能破坏小爱工具协议与安全策略；默认关 + App 内二次确认（0.17.0） |
+| A10 | 动态上下文注入 | 变量 `{time}` `{battery}` `{app}` `{model}` 拼进 A8 | hook + 普通 API | 🧪 | 已支持 `{{date}}/{{time}}/{{model}}/{{device}}`；电量/前台应用未做 |
 | A11 | 工具注入（function calling） | `ActionDescriptor` → OpenAI `tools`；解析 `tool_calls` → `ActionRegistry`；回填 `tool` 消息 | hook + 8770 | 📋 | 需真机确认请求体保留 `tools`；流式拼装；危险动作要确认 |
 | A12 | 轻量工具协议 | system 约定输出 `<xiaoi_action>{json}</xiaoi_action>`；响应流解析并执行 | hook | 📋 | 模型可能不遵守；只作 fallback |
 | A13 | Skill 包 | `skill.json`（prompt / tools 白名单 / triggers / examples），App 安装启停，按场景注入 | hook + 配置 | 📋 | 提示冲突、技能越权；白名单 + 风险分级 |
-| A14 | 记忆只读注入 | root 读 `files/memory/MEMORY.md`、`outline.md`，摘要注入 system | root | 📋 | 需 root；记忆里的指令性文本不可信 |
-| A15 | 记忆写入/镜像 | root 追加 Markdown（实验），不碰加密 DB/向量索引 | root | 🧪 规划 | SELinux owner/context；云端真相未知；默认关 |
+| A14 | 记忆只读注入 | 读 `files/memory/MEMORY.md`、`outline.md`，摘要注入 system | 进程内同 uid（无需 root） | ✅ | 围栏 + 免责句；默认关（0.17.0） |
+| A15 | 记忆写入/镜像 | 追加/替换明文 Markdown 小节（实验），不碰加密 DB/向量索引 | 进程内同 uid | 🧪 | 写前备份 5 份 + 原子替换；云端真相未知；默认关（0.17.0，待真机） |
 | A16 | 多轮会话 | `xiaoai_ask` 返回并复用 `sessionId` | 小爱内置 CLI | ✅ | 会话归属连接；`SESSION_BUSY` |
 | A17 | 让小爱执行任务 | `xiaoai_submit` → CLI `agent.submit` | 小爱内置 CLI | ✅ | 黑盒：实际技能取决于小爱 |
 | A18 | 代小爱确认授权 | CLI `consent.respond`（技术上可调用） | 小爱内置 CLI | ⛔ | 属于用户对小爱的授权，项目不做代签 |

@@ -33,7 +33,9 @@
 | 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1`；全机只由 leader 进程监听一个端口；`POST /config` 已停用（410） | 🧪 实验性，默认关闭 |
 | 局域网 MCP | 显式打开「允许局域网访问」且 token 为 32 位 hex 时才监听 `0.0.0.0`，同一 Wi-Fi 的电脑可直接连；短/弱 token 自动回退 loopback；关闭开关立即回到仅本机。测试便利选项：「允许弱密码」放任意非空密码，「免鉴权」连 token 都不要（都可随时关） | 🧪 实验性，默认关闭 |
 | 设备操作接口 | **并入 8771**（0.16.0 单端口）：打开应用/通知/闹钟/音量/设备信息/小爱代理由 App 进程执行，但**不单独监听**，经控制面 Binder 从 8771 转发；局域网与令牌跟随 8771 | 🧪 实验性，随桥开启 |
-| MCP 端点 | **只有一个端口 8771**：`POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），15 个工具（桥 9 + 设备动作 6）全部从这一个端点提供 | 🧪 实验性，随桥一起开启 |
+| 系统提示词 | 把用户自己的提示词追加到小爱每次请求（`instructions` / system 消息），带 `{{date}}/{{time}}/{{model}}/{{device}}` 变量与幂等标记；替换模式需二次确认 | 🧪 0.17 新增，默认关闭 |
+| 记忆 | 按小节只读 `files/memory/MEMORY.md`，可追加/替换小节（写前备份 5 份、原子替换、无删除入口）；摘要可注入提示词 | 🧪 0.17 新增，写入默认关闭 |
+| MCP 端点 | **只有一个端口 8771**：`POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），17 个工具（桥 11 + 设备动作 6）全部从这一个端点提供 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |
 
 已验证的小爱版本见 [兼容性矩阵](docs/compatibility.md)，目前只有 **8.2.65.4714**。
@@ -47,17 +49,17 @@
 | tab | 主要页面 | 能做什么 |
 |---|---|---|
 | 首页 | 状态总览、待处理、双域入口、运行概况、最近活动 | 只读看状态；所有按钮只做跳转，不放开关 |
-| 小爱 | 小爱、模型与服务商、运行态、增强能力（占位） | 启用/暂停第三方模型（即时保存）；编辑服务商/模型/端点/密钥（显式保存） |
+| 小爱 | 小爱、模型与服务商、系统提示词、记忆、运行态、增强能力 | 启用/暂停第三方模型（即时保存）；编辑服务商/模型/端点/密钥（显式保存）；编辑提示词、读/追加记忆（默认关） |
 | 接入 | 接入、端口与服务、令牌与局域网、连接信息、能力清单/详情、工具清单、权限 | 看 8771 通道、改令牌与 LAN、复制连接信息；能力与工具只读 |
 | 我的 | 我的、外观、配置管理、诊断、日志、关于、开源许可 | 主题三档、备份/还原/脱敏导出、诊断/日志、危险区「停用全部」 |
 
-- 共 **20 条路由**；一级页显示底栏，二级/三级页隐藏底栏并显示返回箭头。
+- 共 **22 条路由**；一级页显示底栏，二级/三级页隐藏底栏并显示返回箭头。
 - 深浅色跟随系统或手动三档；颜色/字号来自 `XiaoiTheme`，组件优先用 Miuix
   （`Scaffold`、`SmallTopAppBar`、`NavigationBar`、`Card`、`Button`、`Switch`、
   `TextField`、`SnackbarHost`），只有 Miuix 没有的筛选 chip、空态、状态 Hero 自绘。
 - 日志页支持级别筛选、跟随、清空、分享；0.14 **没有域筛选**。
-- 提示词、工具注入、技能包、记忆、语音与路由在 0.14 **只是只读占位**，
-  没有开关也没有执行入口；不要按已实现功能理解。
+- 「系统提示词」「记忆」0.17 起可用（默认关）：提示词追加/替换、记忆分节只读与追加；
+  工具注入、技能包、语音与路由仍是只读占位，没有开关也没有执行入口。
 - 页面与组件契约见 [docs/ui/SCREENS.md](docs/ui/SCREENS.md)、
   [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md)。
 
@@ -200,7 +202,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 ### MCP 端点（可选，随桥开启）
 
 0.16.0 起是**真正的单端口**：模块只监听 8771 一个端口，App 进程不再开任何 socket。
-互相补齐工具，**两个端点都返回同一套 15 个工具**，客户端只配一个即可。
+互相补齐工具，**两个端点都返回同一套 17 个工具**，客户端只配一个即可。
 
 - 端点不写死：桥从 `8771` 起，被占用会顺延（`8771~8775`），**以 `/health` 的 `port=`
   或设置页「连接信息」为准**；设备动作工具从同一个端点调用。
@@ -226,6 +228,8 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 | `xiaoai_logs` | 桥 | `limit`（缺省 80，0=空，上限 300）、`since` | 读运行日志（**跨进程合并视图**，三个小爱进程共用 600 条缓冲）：每行 `seq/t/level/msg` + `tag/ts/pid/proc`，顶层带 `scope=merged|local` 与 `lastSeq`；同时落盘 `files/xiaoi_plus.log` |
 | `xiaoai_island` | 桥 | `text`（默认「小爱同学plus」）、`force` | 手动发一次超级岛提示（deprecated，建议用 `xiaoai_notify`） |
 | `xiaoai_stats` | 桥 | `days`（默认 7，上限 90，超出回 `clamped:true`） | 调用量统计：按天返回三方 / 官方模型的调用次数 |
+| `xiaoai_prompt` | 桥 | 无 | 读系统提示词配置（开关/模式/正文/记忆注入）与注入统计（命中次数、最后位置）；**默认关**，修改只能在 App 内 |
+| `xiaoai_memory` | 桥 | `op=get\|append\|replace`（默认 get）、`section`、`text`、`limit`（默认 50，上限 200） | 分节读 `MEMORY.md`；append/replace **需先在 App 打开「允许写记忆」**（默认关），写前自动备份 5 份；不提供删除/清空 |
 | `xiaoai_capabilities` | App | `includeUnavailable` | 列出设备动作、schema、风险与可用性 |
 | `xiaoai_action` | App | `action`（必填）+ 动作参数 | 执行设备动作；`risk=confirm/danger` 需确认 |
 | `xiaoai_confirm` | App | `confirmToken`、`approve` | 批准/拒绝待确认动作；token 一次性、60 秒过期 |
@@ -310,7 +314,7 @@ scripts\deploy.cmd
 
 它按顺序做：构建 release → 用 `scripts/expected-signer.sha256` 校验签名指纹 →
 选设备（`--serial` / `XIAOI_SERIAL` / 唯一在线设备）→ `install -r` → 打开
-`MainActivity` → 启动设备动作服务 → 探活并报 15 个工具是否齐全。
+`MainActivity` → 启动设备动作服务 → 探活并报 17 个工具是否齐全。
 
 | 参数 | 作用 |
 |---|---|
@@ -415,7 +419,7 @@ APK 从 8.4 MiB 降到 **1.9 MiB**（实测）。版本号单一来源是
 |---|---|
 | [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md) | 0.14 版本内容、页面清单、验收、限制、截图索引 |
 | [docs/ui/BUILD.md](docs/ui/BUILD.md) | 0.14 Gradle/Compose 构建、门禁、截图命令 |
-| [docs/ui/SCREENS.md](docs/ui/SCREENS.md) | 20 条路由、页面区块与 0.14 不做项 |
+| [docs/ui/SCREENS.md](docs/ui/SCREENS.md) | 22 条路由、页面区块与 0.14 不做项 |
 | [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md) | Miuix 组件契约、`FilterChips`、设备操作状态判定 |
 | [docs/archive/build-sh-legacy.md](docs/archive/build-sh-legacy.md) | 历史：≤0.13 的 `build.sh` 构建（脚本已在 0.16.0 删除） |
 | [docs/release.md](docs/release.md) | 版本号、签名密钥、发 tag、回滚 |

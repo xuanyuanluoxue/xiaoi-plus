@@ -63,9 +63,10 @@ description: 通过本机 HTTP 桥驱动小爱同学执行任务。触发：需�
   Binder 从 8771 转发（`/health` 里 `agent=ipc` 表示已连上，`agent=down` 表示 App 未就绪）。
   端口不要写死：桥从 `8771` 起，被占用会顺延（`8771~8775`），以 `/health` 的 `port=`
   或设置页「连接信息」为准。
-- 工具（15 个）：
-  - 桥侧 9 个：`xiaoai_status` / `xiaoai_submit` / `xiaoai_todo_create` / `xiaoai_cli` /
-    `xiaoai_config` / `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats`
+- 工具（17 个）：
+  - 桥侧 11 个：`xiaoai_status` / `xiaoai_submit` / `xiaoai_todo_create` / `xiaoai_cli` /
+    `xiaoai_config` / `xiaoai_switch_model` / `xiaoai_logs` / `xiaoai_island` / `xiaoai_stats` /
+    `xiaoai_prompt` / `xiaoai_memory`
   - App 侧 6 个：`xiaoai_capabilities` / `xiaoai_action` / `xiaoai_confirm` / `xiaoai_audit` /
     `xiaoai_notify` / `xiaoai_ask`
   - 语义与 README 的工具表一致；上限/TTL/端口统一来自 `Contract.java`
