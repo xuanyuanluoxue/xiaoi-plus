@@ -393,7 +393,15 @@ public class Hook implements IXposedHookLoadPackage {
             Object parser = sKotlinJson;
             if (parser == null) {
                 Class<?> holder = Class.forName("s92.b", false, cl);
-                parser = holder.getField("d").get(null);
+                java.lang.reflect.Field field;
+                try {
+                    field = holder.getField("d");
+                } catch (NoSuchFieldException missing) {
+                    // 字段不是 public 时仍可读：Xposed 进程内没有模块可见性限制。
+                    field = holder.getDeclaredField("d");
+                    field.setAccessible(true);
+                }
+                parser = field.get(null);
                 if (parser == null) return null;
                 sParseToJsonElement = parser.getClass()
                         .getMethod("parseToJsonElement", String.class);

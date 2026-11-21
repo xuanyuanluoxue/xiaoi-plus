@@ -86,7 +86,7 @@ public final class MemoryFileStore implements MemoryStore {
 
             String backupName = "";
             if (target.isFile()) {
-                backupName = name + ".bak-" + stamp();
+                backupName = uniqueBackupName(name);
                 if (!copy(target, new File(dir, backupName))) return null;
                 prune(name);
             }
@@ -124,6 +124,18 @@ public final class MemoryFileStore implements MemoryStore {
 
     private static String stamp() {
         return new SimpleDateFormat("yyyyMMddHHmmssSSS", Locale.US).format(new Date());
+    }
+
+    /** 同一毫秒内连续写入时避免覆盖上一份备份（`-1`、`-2`…）。 */
+    private String uniqueBackupName(String name) {
+        String base = name + ".bak-" + stamp();
+        String candidate = base;
+        int n = 0;
+        while (new File(dir, candidate).exists() && n < 100) {
+            n++;
+            candidate = base + "-" + n;
+        }
+        return candidate;
     }
 
     /** 只保留最近 {@link #keepBackups} 份；删除失败不影响写入结果。 */
