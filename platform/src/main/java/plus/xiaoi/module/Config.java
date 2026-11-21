@@ -8,6 +8,9 @@ import de.robv.android.xposed.XSharedPreferences;
  * 配置快照。
  * 设置页写本模块 SharedPreferences；小爱进程用 XSharedPreferences 跨进程读，
  * 读到时立刻拷成不可变快照，避免后续重复 IO。
+ *
+ * <p>提示词与记忆开关也在快照里：热更新时整体替换，不要在 Hook 里就地改字段——
+ * 请求线程可能正在读，半更新状态会让同一轮对话前后不一致。</p>
  */
 public final class Config {
     public static final String PREFS = Prefs.NAME;

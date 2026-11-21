@@ -327,6 +327,9 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 }
 ```
 
+> 注意：`text` 是用户自己的提示词正文。任何持有令牌的客户端都能读到它；
+> 日志与导出包里不包含正文。
+
 - **默认全关**：`enabled=false` 时不会改小爱请求，`stats` 也不会增长。
 - `stats` 只有次数与命中位置（`instructions` / `system-message` / `system-inserted`），
   **不含对话或提示词正文的历史**。
