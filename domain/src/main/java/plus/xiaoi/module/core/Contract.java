@@ -48,6 +48,15 @@ public final class Contract {
     public static final int TODO_CONTENT_MAX = 8192;
     public static final int MODEL_MAX = 200;
 
+    // ------------------------------------------------------------- 提示词与记忆（P2）
+
+    /** 系统提示词正文上限（字符）。超长在注入时截断。 */
+    public static final int PROMPT_TEXT_MAX = 8192;
+    /** 记忆注入默认取多少行 outline。 */
+    public static final int MEMORY_INJECT_LINES_DEFAULT = 20;
+    /** 记忆注入行数上限。 */
+    public static final int MEMORY_INJECT_LINES_MAX = 100;
+
     // ------------------------------------------------------------- 查询上限
 
     public static final int LOGS_LIMIT_DEFAULT = 80;
