@@ -38,6 +38,8 @@ public final class Config {
     public static final String KEY_MEMORY_INJECT = "memory_inject";
     public static final String KEY_MEMORY_INJECT_LINES = "memory_inject_lines";
     public static final String KEY_MEMORY_WRITE = "memory_write";
+    /** 双向枢纽：把 8771 写进小爱的 mcp_servers.json（默认关）。 */
+    public static final String KEY_INBOUND = "inbound";
 
     /** 提示词与记忆的快照（不可变）。 */
     public static final class Prompt {
@@ -365,6 +367,11 @@ public final class Config {
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    /** 双向枢纽开关（默认关）：把 8771 写进小爱的 mcp_servers.json。 */
+    public static boolean inboundEnabledPref() {
+        return modulePref(KEY_INBOUND);
     }
 
     /**

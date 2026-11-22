@@ -1,5 +1,22 @@
 # 更新日志
 
+## 未发布（0.18.0）
+
+**方向：双向枢纽 + 官方记忆 + 局域网写鉴权**
+
+- **官方记忆通道**：`xiaoai_memory` 新增 `op=official`（转调小爱 `read_memory`，返回官方口径）
+  与 `op=official_write`（自然语言交给官方抽取，拒绝「忘掉/删除/清空」）。走
+  `UIAgentServiceForOSBot` 的 AppTool JSON-RPC，与 `xiaoai_todo_create` 同一条 binder 通道；
+  失败返回 `APPTOOL_*` 结构化错误，不返回空数组假装成功。本地 `MEMORY.md` 的 `get/append/replace` 保留不变。
+- **局域网写鉴权**：写类操作（`append`/`replace`/`official_write`）在非 loopback 来源必须额外带
+  `X-Xiaoi-Write: <同一个 Bearer token>`，否则 `DENIED_LAN`；只读操作不受影响。
+- **双向枢纽（实验，默认关）**：把小爱的 `mcp/mcp_servers.json` 按 `name=xiaoi-plus` 合并写入
+  `/mcp` 端点（保留其他服务与未知顶层键、写前备份、坏 JSON 不覆盖），开关为 `inbound`。
+  小爱重启后即可反向调用本模块工具；本轮只保证文件正确，尚未真机验证小爱侧加载。
+- 分层：官方记忆协议并入 `domain/agent/AppToolProtocol`；binder 调用复用
+  `platform/agent/AppToolClient`；合并逻辑 `domain/core/mcp/InboundRegistration`（纯 JVM，20 条单测）；
+  文件写入 `platform/McpServerConfig`。`xiaoai_memory` 单测 150 条（含 LAN 闸门与官方 op）。
+
 ## 未发布（0.17.0）
 
 **逆向子项目 `reverse/`：先把小爱摸清楚**

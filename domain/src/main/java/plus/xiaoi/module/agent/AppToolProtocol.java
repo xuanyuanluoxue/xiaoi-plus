@@ -20,6 +20,41 @@ public final class AppToolProtocol {
             "com.miui.notes.agent.tool.provider.NoteToolService";
     public static final String TOOL_NAME = "todo_create";
 
+    /** 小爱自己的 AppToolProvider（18 个进程内工具都在这里）。 */
+    public static final String VOICEASSIST_PACKAGE = "com.miui.voiceassist";
+    public static final String VOICEASSIST_SERVICE =
+            "com.xiaomi.voiceassistant.UIAgentServiceForOSBot";
+
+    /** 通用 tools/call 请求体；{@code arguments} 为空时用空对象。 */
+    public static String buildCall(String tool, java.util.Map<String, Object> arguments) {
+        java.util.Map<String, Object> params = Json.obj();
+        params.put("name", tool == null ? "" : tool);
+        params.put("arguments", arguments == null ? Json.obj() : arguments);
+
+        java.util.Map<String, Object> req = Json.obj();
+        req.put("jsonrpc", "2.0");
+        req.put("id", 1L);
+        req.put("method", "tools/call");
+        req.put("params", params);
+        return Json.write(req);
+    }
+
+    /** 官方记忆检索请求（keywords 可空，空表示最近记录）。 */
+    public static String buildReadMemory(String keywords, int page, int pageSize) {
+        java.util.Map<String, Object> args = Json.obj();
+        if (keywords != null && keywords.length() > 0) args.put("keywords", keywords);
+        args.put("page", (long) Math.max(1, page));
+        args.put("page_size", (long) Math.max(1, pageSize));
+        return buildCall("read_memory", args);
+    }
+
+    /** 官方记忆写入请求（自然语言）。 */
+    public static String buildWriteMemory(String query) {
+        java.util.Map<String, Object> args = Json.obj();
+        args.put("query", query == null ? "" : query);
+        return buildCall("write_memory", args);
+    }
+
     /** bindService 到 onServiceConnected 的上限。 */
     public static final long BIND_TIMEOUT_MS = 5000L;
     /** 单次 handleRequest 的上限；binder 调用本身不可中断，超时后只放弃结果。 */

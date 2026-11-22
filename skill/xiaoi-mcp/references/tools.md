@@ -337,22 +337,36 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 
 ### xiaoai_memory
 
-读写小爱记忆文件 `MEMORY.md`（明文 Markdown，按 `#`/`##` 分节）。
+读写小爱记忆。两条通道：**本地文件**（`MEMORY.md`，明文 Markdown，按 `#`/`##` 分节）
+与**官方记忆**（转调小爱的 `read_memory` / `write_memory`）。
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `op` | string | 否 | `get`（默认）/ `append` / `replace` |
+| `op` | string | 否 | `get`（默认）/ `official` / `append` / `replace` / `official_write` |
 | `section` | string | append/replace 必填 | 小节路径，例如 `长期记忆/重要事实`；不存在时新建 |
 | `text` | string | append/replace 必填 | 内容，多行按条目拆分；≤4 KB |
 | `limit` | integer | 否 | `get` 每小节返回条数：缺省 50，上限 200 |
+| `q` | string | 见 op | `official` 的检索关键词（空=最近记录）；`official_write` 的自然语言内容（≤500 字） |
+| `page` | integer | 否 | `official` 页码，缺省 1 |
+| `pageSize` | integer | 否 | `official` 每页条数，缺省 10，上限 50 |
 
 ```json
 {"name":"xiaoai_memory","arguments":{"op":"get","limit":50}}
+{"name":"xiaoai_memory","arguments":{"op":"official","q":"羽毛球","page":1,"pageSize":10}}
+{"name":"xiaoai_memory","arguments":{"op":"official_write","q":"我每周三晚上打羽毛球"}}
 {"name":"xiaoai_memory","arguments":{
   "op":"append","section":"长期记忆/重要事实","text":"项目代号 xiaoi-plus"}}
 {"name":"xiaoai_memory","arguments":{
   "op":"replace","section":"长期记忆/待办","text":"- 检查日志"}}
 ```
+
+写类操作（`append` / `replace` / `official_write`）有两道闸：
+
+1. 手机 App 内打开「允许写记忆」（默认关）；
+2. **局域网来源**还必须带请求头 `X-Xiaoi-Write: <同一个 Bearer token>`（二次鉴权），
+   否则返回 `DENIED_LAN`。只读操作（`get` / `official`）不受影响。
+
+`official_write` 拒绝删除类指令（`忘掉` / `删除` / `清空` / `forget`）——本模块不提供删除入口。
 
 `get` 返回：
 

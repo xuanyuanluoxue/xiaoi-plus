@@ -137,6 +137,7 @@ public class Hook implements IXposedHookLoadPackage {
             }
             host().updateToken(c.token());
             syncCustomPrompt(c);
+            syncInbound(c);
             Logs.i("配置已热更新 model=" + c.model()
                     + " marker=" + c.marker() + " bridge=" + c.bridge());
         } catch (Throwable t) {
@@ -175,6 +176,25 @@ public class Hook implements IXposedHookLoadPackage {
 
     /** 官方 custom_prompt.md 已接管注入时，请求体侧的两个兜底都让位。 */
     private static volatile boolean sFilePromptActive;
+
+    /**
+     * 双向枢纽（默认关）：把 8771 端点写进小爱的 {@code mcp/mcp_servers.json}。
+     *
+     * <p>小爱要重启（或调 {@code reload_mcp_config}）才会加载新配置；这里只负责
+     * 把文件写对。开关关掉时精确移除我们的条目，不动别人的服务。</p>
+     */
+    private static void syncInbound(Config c) {
+        try {
+            boolean on = Config.inboundEnabledPref();
+            boolean ok = McpServerConfig.sync(on, host().port(), c.token());
+            if (on) {
+                Logs.i("双向枢纽: mcp_servers.json " + (ok ? "已写入" : "写入失败")
+                        + "（重启小爱后生效）");
+            }
+        } catch (Throwable t) {
+            Logs.i("双向枢纽接线失败: " + t);
+        }
+    }
 
     /** 读小爱 versionName；早期加载（Application 未就绪）返回 null。 */
     private static String readVersionName() {

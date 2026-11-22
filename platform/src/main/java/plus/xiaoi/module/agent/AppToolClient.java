@@ -90,6 +90,76 @@ public final class AppToolClient {
     }
 
     /**
+     * 通用入口：显式组件（不走 queryIntentServices），其余纪律与 {@link #createTodo} 相同。
+     *
+     * <p>用于小爱自己的 {@code UIAgentServiceForOSBot}（同一 action、同一 AIDL），
+     * 例如 {@code read_memory} / {@code write_memory}。</p>
+     */
+    public static AppToolProtocol.Result callTool(Context context, String pkg, String serviceClass,
+                                                 String tool, java.util.Map<String, Object> args) {
+        if (context == null) {
+            return AppToolProtocol.error("CONTEXT_UNAVAILABLE", "拿不到 voiceassist Context");
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return AppToolProtocol.error("MAIN_THREAD_BLOCKED",
+                    "拒绝在主线程等待 AppTool binder（会造成 ServiceConnection 回调死锁）");
+        }
+        Context app = context.getApplicationContext();
+        if (app == null) app = context;
+        ComponentName component = new ComponentName(pkg, serviceClass);
+        Session session = new Session(app, component);
+        try {
+            if (!session.bind()) {
+                return AppToolProtocol.error("BIND_REJECTED",
+                        "bindService 被拒绝：" + component.flattenToShortString());
+            }
+            IBinder binder = session.await(AppToolProtocol.BIND_TIMEOUT_MS);
+            if (binder == null) {
+                String reason = session.failure;
+                if (reason == null || reason.length() == 0) reason = "BIND_TIMEOUT";
+                return AppToolProtocol.error(reason, "等待 provider 连接失败："
+                        + component.flattenToShortString());
+            }
+            return callWithTimeout(app, binder, AppToolProtocol.buildCall(tool, args));
+        } catch (Throwable e) {
+            Logs.e("apptool 调用失败: " + e);
+            return AppToolProtocol.error("CALL_FAILED", "调用 provider 失败", rootMessage(e));
+        } finally {
+            session.unbind();
+        }
+    }
+
+    /** 官方记忆检索（{@code read_memory}）。 */
+    public static AppToolProtocol.Result readMemory(Context context, String keywords,
+                                                    int page, int pageSize) {
+        if (context == null) {
+            return AppToolProtocol.error("CONTEXT_UNAVAILABLE", "拿不到 voiceassist Context");
+        }
+        java.util.Map<String, Object> args = plus.xiaoi.module.Json.obj();
+        if (keywords != null && keywords.length() > 0) args.put("keywords", keywords);
+        args.put("page", (long) Math.max(1, page));
+        args.put("page_size", (long) Math.max(1, pageSize));
+        return readCall(context, "read_memory", args);
+    }
+
+    /** 官方记忆写入（{@code write_memory}，自然语言）。 */
+    public static AppToolProtocol.Result writeMemory(Context context, String query) {
+        if (context == null) {
+            return AppToolProtocol.error("CONTEXT_UNAVAILABLE", "拿不到 voiceassist Context");
+        }
+        java.util.Map<String, Object> args = plus.xiaoi.module.Json.obj();
+        args.put("query", query == null ? "" : query);
+        return readCall(context, "write_memory", args);
+    }
+
+    /** 内存/写入共用的实参构造，避免两处拼 JSON 方式不一致。 */
+    private static AppToolProtocol.Result readCall(Context context, String tool,
+                                                   java.util.Map<String, Object> args) {
+        return callTool(context, AppToolProtocol.VOICEASSIST_PACKAGE,
+                AppToolProtocol.VOICEASSIST_SERVICE, tool, args);
+    }
+
+    /**
      * 先按 action 查；查不到再回退到已确认的组件名。这样即使 package visibility
      * 过滤了 queryIntentServices，显式组件绑定仍可再试一次。
      */

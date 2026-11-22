@@ -522,6 +522,49 @@ public final class McpTest {
                 call(p2, 35, "xiaoai_memory",
                         "{\"op\":\"append\",\"section\":\"长期记忆\",\"text\":\"x\"}")
                         .contains("\"isError\":true"));
+        mem.writeResult = "{\"ok\":true,\"code\":\"APPENDED\"}";
+
+        // 官方记忆：只读检索透传分页
+        call(p2, 37, "xiaoai_memory",
+                "{\"op\":\"official\",\"q\":\"羽毛球\",\"page\":2,\"pageSize\":5}");
+        eq("official 透传 q", "羽毛球", mem.officialQ);
+        eq("official 透传 page", 2, mem.officialPage);
+        eq("official 透传 pageSize", 5, mem.officialSize);
+        call(p2, 37, "xiaoai_memory", "{\"op\":\"official\",\"pageSize\":999}");
+        eq("official pageSize 夹到 50", 50, mem.officialSize);
+
+        // 官方写入：删除类指令、缺参、写开关
+        ok("official_write 拒绝删除类指令",
+                call(p2, 38, "xiaoai_memory", "{\"op\":\"official_write\",\"q\":\"忘掉我的生日\"}")
+                        .contains("不支持删除类指令"));
+        eq("被拒时没有落到端口", null, mem.officialWriteQ);
+        ok("official_write 缺 q 被拒",
+                call(p2, 38, "xiaoai_memory", "{\"op\":\"official_write\"}")
+                        .contains("missing argument: q"));
+        mem.writable = false;
+        ok("official_write 受写开关约束",
+                call(p2, 39, "xiaoai_memory", "{\"op\":\"official_write\",\"q\":\"我每周三打球\"}")
+                        .contains("memoryWriteEnabled=false"));
+        mem.writable = true;
+        call(p2, 40, "xiaoai_memory", "{\"op\":\"official_write\",\"q\":\"我每周三打球\"}");
+        eq("official_write 透传 q", "我每周三打球", mem.officialWriteQ);
+
+        // 局域网写：需要二次因子；只读不受影响
+        ok("LAN 写无二次因子被拒",
+                callLan(p2, 41, "xiaoai_memory",
+                        "{\"op\":\"append\",\"section\":\"长期记忆\",\"text\":\"x\"}", true, false)
+                        .contains("DENIED_LAN"));
+        ok("LAN 写带二次因子放行",
+                !callLan(p2, 42, "xiaoai_memory",
+                        "{\"op\":\"append\",\"section\":\"长期记忆\",\"text\":\"x\"}", true, true)
+                        .contains("DENIED_LAN"));
+        ok("LAN 只读不受影响",
+                !callLan(p2, 43, "xiaoai_memory", "{\"op\":\"get\",\"limit\":3}", true, false)
+                        .contains("DENIED_LAN"));
+        ok("LAN official_write 同样需要二次因子",
+                callLan(p2, 44, "xiaoai_memory",
+                        "{\"op\":\"official_write\",\"q\":\"记住我喜欢猫\"}", true, false)
+                        .contains("DENIED_LAN"));
 
         // 没有记忆端口时两个工具都明确报不可用，而不是伪造空结果
         ok("无端口时 xiaoai_prompt 报不可用",
@@ -581,6 +624,19 @@ public final class McpTest {
         return Mcp.handle(sb.toString(), hosts);
     }
 
+    /** 带来源标记的调用：lan=true 模拟局域网，writeOk=是否带写二次因子。 */
+    private static String callLan(Mcp.Hosts hosts, int id, String name, String argsJson,
+                                  boolean lan, boolean writeOk) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"jsonrpc\":\"2.0\",\"id\":").append(id)
+                .append(",\"method\":\"tools/call\",\"params\":{\"name\":\"").append(name).append("\"");
+        if (argsJson != null) {
+            sb.append(",\"arguments\":").append(argsJson);
+        }
+        sb.append("}}");
+        return Mcp.handle(sb.toString(), hosts, lan, writeOk);
+    }
+
     /** 取 tools/call 响应里 content[0].text（text 内嵌 JSON）。 */
     private static String textOf(String rpcOut) {
         Object v = Json.read(rpcOut);
@@ -606,6 +662,11 @@ public final class McpTest {
         String text;
         String overview = "{\"ok\":true,\"code\":\"OK\",\"sections\":[]}";
         String writeResult = "{\"ok\":true,\"code\":\"APPENDED\",\"backup\":\"MEMORY.md.bak-1\"}";
+        String officialQ;
+        int officialPage = -1;
+        int officialSize = -1;
+        String officialWriteQ;
+        String officialResult = "{\"ok\":true,\"code\":\"OK\",\"items\":[{\"text\":\"羽毛球\"}]}";
 
         @Override
         public String promptStatus() {
@@ -635,6 +696,20 @@ public final class McpTest {
             this.section = section;
             this.text = text;
             return writeResult;
+        }
+
+        @Override
+        public String officialRead(String keywords, int page, int pageSize) {
+            this.officialQ = keywords;
+            this.officialPage = page;
+            this.officialSize = pageSize;
+            return officialResult;
+        }
+
+        @Override
+        public String officialWrite(String query) {
+            this.officialWriteQ = query;
+            return officialResult;
         }
     }
 

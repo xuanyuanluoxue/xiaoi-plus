@@ -10,6 +10,12 @@ public final class TestMain {
         int failed = 0;
         failed += JsonTest.run();
         try {
+            failed += InboundRegistrationTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL InboundRegistrationTest 套件异常: " + t);
+        }
+        try {
             failed += HttpTest.run();
         } catch (Throwable t) {
             failed++;

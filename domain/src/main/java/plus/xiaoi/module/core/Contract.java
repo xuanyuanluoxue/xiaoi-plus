@@ -66,6 +66,8 @@ public final class Contract {
     public static final int MEMORY_GET_LIMIT_DEFAULT = 50;
     /** xiaoai_memory op=get 每个小节的返回上限。 */
     public static final int MEMORY_GET_LIMIT_MAX = 200;
+    /** op=official_write 的自然语言入参上限（字符）。 */
+    public static final int OFFICIAL_MEMORY_QUERY_MAX = 500;
 
     // ------------------------------------------------------------- 查询上限
 

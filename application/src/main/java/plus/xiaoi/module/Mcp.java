@@ -155,6 +155,27 @@ public final class Mcp {
 
         /** 替换小节正文（保留标题）。 */
         String memoryReplace(String section, String text);
+
+        /**
+         * 官方记忆只读检索（转调小爱 {@code UIAgentServiceForOSBot#readMemory}）。
+         *
+         * @param keywords 关键词，空串表示最近记录
+         * @return 小爱原样返回的 JSON 文本，或结构化错误（{@code ok=false}）
+         */
+        default String officialRead(String keywords, int page, int pageSize) {
+            return "{\"ok\":false,\"code\":\"APPTOOL_UNAVAILABLE\","
+                    + "\"message\":\"官方记忆通道未实现\"}";
+        }
+
+        /**
+         * 官方记忆写入（自然语言，交给小爱自己的抽取流水线）。
+         *
+         * @return 小爱原样返回的 JSON 文本，或结构化错误
+         */
+        default String officialWrite(String query) {
+            return "{\"ok\":false,\"code\":\"APPTOOL_UNAVAILABLE\","
+                    + "\"message\":\"官方记忆通道未实现\"}";
+        }
     }
 
     /** 配置的只读快照（Config 的纯 JVM 投影）。 */
@@ -228,6 +249,14 @@ public final class Mcp {
      * @return 响应体；通知（无 id）返回 null，调用方应回 202 空体
      */
     public static String handle(String body, Hosts hosts) {
+        return handle(body, hosts, false, false);
+    }
+
+    /**
+     * @param lan         true = 请求来自非 loopback 连接（局域网）
+     * @param lanWriteOk 局域网请求是否带了写二次因子（{@code X-Xiaoi-Write: <token>}）
+     */
+    public static String handle(String body, Hosts hosts, boolean lan, boolean lanWriteOk) {
         try {
             if (body == null || body.length() == 0) {
                 return rpcError(null, -32700, "empty body");
@@ -276,7 +305,7 @@ public final class Mcp {
                         if (a instanceof Map) argCount = ((Map<?, ?>) a).size();
                     }
                     long started = System.currentTimeMillis();
-                    Map<String, Object> result = toolsCall(params, hosts);
+                    Map<String, Object> result = toolsCall(params, hosts, lan, lanWriteOk);
                     try {
                         boolean ok = !Boolean.TRUE.equals(result.get("isError"));
                         hosts.telemetry.onToolCall(tool, ok,
@@ -579,16 +608,21 @@ public final class Mcp {
     private static Map<String, Object> memoryTool() {
         Map<String, Object> t = Json.obj();
         t.put("name", "xiaoai_memory");
-        t.put("description", "读写小爱记忆文件 MEMORY.md：op=get（默认）分节返回；"
-                + "op=append 往小节追加条目；op=replace 替换小节正文（保留标题）。"
-                + "写操作需要先在 App 内打开「允许写记忆」，每次写入前自动备份（保留 5 份）。"
-                + "不提供删除或清空；outline.md 只读。");
+        t.put("description", "读写小爱记忆。op=get（默认）分节读本地 MEMORY.md；"
+                + "op=official 转调小爱官方记忆检索（向量+关键词，返回官方口径）；"
+                + "op=append / op=replace 改本地文件（保留标题）；"
+                + "op=official_write 交给官方抽取写入（自然语言，可能被改写）。"
+                + "写操作需要先在 App 内打开「允许写记忆」；局域网来源还需打开「允许局域网写」。"
+                + "每次本地写入前自动备份（保留 5 份）；不提供删除或清空。");
         Map<String, Object> props = Json.obj();
-        Map<String, Object> op = prop("string", "操作：get / append / replace，缺省 get");
+        Map<String, Object> op = prop("string",
+                "操作：get / official / append / replace / official_write，缺省 get");
         List<Object> ops = Json.arr();
         ops.add("get");
+        ops.add("official");
         ops.add("append");
         ops.add("replace");
+        ops.add("official_write");
         op.put("enum", ops);
         props.put("op", op);
         props.put("section", prop("string", "小节路径，例如「长期记忆/重要事实」；append/replace 必填"));
@@ -598,6 +632,15 @@ public final class Mcp {
         limit.put("minimum", 1L);
         limit.put("maximum", (long) Contract.MEMORY_GET_LIMIT_MAX);
         props.put("limit", limit);
+        props.put("q", prop("string", "op=official 的检索关键词（空=最近记录）；"
+                + "op=official_write 的自然语言内容（上限 " + Contract.OFFICIAL_MEMORY_QUERY_MAX + " 字）"));
+        Map<String, Object> page = prop("integer", "op=official 页码，缺省 1");
+        page.put("minimum", 1L);
+        props.put("page", page);
+        Map<String, Object> pageSize = prop("integer", "op=official 每页条数，缺省 10，上限 50");
+        pageSize.put("minimum", 1L);
+        pageSize.put("maximum", 50L);
+        props.put("pageSize", pageSize);
         Map<String, Object> schema = Json.obj();
         schema.put("type", "object");
         schema.put("properties", props);
@@ -606,7 +649,8 @@ public final class Mcp {
         return t;
     }
 
-    private static Map<String, Object> emptySchema() {        Map<String, Object> s = Json.obj();
+    private static Map<String, Object> emptySchema() {
+        Map<String, Object> s = Json.obj();
         s.put("type", "object");
         s.put("properties", Json.obj());
         s.put("additionalProperties", Boolean.FALSE);
@@ -629,6 +673,10 @@ public final class Mcp {
     // ------------------------------------------------------------- 工具执行
 
     static Map<String, Object> toolsCall(Map<?, ?> params, Hosts hosts) {
+        return toolsCall(params, hosts, false, false);
+    }
+
+    static Map<String, Object> toolsCall(Map<?, ?> params, Hosts hosts, boolean lan, boolean lanWriteOk) {
         String name = params == null ? "" : Json.optString(params, "name", "");
         Map<?, ?> args = null;
         if (params != null) {
@@ -802,7 +850,7 @@ public final class Mcp {
                 return toolText(hosts.memory.promptStatus(), false);
             }
             if ("xiaoai_memory".equals(name)) {
-                return memoryToolCall(args, hosts);
+                return memoryToolCall(args, hosts, lan, lanWriteOk);
             }
             return forwardOrUnknown(name, args, hosts);
         } catch (Throwable t) {
@@ -823,8 +871,9 @@ public final class Mcp {
      * <p>写操作先看 {@link MemoryPort#writable()}：{@code memoryWriteEnabled=false}
      * 时直接拒绝，绝不落到文件层（默认关的开关不能靠调用方绕过）。</p>
      */
-    private static Map<String, Object> memoryToolCall(Map<?, ?> args, Hosts hosts) {
-        String bad = unexpectedArg(args, "op", "section", "text", "limit");
+    private static Map<String, Object> memoryToolCall(Map<?, ?> args, Hosts hosts,
+                                                          boolean lan, boolean lanWriteOk) {
+        String bad = unexpectedArg(args, "op", "section", "text", "limit", "q", "page", "pageSize");
         if (bad != null) return toolText(bad, true);
         if (hosts.memory == null) return memoryUnavailable();
 
@@ -839,13 +888,37 @@ public final class Mcp {
             String text = hosts.memory.memoryOverview(limit);
             return toolText(text, failed(text));
         }
+        if ("official".equals(op)) {
+            int page = Json.has(args, "page") ? (int) Json.optLong(args, "page", 1) : 1;
+            int size = Json.has(args, "pageSize") ? (int) Json.optLong(args, "pageSize", 10) : 10;
+            if (page < 1) page = 1;
+            if (size < 1) size = 10;
+            if (size > 50) size = 50;
+            String text = hosts.memory.officialRead(Json.optString(args, "q", "").trim(), page, size);
+            return toolText(text, failed(text));
+        }
+        if ("official_write".equals(op)) {
+            String q = Json.optString(args, "q", "").trim();
+            if (q.length() == 0) return toolText("missing argument: q", true);
+            if (q.length() > Contract.OFFICIAL_MEMORY_QUERY_MAX) {
+                return toolText("q too long (max " + Contract.OFFICIAL_MEMORY_QUERY_MAX + ")", true);
+            }
+            String lower = q.toLowerCase(java.util.Locale.ROOT);
+            if (lower.contains("忘掉") || lower.contains("忘记") || lower.contains("删除")
+                    || lower.contains("清空") || lower.contains("forget")) {
+                return toolText("official_write 不支持删除类指令（本模块不提供删除入口）", true);
+            }
+            String denied = writeDenied(hosts, lan, lanWriteOk);
+            if (denied != null) return toolText(denied, true);
+            String text = hosts.memory.officialWrite(q);
+            return toolText(text, failed(text));
+        }
         if (!"append".equals(op) && !"replace".equals(op)) {
-            return toolText("unknown op: " + op + "（可用：get, append, replace）", true);
+            return toolText("unknown op: " + op
+                    + "（可用：get, append, replace, official, official_write）", true);
         }
-        if (!hosts.memory.writable()) {
-            return toolText("memoryWriteEnabled=false：请在手机 App「小爱 › 记忆」里打开"
-                    + "「允许写记忆」后再写（默认关闭）", true);
-        }
+        String denied = writeDenied(hosts, lan, lanWriteOk);
+        if (denied != null) return toolText(denied, true);
         String section = Json.optString(args, "section", "").trim();
         if (section.length() == 0) return toolText("missing argument: section", true);
         if (section.length() > Contract.MEMORY_SECTION_MAX) {
@@ -860,6 +933,19 @@ public final class Mcp {
                 ? hosts.memory.memoryAppend(section, text)
                 : hosts.memory.memoryReplace(section, text);
         return toolText(out, failed(out));
+    }
+
+    /** 写操作的两道闸：本机写开关 + 局域网写开关；通过返回 null。 */
+    private static String writeDenied(Hosts hosts, boolean lan, boolean lanWriteOk) {
+        if (!hosts.memory.writable()) {
+            return "memoryWriteEnabled=false：请在手机 App「小爱 › 记忆」里打开"
+                    + "「允许写记忆」后再写（默认关闭）";
+        }
+        if (lan && !lanWriteOk) {
+            return "DENIED_LAN: 局域网来源的写操作需要额外请求头 "
+                    + "`X-Xiaoi-Write: <同一个 Bearer token>`（二次鉴权）。只读操作不受影响";
+        }
+        return null;
     }
 
     /** UTF-8 字节数；编码不可用按最坏情况估算（宁可拒绝也不越界）。 */

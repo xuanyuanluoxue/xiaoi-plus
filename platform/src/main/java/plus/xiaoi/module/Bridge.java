@@ -183,6 +183,18 @@ public final class Bridge {
             return svc.replace(section, text).json;
         }
 
+        @Override
+        public String officialRead(String keywords, int page, int pageSize) {
+            return plus.xiaoi.module.agent.AppToolClient.readMemory(
+                    MemoryFiles.appContext(), keywords, page, pageSize).text;
+        }
+
+        @Override
+        public String officialWrite(String query) {
+            return plus.xiaoi.module.agent.AppToolClient.writeMemory(
+                    MemoryFiles.appContext(), query).text;
+        }
+
         private String unavailable() {
             Map<String, Object> o = Json.obj();
             o.put("ok", false);
@@ -1052,7 +1064,8 @@ public final class Bridge {
                 respondText(s, 401, "unauthorized");
                 return;
             }
-            String out = Mcp.handle(req.body, HOSTS);
+            boolean lan = !isLoopback(s);
+            String out = Mcp.handle(req.body, HOSTS, lan, lan && writeFactorOk(req.headers));
             if (out == null) {
                 Http.respondAccepted(s.getOutputStream());
                 return;
@@ -1127,6 +1140,25 @@ public final class Bridge {
             String token = sToken;
             if (token == null || token.length() == 0) return false;
             return Http.bearerMatchesAny(headers, token);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * 局域网写操作的二次因子：{@code X-Xiaoi-Write: <token>}。
+     *
+     * <p>只读请求不受影响；写类操作在 LAN 来源必须额外带这个头，避免「拿到 token
+     * 就能远端写」。</p>
+     */
+    private static boolean writeFactorOk(Map<String, String> headers) {
+        try {
+            String token = sToken;
+            if (token == null || token.length() == 0) return false;
+            String v = headers.get("x-xiaoi-write");
+            if (v == null || v.length() == 0) return false;
+            return java.security.MessageDigest.isEqual(
+                    v.getBytes("UTF-8"), token.getBytes("UTF-8"));
         } catch (Throwable t) {
             return false;
         }
