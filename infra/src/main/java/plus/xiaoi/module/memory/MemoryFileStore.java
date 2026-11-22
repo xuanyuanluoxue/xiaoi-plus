@@ -96,7 +96,7 @@ public final class MemoryFileStore implements MemoryStore {
                 deleteQuietly(tmp);
                 return null;
             }
-            if (!tmp.renameTo(target)) {
+            if (!replace(tmp, target)) {
                 deleteQuietly(tmp);
                 return null;
             }
@@ -104,6 +104,25 @@ public final class MemoryFileStore implements MemoryStore {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /**
+     * 原子替换：临时文件 → 目标文件。
+     *
+     * <p>POSIX（Android）上 {@code renameTo} 会直接覆盖，一步到位；Windows 上
+     * {@code File.renameTo} 不能覆盖已存在的目标，必须先走 {@code Files.move}
+     * 兜底，否则本地跑单测（git hook、Windows JVM）会假失败。</p>
+     */
+    private static boolean replace(File tmp, File target) {
+        if (tmp.renameTo(target)) return true;
+        try {
+            java.nio.file.Files.move(tmp.toPath(), target.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return true;
+        } catch (Throwable ignored) {
+        }
+        if (target.exists() && !target.delete()) return false;
+        return tmp.renameTo(target);
     }
 
     /** 现有备份（按名字升序 = 时间升序）。 */
