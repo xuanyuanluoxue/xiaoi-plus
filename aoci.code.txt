@@ -50,7 +50,7 @@ AndroidManifest.xml[FV8T]: F:壳清单：versionName 与 versionCode 唯一来�
 xposed_init[FV6T]: F:Xposed 入口声明：一行写 Hook 类全名 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:plus.xiaoi.module.Hook | S:类改名必须同步这里，否则 LSPosed 找不到入口且不报任何错
 
 ===/<repository>/app/src/main/java/plus/xiaoi/module/===
-Hook.java[EI8L]: F:LSPosed 入口：装 hook（重定向/视觉/用量/provider/facade/提示词），配置热更新时同步 custom_prompt 与 mcp_servers.json | R:code:platform/src/main/java/plus/xiaoi/module/McpServerConfig.java | A:syncInbound | S:注入失败必须保持原请求；Hook 不得直接引用 Bridge，端口一律走 XiaoiProcessHost.port()；双向枢纽默认关
+Hook.java[EI8L]: F:LSPosed 入口：装 hook（重定向/视觉/用量/provider/facade/提示词），配置热更新时同步 custom_prompt 与 mcp_servers.json | R:code:platform/src/main/java/plus/xiaoi/module/McpServerConfig.java | A:syncInbound | S:注入失败必须保持原请求；Hook 不得直接引用 Bridge，端口走 XiaoiProcessHost.port()；目标进程读不到模块 prefs，开关必须随 Binder 配置下来
 MainActivity.kt[EU8L]: F:单 Activity 壳：4 个 tab、22 条路由、返回栈与 snackbar | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/xiaoai/PromptScreen.kt | A:NavHost | S:新路由必须同步 SCREENS.md；二级页隐藏底栏并显示返回
 
 ===/<repository>/app/src/main/res/drawable/===
@@ -79,7 +79,7 @@ file_paths.xml[FS4T]: F:FileProvider 路径白名单：只暴露 external-files 
 build.gradle.kts[FV5T]: F:application 模块构建：java-library、Java 8、只依赖 domain | R:code:domain/build.gradle.kts | A:sourceCompatibility | S:本模块禁 java.io/java.net/java.nio；引入 IO 依赖过不了 check-layering --strict
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/===
-ConfigCodec.java[DC8M]: F:config.json 编解码：固定键顺序、归一、脱敏导出与校验 | R:code:domain/src/main/java/plus/xiaoi/module/AppConfig.java | A:toJson | S:新键必须固定顺序并归一，否则旧配置读不到默认值
+ConfigCodec.java[DC8M]: F:config.json 编解码：固定键顺序、归一、白名单、脱敏导出与校验，含提示词/记忆/双向枢纽开关 | R:code:domain/src/main/java/plus/xiaoi/module/AppConfig.java | A:toJson | S:新键必须同时进白名单与固定顺序，否则会被当成 extra 原样写回；inboundEnabled 默认 false
 Mcp.java[IC9L]: F:8771 MCP 协议层：报文分发、工具表 schema、错误码；记忆工具有本地与官方两条通道 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:memoryToolCall | S:工具顺序与错误文案被契约锁定；写类 op 受写开关与 LAN 二次因子（X-Xiaoi-Write）双重约束；正文不进日志
 PromptInjector.java[IC8M]: F:请求体提示词注入纯函数：Responses 的 instructions / chat 的 system，标记块幂等 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:apply | S:不改就返回原文；replace 仅显式开启；标记块防止多轮累积
 
@@ -171,7 +171,7 @@ TOPBAR.md[SU5T]: F:顶栏设计复盘：自研顶栏六个具体故障与根因�
 build.gradle.kts[FV5T]: F:domain 模块构建：纯 java-library、Java 8 源码级别、UTF-8 编码 | R:code:application/build.gradle.kts | A:sourceCompatibility | S:本模块禁止 I/O、Android 与并发容器；加依赖会立刻破坏分层门禁的零基线
 
 ===/<repository>/domain/src/main/java/plus/xiaoi/module/===
-AppConfig.java[DC8S]: F:v3 配置模型：服务商/模型两级 + 提示词与记忆开关 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:AppConfig | S:新字段必须有默认值，旧 config 可直接读
+AppConfig.java[DC8S]: F:v3 配置模型：服务商/模型两级 + 提示词与记忆开关 + 双向枢纽开关 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:AppConfig | S:新字段必须有默认值，旧 config 可读；inboundEnabled 默认 false（默认不写小爱 MCP 配置）
 AppStatus.java[DU6T]: F:全站统一状态词汇：未配置、已暂停、已启用、校验中、可用与三类失败 | R:code:domain/src/main/java/plus/xiaoi/module/StatusResolver.java | A:NOT_CONFIGURED | S:状态词唯一来源；新增状态必须同时补 title 与页面映射，否则各页又会拼出已激活/可用不一致
 Hash.java[DG5T]: F:纯 JVM SHA-256 十六进制工具 | R:code:application/src/main/java/plus/xiaoi/module/agent/ConfirmationManager.java | A:sha256Hex | S:出错时返回空串而不抛异常，调用方必须把空串当成无效指纹处理，不能当作合法哈希
 Json.java[DG8M]: F:自写 JSON 解析与写出：值模型、深度上限 64、紧凑输出与 org.json 逐字节一致 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:read | S:刻意不用 org.json 以脱离 Android；输出格式由黄金串与真机契约共同锁定，改转义或字段顺序会同时打断两边
@@ -288,7 +288,7 @@ AppExecutors.java[IR6T]: F:App 进程唯一的后台执行器：固定 3 个 IO 
 AppLaunch.java[IU5T]: F:打开本 App 的唯一入口：用包名加类名拼显式 Intent | R:code:app/src/main/AndroidManifest.xml | A:ENTRY_CLASS | S:platform 不能引用 app 的 MainActivity，否则依赖倒置；改启动页必须同步这里与一致性门禁
 Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听、HTTP 路由与鉴权、MCP 分发、日志合并、记忆端口（本地+官方） | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handleMcp | S:只有 leader 绑端口；写类 op 在 LAN 来源必须带 X-Xiaoi-Write 二次因子；官方记忆走 AppToolClient
 Config.java[DC7L]: F:进程内配置快照：provider/模型/密钥/开关 + 提示词与记忆快照 + 双向枢纽开关 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:inboundEnabledPref | S:Prompt 快照不可变；热更新整体替换；inbound 直接读模块 prefs，默认关
-ConfigRepository.java[DC7M]: F:配置读写与 prefs 镜像：6 个新键也要同步写入供小爱进程读取 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:save | S:新增配置键必须同时写 prefs 与 config.json，漏一处两边就不一致
+ConfigRepository.java[DC7M]: F:配置读写与 prefs 镜像：提示词/记忆/双向枢纽开关同步写入，供控制面下发 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:save | S:新增配置键必须同时写 prefs 与 Binder 快照；实测目标进程读不到模块 prefs（660 不同 uid），prefs 不是生效路径
 ConfigSync.java[DC8M]: F:config.json 文件监听与自动应用：防抖、内容哈希去环、启动对齐、从运行中小爱导入 | R:code:platform/src/main/java/plus/xiaoi/module/ConfigRepository.java | A:applyIfChanged | S:用内容哈希去环，否则自己写文件会触发回环；运行时变更绝不静默写回文件，文件永远优先
 Island.java[IU7M]: F:超级岛单次提醒：焦点通知渠道、miui.focus.param 参数拼装、诊断与 6 秒自动取消 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:show | S:岛走焦点通知 channel super_island 与 miui.focus.param；右侧大字限 22 字符，actions 为空所以不能用来批准动作
 Logs.java[IO7M]: F:模块运行日志门面：档位过滤、req 前缀、logcat、批量落盘、历史尾部读取与 JSON 装配 | R:code:application/src/main/java/plus/xiaoi/module/application/log/LogRing.java | A:tail | S:外部 API 与 JSON 前四字段只能追加不能重排；dump 顶层 scope=local；tail() 先 flush 再读，且限制单文件读取体积（256KB/.1 + 512KB 主文件），失败回空串；setTailListener 的监听器必须非阻塞且不写日志
