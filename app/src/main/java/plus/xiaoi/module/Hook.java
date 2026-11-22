@@ -136,12 +136,45 @@ public class Hook implements IXposedHookLoadPackage {
                 refreshHookStatus();
             }
             host().updateToken(c.token());
+            syncCustomPrompt(c);
             Logs.i("配置已热更新 model=" + c.model()
                     + " marker=" + c.marker() + " bridge=" + c.bridge());
         } catch (Throwable t) {
             Logs.i("配置热更新失败（已忽略）: " + t);
         }
     }
+
+    /**
+     * 把提示词写进官方 {@code custom_prompt.md} 并让缓存失效。
+     *
+     * <p>这是 8.2.70 上唯一被证明「改得到」的路径：官方工具
+     * {@code UpdateCustomPromptTool} 做的就是「写文件 + invalidateMemoryCache」。
+     * 成功时置位 {@code sFilePromptActive}，请求体注入随即让位，避免双重追加。</p>
+     */
+    private static void syncCustomPrompt(Config c) {
+        try {
+            String block = "";
+            if (c.promptEnabled() || c.memoryInject()) {
+                String outline = c.memoryInject() ? MemoryFiles.outline(c.memoryInjectLines()) : "";
+                PromptInjector.Options options = new PromptInjector.Options(
+                        c.promptEnabled(), c.promptMode(), c.promptText(),
+                        c.memoryInject(), c.memoryInjectLines(), outline);
+                block = PromptInjector.block(options, promptVars(c));
+            }
+            boolean replace = c.promptEnabled() && PromptInjector.isReplace(c.promptMode())
+                    && c.promptText() != null && c.promptText().trim().length() > 0;
+            sFilePromptActive = PromptFiles.sync(block, replace);
+            if (sFilePromptActive && block.length() > 0) {
+                PromptRuntime.recordInjected("custom-prompt-file");
+            }
+        } catch (Throwable t) {
+            sFilePromptActive = false;
+            Logs.i("自定义提示词接线失败: " + t);
+        }
+    }
+
+    /** 官方 custom_prompt.md 已接管注入时，请求体侧的两个兜底都让位。 */
+    private static volatile boolean sFilePromptActive;
 
     /** 读小爱 versionName；早期加载（Application 未就绪）返回 null。 */
     private static String readVersionName() {
@@ -367,6 +400,7 @@ public class Hook implements IXposedHookLoadPackage {
         try {
             Config c = Config.current();
             if (c == null) return;
+            if (sFilePromptActive) return;
             if (!c.promptEnabled() && !c.memoryInject()) return;
             Object result = param.getResult();
             String original = result instanceof String ? (String) result : "";
@@ -493,6 +527,7 @@ public class Hook implements IXposedHookLoadPackage {
         try {
             Config c = Config.current();
             if (c == null) return;
+            if (sFilePromptActive) return;
             if (!c.promptEnabled() && !c.memoryInject()) return;
             Object result = param.getResult();
             if (result == null) return;
