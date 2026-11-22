@@ -2,8 +2,19 @@
 
 ## 未发布（0.18.0）
 
-**方向：双向枢纽 + 官方记忆 + 局域网写鉴权**
+**方向：双向枢纽 + 官方记忆 + 局域网写鉴权 + 小爱语义解析**
 
+- **`xiaoai_nlp`（新工具）**：把小爱自己的 `nlp_query` 直接暴露成 8771 的工具（桥 12 + 设备动作 6 = 18）。
+  返回这句话会触发的执行计划 `{"type","instruction_types":[...],"instruction_count"}`，
+  `Application.Operate` / `Template.Query` / `UIController.Navigate` 等即小爱的能力分组，
+  外部 Agent 可据此判断该走 `xiaoai_submit` 还是设备动作，**不经过对话模型**。
+  本机语句毫秒级；音乐/天气这类要联网的语句在小爱内部不返回，8 秒后回 `CALL_TIMEOUT`，
+  之后短时间回 `NLP_BUSY`。`nlp_query` 独占单线程池，卡死不会拖垮记忆/待办（实测
+  超时后 `xiaoai_memory` 仍 284ms 正常）。
+- **`xiaoai_status` 增加 AppTool 探针**：`apptools=ok methods=N` / `apptools=none`
+  （只反射类与方法数，不调用业务方法）。
+- **调用方归属**：每次 `tools/call` 的日志带 `caller=local|lan|inbound`，
+  入站（`profile=readonly`）单独成一类，真机确认 `caller=inbound`。
 - **协议版本协商**：`initialize` 会回显客户端请求的 `2024-11-05`，其余（含 `2025-06-18`）
   回落到本实现真正支持的 `2025-03-26`，不再对任何客户端都硬报同一版本。
 - **入站画像**：`/mcp?profile=readonly` 只暴露
@@ -19,7 +30,7 @@
   `X-Xiaoi-Write: <同一个 Bearer token>`，否则 `DENIED_LAN`；只读操作不受影响。
 - **双向枢纽（实验，默认关）**：把小爱的 `mcp/mcp_servers.json` 按 `name=xiaoi-plus` 合并写入
   `/mcp` 端点（保留其他服务与未知顶层键、写前备份、坏 JSON 不覆盖），开关为 `inbound`。
-  小爱重启后即可反向调用本模块工具；本轮只保证文件正确，尚未真机验证小爱侧加载。
+  真机已验证小爱重启后加载：日志出现 `MCP 客户端连接: name=osbot version=1.0.0`。
 - 分层：官方记忆协议并入 `domain/agent/AppToolProtocol`；binder 调用复用
   `platform/agent/AppToolClient`；合并逻辑 `domain/core/mcp/InboundRegistration`（纯 JVM，20 条单测）；
   文件写入 `platform/McpServerConfig`。`xiaoai_memory` 单测 150 条（含 LAN 闸门与官方 op）。
@@ -27,6 +38,9 @@
 ## 未发布（0.17.0）
 
 **逆向子项目 `reverse/`：先把小爱摸清楚**
+
+> ⚠️ 本节的「P2 系统提示词」在下文如实记录为**未生效**：注入的正文没有进入实际请求，
+> 对小爱云端回复无影响。功能代码保留但不要宣传成可用的提示词注入。
 
 - 新增 `reverse/`（文档 9 篇 + 脚本 7 个 + 生成物 `data/tool-catalog.md`）：
   全量 dex 索引（32 个 dex / 342 MB / 15.2 万类）、assets 抽取、工具目录生成。

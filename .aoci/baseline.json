@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-22T11:22:45Z",
+  "updated_at": "2026-11-22T16:04:52Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -53,15 +53,15 @@
     },
     ".opencode/skills/xiaoi-mcp/SKILL.md": {
       "role": "index",
-      "sha256": "4e52185117578857864e5a0e7bd2f65eb99b7d207493d789df8535026eb87341",
-      "size": 10216,
-      "normalized_sha256": "4e52185117578857864e5a0e7bd2f65eb99b7d207493d789df8535026eb87341"
+      "sha256": "922457b70ea00d9f83ab52cdc77c86a2c4c795f9ec51a31e31090089012b651b",
+      "size": 10255,
+      "normalized_sha256": "922457b70ea00d9f83ab52cdc77c86a2c4c795f9ec51a31e31090089012b651b"
     },
     ".opencode/skills/xiaoi-mcp/references/tools.md": {
       "role": "index",
-      "sha256": "59fb217b29b6a084f4bebbad861cf2b9ccce65bc64fbbc8ce4e981393a597441",
-      "size": 15993,
-      "normalized_sha256": "59fb217b29b6a084f4bebbad861cf2b9ccce65bc64fbbc8ce4e981393a597441"
+      "sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe",
+      "size": 19344,
+      "normalized_sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe"
     },
     ".opencode/skills/xiaoi-release/SKILL.md": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "646d6d09396adf56bae596982373b6a6570ee505b91f94e34b8d413d91e11c95",
-      "size": 92273,
-      "normalized_sha256": "646d6d09396adf56bae596982373b6a6570ee505b91f94e34b8d413d91e11c95"
+      "sha256": "072eaa85616f1e7c7aeaf93a974136ebe0537f1da60dfb3bb4cecfa97cb29083",
+      "size": 93541,
+      "normalized_sha256": "072eaa85616f1e7c7aeaf93a974136ebe0537f1da60dfb3bb4cecfa97cb29083"
     },
     "LICENSE": {
       "role": "index",
@@ -101,15 +101,15 @@
     },
     "README.md": {
       "role": "index",
-      "sha256": "25e14181a433ad6e74a77237d2d2438cfa6a58efbe7359d4bdf0d3e07068e443",
-      "size": 26935,
-      "normalized_sha256": "25e14181a433ad6e74a77237d2d2438cfa6a58efbe7359d4bdf0d3e07068e443"
+      "sha256": "7debf82badf7fea9471a800ac4a4cf900e049f996fef695d132a050b5fe1a7c7",
+      "size": 27388,
+      "normalized_sha256": "7debf82badf7fea9471a800ac4a4cf900e049f996fef695d132a050b5fe1a7c7"
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "1bc23773531d42b75ef9a68f571aece82d9e790387e051fdc4825aacb2728a41",
-      "size": 110802,
-      "normalized_sha256": "1bc23773531d42b75ef9a68f571aece82d9e790387e051fdc4825aacb2728a41"
+      "sha256": "9a99c922847ee99018335dd0a2d6b1da94f3811250175a8fea94e743e1145f0c",
+      "size": 111297,
+      "normalized_sha256": "9a99c922847ee99018335dd0a2d6b1da94f3811250175a8fea94e743e1145f0c"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -245,9 +245,9 @@
     },
     "application/src/main/java/plus/xiaoi/module/Mcp.java": {
       "role": "index",
-      "sha256": "a6c5d4a0d7a2edc2ca762c543c115dbfc777faddf7f14eb4157ef90cde9a75d1",
-      "size": 56829,
-      "normalized_sha256": "a6c5d4a0d7a2edc2ca762c543c115dbfc777faddf7f14eb4157ef90cde9a75d1"
+      "sha256": "3b3409b52760d0438ad33ce731d05904f1b4670cdfee76dee82ac9b60e275b6e",
+      "size": 61346,
+      "normalized_sha256": "3b3409b52760d0438ad33ce731d05904f1b4670cdfee76dee82ac9b60e275b6e"
     },
     "application/src/main/java/plus/xiaoi/module/PromptInjector.java": {
       "role": "index",
@@ -569,15 +569,15 @@
     },
     "docs/agent/ROADMAP.md": {
       "role": "index",
-      "sha256": "b983baf7c83a9b17ae638b7a511474a401774ff56a0c8e66d8febe57ba5811e5",
-      "size": 7783,
-      "normalized_sha256": "b983baf7c83a9b17ae638b7a511474a401774ff56a0c8e66d8febe57ba5811e5"
+      "sha256": "b7327339598ae60c401b6273959da74de2e0ded5ec65b54d0ba4041b8b291eef",
+      "size": 8145,
+      "normalized_sha256": "b7327339598ae60c401b6273959da74de2e0ded5ec65b54d0ba4041b8b291eef"
     },
     "docs/architecture.md": {
       "role": "index",
-      "sha256": "f99385c21ceec5a11966a9205cd60e6eeccab32e03ec68fcad2f8a399b53712d",
-      "size": 10777,
-      "normalized_sha256": "f99385c21ceec5a11966a9205cd60e6eeccab32e03ec68fcad2f8a399b53712d"
+      "sha256": "9215390c69665ef2e3532a491ac789cb9bfd3b61ea694ddb52e29f86b94b9c48",
+      "size": 10785,
+      "normalized_sha256": "9215390c69665ef2e3532a491ac789cb9bfd3b61ea694ddb52e29f86b94b9c48"
     },
     "docs/archive/HANDOVER-2026-11-08.md": {
       "role": "index",
@@ -1211,9 +1211,9 @@
     },
     "domain/src/main/java/plus/xiaoi/module/core/mcp/ToolOwnership.java": {
       "role": "index",
-      "sha256": "5ab3516a642ba1ae4cb3759ee97c3a6eb29f0c3e696a566f2362cfbf9660c442",
-      "size": 2202,
-      "normalized_sha256": "5ab3516a642ba1ae4cb3759ee97c3a6eb29f0c3e696a566f2362cfbf9660c442"
+      "sha256": "65e62f42547033c5082417572e6307e3479a1a8327fe69832492f3b4d335f33f",
+      "size": 2228,
+      "normalized_sha256": "65e62f42547033c5082417572e6307e3479a1a8327fe69832492f3b4d335f33f"
     },
     "domain/src/main/java/plus/xiaoi/module/core/memory/MemoryDoc.java": {
       "role": "index",
@@ -1396,9 +1396,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Bridge.java": {
       "role": "index",
-      "sha256": "307f1b6064ed9de51952506a625c551ffc202ca66c071f5762522230097d4ba2",
-      "size": 52905,
-      "normalized_sha256": "307f1b6064ed9de51952506a625c551ffc202ca66c071f5762522230097d4ba2"
+      "sha256": "c8043e0d643134ac99d30a4a72c5764a31e40b07b41d12a257aa1571bec5479b",
+      "size": 54347,
+      "normalized_sha256": "c8043e0d643134ac99d30a4a72c5764a31e40b07b41d12a257aa1571bec5479b"
     },
     "platform/src/main/java/plus/xiaoi/module/Config.java": {
       "role": "index",
@@ -1546,9 +1546,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/agent/AppToolClient.java": {
       "role": "index",
-      "sha256": "c1dcc46e1a13e35d9b4c104c671addbb722386a0c54928c121acd43e2dc56505",
-      "size": 14706,
-      "normalized_sha256": "c1dcc46e1a13e35d9b4c104c671addbb722386a0c54928c121acd43e2dc56505"
+      "sha256": "ff12906d9edb4607834c9cd8f612912a4ed35524f38e2176bad3ed5b2a7a2ee3",
+      "size": 18197,
+      "normalized_sha256": "ff12906d9edb4607834c9cd8f612912a4ed35524f38e2176bad3ed5b2a7a2ee3"
     },
     "platform/src/main/java/plus/xiaoi/module/agent/RootExecutor.java": {
       "role": "index",
@@ -1864,15 +1864,15 @@
     },
     "skill/xiaoi-mcp/SKILL.md": {
       "role": "index",
-      "sha256": "4e52185117578857864e5a0e7bd2f65eb99b7d207493d789df8535026eb87341",
-      "size": 10216,
-      "normalized_sha256": "4e52185117578857864e5a0e7bd2f65eb99b7d207493d789df8535026eb87341"
+      "sha256": "922457b70ea00d9f83ab52cdc77c86a2c4c795f9ec51a31e31090089012b651b",
+      "size": 10255,
+      "normalized_sha256": "922457b70ea00d9f83ab52cdc77c86a2c4c795f9ec51a31e31090089012b651b"
     },
     "skill/xiaoi-mcp/references/tools.md": {
       "role": "index",
-      "sha256": "4d5653a6fbe360c91b67d4e8cdb90a60c1d9b46adee64f1d990ca83dbf06a2cf",
-      "size": 17463,
-      "normalized_sha256": "4d5653a6fbe360c91b67d4e8cdb90a60c1d9b46adee64f1d990ca83dbf06a2cf"
+      "sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe",
+      "size": 19344,
+      "normalized_sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe"
     },
     "tests/baseline/cli_no_cmd.body": {
       "role": "observe",
@@ -2325,9 +2325,9 @@
     },
     "tests/src/plus/xiaoi/module/McpTest.java": {
       "role": "observe",
-      "sha256": "3489201f3266b304764ad7799fbbe0370f83efd1208b9e8be3f8b086a8e822ad",
-      "size": 40361,
-      "normalized_sha256": "3489201f3266b304764ad7799fbbe0370f83efd1208b9e8be3f8b086a8e822ad"
+      "sha256": "f48ceb057ae48fa550a98a1b5c7f07ea463004b5ddb168f3a167f3196fcbf417",
+      "size": 41804,
+      "normalized_sha256": "f48ceb057ae48fa550a98a1b5c7f07ea463004b5ddb168f3a167f3196fcbf417"
     },
     "tests/src/plus/xiaoi/module/MemoryServiceTest.java": {
       "role": "observe",
@@ -2409,9 +2409,9 @@
     },
     "tests/src/plus/xiaoi/module/ToolOwnershipTest.java": {
       "role": "observe",
-      "sha256": "a65f2439f12d4d8734e54a6db85e43c92a6630746b0edf4eacf18ad42106a231",
+      "sha256": "fedef5058199e33519785e8a7d6a03f9d352e58017b28df2d41ee825924567c8",
       "size": 2002,
-      "normalized_sha256": "a65f2439f12d4d8734e54a6db85e43c92a6630746b0edf4eacf18ad42106a231"
+      "normalized_sha256": "fedef5058199e33519785e8a7d6a03f9d352e58017b28df2d41ee825924567c8"
     },
     "tests/src/plus/xiaoi/module/UidGuardTest.java": {
       "role": "observe",

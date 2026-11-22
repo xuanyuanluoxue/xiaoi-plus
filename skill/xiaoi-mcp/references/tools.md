@@ -10,7 +10,7 @@
 → 我们再调小爱」的自递归；外部 Agent 用不带参数的 `/mcp` 拿到全部工具。
 
 **0.16.0 起只有一个端口 `8771`**：App 进程不再单独监听，设备动作工具由 App 执行但
-从同一个端点调用（共 17 个工具：桥 11 + 设备动作 6）。
+从同一个端点调用（共 18 个工具：桥 12 + 设备动作 6）。
 App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可判断；
 失败带 `retryable:true`。
 
@@ -48,7 +48,7 @@ App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可�
     "protocolVersion": "2025-03-26",
     "capabilities": {"tools": {"listChanged": false}},
     "serverInfo": {"name": "xiaoi-plus", "version": "0.12.0-beta.1"},
-    "instructions": "小爱同学+ 统一 MCP 端点（8771）：17 个工具都从这里调用..."
+    "instructions": "小爱同学+ 统一 MCP 端点（8771）：18 个工具都从这里调用..."
   }
 }
 ```
@@ -106,6 +106,9 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 - `rewrite=hit|none|?`：**改写是否真的生效**。`hit` 小爱读过被覆盖的 getter；
   `none` 已经发生过模型调用但 getter 一次没被读，说明该版本不吃这套 hook；
   `?` 还没发生调用，暂时无法判断。
+- `apptools=ok methods=N` / `apptools=none`：小爱进程内 AppTool 通道是否可用，
+  `N` 是 `UIAgentServiceForOSBot` 声明的方法总数（含 binder 样板，非业务方法数）。
+  `none` 表示拿不到该类，`xiaoai_nlp` 会返回 `APPTOOL_UNAVAILABLE`。
 
 排查顺序：`hooks=none` + `compat=none` → 版本没进白名单；`hooks=ok` + `rewrite=none`
 → 装上了但该版本不读这些 getter（不兼容）；`hooks=ok` + `rewrite=hit` 但回复不对 →
@@ -114,7 +117,37 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 **「装上了」不等于「生效了」**：`hooks=ok` 只说明 hook 挂成功，`rewrite=hit` 才是证据。
 
 旧版本：≤0.16.0 只有前四个字段；0.16.1 有 `hooks`/`compat`/`xiaoai`；
-`rewrite` 从 0.16.2 起。
+`rewrite` 从 0.16.2 起，`apptools` 从 0.18.0 起。
+
+### xiaoai_nlp
+
+把小爱自己的语义解析结果以 JSON 返回（小爱进程内 `nlp_query`，**不经过对话模型**）。
+返回的是「这句话会触发什么」的执行计划，不是槽位抽取：
+
+```json
+{"type":"other",
+ "instruction_types":["Template.ResultOperationInfo","System.CheckScreenUnlocked",
+   "UIController.Navigate","Template.Query","Application.Operate",
+   "SpeechSynthesizer.Speak","Template.Toast"],
+ "instruction_count":7}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `text` | string | 是 | 要解析的一句话（≤500 字符） |
+
+- `instruction_types` 即小爱的能力分组：`Application.Operate`（操作 App）、
+  `Template.Query`（检索/问答）、`UIController.Navigate`（界面跳转）、
+  `SpeechSynthesizer.Speak` 等。外部 Agent 可据此判断「小爱能不能直接执行、
+  属于哪类」，再决定走 `xiaoai_submit` 还是设备动作工具。
+- **只适合本机解析的语句**（打开 App、设闹钟、记事等，毫秒级返回）。
+  音乐/天气这类要联网的语句在小爱内部**不返回**：8 秒后回
+  `{"ok":false,"error":"CALL_TIMEOUT",...}`，且那条 binder 线程仍占着，
+  之后一段时间再调回 `{"ok":false,"error":"NLP_BUSY",...}`。
+  这类语句请直接用 `xiaoai_submit`。
+- 错误码：`APPTOOL_UNAVAILABLE`（AppTool 通道不可用）、`CALL_TIMEOUT`、
+  `NLP_BUSY`、`CALL_FAILED`。不会抛异常，也不回空对象。
+- `nlp_query` 独占自己的线程池，卡住不影响 `xiaoai_memory` / `xiaoai_todo_create`。
 
 ### xiaoai_submit
 

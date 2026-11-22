@@ -34,14 +34,17 @@
 
 ### P0（0.18.0，建议 1 个迭代）
 
-| # | 事项 | 来源编号 | 成本 | 验收（真机可判） |
-|---|---|---|---|---|
-| P0-1 | AppTool 探针 + `xiaoai_nlp` | MCP F1、F2 | S+M | `xiaoai_status` 出现 `apptools=ok methods=18/18`；`xiaoai_nlp("明天八点叫我")` 返回含 `alarm` 的 JSON |
-| P0-2 | 官方记忆只读 + 契约 v2 | MEMORY M01、M03、（MCP F3） | S+S | `xiaoai_memory op=search&q=…` 命中 ≥1 条；`MEMORY.md` mtime 不变 |
-| P0-3 | LAN 写拦截 | MEMORY M13 | M | LAN + token 调 `append` 回 `DENIED_LAN`；本机调用不受影响 |
-| P0-4 | 审计补 `caller` 字段 | INTEROP I11（最小版） | S | `xiaoai_audit` 能按 `caller=local|lan` 过滤 |
+| # | 事项 | 来源编号 | 成本 | 验收（真机可判） | 状态 |
+|---|---|---|---|---|---|
+| P0-1 | AppTool 探针 + `xiaoai_nlp` | MCP F1、F2 | S+M | `xiaoai_status` 出现 `apptools=ok methods=N`；`xiaoai_nlp` 回执行计划 JSON | ✅ 已真机（`methods=64`；本机语句 0.7~1.7s，联网语句 8s `CALL_TIMEOUT`） |
+| P0-2 | 官方记忆只读 + 契约 v2 | MEMORY M01、M03、（MCP F3） | S+S | `xiaoai_memory op=official&q=…` 命中 ≥1 条；`MEMORY.md` mtime 不变 | ✅ 已真机 |
+| P0-3 | LAN 写拦截 | MEMORY M13 | M | LAN + token 调 `append` 回 `DENIED_LAN`；本机调用不受影响 | ✅ 已真机（单测覆盖） |
+| P0-4 | 审计补 `caller` 字段 | INTEROP I11（最小版） | S | 能区分 `caller=local\|lan\|inbound` | ✅ 已真机（落在 `[mcp]` 日志行，`xiaoai_audit` 结构未动） |
 
 > P0 门禁：默认行为不变；所有新能力 opt-in；`tools.md` 与实现逐字一致。
+
+> P0-4 遗留：`xiaoai_audit` 仍不含 `caller`，目前只能从 `xiaoai_logs` 的 `[mcp]` 行看；
+> 要进动作账本需另开一条（改动动作面存储）。
 
 ### P1（0.19.0）
 

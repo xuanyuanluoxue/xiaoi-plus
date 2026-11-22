@@ -32,7 +32,7 @@
 | 设备操作接口 | **并入 8771**（单端口）：打开应用/通知/闹钟/音量/设备信息/小爱代理由 App 进程执行，但**不单独监听**，经控制面 Binder 从 8771 转发；局域网与令牌跟随 8771 | 🧪 实验性，随桥开启 |
 | 系统提示词 | 把用户自己的提示词追加到小爱每次请求（`instructions` / system 消息），带 `{{date}}/{{time}}/{{model}}/{{device}}` 变量与幂等标记；替换模式需二次确认 | 🧪 实验性，默认关闭 |
 | 记忆 | 按小节只读 `files/memory/MEMORY.md`，可追加/替换小节（写前备份 5 份、原子替换、无删除入口）；摘要可注入提示词 | 🧪 实验性，写入默认关闭 |
-| MCP 端点 | **只有一个端口 8771**：`POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），17 个工具（桥 11 + 设备动作 6）全部从这一个端点提供 | 🧪 实验性，随桥一起开启 |
+| MCP 端点 | **只有一个端口 8771**：`POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），18 个工具（桥 12 + 设备动作 6）全部从这一个端点提供 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |
 
 已验证的小爱版本见 [兼容性矩阵](docs/compatibility.md)。
@@ -198,7 +198,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 ### MCP 端点（可选，随桥开启）
 
 **只有一个端口**：模块只监听 8771，App 进程不开任何 socket，App 进程不再开任何 socket。
-互相补齐工具，**两个端点都返回同一套 17 个工具**，客户端只配一个即可。
+互相补齐工具，**两个端点都返回同一套 18 个工具**，客户端只配一个即可。
 
 - 端点不写死：桥从 `8771` 起，被占用会顺延（`8771~8775`），**以 `/health` 的 `port=`
   或设置页「连接信息」为准**；设备动作工具从同一个端点调用。
@@ -215,7 +215,8 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 
 | 工具 | 归属 | 参数 | 作用 |
 |---|---|---|---|
-| `xiaoai_status` | 桥 | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` / `hooks=` / `compat=` / `xiaoai=` / `rewrite=` |
+| `xiaoai_status` | 桥 | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` / `hooks=` / `compat=` / `xiaoai=` / `rewrite=` / `apptools=` |
+| `xiaoai_nlp` | 桥 | `text`（必填，≤500） | 小爱自己的语义解析（进程内 `nlp_query`，不经对话模型）：回 `{type,instruction_types,instruction_count}`，即这句话会触发的执行计划；联网语句上限 12s |
 | `xiaoai_submit` | 桥 | `text`（必填，≤4000）、`sessionId`、`structured` | 让小爱执行一句话任务；默认回文本，`structured:true` 时回 `{ok,text,sessionId}` |
 | `xiaoai_todo_create` | 桥 | `title`（必填，≤200）、`content`（≤8192） | 确定性创建小米笔记待办卡片，不经 LLM |
 | `xiaoai_cli` | 桥 | `cmd`（JSON 串） | 原始 CLI 透传，等价 `/cli` |
@@ -225,7 +226,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 | `xiaoai_island` | 桥 | `text`（默认「小爱同学plus」）、`force` | 手动发一次超级岛提示（deprecated，建议用 `xiaoai_notify`） |
 | `xiaoai_stats` | 桥 | `days`（默认 7，上限 90，超出回 `clamped:true`） | 调用量统计：按天返回三方 / 官方模型的调用次数 |
 | `xiaoai_prompt` | 桥 | 无 | 读系统提示词配置（开关/模式/正文/记忆注入）与注入统计（命中次数、最后位置）；**默认关**，修改只能在 App 内 |
-| `xiaoai_memory` | 桥 | `op=get\|append\|replace`（默认 get）、`section`、`text`、`limit`（默认 50，上限 200） | 分节读 `MEMORY.md`；append/replace **需先在 App 打开「允许写记忆」**（默认关），写前自动备份 5 份；不提供删除/清空 |
+| `xiaoai_memory` | 桥 | `op=get\|official\|append\|replace\|official_write`（默认 get）、`section`、`text`、`limit`、`q`、`page`、`pageSize` | 本地 `MEMORY.md` 分节读写（append/replace **需先在 App 打开「允许写记忆」**，写前自动备份 5 份，不提供删除）；`op=official`/`official_write` 转调小爱官方记忆（`read_memory`/`write_memory`），`official_write` 被抽成偏好标签后约 8s 可检索，删除类指令被拒 |
 | `xiaoai_capabilities` | App | `includeUnavailable` | 列出设备动作、schema、风险与可用性 |
 | `xiaoai_action` | App | `action`（必填）+ 动作参数 | 执行设备动作；`risk=confirm/danger` 需确认 |
 | `xiaoai_confirm` | App | `confirmToken`、`approve` | 批准/拒绝待确认动作；token 一次性、60 秒过期 |
@@ -309,7 +310,7 @@ scripts\deploy.cmd
 
 它按顺序做：构建 release → 用 `scripts/expected-signer.sha256` 校验签名指纹 →
 选设备（`--serial` / `XIAOI_SERIAL` / 唯一在线设备）→ `install -r` → 打开
-`MainActivity` → 启动设备动作服务 → 探活并报 17 个工具是否齐全。
+`MainActivity` → 启动设备动作服务 → 探活并报 18 个工具是否齐全。
 
 | 参数 | 作用 |
 |---|---|

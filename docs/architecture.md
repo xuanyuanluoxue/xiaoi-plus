@@ -15,7 +15,7 @@
 │   ChatRequestBuilder / LLM 客户端 → 用量统计 + 前缀           │
 │                                                              │
 │  Bridge（8771，唯一监听）：                                   │
-│   /mcp  → 17 个工具（桥 11 + 设备动作 6）                       │
+│   /mcp  → 18 个工具（桥 12 + 设备动作 6）                       │
 │   /health /logs /stats /cli /island，POST /config → 410      │
 │   默认 127.0.0.1；可显式开局域网                               │
 └───────────────┬──────────────────────────────────────────────┘
@@ -44,7 +44,7 @@ target prefs 作为降级缓存。
 `POST /mcp` 由能力桥进程内的 HTTP server 提供，不新增 hook、不扩大作用域。
 它把两类工具放在同一个端点上：
 
-- **归属桥的 11 个**（`xiaoai_status` / `submit` / `todo_create` / `cli` / `config` /
+- **归属桥的 12 个**（`xiaoai_status` / `nlp` / `submit` / `todo_create` / `cli` / `config` /
   `switch_model` / `logs` / `stats` / `island` / `prompt` / `memory`）：在 8771 进程内执行，权限边界与
   `/cli` 完全一致——同一 Bearer token、同样的本机/局域网准入规则。
 - **归属 App 的 6 个**（`capabilities` / `action` / `confirm` / `audit` / `notify` / `ask`）：
@@ -52,7 +52,7 @@ target prefs 作为降级缓存。
   App 进程**不监听端口**，所以设备动作不再有独立的 8770/8772 端点。
 
 `/health` 的 `agent=ipc|down` 表示这条 Binder 是否已连上；未连上时调用设备动作返回
-`AGENT_UNAVAILABLE`（`retryable:true`），桥自己的 11 个工具不受影响。
+`AGENT_UNAVAILABLE`（`retryable:true`），桥自己的 12 个工具不受影响。
 
 裸端点 `/island` 始终只允许 loopback；`POST /config` 固定 `410 Gone`，
 数据面不再接收配置。`xiaoai_switch_model` 只允许 model/marker，端点、密钥、bridge/lan

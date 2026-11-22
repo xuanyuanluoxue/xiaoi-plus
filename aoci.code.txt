@@ -5,9 +5,9 @@
 .gitignore[FV6T]: F:忽略构建产物、本地凭据、临时目录、AOCI 主机配置与本地虚拟环境 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库否则 scan 拒绝；.mcp.json 等主机配置含绝对路径必须忽略；.venv 是 deploy.cmd 的本地环境
 AGENTS.md[SG8S]: F:Agent 仓库规约：构建命令、分层边界、产物落点、根目录纪律与 reverse 逆向子项目 | R:code:scripts/check-layering.sh | A:根目录纪律 | S:新文件只能进 scripts/docs/tmp/artifacts；根目录禁止新建 md/sh/txt；reverse/ 只放文档与脚本，APK/dex 仍放 artifacts/reverse；末尾 aoci 托管区块不要手改
 ARCHIVE.md[SG5S]: F:归档快照：0.15.0 的模块、验证与限制，以及 0.16.0 的清理与备份去向 | R:code:docs/refactor/NEXT.md | A:artifacts/legacy/ | S:备份已迁进仓库 artifacts/legacy/，不要再引用 ~/xiaoi-plus-dev 这类仓外路径
-CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.18.0 | S:小节标题必须与 versionName 一致；发版前把「未发布」改成日期小节；两个「未发布」小节并存时必须先裁决版本号
+CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.18.0 | S:小节标题须与 versionName 一致；发版前把「未发布」改成日期；两节并存须先裁决版本号；0.17.0 的提示词注入已证伪，不得再当可用功能写
 LICENSE[SV4L]: F:GPLv3 许可证全文 | R:code:README.md | A:GPLv3 | S:分发修改版须沿用同一许可；本项目不改原包，只做运行时注入
-README.md[SG8L]: F:对外主页：功能矩阵、22 条路由、17 个 MCP 工具表、构建与部署、已知限制 | R:code:docs/architecture.md | A:MCP端点 | S:工具表、路由数与上限必须与 Contract/Mcp/SCREENS 同步
+README.md[SG8L]: F:对外主页：功能矩阵、路由、18 个 MCP 工具表、构建部署与已知限制 | R:code:docs/architecture.md | A:MCP端点 | S:工具表、路由数与各项上限必须与 Contract/Mcp/SCREENS 同步
 build.gradle.kts[FV6T]: F:根构建声明：四个 AGP 与 Compose 插件只 apply false，由子模块各自启用 | R:code:app/build.gradle.kts | A:alias(libs.plugins.android.application) | S:版本全部来自 gradle/libs.versions.toml；在根模块真正 apply 插件会破坏按模块启用
 gradle.properties[FV5T]: F:Gradle 与 Android 全局开关：守护进程堆、并行、构建缓存、AndroidX 与 R 类策略 | R:code:gradle/libs.versions.toml | A:org.gradle.jvmargs | S:useAndroidX 与 nonTransitiveRClass 必须为 true；关掉后者会让每个模块生成全量 R 类，编译显著变慢
 gradlew[FV5M]: F:POSIX 启动脚本：定位 APP_HOME、处理软链与 Cygwin 路径、组装 JVM 参数并 exec wrapper jar | R:code:gradle/wrapper/gradle-wrapper.properties | A:DEFAULT_JVM_OPTS | S:Gradle 生成的脚本不要手改；这里的堆只有 64m，真正的守护进程堆来自 gradle.properties 的 jvmargs
@@ -28,10 +28,10 @@ SKILL.md[SG6M]: F:技能：用单一 MCP 端点驱动设备动作（capabilities
 actions.md[SG5S]: F:设备动作清单：动作名、参数 schema、风险等级与执行器偏好 | R:code:domain/src/main/java/plus/xiaoi/module/agent/Actions.java | A:device.info | S:参数名必须与 Actions.builtins 的 schema 一致，错位会在运行期变成 INVALID_ARGUMENT
 
 ===/<repository>/.opencode/skills/xiaoi-mcp/===
-SKILL.md[SG6M]: F:技能：调用 8771 的 17 个 MCP 工具（桥 11 + 设备动作 6），含握手与排障 | R:code:skill/xiaoi-mcp/SKILL.md | A:xiaoai_status | S:与 skill/xiaoi-mcp 是副本，工具数两边必须一致
+SKILL.md[SG6M]: F:技能：调用 8771 的 18 个 MCP 工具（桥 12 + 设备动作 6），含握手与排障 | R:code:skill/xiaoi-mcp/SKILL.md | A:xiaoai_status | S:与 skill/xiaoi-mcp 是副本，工具数与描述两边必须逐字一致
 
 ===/<repository>/.opencode/skills/xiaoi-mcp/references/===
-tools.md[SG5L]: F:MCP 工具逐个参考：17 个工具的参数/返回/错误码，含提示词与记忆 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:xiaoai_memory | S:与 skill/xiaoi-mcp/references/tools.md 逐字节一致，上限来自 Contract
+tools.md[SG5L]: F:MCP 工具逐个参考：18 个工具的参数/返回/错误码，含记忆双通道与入站只读画像 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:xiaoai_nlp | S:与 skill/xiaoi-mcp/references/tools.md 逐字节一致；上限来自 Contract；readonly 白名单必须与 Mcp 内的入站集合同步
 
 ===/<repository>/.opencode/skills/xiaoi-release/===
 SKILL.md[SV7S]: F:发版 runbook：定版本、固定签名、打 tag、发 Release、真机 P0 | R:code:scripts/release.sh | A:expected-signer.sha256 | S:版本号只改 Manifest；指纹不符不得归档；不得静默更换 keystore
@@ -80,7 +80,7 @@ build.gradle.kts[FV5T]: F:application 模块构建：java-library、Java 8、只
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/===
 ConfigCodec.java[DC8M]: F:config.json 编解码：固定键顺序、归一、白名单、脱敏导出与校验，含提示词/记忆/双向枢纽开关 | R:code:domain/src/main/java/plus/xiaoi/module/AppConfig.java | A:toJson | S:新键必须同时进白名单与固定顺序，否则会被当成 extra 原样写回；inboundEnabled 默认 false
-Mcp.java[IC9L]: F:8771 MCP 协议层：报文分发、版本协商、工具表 schema、错误码；记忆双通道；按画像过滤工具 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:initializeResult | S:只认自己实现的协议版本（2025-03-26/2024-11-05），其余回落而非硬编；readonly 过滤必须在合并 8772 工具之后做
+Mcp.java[IC9L]: F:8771 MCP 协议层：报文分发、版本协商、工具表 schema、错误码、caller 归属；记忆双通道；nlp 与 apptools 探针；按画像过滤工具 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:initializeResult | S:只认 2025-03-26 与 2024-11-05，其余回落不硬编；readonly 过滤必须在合并设备动作工具之后；appTool 为 null 时 xiaoai_nlp 回 APPTOOL_UNAVAILABLE 而不是空对象
 PromptInjector.java[IC8M]: F:请求体提示词注入纯函数：Responses 的 instructions / chat 的 system，标记块幂等 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:apply | S:不改就返回原文；replace 仅显式开启；标记块防止多轮累积
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/agent/===
@@ -130,7 +130,7 @@ MemoryAccess.java[AN4T]: F:UI 访问记忆的端口：经 8771 调 xiaoai_memory
 
 ===/<repository>/docs/===
 README.md[SG7T]: F:文档索引：架构/接入/界面/能力与规划/重构，含路线图与四份专项规划入口，并指向 reverse 子项目 | R:code:docs/agent/ROADMAP.md | A:继续开发入口 | S:一次性文档用完即删；新增规划文档必须登记，否则等于没交付
-architecture.md[SG9S]: F:架构说明：单端口拓扑、hook 与数据面、提示词注入与记忆读写的数据流 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:架构 | S:分层图与端口表要和 AppRuntime 实际字段一致
+architecture.md[SG9S]: F:架构说明：单端口拓扑（18 个工具）、hook 与数据面、提示词注入与记忆读写的数据流 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:架构 | S:分层图与端口表要和 AppRuntime 实际字段一致；工具数改动必须同步此处与 README
 ci.md[OQ7T]: F:CI 与本地门禁说明：托管 CI 步骤、本地全量门禁、pre-push hook、token 存放、可选自建 runner | R:code:.github/workflows/build.yml | A:GitHub 托管 CI | S:tag 构建只有 signed=true 才创建 Release；无正式密钥时只上传 artifact 并打 warning，不会失败
 compatibility.md[SG7S]: F:小爱版本兼容性矩阵与适配流程：白名单匹配、已适配版本与混淆名、陌生设备自查、新版本适配步骤 | R:code:docs/architecture.md | A:兼容性矩阵 | S:只精确匹配白名单里的 versionName，其它版本 no-op 且不报错；8.2.70.8421 已加入白名单并真机验证；必须区分 hooks=ok（装上了）与 rewrite=hit（生效了）
 design-system.md[SU8M]: F:UI 声明：19 个颜色令牌、字体与间距、15 个组件、状态矩阵、主题实现与自绘例外 | R:code:app/src/main/res/values/colors.xml | A:颜色令牌 | S:令牌是唯一允许的引用方式，页面里禁止裸 #RRGGBB；深浅两套只换颜色，布局与尺寸必须一致
@@ -151,7 +151,7 @@ PLAN-INTEROP.md[SG8S]: F:双向接入规划：8771 反向注册成小爱 MCP、�
 PLAN-MCP-SURFACE.md[SG8S]: F:MCP 工具面规划：先做通道 A 探针，只封装小爱独有能力，481 工具直通明确不做 | R:code:reverse/data/tool-catalog.md | A:探针优先 | S:先证明 18 方法可达再扩功能；新增工具上限 17→25；返回体默认截断 32KB 且不落正文
 PLAN-MEMORY.md[SG8S]: F:记忆规划：读写检索转官方 readMemory/writeMemory，本地 MEMORY.md 降级为只读快照与兜底 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:转调官方 | S:写入口是自然语言、官方会抽取改写，只承诺可被检索到；LAN 写 op 一律拒绝；正文不进日志与默认导出
 PLAN-PERSONA-SKILLS.md[SG8S]: F:人格/技能规划：客户端改 system 已证伪，只保留输入文本、工具面、文件面三条边界 | R:code:reverse/docs/05-skills.md | A:已证伪清单 | S:六条注入路径全部无效（含 bogus 模型仍正常回复）；人格包必须文件层+文本层双落地；诊断先行
-ROADMAP.md[SG9S]: F:路线图：四份专项去重后的 P0/P1/P2、依赖图与五个待拍板分叉 | R:code:docs/agent/PLAN-MEMORY.md | A:P0 | S:0.18.0 只做探针+记忆只读+LAN 写拦截+caller 审计；人格线与双向接入不得同期进；安全统一为来源/画像/拦截三层
+ROADMAP.md[SG9S]: F:路线图：P0/P1/P2、依赖图与待拍板分叉；P0 四项已真机通过 | R:code:docs/agent/PLAN-MEMORY.md | A:P0 | S:P0-4 的 caller 只落在 [mcp] 日志行，xiaoai_audit 结构未动；标注已完成的验收要写真机实测值
 RESEARCH-CRAFT-ANYTHING.md[SG6T]: F:调研 storytold/craft-anything：它是逆向+重做引擎（Rust/stdio MCP），对本项目只在协议协商、工具表派生、命名归一三处可借鉴 | R:code:docs/agent/ROADMAP.md | A:建议 | S:4 万星但早期 alpha；Android 静态工具可对拍 dexindex，但需拿混淆 APK 实测；同名 RayCodes 仓库为噪声
 
 ===/<repository>/docs/refactor/===
@@ -238,7 +238,7 @@ UsageSignal.java[DO5T]: F:模型调用信号判定：主对话口径转发与空
 XiaoiOverridePolicy.java[DE7T]: F:小爱 getter 覆盖策略：暂停不离线、空值不覆盖、第三方标识与看图能力判定 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:override | S:暂停或配置为空必须返回 null 表示不覆盖，让请求回到官方模型；看图能力在暂停态不下结论
 
 ===/<repository>/domain/src/main/java/plus/xiaoi/module/core/mcp/===
-ToolOwnership.java[DI8T]: F:MCP 工具归属表：桥 11 + 设备动作 6 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:owner | S:工具总数 17；增减工具必须同步测试与两份文档
+ToolOwnership.java[DI8T]: F:MCP 工具归属表：桥 12 + 设备动作 6 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:owner | S:工具总数 18；增减工具必须同步测试、两份 tools.md 与 initialize 的 instructions 文案
 InboundRegistration.java[DI7S]: F:把小爱 mcp_servers.json 与我们的条目（name=xiaoi-plus）做幂等合并与精确移除，保留他人条目与未知顶层键 | R:code:platform/src/main/java/plus/xiaoi/module/McpServerConfig.java | A:upsert | S:JSON 非法返回 null，调用方不得写盘；同名重复条目只保留一条；tool_prefix=false 避免双重前缀
 
 ===/<repository>/gradle/===
@@ -287,7 +287,7 @@ build.gradle.kts[FV7T]: F:platform 模块构建：Android 库、独立 namespace
 AndroidAppRuntime.java[IU7M]: F:UI 运行时实现装配：把 12 个窄端口接到 App 进程内的具体实现 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/AppRuntime.java | A:AppRuntime | S:端口为 null 直接抛；记忆端口走桥，不要直接读文件
 AppExecutors.java[IR6T]: F:App 进程唯一的后台执行器：固定 3 个 IO 守护线程与主线程回调 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/BackgroundTasks.java | A:io | S:执行器被关闭时退化为同步执行，保证调用方逻辑不丢；小爱进程里的 Bridge 与 Hook 不能依赖它
 AppLaunch.java[IU5T]: F:打开本 App 的唯一入口：用包名加类名拼显式 Intent | R:code:app/src/main/AndroidManifest.xml | A:ENTRY_CLASS | S:platform 不能引用 app 的 MainActivity，否则依赖倒置；改启动页必须同步这里与一致性门禁
-Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听、HTTP 路由与鉴权、MCP 分发（含 profile 解析）、日志合并、记忆端口、MCP 客户端记录 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handleMcp | S:只有 leader 绑端口；LAN 写需 X-Xiaoi-Write；`?profile=readonly` 由 URL 决定，实测 osbot 会连进来
+Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听、HTTP 路由与鉴权、MCP 分发（含 profile 解析与 caller 归属）、日志合并、记忆端口、AppTool 端口、MCP 客户端记录 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handleMcp | S:只有 leader 绑端口；LAN 写需 X-Xiaoi-Write；profile=readonly 由 URL 决定，实测 osbot 会连进来；AppTool 端口普通工具 5s、nlp_query 8s
 Config.java[DC7L]: F:进程内不可变配置快照：provider/模型/密钥/开关 + 提示词记忆 + 双向枢纽开关 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:create | S:新增开关必须进 create 的完整重载并随控制面 Binder 下发；实测目标进程读不到模块 prefs，prefs 不是生效路径
 ConfigRepository.java[DC7M]: F:配置读写与 prefs 镜像：提示词/记忆/双向枢纽开关同步写入，供控制面下发 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:save | S:新增配置键必须同时写 prefs 与 Binder 快照；实测目标进程读不到模块 prefs（660 不同 uid），prefs 不是生效路径
 ConfigSync.java[DC8M]: F:config.json 文件监听与自动应用：防抖、内容哈希去环、启动对齐、从运行中小爱导入 | R:code:platform/src/main/java/plus/xiaoi/module/ConfigRepository.java | A:applyIfChanged | S:用内容哈希去环，否则自己写文件会触发回环；运行时变更绝不静默写回文件，文件永远优先
@@ -314,7 +314,7 @@ AgentBootReceiver.java[IR5T]: F:开机自启接收器：只处理 BOOT_COMPLETED
 AgentService.java[IR9L]: F:App 进程内的动作面前台服务：装配注册表与执行器，提供 toolsJson 与 callJson 两个入口 | R:code:application/src/main/java/plus/xiaoi/module/agent/AgentMcp.java | A:toolsJson | S:0.16 起本服务不监听任何端口，只被控制面 IPC 调用；幂等缓存文件超过 256KB 视为损坏并按空缓存启动
 AndroidExecutor.java[IH8L]: F:普通权限执行器：设备信息、打开应用、闹钟、通知、媒体控制五个动作 | R:code:domain/src/main/java/plus/xiaoi/module/agent/Actions.java | A:execute | S:不假装成功：找不到应用、没有时钟、缺通知权限、没有媒体会话都回明确错误码；后台限制只在 warnings 里说明
 AndroidNotifyHost.java[IH7S]: F:提醒宿主：超级岛优先，失败降级普通通知并如实回报通道与 fallback | R:code:domain/src/main/java/plus/xiaoi/module/agent/NotifyHost.java | A:notify | S:岛返回 ok=false 时必须降级并标 fallback，不能把被系统忽略的岛当成已显示
-AppToolClient.java[II8M]: F:在小爱进程里绑定 AppTool provider 并反射 handleRequest：建待办、官方记忆读写、通用 callTool | R:code:domain/src/main/java/plus/xiaoi/module/agent/AppToolProtocol.java | A:callTool | S:禁止主线程等待（ServiceConnection 会死锁）；bind/call 各 5s；每次调用都 unbind；并发上限 2
+AppToolClient.java[II8M]: F:在小爱进程里绑定 AppTool provider 并反射 handleRequest：建待办、官方记忆读写、通用 callTool 与就绪度探针 | R:code:domain/src/main/java/plus/xiaoi/module/agent/AppToolProtocol.java | A:callTool | S:禁止主线程等待（ServiceConnection 会死锁）；bind/调用默认 5s；每次调用都 unbind；共享池上限 2，nlp_query 独占单线程且联网语句永不返回，只允许留一个僵尸线程
 RootExecutor.java[IH8M]: F:root 兜底执行器：su 候选路径、固定命令执行、串行化、超时与输出裁剪 | R:code:domain/src/main/java/plus/xiaoi/module/agent/RootCommands.java | A:runSu | S:只执行固定命令族，命令文本不接受调用方输入；available 只读缓存，首次真正需要 root 时才弹授权
 
 ===/<repository>/platform/src/main/java/plus/xiaoi/module/bridge/===
@@ -361,10 +361,10 @@ SKILL.md[SA8M]: F:Agent 侧 skill：单端点驱动手机能力，含探活、�
 actions.md[SA7S]: F:动作参考：五个动作的参数、返回、风险与通道选择，外加 confirm、notify、ask、audit 的示例 | R:code:domain/src/main/java/plus/xiaoi/module/agent/Actions.java | A:alarm.set | S:参数名必须与 schema 一致；alarm.set 的 scheduled=false 表示未确认创建，绝不能当成功
 
 ===/<repository>/skill/xiaoi-mcp/===
-SKILL.md[SA8M]: F:技能主文档：8771 单端口、17 个工具（桥 11 + 动作 6）、握手与常见故障 | R:code:.opencode/skills/xiaoi-mcp/SKILL.md | A:xiaoai_status | S:与 .opencode 下的副本内容一致，工具数改了两边都要改
+SKILL.md[SA8M]: F:技能主文档：8771 单端口、18 个工具（桥 12 + 动作 6）、握手与常见故障 | R:code:.opencode/skills/xiaoi-mcp/SKILL.md | A:xiaoai_status | S:与 .opencode 下的副本内容一致，工具数改了两边都要改
 
 ===/<repository>/skill/xiaoi-mcp/references/===
-tools.md[SA7L]: F:工具逐个参考：17 个工具的参数/返回/错误码，含记忆双通道与入站只读画像 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:协议方法 | S:与 .opencode 副本逐字节一致；上限全部来自 Contract；profile=readonly 的白名单必须与 Mcp.INBOUND_ALLOWED 同步
+tools.md[SA7L]: F:工具逐个参考：18 个工具的参数/返回/错误码，含记忆双通道、入站只读画像与 nlp 的超时语义 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:协议方法 | S:与 .opencode 副本逐字节一致；上限全部来自 Contract；profile=readonly 的白名单必须与 Mcp 内入站集合同步
 
 ===/<repository>/ui/===
 build.gradle.kts[FV7T]: F:ui 模块构建：Android 库加 Compose、Miuix 与 graphics-shapes 依赖，独立 namespace | R:code:application/build.gradle.kts | A:namespace | S:只依赖 domain 与 application；引入 platform 或 infra 会直接破 ui_no_infra 与 ui_no_platform 门禁
