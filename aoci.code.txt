@@ -3,9 +3,9 @@
 ===/<repository>/===
 .gitattributes[FV4T]: F:git 属性表：文本按 LF 存储、二进制不转换 | R:code:.gitignore | A:text=auto | S:换行策略的唯一来源；Windows 脚本依赖 LF，改这里会让全仓库 diff 抖动
 .gitignore[FV6T]: F:忽略构建产物、本地凭据、临时目录、AOCI 主机配置与本地虚拟环境 | R:code:.aoci/.gitignore | A:artifacts/ | S:aoci.txt 与 .aoci 必须入库否则 scan 拒绝；.mcp.json 等主机配置含绝对路径必须忽略；.venv 是 deploy.cmd 的本地环境
-AGENTS.md[SG8S]: F:Agent 仓库规约：构建命令、分层边界、产物落点与根目录纪律 | R:code:scripts/check-layering.sh | A:根目录纪律 | S:新文件只能进 scripts/docs/tmp/artifacts；根目录禁止新建 md/sh/txt；末尾 aoci 托管区块不要手改
+AGENTS.md[SG8S]: F:Agent 仓库规约：构建命令、分层边界、产物落点、根目录纪律与 reverse 逆向子项目 | R:code:scripts/check-layering.sh | A:根目录纪律 | S:新文件只能进 scripts/docs/tmp/artifacts；根目录禁止新建 md/sh/txt；reverse/ 只放文档与脚本，APK/dex 仍放 artifacts/reverse；末尾 aoci 托管区块不要手改
 ARCHIVE.md[SG5S]: F:归档快照：0.15.0 的模块、验证与限制，以及 0.16.0 的清理与备份去向 | R:code:docs/refactor/NEXT.md | A:artifacts/legacy/ | S:备份已迁进仓库 artifacts/legacy/，不要再引用 ~/xiaoi-plus-dev 这类仓外路径
-CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.17.0 | S:小节标题必须与 versionName 一致；发版前把「未发布」改成日期小节
+CHANGELOG.md[SV7L]: F:版本变更日志；Release Notes 从中抽取当前版本小节 | R:code:scripts/release-notes.sh | A:0.17.0 | S:小节标题必须与 versionName 一致；发版前把「未发布」改成日期小节；两个「未发布」小节并存时必须先裁决版本号
 LICENSE[SV4L]: F:GPLv3 许可证全文 | R:code:README.md | A:GPLv3 | S:分发修改版须沿用同一许可；本项目不改原包，只做运行时注入
 README.md[SG8L]: F:对外主页：功能矩阵、22 条路由、17 个 MCP 工具表、构建与部署、已知限制 | R:code:docs/architecture.md | A:MCP端点 | S:工具表、路由数与上限必须与 Contract/Mcp/SCREENS 同步
 build.gradle.kts[FV6T]: F:根构建声明：四个 AGP 与 Compose 插件只 apply false，由子模块各自启用 | R:code:app/build.gradle.kts | A:alias(libs.plugins.android.application) | S:版本全部来自 gradle/libs.versions.toml；在根模块真正 apply 插件会破坏按模块启用
@@ -50,7 +50,7 @@ AndroidManifest.xml[FV8T]: F:壳清单：versionName 与 versionCode 唯一来�
 xposed_init[FV6T]: F:Xposed 入口声明：一行写 Hook 类全名 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:plus.xiaoi.module.Hook | S:类改名必须同步这里，否则 LSPosed 找不到入口且不报任何错
 
 ===/<repository>/app/src/main/java/plus/xiaoi/module/===
-Hook.java[EI8L]: F:LSPosed 入口：白名单判定后装 hook（重定向/视觉/用量/provider/facade）并接请求体提示词注入 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:applyPromptInjection | S:注入失败必须保持原请求；Json 单例与字段名随版本变，失败只记一次
+Hook.java[EI8L]: F:LSPosed 入口：白名单判定后装 hook（重定向/视觉/用量/provider/facade/请求注入），并一次性采样模型请求的 tools 形状 | R:code:platform/src/main/java/plus/xiaoi/module/JsonNodes.java | A:applyPromptInjection | S:注入失败必须保持原请求；JSON 元素重建与工具采样都委托 platform/JsonNodes；build*Request 返回值改写实测不影响实际发送内容
 MainActivity.kt[EU8L]: F:单 Activity 壳：4 个 tab、22 条路由、返回栈与 snackbar | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/xiaoai/PromptScreen.kt | A:NavHost | S:新路由必须同步 SCREENS.md；二级页隐藏底栏并显示返回
 
 ===/<repository>/app/src/main/res/drawable/===
@@ -129,10 +129,10 @@ UsageStats.java[AO5T]: F:用量查询端口：拉取本机 8771 的 stats 原始
 MemoryAccess.java[AN4T]: F:UI 访问记忆的端口：经 8771 调 xiaoai_memory，返回结构化结果 | R:code:platform/src/main/java/plus/xiaoi/module/AndroidAppRuntime.java | A:call | S:失败回结构化错误不抛异常；本层不读写文件
 
 ===/<repository>/docs/===
-README.md[SG7T]: F:文档索引：当前环境说明加全部文档的一行摘要表 | R:code:docs/refactor/NEXT.md | A:继续开发入口 | S:docs/agent 与 docs/ui 的 *-REPORT、DEVICE-CHECK、drafts 是历史存档，里面 ~/xiaoi-plus-dev 等路径已失效，不代表当前环境
+README.md[SG7T]: F:文档索引：当前环境说明、现存文档一行摘要，并指向 reverse 逆向子项目 | R:code:docs/refactor/NEXT.md | A:继续开发入口 | S:一次性文档用完即删；docs/agent 与 docs/ui 的历史报告路径已失效，不代表当前环境
 architecture.md[SG9S]: F:架构说明：单端口拓扑、hook 与数据面、提示词注入与记忆读写的数据流 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:架构 | S:分层图与端口表要和 AppRuntime 实际字段一致
 ci.md[OQ7T]: F:CI 与本地门禁说明：托管 CI 步骤、本地全量门禁、pre-push hook、token 存放、可选自建 runner | R:code:.github/workflows/build.yml | A:GitHub 托管 CI | S:tag 构建只有 signed=true 才创建 Release；无正式密钥时只上传 artifact 并打 warning，不会失败
-compatibility.md[SG7S]: F:小爱版本兼容性矩阵与适配流程：白名单匹配、已适配版本与混淆名、陌生设备自查、新版本适配步骤 | R:code:docs/architecture.md | A:兼容性矩阵 | S:只精确匹配白名单里的 versionName，其它版本 no-op 且不报错；8.2.70.8421 已加入白名单并真机验证；自查章节要保留「compat=probe 是 fail-open 历史行为」的解释，且必须区分 hooks=ok（装上了）与 rewrite=hit（生效了）
+compatibility.md[SG7S]: F:小爱版本兼容性矩阵与适配流程：白名单匹配、已适配版本与混淆名、陌生设备自查、新版本适配步骤 | R:code:docs/architecture.md | A:兼容性矩阵 | S:只精确匹配白名单里的 versionName，其它版本 no-op 且不报错；8.2.70.8421 已加入白名单并真机验证；必须区分 hooks=ok（装上了）与 rewrite=hit（生效了）
 design-system.md[SU8M]: F:UI 声明：19 个颜色令牌、字体与间距、15 个组件、状态矩阵、主题实现与自绘例外 | R:code:app/src/main/res/values/colors.xml | A:颜色令牌 | S:令牌是唯一允许的引用方式，页面里禁止裸 #RRGGBB；深浅两套只换颜色，布局与尺寸必须一致
 feature-candidates.md[SA5S]: F:功能候选调研：root 生态 18 项能力评估、Top5 推荐、独占组合与不建议做清单 | R:code:docs/refactor/NEXT.md | A:结论先行 | S:结论是不要把小爱做成第二个 Thanox；优先级入口与编排高于单点系统能力，全局治理类重复造轮子收益低
 integration.md[SG8S]: F:外部接入指南：端点、鉴权、MCP 握手、日志/统计，以及提示词与记忆工具 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:MCP端点 | S:示例要与 Mcp 实际输出一致；记忆写入默认关要写清
@@ -143,64 +143,24 @@ security.md[SS8S]: F:安全与隐私边界：鉴权、免 token 的例外、日�
 ui-architecture.md[SG3M]: F:0.7 时代的 UI 与模块架构图：主页、配置、日志、关于四页与 ConfigRepository 数据层 | R:code:docs/ui/SCREENS.md | A:总体架构 | S:0.7 四页历史设计图，已与当前单 Activity 结构不符，看现状请用 SCREENS.md
 
 ===/<repository>/docs/agent/===
-CAPABILITIES.md[SA7S]: F:能力清单：小爱/系统/桥三类，含 A8 提示词与 A14/A15 记忆的状态 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:能力矩阵 | S:能力状态要与实现一致，规划项不要写成已交付
+CAPABILITIES.md[SA7S]: F:能力清单：小爱/系统/桥三类，含 A8 提示词与 A14/A15 记忆的状态 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:能力矩阵 | S:能力状态要与实现一致，规划项不要写成已交付；提示词注入在 8.2.70 上实测未生效，见 reverse 文档
 OSBOT-PROTOCOL.md[SA6M]: F:OSBOT 协议侦察：8770 facade 归属、execute 与 dispatch 的访问性、创建待办的真实工具名 | R:code:docs/agent/PHASE0-REPORT.md | A:notes__todo_create | S:dispatch 是 private，只能调 public 的 execute；待办不是 todo.create 而是 notes__todo_create，按名字猜方法会永远查不到
-PHASE0-REPORT.md[SA6M]: F:Phase 0 侦察结论：CLI 方法枚举、超级岛限制、权限矩阵、记忆可读性、接口清单 | R:code:docs/agent/PHASE0.md | A:结论摘要 | S:小爱 CLI 没有本地设备动作层，5 个动作必须走 Android 或 root；记忆 DB 是加密的，只有 MEMORY.md 是明文
-PHASE0.md[SA4S]: F:Phase 0 侦察计划：五个 P0 任务、步骤与验收标准 | R:code:docs/agent/PHASE0-REPORT.md | A:P0-1 | S:已完成，保留作方法记录；文中 ~/xiaoi-plus-dev/tmp 产物路径已不存在，别照着找
-PHASE1.md[SA6L]: F:Phase 1 工作包与完成记录：ActionRegistry、前台服务、确认幂等审计、8770 LAN 开关、幂等持久化 | R:code:docs/agent/CAPABILITIES.md | A:WP1.5 | S:完成记录按 WP 倒序追加在文件头部下方；验收命令是迁移前 WSL 写法，Windows 要用 bash tests/run.sh
-PLAN.md[SA6L]: F:D1 Agent 能力层总体方案：进程与端口、工具清单、返回信封、确认与幂等、ActionRegistry、执行器分层、记忆定位 | R:code:docs/agent/PHASE1.md | A:总体架构 | S:历史文档，路径与命令是迁移前 WSL 写法；记忆真相定在 PC Agent，本模块只做可选镜像，不要反向当作主库
-P2-PROMPT-MEMORY.md[SG9M]: F:P2 提示词与记忆的规划与实现记录：hook 点、文件布局、默认关、验收步骤、未做项 | R:code:docs/agent/CAPABILITIES.md | A:P2 | S:未做项是边界承诺；默认关与备份顺序不能改
-
-===/<repository>/docs/archive/===
-HANDOVER-2026-11-08.md[SG3M]: F:0.14 阶段的交接说明：环境、配置位置、验证命令、完成项、已知限制与回滚 | R:code:ARCHIVE.md | A:已知限制 | S:历史快照，19 条路由与 0.14 版本号均已过期，判断现状请看 README
-build-sh-legacy.md[OV3S]: F:≤0.13 的 build.sh 构建流程存档：依赖、六步构建、产物与常见报错 | R:code:docs/ci.md | A:依赖 | S:build.sh 已在 0.16.0 删除，文中命令全部不可用，一律按 gradlew 理解
+PLAN.md[SA6L]: F:D1 Agent 能力层总体方案：进程与端口、工具清单、返回信封、确认与幂等、ActionRegistry、执行器分层、记忆定位 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:总体架构 | S:历史文档，路径与命令是迁移前 WSL 写法；记忆真相定在 PC Agent，本模块只做可选镜像，不要反向当作主库
+P2-PROMPT-MEMORY.md[SG9M]: F:P2 提示词与记忆的规划与实现记录：hook 点、文件布局、默认关、验收步骤、未做项 | R:code:docs/agent/CAPABILITIES.md | A:P2 | S:未做项是边界承诺；默认关与备份顺序不能改；build*Request 返回值上的注入实测无效，需改 streamCompletion 入参
 
 ===/<repository>/docs/refactor/===
 LAYERING-2.md[SG8M]: F:第二阶段分层：从 3 模块到 6 模块的缺口分析、依赖矩阵、WP7 至 WP13 工作包与 DoD | R:code:docs/refactor/LAYERING.md | A:G1 | S:本阶段已完成（WP7 到 WP13），门禁基线必须保持 0 条；文档保留“计划（未执行）”状态行是因为它记录的是开工前判断
 LAYERING.md[SG6L]: F:第一阶段分层计划：决策 L1 至 L8、现状基线、目标结构、WP0 至 WP5 工作包与验收 | R:code:docs/refactor/LAYERING-2.md | A:决策与边界 | S:已完成；刻意先做接缝（端口）后做 Gradle 模块，顺序反过来会同时暴露行为变更与结构变更，无法定位回归
 NEXT.md[SG8S]: F:Windows 环境说明与下一阶段优化路线（P0 至 P5）：路径、JDK、SDK、模块清单、固定门禁与子 Agent 约束 | R:code:docs/refactor/LAYERING-2.md | A:环境 | S:这是当前环境与继续开发的唯一入口；P0、P1、P3 已完成，剩余 P2 清 ui_no_control、P4 拆 Bridge、P5 真机与历史
-PLAN.md[SG4M]: F:0.12.0 核心重构计划（已冻结）：D1 至 D9 决策、三条通道、控制面协议、数据面与配置迁移、安全评审结论 | R:code:docs/refactor/WORKPACKAGES.md | A:最终决策 | S:已冻结；D6 控制面用 bound Service、D8 配置放私有目录仍是现行约束
 README.md[SG4S]: F:重构路线索引：NEXT 与各专题文档的入口 | R:code:docs/refactor/NEXT.md | A:LOGGING | S:新增专题文档必须在此登记，否则等于没交付
-RECOVERY-2026-11-17.md[SG4S]: F:2026-11-17 仓库被清空与恢复的记录：事件、恢复来源、丢失内容、迁移到 Windows 与防再发 | R:code:docs/refactor/NEXT.md | A:发生了什么 | S:原 git 历史已在 D 盘找回并合并，D 盘是唯一主仓库，C 盘只是备份
-WORKPACKAGES.md[SG4M]: F:0.12 工作包与子 Agent 指令：通用合同、WP1 至 WP8 的范围、验收、测试与禁止改动 | R:code:docs/refactor/PLAN.md | A:通用子 Agent 合同 | S:子 Agent 合同要求给死范围与禁止清单；文中无 Gradle 等约束已被推翻
-WP2-HOOK.md[SG4M]: F:Hook 策略抽取与进程宿主：现实核对、纯策略类、宿主新增文件、门禁 H1/H2、风险与执行记录 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:现实核对 | S:开工前核对推翻了假设：两个请求构造 hook 都是空实现，前缀 hook 从未被调用
-WP3-BRIDGE.md[SG5M]: F:桥与动作应用服务的 Host 拆分：三个纯 JVM 决策点、BridgeRuntime、BridgeService、HttpPolicy、Hosts 五槽位与测试 | R:code:application/src/main/java/plus/xiaoi/module/application/bridge/BridgeService.java | A:三个纯 JVM 决策点 | S:拆分期间 8771 工具表、报文、真机契约、端口与 LAN、410 语义都属于不可变的外部契约，重构只能改内部结构
-WP4-UI.md[SG4M]: F:UI 运行时端口与 Context 清理：现状调用点统计、11 个端口、Compose 注入、门禁与真机 P0 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/AppRuntime.java | A:运行时端口 | S:去 Context 是为了让 StateHolder 能用 fake 替换；ThemeManager 未并入端口
-WP5-CORE.md[SG4S]: F:临时 :core 物理模块的建立：83 个纯 JVM 文件的闭包、模块边界、门禁与执行记录 | R:code:docs/refactor/WP6-DOMAIN.md | A:目标 | S:已完成但已被 WP6 取代：:core 后来拆成 :domain 与 :application，本文的文件数只描述拆分前状态
-WP6-DOMAIN.md[SG4S]: F::domain 与 :application 拆分：分类原则、53 与 29 文件划分、构建改动、验收与回滚 | R:code:docs/refactor/WP5-CORE.md | A:分类原则 | S:包名不变是为避开 R8、反射与类名字符串；改包名要同时审所有 hook 入口
 LOGGING-1.md[SG8S]: F:日志子系统重构设计与迁移计划 + 合并视图（第 10 节）：现状证据、问题结论、分层落点、WP-L1~L5、风险回滚、未做项 | R:code:platform/src/main/java/plus/xiaoi/module/Logs.java | A:WP-L | S:未做项是对后续工作的边界承诺，落地下一步前先回读；合并视图的 seq 命名空间与回落规则是协议契约，改之前先改这里；「合并缓冲 600 条由三进程共享」是已知代价，不要当 bug 修
 
-===/<repository>/docs/refactor/drafts/===
-architecture-v1.md[SG2L]: F:被否决的目标架构草案：HMAC 挑战响应、Provider 注册表、首次配置 bootstrap、schema v3 与配置单源 | R:code:docs/refactor/PLAN.md | A:一句话结论 | S:草案未采纳；现行见 PLAN.md 的 D9，按本文改代码等于回退
-migration-v1.md[SG2L]: F:0.11 到 0.12 的迁移与发布草案：版本策略、schema v2 到 v3、prefs key 迁移、token 兼容、真机清单 | R:code:docs/refactor/drafts/architecture-v1.md | A:版本策略 | S:草案；410 与私有目录已落地，HMAC 段作废，引用前先核对
-risks-v1.md[SG2M]: F:风险登记与评审输入：R01 至 R11 风险表、攻击面清单、开放问题、回滚与熔断条件 | R:code:docs/refactor/drafts/architecture-v1.md | A:风险登记表 | S:这是评审输入；R05 弱 token 与 R09 明文 LAN 的残余风险至今成立
-workpackages-v1.md[SG2L]: F:草案版工作包拆分：WP1 至 WP7 的目标、范围、涉及文件、验收、测试与子 Agent 指令模板 | R:code:docs/refactor/drafts/architecture-v1.md | A:总览与依赖 | S:草案编号与最终执行的工作包不一致（正式版见 WORKPACKAGES.md），混用编号会指错文件
-
 ===/<repository>/docs/ui/===
-AGENT-TASKS.md[SG3S]: F:0.14 P2 的 Agent 分工：Wave 1 至 3 的 owner、commit 产出、文件 ownership 与合并流程 | R:code:docs/ui/PLAN.md | A:当前状态 | S:分工记录，分支与 commit 均已合并，不必再按文件分 owner
 BUILD.md[OV8L]: F:构建规范：Windows 原生环境、JDK 与 SDK 安装、Gradle wrapper、工程结构、版本依赖、R8 体积、命令与 CI | R:code:docs/ci.md | A:Windows 原生 | S:wrapper 固定 9.9.0 并校验 SHA-256，services.gradle.org 曾长期 504 才改镜像；首次构建必须联网拉 R8 与 Compose 依赖
 COMPONENTS.md[SU8L]: F:UI 组件契约：主题骨架、15 个基础组件与 7 个业务组件的参数、尺寸与语义约定 | R:code:docs/ui/SCREENS.md | A:通用约定 | S:页面只能用本文列出的组件；0.16.0 起 AgentStatus 与端口行只展示 8771 一个端点，文案里不要再写两个端口
 CONVENTIONS.md[SU7S]: F:UI 开发规范：总原则、目录命名、Kotlin 与 Compose 规则、状态数据流、导航、错误提示、资源、无障碍与 DoD | R:code:docs/ui/COMPONENTS.md | A:总原则 | S:Java 核心不动、Kotlin 只做 UI；不做假功能，未实现能力只能显示只读的规划中
-CORE-DATA-REPORT.md[SU3S]: F:A3 Core Data 报告：AgentRuntimeStatus、BridgeStatus、PermissionProbe、IssueInputFactory、ActivityHub 的字段与语义 | R:code:application/src/main/java/plus/xiaoi/module/agent/AgentRuntimeStatus.java | A:新增修改一览 | S:A3 报告；AgentRuntimeStatus 与 PermissionProbe 仍是现行数据源
-DEVICE-CHECK-0.15.md[SQ4T]: F:0.15 真机验收清单：安装、一级页与二级页深浅色截图、玻璃回退、回归项与记录模板 | R:code:docs/ui/SCREENS.md | A:安装 | S:覆盖安装不得丢 config.json、令牌与主题；一旦丢配置立即停止验收并记录
-DEVICE-CHECK-2026-11-10.md[SQ3T]: F:2026-11-10 真机验收记录：动作面、health 端口、玻璃底栏、pager 跟手、协议层创建待办 | R:code:docs/ui/TOPBAR.md | A:通过 | S:当时动作面还是 8772，0.16 已并入 8771；端口证据只作历史
-FOUNDATION-REPORT.md[SU3S]: F:A2 UI Foundation 报告：路由壳、页面占位签名、共享组件、主题与验收命令 | R:code:docs/ui/SCREENS.md | A:改动文件 | S:A2 地基报告；当时 19 条路由，现为 20 条，路由表以 SCREENS.md 为准
-P0-REPORT.md[SQ4M]: F:P0 构建验证报告：JDK、Gradle、AGP、Kotlin、Compose、Miuix 版本结论，真机与模拟器补测，Go 判定 | R:code:docs/ui/BUILD.md | A:环境结果 | S:P0 结论 Go；AGP 9 内置 Kotlin，不能再应用 kotlin.android 插件
-P1-REPORT.md[SQ3S]: F:P1 报告：单 Activity 四 tab 壳、19 色令牌、顶栏底栏组件、日志与关于页、真机验证与视觉修正 | R:code:docs/ui/COMPONENTS.md | A:交付内容 | S:P1 地基报告；19 色令牌与单 Activity 结论仍有效，页面清单已扩到 20 路由
-PLAN.md[SU5L]: F:0.14 UI 重写计划：目标与非目标、锁定决策、技术栈、信息架构、数据状态、设计系统、迁移映射 | R:code:docs/ui/SCREENS.md | A:锁定决策 | S:状态行写 P0 至 P3 完成，实际之后还有 0.15 与 0.16；版本号永远以 Manifest 为准，不要引用本文数字
-RELEASE-0.14.1.md[OV3T]: F:0.14.1 版本说明：只修桌面图标指向旧 HomeActivity 的启动入口缺陷 | R:code:app/src/main/AndroidManifest.xml | A:为什么发 0.14.1 | S:MAIN/LAUNCHER 挂错 Activity 会让新 UI 好像没生效
-RELEASE-0.14.md[OV3S]: F:0.14.0 版本说明：Compose 迁移内容、页面清单、验收结果、已知限制、截图索引与升级说明 | R:code:docs/ui/RELEASE-0.14.1.md | A:本版内容 | S:0.14.0 有启动入口缺陷，用户应装 0.14.1；本文只作构建与验收记录
-RELEASE-REPORT.md[OV4S]: F:A8 Build/Release 报告：版本号、R8 规则、体积对比、CI 变更、门禁结果与真机 R8 回归 | R:code:app/proguard-rules.pro | A:结论 | S:必须盯 R8 missing class 是否为 0；出现 missing_rules.txt 说明 keep 规则漏了，真机表现是静默失效
 SCREENS.md[SU8M]: F:页面规范：22 条路由、每页展示与交互、空态与默认值 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/xiaoai/PromptScreen.kt | A:路由表 | S:路由表与 MainActivity 必须一致；新增页要写空态与默认关
 TOPBAR.md[SU5T]: F:顶栏设计复盘：自研顶栏六个具体故障与根因，Miuix TopAppBar 迁移方案、API 与验收结果 | R:code:docs/ui/COMPONENTS.md | A:结论先行 | S:不要再自写顶栏滚动与模糊；模糊层高度必须精确等于顶栏高度，多出的部分会盖住内容形成鬼影
-
-===/<repository>/docs/ui/reports/===
-A4-HOME.md[SU3T]: F:A4 首页报告：五个区块、数据接线与单一事实源、状态分支自查矩阵、组件复用与验收 | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/home/HomeStateHolder.kt | A:数据接线 | S:首页只在 RESUMED 时每 5 秒重读；离开页面必须停掉刷新，否则后台仍在读配置
-A5-XIAOAI.md[SU3S]: F:A5 报告：小爱一级页与模型服务商页的文件划分、保存校验冲突策略、与旧配置的 parity、已知风险 | R:code:docs/ui/SCREENS.md | A:改动文件 | S:草稿、保存、冲突、只读四条路径都在 ModelStateHolder；页面不要自己再判一次冲突
-A6-ACCESS.md[SU3T]: F:A6 报告：接入页九个子页的结构、数据来源、数量统计与验收结果 | R:code:docs/ui/SCREENS.md | A:页面结构 | S:A6 时接入页有 8771 与 8770 两张通道卡；0.16 起只剩一个端点，卡片与文案要合并
-A7-ME.md[SU3T]: F:A7 报告：我的页与外观、配置管理、诊断、兼容模式、开源许可、日志页的结构与还原策略 | R:code:docs/ui/SCREENS.md | A:页面结构 | S:备份含明文密钥、脱敏导出不可还原，这是刻意设计；还原前必须提示用户覆盖范围
-A9-DOCS.md[SG3T]: F:A9 文档同步清单：0.14 时改了 README、CHANGELOG、ui 文档、HANDOVER 与两份 skill 副本 | R:code:README.md | A:改了哪些文档 | S:skill/ 与 .opencode/skills/ 是两份实体副本，必须同步改
-P2-VISUAL-FIXES.md[SU4M]: F:P2 视觉修复报告：五条 P1 对比度与裁切问题的根因、改法、PNG 取样验证与剩余项 | R:code:docs/design-system.md | A:结论 | S:对比度验证靠 PNG 取样算 WCAG 比值，不靠肉眼；改配色后应重跑同一脚本再下结论
 
 ===/<repository>/domain/===
 build.gradle.kts[FV5T]: F:domain 模块构建：纯 java-library、Java 8 源码级别、UTF-8 编码 | R:code:application/build.gradle.kts | A:sourceCompatibility | S:本模块禁止 I/O、Android 与并发容器；加依赖会立刻破坏分层门禁的零基线
@@ -336,6 +296,7 @@ XiaoiProcessHost.java[DO6T]: F:小爱进程宿主端口：进程启动、facade 
 XiaoiProcessHostImpl.java[IO6T]: F:小爱进程宿主的 Android 组装：把调用委托给 Bridge 与 Island，配置热更新走注入的回调 | R:code:platform/src/main/java/plus/xiaoi/module/XiaoiProcessHost.java | A:ConfigReloader | S:本类只做委托；reloader 由构造注入而非直接依赖 Hook，否则控制面会重新绑上 Hook
 MemoryFiles.java[IP5T]: F:记忆文件定位与注入文本读取：files/memory 下的 outline/MEMORY | R:code:infra/src/main/java/plus/xiaoi/module/memory/MemoryFileStore.java | A:outline | S:只读；读不到回空串；limit 要夹在 Contract 上限内
 PromptRuntime.java[IR5T]: F:提示词注入的运行计数：命中位置、跳过与失败原因（不含正文） | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:recordInjected | S:只记计数与短码；绝不记录提示词/记忆正文
+JsonNodes.java[CI7M]: F:平台层 JSON 元素结构反射：按样本对象自身构造器重建 JsonObject/JsonPrimitive，并描述模型请求的工具参数形状 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:constructLike | S:不要按类名找 JsonPrimitive（R8 已改名）；JsonObject 实现 Map 可直接 copyMap；重建失败返回 null 让调用方保留原值
 
 ===/<repository>/platform/src/main/java/plus/xiaoi/module/agent/===
 AgentAlarmReceiver.java[IH6S]: F:App 内闹钟到点提醒：高优先级闹钟渠道、铃声、尽力全屏提醒与点击进入设置页 | R:code:platform/src/main/java/plus/xiaoi/module/agent/AndroidExecutor.java | A:onReceive | S:全屏提醒没权限时系统会直接忽略，不能因此判失败，通知与铃声仍必须发出
@@ -495,3 +456,35 @@ PromptTemplate.java[DP4T]: F:提示词模板变量替换：date/time/model/devic
 
 ===/<repository>/infra/src/main/java/plus/xiaoi/module/memory/===
 MemoryFileStore.java[IP6M]: F:记忆文件读写：备份→临时文件 fsync→rename，保留 5 份 | R:code:application/src/main/java/plus/xiaoi/module/application/memory/MemoryStore.java | A:write | S:任一步失败原文件不变；同毫秒备份名要加序号
+
+===/<repository>/reverse/===
+README.md[SG8S]: F:逆向子项目入口：目标、目录、快速开始（dex 索引/扫描/assets）、证据分级与边界 | R:code:reverse/scripts/dexindex.py | A:快速开始 | S:大文件只放 artifacts/reverse/<版本>/，本目录只入库存文本与脚本；结论必须标实测/静态/推测
+
+===/<repository>/reverse/data/===
+tool-catalog.md[SG8L]: F:生成物：481 个工具按服务前缀与分组全列，附 18 个进程内 App 工具与 19 个 Agent 定义 | R:code:reverse/scripts/catalog.py | A:工具清单 | S:勿手工编辑；改由 catalog.py 从 APK assets 重新生成；先跑 extract-assets.sh 解包
+
+===/<repository>/reverse/docs/===
+00-method.md[SG6T]: F:逆向方法论：三条证据线、按结构定位的四类特征、动态取证、产出规范与反模式 | R:code:reverse/scripts/scan.py | A:三条证据线 | S:定位靠方法名/签名/字符串/构造器形状而不是混淆类名；敏感内容只打长度与计数
+01-architecture.md[SG7S]: F:架构：4 个进程、osbot 代码地图（15.2 万类）与包分布、导出组件、我们模块的落点 | R:code:reverse/docs/08-internal-api.md | A:代码地图 | S:模块要在每个进程生效否则只改到一半；只有带 facade/CLI 的进程才接管 8771；:core 会主动让位
+02-model-pipeline.md[SG7S]: F:模型链路：sm.a 配置、四个客户端、请求体形状、tools 参数、JSON 混淆形态与四个改写点评估 | R:code:reverse/docs/findings/json-model.md | A:改写点 | S:tools 是 ArrayList<ToolDefinition> 不是 JsonObject；build*Request 返回值改写实测无效；JsonPrimitive 只能按构造器形状识别
+03-agent-runtime.md[SG7S]: F:Agent 运行时：官方 AIDL 外部通道与进程内 facade、意图分发、A2A 与 AppToolSDK 的连接方式 | R:code:reverse/docs/08-internal-api.md | A:意图分发 | S:facade 是我们自己的用法不是官方 API；OsbotFacadeImpl 类名未混淆但方法签名会变
+04-toolchain.md[SG8S]: F:工具链：481 个工具的分组与前缀、运行时实测的 20 个常驻工具、两级检索与风险工具机制 | R:code:reverse/data/tool-catalog.md | A:常驻工具 | S:常驻 20 个 = preload_tools + 记忆三件套；其余靠 tool_search/call_tool；update_custom_prompt 被主 Agent 禁用
+05-skills.md[SG7S]: F:Agent 定义（19 个）与 skill：config.json 字段、allow/deny 边界、SKILL.md 格式与 reload 机制 | R:code:reverse/docs/04-toolchain.md | A:Agent 清单 | S:Agent 与 skill 是两套机制（专职助手 vs 操作手册）；max_agent_depth 限制嵌套；profile.json 是人格来源
+06-memory.md[SG7S]: F:记忆：ClawMemory 三件套工具、MEMORY.md/outline.md 布局、生成流水线与风险清单 | R:code:reverse/docs/04-toolchain.md | A:三件套工具 | S:系统只自动注入记忆大纲不注入条目；云端是真相、本地可能被覆盖；我们只做追加不做删除
+07-obfuscation.md[SG6T]: F:混淆漂移记录与重定位配方：稳定锚点、按结构查找、升级后的最小验证清单 | R:code:reverse/scripts/dexindex.py | A:重定位配方 | S:类名保留不等于字段或构造器保留；8.2.70 的 s92.b#d 已失效，不要硬编码短名
+08-internal-api.md[SG8S]: F:内部 API：18 个进程内 App 工具、5 个导出 AIDL 服务与签名、MCP 客户端，以及三条接入路径的取舍 | R:code:reverse/data/tool-catalog.md | A:三条通道 | S:EXTERNAL_AGENT 是 signature|privileged，第三方 App 绑不上；进程内调 UIAgentServiceForOSBot 的方法名最稳；优先复用官方记忆工具
+
+===/<repository>/reverse/docs/findings/===
+json-model.md[SG6T]: F:单点深挖：kotlinx Json 在小爱里的混淆形态与正确的重建方式，以及 A 方案为何无效 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:正确的重建方式 | S:重建要按样本构造器（可能带 Companion）；失败时不要 setResult，否则会出现计数成功但内容未变
+
+===/<repository>/reverse/scripts/===
+catalog.py[XG6S]: F:把 APK assets 里的工具目录、App 工具与 Agent 定义渲染成 Markdown，供文档引用 | R:code:reverse/data/tool-catalog.md | A:输出 | S:输入依赖 extract-assets.sh 的产物；只输出名字与截断描述，不复制用户数据
+dexindex.py[XG7M]: F:dex 索引器：解析全部 classes*.dex 到 SQLite，支持包分布/类/方法/字段/字符串查询 | R:code:reverse/scripts/extract-dex.sh | A:查询命令 | S:type_list 里 type_idx 是 u16 不是 u32；建库约 2 分钟，之后查询毫秒级；db 在 artifacts 下不入库
+dump-dex.sh[XG4T]: F:备用路径：用 dexdump 把全部 dex 导成文本（GB 级，较慢） | R:code:reverse/scripts/dexindex.py | A:使用场景 | S:dexdump 输出是 UTF-16，读文本要指定编码；优先用 dexindex.py
+env.sh[XG4T]: F:逆向脚本的公共常量：仓库根、artifacts 目录、设备序列号、SDK 工具路径与版本探测函数 | R:code:reverse/scripts/pull-apk.sh | A:导出变量 | S:设备地址可用 XIAOI_SERIAL 覆盖；rev_dir 跟随设备上运行版本，不是出厂包
+extract-assets.sh[XG4T]: F:从 APK 解出工具目录、Agent、提示词、MCP 与授权配置到 artifacts | R:code:reverse/scripts/catalog.py | A:解包范围 | S:只解文本配置不进库；解出的目录是 catalog.py 的输入
+extract-dex.sh[XG4T]: F:只解 classes*.dex 不 dump，供 dexindex.py 建索引 | R:code:reverse/scripts/dexindex.py | A:输出 | S:解出约 341 MB，必须落在 artifacts 下；不要只解部分 dex，否则索引缺类
+pull-apk.sh[XG4T]: F:从设备拉取正在运行的那份 APK（pm path 加 cat），带大小校验 | R:code:reverse/scripts/env.sh | A:使用前提 | S:必须拉运行中的 APK 而不是 /product 出厂包；文件已存在时跳过，删掉才会重拉
+report.sh[XG4T]: F:生成当前版本的证据快照：包信息、组件、dex 概况与关键类是否仍在 | R:code:reverse/scripts/pull-apk.sh | A:输出 | S:依赖 aapt2 与 pull-apk 的产物；组件清单只做粗筛，导出面要回 Manifest 核对
+runtime-logs.sh[XG4T]: F:从 8771 取运行时证据：健康、合并日志与调用量，可加关键词过滤 | R:code:reverse/scripts/env.sh | A:鉴权 | S:token 从 .secrets 读取不打印；日志正文可能含敏感信息，筛选后再引用
+scan.py[XG6S]: F:在 dexdump 文本里按方法名/字段类型/构造器形状/字符串四类特征定位类 | R:code:reverse/scripts/dexindex.py | A:四种查询 | S:dump 是 UTF-16 要先判 BOM；类名保留但结构会漂移，优先按构造器形状匹配
