@@ -418,7 +418,8 @@ public final class BridgeControlClient {
                     ac.mcpEnabled, ac.mcpToken, ac.markerTemplate, ac.enabled, ac.mcpLan,
                     ac.rev, ac.mcpNoAuth, ac.mcpWeakToken,
                     new Config.Prompt(ac.promptEnabled, ac.promptMode, ac.promptText,
-                            ac.memoryInject, ac.memoryInjectLines, ac.memoryWriteEnabled));
+                            ac.memoryInject, ac.memoryInjectLines, ac.memoryWriteEnabled),
+                    ac.inboundEnabled);
             LogSettings.setWire(ac.logLevel);
             Logs.setLevel(LogSettings.get());
             host.onConfigReload(c);

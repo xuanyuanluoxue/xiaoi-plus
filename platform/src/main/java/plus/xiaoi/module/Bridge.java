@@ -281,7 +281,8 @@ public final class Bridge {
             Config cur = Config.current();
             Config c = Config.create(n.baseUrl, n.apiKey, n.model, n.marker,
                     cur.bridge(), cur.token(), n.markerTemplate, n.enabled, cur.lan(),
-                    cur.cfgRev(), cur.noAuth(), cur.weakToken(), cur.prompt());
+                    cur.cfgRev(), cur.noAuth(), cur.weakToken(), cur.prompt(),
+                    cur.inboundEnabled());
             XiaoiProcessHost host = sHost;
             if (host == null) return false;
             if (!writeTargetPrefs(c)) return false;

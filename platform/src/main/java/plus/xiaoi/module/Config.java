@@ -87,9 +87,10 @@ public final class Config {
     private final boolean weakToken;
     private final String token;
     /** 配置版本（仅缓存/诊断；解析失败按 0）。 */
-    private final long cfgRev;
-    /** P2：提示词与记忆（不可变快照）。 */
+    private final long cfgRev;    /** P2：提示词与记忆（不可变快照）。 */
     private final Prompt prompt;
+    /** 双向枢纽：把 8771 写进小爱的 mcp_servers.json（随配置下发）。 */
+    private final boolean inbound;
 
     /** 供能力桥热更新使用；所有字段自动归一化为非 null。 */
     public static Config create(String baseUrl, String apiKey, String model, boolean marker,
@@ -143,8 +144,17 @@ public final class Config {
                                 boolean bridge, String token, String markerTemplate,
                                 boolean enabled, boolean lan, long cfgRev, boolean noAuth,
                                 boolean weakToken, Prompt prompt) {
+        return create(baseUrl, apiKey, model, marker, bridge, token, markerTemplate,
+                enabled, lan, cfgRev, noAuth, weakToken, prompt, false);
+    }
+
+    /** 完整构造 + 双向枢纽开关（inbound）。 */
+    public static Config create(String baseUrl, String apiKey, String model, boolean marker,
+                                boolean bridge, String token, String markerTemplate,
+                                boolean enabled, boolean lan, long cfgRev, boolean noAuth,
+                                boolean weakToken, Prompt prompt, boolean inbound) {
         return new Config(baseUrl, apiKey, model, marker, bridge, token, markerTemplate,
-                enabled, lan, cfgRev, noAuth, weakToken, prompt);
+                enabled, lan, cfgRev, noAuth, weakToken, prompt, inbound);
     }
 
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
@@ -174,6 +184,13 @@ public final class Config {
     private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
                    String token, String markerTemplate, boolean enabled, boolean lan, long cfgRev,
                    boolean noAuth, boolean weakToken, Prompt prompt) {
+        this(baseUrl, apiKey, model, marker, bridge, token, markerTemplate, enabled, lan,
+                cfgRev, noAuth, weakToken, prompt, false);
+    }
+
+    private Config(String baseUrl, String apiKey, String model, boolean marker, boolean bridge,
+                   String token, String markerTemplate, boolean enabled, boolean lan, long cfgRev,
+                   boolean noAuth, boolean weakToken, Prompt prompt, boolean inbound) {
         this.baseUrl = baseUrl == null ? "" : baseUrl;
         this.apiKey = apiKey == null ? "" : apiKey;
         this.model = model == null ? "" : model;
@@ -187,6 +204,7 @@ public final class Config {
         this.weakToken = weakToken;
         this.cfgRev = cfgRev < 0 ? 0L : cfgRev;
         this.prompt = prompt == null ? Prompt.OFF : prompt;
+        this.inbound = inbound;
     }
 
     /** 跨进程热读缓存：prefs 文件 mtime 变了就重解析，最多 800ms 跟上。 */
@@ -456,6 +474,8 @@ public final class Config {
 
     /** P2：提示词与记忆快照。 */
     public Prompt prompt() { return prompt; }
+
+    public boolean inboundEnabled() { return inbound; }
 
     public boolean promptEnabled() { return prompt.enabled; }
     public String promptMode() { return prompt.mode; }
