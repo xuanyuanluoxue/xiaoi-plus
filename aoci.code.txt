@@ -129,7 +129,7 @@ UsageStats.java[AO5T]: F:用量查询端口：拉取本机 8771 的 stats 原始
 MemoryAccess.java[AN4T]: F:UI 访问记忆的端口：经 8771 调 xiaoai_memory，返回结构化结果 | R:code:platform/src/main/java/plus/xiaoi/module/AndroidAppRuntime.java | A:call | S:失败回结构化错误不抛异常；本层不读写文件
 
 ===/<repository>/docs/===
-README.md[SG7T]: F:文档索引：当前环境说明、现存文档一行摘要，并指向 reverse 逆向子项目 | R:code:docs/refactor/NEXT.md | A:继续开发入口 | S:一次性文档用完即删；docs/agent 与 docs/ui 的历史报告路径已失效，不代表当前环境
+README.md[SG7T]: F:文档索引：架构/接入/界面/能力与规划/重构，含路线图与四份专项规划入口，并指向 reverse 子项目 | R:code:docs/agent/ROADMAP.md | A:继续开发入口 | S:一次性文档用完即删；新增规划文档必须登记，否则等于没交付
 architecture.md[SG9S]: F:架构说明：单端口拓扑、hook 与数据面、提示词注入与记忆读写的数据流 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:架构 | S:分层图与端口表要和 AppRuntime 实际字段一致
 ci.md[OQ7T]: F:CI 与本地门禁说明：托管 CI 步骤、本地全量门禁、pre-push hook、token 存放、可选自建 runner | R:code:.github/workflows/build.yml | A:GitHub 托管 CI | S:tag 构建只有 signed=true 才创建 Release；无正式密钥时只上传 artifact 并打 warning，不会失败
 compatibility.md[SG7S]: F:小爱版本兼容性矩阵与适配流程：白名单匹配、已适配版本与混淆名、陌生设备自查、新版本适配步骤 | R:code:docs/architecture.md | A:兼容性矩阵 | S:只精确匹配白名单里的 versionName，其它版本 no-op 且不报错；8.2.70.8421 已加入白名单并真机验证；必须区分 hooks=ok（装上了）与 rewrite=hit（生效了）
@@ -147,6 +147,11 @@ CAPABILITIES.md[SA7S]: F:能力清单：小爱/系统/桥三类，含 A8 提示�
 OSBOT-PROTOCOL.md[SA6M]: F:OSBOT 协议侦察：8770 facade 归属、execute 与 dispatch 的访问性、创建待办的真实工具名 | R:code:docs/agent/PHASE0-REPORT.md | A:notes__todo_create | S:dispatch 是 private，只能调 public 的 execute；待办不是 todo.create 而是 notes__todo_create，按名字猜方法会永远查不到
 PLAN.md[SA6L]: F:D1 Agent 能力层总体方案：进程与端口、工具清单、返回信封、确认与幂等、ActionRegistry、执行器分层、记忆定位 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:总体架构 | S:历史文档，路径与命令是迁移前 WSL 写法；记忆真相定在 PC Agent，本模块只做可选镜像，不要反向当作主库
 P2-PROMPT-MEMORY.md[SG9M]: F:P2 提示词与记忆的规划与实现记录：hook 点、文件布局、默认关、验收步骤、未做项 | R:code:docs/agent/CAPABILITIES.md | A:P2 | S:未做项是边界承诺；默认关与备份顺序不能改；build*Request 返回值上的注入实测无效，需改 streamCompletion 入参
+PLAN-INTEROP.md[SG8S]: F:双向接入规划：8771 反向注册成小爱 MCP、进程内 18 方法、ExternalAgentService/Cli 直连、apptoolsdk 与 A2A 取舍 | R:code:reverse/docs/08-internal-api.md | A:三条通道 | S:BIND_APP_TOOL 约束的是调用方不是提供方；入站必须独立 token + readonly 画像并排除 submit/ask/confirm；apptoolsdk 真正的未知是发现机制
+PLAN-MCP-SURFACE.md[SG8S]: F:MCP 工具面规划：先做通道 A 探针，只封装小爱独有能力，481 工具直通明确不做 | R:code:reverse/data/tool-catalog.md | A:探针优先 | S:先证明 18 方法可达再扩功能；新增工具上限 17→25；返回体默认截断 32KB 且不落正文
+PLAN-MEMORY.md[SG8S]: F:记忆规划：读写检索转官方 readMemory/writeMemory，本地 MEMORY.md 降级为只读快照与兜底 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:转调官方 | S:写入口是自然语言、官方会抽取改写，只承诺可被检索到；LAN 写 op 一律拒绝；正文不进日志与默认导出
+PLAN-PERSONA-SKILLS.md[SG8S]: F:人格/技能规划：客户端改 system 已证伪，只保留输入文本、工具面、文件面三条边界 | R:code:reverse/docs/05-skills.md | A:已证伪清单 | S:六条注入路径全部无效（含 bogus 模型仍正常回复）；人格包必须文件层+文本层双落地；诊断先行
+ROADMAP.md[SG9S]: F:路线图：四份专项去重后的 P0/P1/P2、依赖图与五个待拍板分叉 | R:code:docs/agent/PLAN-MEMORY.md | A:P0 | S:0.18.0 只做探针+记忆只读+LAN 写拦截+caller 审计；人格线与双向接入不得同期进；安全统一为来源/画像/拦截三层
 
 ===/<repository>/docs/refactor/===
 LAYERING-2.md[SG8M]: F:第二阶段分层：从 3 模块到 6 模块的缺口分析、依赖矩阵、WP7 至 WP13 工作包与 DoD | R:code:docs/refactor/LAYERING.md | A:G1 | S:本阶段已完成（WP7 到 WP13），门禁基线必须保持 0 条；文档保留“计划（未执行）”状态行是因为它记录的是开工前判断
@@ -470,7 +475,7 @@ tool-catalog.md[SG8L]: F:生成物：481 个工具按服务前缀与分组全列
 02-model-pipeline.md[SG7S]: F:模型链路：sm.a 配置、四个客户端、请求体形状、tools 参数、JSON 混淆形态与四个改写点评估 | R:code:reverse/docs/findings/json-model.md | A:改写点 | S:tools 是 ArrayList<ToolDefinition> 不是 JsonObject；build*Request 返回值改写实测无效；JsonPrimitive 只能按构造器形状识别
 03-agent-runtime.md[SG7S]: F:Agent 运行时：官方 AIDL 外部通道与进程内 facade、意图分发、A2A 与 AppToolSDK 的连接方式 | R:code:reverse/docs/08-internal-api.md | A:意图分发 | S:facade 是我们自己的用法不是官方 API；OsbotFacadeImpl 类名未混淆但方法签名会变
 04-toolchain.md[SG8S]: F:工具链：481 个工具的分组与前缀、运行时实测的 20 个常驻工具、两级检索与风险工具机制 | R:code:reverse/data/tool-catalog.md | A:常驻工具 | S:常驻 20 个 = preload_tools + 记忆三件套；其余靠 tool_search/call_tool；update_custom_prompt 被主 Agent 禁用
-05-skills.md[SG7S]: F:Agent 定义（19 个）与 skill：config.json 字段、allow/deny 边界、SKILL.md 格式与 reload 机制 | R:code:reverse/docs/04-toolchain.md | A:Agent 清单 | S:Agent 与 skill 是两套机制（专职助手 vs 操作手册）；max_agent_depth 限制嵌套；profile.json 是人格来源
+05-skills.md[SG7S]: F:Agent 定义（20 个）与 skill：config.json 字段、allow/deny 边界、SKILL.md 格式与 reload 机制 | R:code:reverse/docs/04-toolchain.md | A:Agent 清单 | S:Agent 与 skill 是两套机制（专职助手 vs 操作手册）；max_agent_depth 限制嵌套；profile.json 是人格来源
 06-memory.md[SG7S]: F:记忆：ClawMemory 三件套工具、MEMORY.md/outline.md 布局、生成流水线与风险清单 | R:code:reverse/docs/04-toolchain.md | A:三件套工具 | S:系统只自动注入记忆大纲不注入条目；云端是真相、本地可能被覆盖；我们只做追加不做删除
 07-obfuscation.md[SG6T]: F:混淆漂移记录与重定位配方：稳定锚点、按结构查找、升级后的最小验证清单 | R:code:reverse/scripts/dexindex.py | A:重定位配方 | S:类名保留不等于字段或构造器保留；8.2.70 的 s92.b#d 已失效，不要硬编码短名
 08-internal-api.md[SG8S]: F:内部 API：18 个进程内 App 工具、5 个导出 AIDL 服务与签名、MCP 客户端，以及三条接入路径的取舍 | R:code:reverse/data/tool-catalog.md | A:三条通道 | S:EXTERNAL_AGENT 是 signature|privileged，第三方 App 绑不上；进程内调 UIAgentServiceForOSBot 的方法名最稳；优先复用官方记忆工具
