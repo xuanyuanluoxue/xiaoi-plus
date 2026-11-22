@@ -1066,6 +1066,7 @@ public final class Bridge {
                 return;
             }
             boolean lan = !isLoopback(s);
+            logMcpClientOnce(req.body);
             String out = Mcp.handle(req.body, HOSTS, lan, lan && writeFactorOk(req.headers));
             if (out == null) {
                 Http.respondAccepted(s.getOutputStream());
@@ -1164,6 +1165,39 @@ public final class Bridge {
             return false;
         }
     }
+
+    /**
+     * 每进程打一次「谁在连我们」：只看 initialize 的 clientInfo.name。
+     *
+     * <p>用来确认双向枢纽是否真的被小爱加载：如果有非我们自己的客户端名出现，
+     * 说明小爱的 MCP 客户端连上了。</p>
+     */
+    private static void logMcpClientOnce(String body) {
+        if (sMcpClientLogged || body == null || body.indexOf("\"initialize\"") < 0) return;
+        sMcpClientLogged = true;
+        try {
+            Object v = Json.read(body);
+            String name = "?";
+            String version = "";
+            if (v instanceof Map) {
+                Object p = ((Map<?, ?>) v).get("params");
+                if (p instanceof Map) {
+                    Object ci = ((Map<?, ?>) p).get("clientInfo");
+                    if (ci instanceof Map) {
+                        Object n = ((Map<?, ?>) ci).get("name");
+                        Object ver = ((Map<?, ?>) ci).get("version");
+                        if (n != null) name = String.valueOf(n);
+                        if (ver != null) version = String.valueOf(ver);
+                    }
+                }
+            }
+            Logs.i("MCP 客户端连接: name=" + name
+                    + (version.isEmpty() ? "" : " version=" + version));
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static volatile boolean sMcpClientLogged;
 
     /** 配置热更新后同步「免鉴权」开关。 */
     public static void updateNoAuth(boolean noAuth) {
