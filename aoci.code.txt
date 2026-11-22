@@ -455,7 +455,7 @@ MemoryDoc.java[DC7M]: F:MEMORY.md 的 Markdown 分节解析与生成（#/## 与�
 PromptTemplate.java[DP4T]: F:提示词模板变量替换：date/time/model/device，未知占位原样保留 | R:code:application/src/main/java/plus/xiaoi/module/PromptInjector.java | A:render | S:只替换一轮，不要递归；未知变量原样返回
 
 ===/<repository>/infra/src/main/java/plus/xiaoi/module/memory/===
-MemoryFileStore.java[IP6M]: F:记忆文件读写：备份→临时文件 fsync→rename，保留 5 份 | R:code:application/src/main/java/plus/xiaoi/module/application/memory/MemoryStore.java | A:write | S:任一步失败原文件不变；同毫秒备份名要加序号
+MemoryFileStore.java[IP6M]: F:记忆文件读写：备份→临时文件 fsync→原子替换，保留 5 份；替换在 POSIX 走 renameTo、Windows 回退 Files.move | R:code:application/src/main/java/plus/xiaoi/module/application/memory/MemoryStore.java | A:write | S:任一步失败原文件不变；同毫秒备份名要加序号；Windows 上 File.renameTo 不能覆盖已存在文件，本地单测会因此假失败
 
 ===/<repository>/reverse/===
 README.md[SG8S]: F:逆向子项目入口：目标、目录、快速开始（dex 索引/扫描/assets）、证据分级与边界 | R:code:reverse/scripts/dexindex.py | A:快速开始 | S:大文件只放 artifacts/reverse/<版本>/，本目录只入库存文本与脚本；结论必须标实测/静态/推测
@@ -465,7 +465,7 @@ tool-catalog.md[SG8L]: F:生成物：481 个工具按服务前缀与分组全列
 
 ===/<repository>/reverse/docs/===
 00-method.md[SG6T]: F:逆向方法论：三条证据线、按结构定位的四类特征、动态取证、产出规范与反模式 | R:code:reverse/scripts/scan.py | A:三条证据线 | S:定位靠方法名/签名/字符串/构造器形状而不是混淆类名；敏感内容只打长度与计数
-01-architecture.md[SG7S]: F:架构：4 个进程、osbot 代码地图（15.2 万类）与包分布、导出组件、我们模块的落点 | R:code:reverse/docs/08-internal-api.md | A:代码地图 | S:模块要在每个进程生效否则只改到一半；只有带 facade/CLI 的进程才接管 8771；:core 会主动让位
+01-architecture.md[SG8M]: F:架构全景（Mermaid 五图）：分层、进程与三条通道、代码地图、调用时序、工具门禁、记忆链路 | R:code:reverse/docs/08-internal-api.md | A:全景图 | S:图按实测/静态/推测分级；20 个常驻工具与 30KB system 是实测；记忆流水线顺序与意图路由打分仍是推测
 02-model-pipeline.md[SG7S]: F:模型链路：sm.a 配置、四个客户端、请求体形状、tools 参数、JSON 混淆形态与四个改写点评估 | R:code:reverse/docs/findings/json-model.md | A:改写点 | S:tools 是 ArrayList<ToolDefinition> 不是 JsonObject；build*Request 返回值改写实测无效；JsonPrimitive 只能按构造器形状识别
 03-agent-runtime.md[SG7S]: F:Agent 运行时：官方 AIDL 外部通道与进程内 facade、意图分发、A2A 与 AppToolSDK 的连接方式 | R:code:reverse/docs/08-internal-api.md | A:意图分发 | S:facade 是我们自己的用法不是官方 API；OsbotFacadeImpl 类名未混淆但方法签名会变
 04-toolchain.md[SG8S]: F:工具链：481 个工具的分组与前缀、运行时实测的 20 个常驻工具、两级检索与风险工具机制 | R:code:reverse/data/tool-catalog.md | A:常驻工具 | S:常驻 20 个 = preload_tools + 记忆三件套；其余靠 tool_search/call_tool；update_custom_prompt 被主 Agent 禁用
