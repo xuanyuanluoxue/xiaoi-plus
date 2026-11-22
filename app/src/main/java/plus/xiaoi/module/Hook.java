@@ -46,6 +46,9 @@ public class Hook implements IXposedHookLoadPackage {
     /** 官方客户端只告警一次，不要每次调用都刷。 */
     private static final java.util.Set<String> sOfficialWarned =
             java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<String>());
+    /** 每个客户端类采样一次 tools 参数形状（只打键名与类型，不打正文）。 */
+    private static final java.util.Set<String> sToolSampled =
+            java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<String>());
     /** 请求头 X-Model-Provider-Id：用接口字段声明"当前走第三方 provider"，不碰提示词 */
     private static final String PROVIDER_ID = "xiaoi-plus";
 
@@ -363,13 +366,13 @@ public class Hook implements IXposedHookLoadPackage {
                     && c.promptText() != null && c.promptText().trim().length() > 0;
 
             // 直接复制活对象再重建：不依赖 kotlinx Json 单例（其类名/字段名随版本混淆变化）。
-            java.util.Map<String, Object> root = copyMap((java.util.Map<?, ?>) result);
+            java.util.Map<String, Object> root = JsonNodes.copyMap((java.util.Map<?, ?>) result);
             String note = rewriteRequest(root, block, replace);
             if (note == null) {
                 PromptRuntime.recordSkipped("no-target");
                 return;
             }
-            Object rebuilt = constructLike(result, root);
+            Object rebuilt = JsonNodes.constructLike(result, root);
             if (rebuilt == null) {
                 PromptRuntime.recordFailed("construct-" + note);
                 return;
@@ -391,9 +394,9 @@ public class Hook implements IXposedHookLoadPackage {
     private static String rewriteRequest(java.util.Map<String, Object> root,
                                         String block, boolean replace) {
         Object instructions = root.get("instructions");
-        if (isScalar(instructions)) {
+        if (JsonNodes.isScalar(instructions)) {
             root.put("instructions",
-                    newStringLike(instructions, PromptInjector.merge(contentOf(instructions), block, replace)));
+                    JsonNodes.newStringLike(instructions, PromptInjector.merge(JsonNodes.contentOf(instructions), block, replace)));
             return "instructions";
         }
         Object messages = root.get("messages");
@@ -411,11 +414,11 @@ public class Hook implements IXposedHookLoadPackage {
                 continue;
             }
             if (template == null) template = item;
-            java.util.Map<String, Object> msg = copyMap((java.util.Map<?, ?>) item);
-            if (!replaced && "system".equals(contentOf(msg.get("role")))) {
-                Object merged = mergeContent(msg.get("content"), block, replace);
+            java.util.Map<String, Object> msg = JsonNodes.copyMap((java.util.Map<?, ?>) item);
+            if (!replaced && "system".equals(JsonNodes.contentOf(msg.get("role")))) {
+                Object merged = JsonNodes.mergeContent(msg.get("content"), block, replace);
                 if (merged != null) msg.put("content", merged);
-                Object rebuilt = constructLike(item, msg);
+                Object rebuilt = JsonNodes.constructLike(item, msg);
                 if (!sMsgRebuildLogged) {
                     sMsgRebuildLogged = true;
                     StringBuilder sb = new StringBuilder(item.getClass().getName());
@@ -431,7 +434,7 @@ public class Hook implements IXposedHookLoadPackage {
                 if (!sMergeLogged) {
                     sMergeLogged = true;
                     Logs.i("注入后 system 长度 "
-                            + (merged == null ? -1 : contentOf(merged).length())
+                            + (merged == null ? -1 : JsonNodes.contentOf(merged).length())
                             + "（block=" + block.length() + " 替换=" + replace + "）");
                 }
             } else {
@@ -442,67 +445,16 @@ public class Hook implements IXposedHookLoadPackage {
 
         if (!replaced) {
             java.util.Map<String, Object> sys = new java.util.LinkedHashMap<String, Object>();
-            sys.put("role", newStringLike(((java.util.Map<?, ?>) template).get("role"), "system"));
-            sys.put("content", newStringLike(((java.util.Map<?, ?>) template).get("content"), block));
-            Object sysMsg = constructLike(template, sys);
+            sys.put("role", JsonNodes.newStringLike(((java.util.Map<?, ?>) template).get("role"), "system"));
+            sys.put("content", JsonNodes.newStringLike(((java.util.Map<?, ?>) template).get("content"), block));
+            Object sysMsg = JsonNodes.constructLike(template, sys);
             if (sysMsg == null) return null;
             out.add(0, sysMsg);
         }
-        Object rebuiltMessages = constructLike(messages, out);
+        Object rebuiltMessages = JsonNodes.constructLike(messages, out);
         if (rebuiltMessages == null) return null;
         root.put("messages", rebuiltMessages);
         return replaced ? "system-message" : "system-inserted";
-    }
-
-    /** content 可能是字符串、text part 数组，或带 {@code text} 的对象。 */
-    private static Object mergeContent(Object content, String block, boolean replace) {
-        if (!sContentSeen) {
-            sContentSeen = true;
-            Logs.i("content 诊断: null=" + (content == null)
-                    + " class=" + (content == null ? "-" : content.getClass().getName())
-                    + " scalar=" + isScalar(content)
-                    + " map=" + (content instanceof java.util.Map)
-                    + " list=" + (content instanceof java.util.List));
-        }
-        if (isScalar(content)) {
-            return newStringLike(content, PromptInjector.merge(contentOf(content), block, replace));
-        }
-        if (content instanceof java.util.Map) {
-            java.util.Map<?, ?> map = (java.util.Map<?, ?>) content;
-            Object text = map.get("text");
-            if (isScalar(text)) {
-                java.util.Map<String, Object> copy = copyMap(map);
-                copy.put("text", newStringLike(text,
-                        PromptInjector.merge(contentOf(text), block, replace)));
-                Object rebuilt = constructLike(content, copy);
-                if (rebuilt != null) return rebuilt;
-            }
-            logContentShapeOnce(content);
-            return null;
-        }
-        if (!(content instanceof java.util.List)) {
-            logContentShapeOnce(content);
-            return null;
-        }
-        java.util.List<?> parts = (java.util.List<?>) content;
-        java.util.List<Object> out = new java.util.ArrayList<Object>();
-        boolean done = false;
-        for (Object raw : parts) {
-            if (!done && raw instanceof java.util.Map
-                    && isScalar(((java.util.Map<?, ?>) raw).get("text"))) {
-                java.util.Map<String, Object> part = copyMap((java.util.Map<?, ?>) raw);
-                Object text = part.get("text");
-                part.put("text", newStringLike(text,
-                        PromptInjector.merge(contentOf(text), block, replace)));
-                Object rebuilt = constructLike(raw, part);
-                out.add(rebuilt == null ? raw : rebuilt);
-                done = true;
-            } else {
-                out.add(raw);
-            }
-        }
-        if (!done) return null;
-        return constructLike(content, out);
     }
 
     // ------------------------------------------------------------- 结构反射
@@ -527,23 +479,8 @@ public class Hook implements IXposedHookLoadPackage {
         return new PromptTemplate.Vars(date, time, c.model(), device);
     }
 
-    private static volatile boolean sContentSeen;
     private static volatile boolean sMsgRebuildLogged;
 
-    private static void logContentShapeOnce(Object content) {
-        if (sContentLogged || content == null) return;
-        sContentLogged = true;
-        try {
-            StringBuilder sb = new StringBuilder(content.getClass().getName());
-            for (java.lang.reflect.Field f : content.getClass().getDeclaredFields()) {
-                sb.append(' ').append(f.getName()).append(':').append(f.getType().getSimpleName());
-            }
-            Logs.i("content 结构: " + sb);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private static volatile boolean sContentLogged;
 
     /** 每进程打一次请求形状：角色序列与每段长度（不含正文）。 */
     private static void logMessageShape(java.util.List<?> messages) {
@@ -559,8 +496,8 @@ public class Hook implements IXposedHookLoadPackage {
                 lens.append(lens.length() == 0 ? "" : ",");
                 if (m instanceof java.util.Map) {
                     java.util.Map<?, ?> map = (java.util.Map<?, ?>) m;
-                    roles.append(contentOf(map.get("role")));
-                    lens.append(contentOf(map.get("content")).length());
+                    roles.append(JsonNodes.contentOf(map.get("role")));
+                    lens.append(JsonNodes.contentOf(map.get("content")).length());
                 } else {
                     roles.append('?');
                     lens.append(0);
@@ -582,160 +519,6 @@ public class Hook implements IXposedHookLoadPackage {
 
     private static volatile boolean sShapeLogged;
     private static volatile boolean sMergeLogged;
-
-    /** 既不是 Map 也不是 List 的 JsonElement（字符串/数字/布尔）。 */
-    private static boolean isScalar(Object o) {
-        return o != null && !(o instanceof java.util.Map) && !(o instanceof java.util.List);
-    }
-
-    /** 取 JsonPrimitive 的正文；getContent 被混淆时退回用我们自己的 JSON 解析。 */
-    private static String contentOf(Object element) {
-        if (element == null) return "";
-        if (element instanceof String) return (String) element;
-        try {
-            Object v = element.getClass().getMethod("getContent").invoke(element);
-            if (v instanceof String) return (String) v;
-        } catch (Throwable ignored) {
-        }
-        try {
-            Object v = Json.read(String.valueOf(element));
-            if (v instanceof String) return (String) v;
-            if (v != null) return String.valueOf(v);
-        } catch (Throwable ignored) {
-        }
-        return String.valueOf(element);
-    }
-
-    /** 用同类元素的构造函数造一个新的字符串元素。 */
-    private static Object newStringLike(Object sample, String text) {
-        String value = text == null ? "" : text;
-        if (sample == null) return null;
-        try {
-            for (java.lang.reflect.Constructor<?> ctor : sample.getClass().getDeclaredConstructors()) {
-                Class<?>[] p = ctor.getParameterTypes();
-                if (p.length == 1 && p[0] == String.class) {
-                    ctor.setAccessible(true);
-                    return ctor.newInstance(value);
-                }
-            }
-            for (java.lang.reflect.Constructor<?> ctor : sample.getClass().getDeclaredConstructors()) {
-                Class<?>[] p = ctor.getParameterTypes();
-                if (p.length == 2 && p[0] == String.class && p[1] == boolean.class) {
-                    ctor.setAccessible(true);
-                    return ctor.newInstance(value, Boolean.TRUE);
-                }
-            }
-            // (Object, boolean, ...)：kotlinx JsonLiteral 的混淆形态
-            for (java.lang.reflect.Constructor<?> ctor : sample.getClass().getDeclaredConstructors()) {
-                Class<?>[] p = ctor.getParameterTypes();
-                if (p.length < 2 || p[0] != Object.class || p[1] != boolean.class) continue;
-                Object[] args = new Object[p.length];
-                args[0] = value;
-                args[1] = Boolean.TRUE;
-                boolean ok = true;
-                for (int i = 2; i < p.length; i++) {
-                    Object d = defaultFor(p[i], sample);
-                    if (d == null && p[i].isPrimitive()) { ok = false; break; }
-                    args[i] = d;
-                }
-                if (!ok) continue;
-                try {
-                    ctor.setAccessible(true);
-                    return ctor.newInstance(args);
-                } catch (Throwable ignored) {
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        if (!sCtorLogged) {
-            sCtorLogged = true;
-            try {
-                StringBuilder sb = new StringBuilder(sample.getClass().getName());
-                for (java.lang.reflect.Constructor<?> c : sample.getClass().getDeclaredConstructors()) {
-                    sb.append(" (").append(c.getParameterCount()).append(':');
-                    for (Class<?> t : c.getParameterTypes()) sb.append(t.getSimpleName()).append(',');
-                    sb.append(')');
-                }
-                Logs.i("字符串元素构造器: " + sb);
-            } catch (Throwable ignored2) {
-            }
-        }
-        return null;
-    }
-
-    private static volatile boolean sCtorLogged;
-
-    /** 给缺失的构造参数取一个安全默认值：优先复用样本里同类型的字段。 */
-    private static Object defaultFor(Class<?> type, Object sample) {
-        if (type == boolean.class) return Boolean.FALSE;
-        if (type == int.class) return Integer.valueOf(0);
-        if (type == long.class) return Long.valueOf(0L);
-        if (sample != null) {
-            for (java.lang.reflect.Field f : sample.getClass().getDeclaredFields()) {
-                if (!type.isAssignableFrom(f.getType())) continue;
-                try {
-                    f.setAccessible(true);
-                    Object v = f.get(sample);
-                    if (v != null) return v;
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        return null;
-    }
-
-    /** 用同类型的构造函数把"复制后的 Map/List"变回 JsonObject/JsonArray。 */
-    private static Object constructLike(Object sample, Object arg) {
-        if (sample == null || arg == null) return null;
-        try {
-            // 1) 单参数构造（常规 Kotlin 类）
-            for (java.lang.reflect.Constructor<?> ctor : sample.getClass().getDeclaredConstructors()) {
-                Class<?>[] p = ctor.getParameterTypes();
-                if (p.length == 1 && p[0].isInstance(arg)) {
-                    ctor.setAccessible(true);
-                    return ctor.newInstance(arg);
-                }
-            }
-            // 2) (Companion, Map/List)：kotlinx 的 JsonObject/JsonArray 是这种形状
-            Object companion = companionOf(sample);
-            if (companion != null) {
-                for (java.lang.reflect.Constructor<?> ctor : sample.getClass().getDeclaredConstructors()) {
-                    Class<?>[] p = ctor.getParameterTypes();
-                    if (p.length == 2 && p[0].isInstance(companion) && p[1].isInstance(arg)) {
-                        ctor.setAccessible(true);
-                        return ctor.newInstance(companion, arg);
-                    }
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return null;
-    }
-
-    /** 取类的 Kotlin 伴生对象实例（静态字段 {@code Companion}）；没有返回 null。 */
-    private static Object companionOf(Object sample) {
-        if (sample == null) return null;
-        try {
-            java.lang.reflect.Field f = sample.getClass().getDeclaredField("Companion");
-            f.setAccessible(true);
-            try {
-                return f.get(null);
-            } catch (Throwable ignored) {
-                return f.get(sample);
-            }
-        } catch (Throwable ignored) {
-            return null;
-        }
-    }
-
-    private static java.util.Map<String, Object> copyMap(java.util.Map<?, ?> src) {
-        java.util.Map<String, Object> out = new java.util.LinkedHashMap<String, Object>();
-        if (src == null) return out;
-        for (java.util.Map.Entry<?, ?> e : src.entrySet()) {
-            out.put(String.valueOf(e.getKey()), e.getValue());
-        }
-        return out;
-    }
 
     private static volatile boolean sParseFailedLogged;
 
@@ -807,8 +590,8 @@ public class Hook implements IXposedHookLoadPackage {
     /** 参数固定为 (messages, tools, sm.a config, continuation)。 */
     private static void recordLlmCall(boolean third, String className, Object[] args) {
         try {
-            int messages = sizeOf(args, 0);
-            int tools = sizeOf(args, 1);
+            int messages = JsonNodes.sizeOf(args, 0);
+            int tools = JsonNodes.sizeOf(args, 1);
             String reported = modelOf(args, 2);
             String fallback = "";
             Config c = Config.current();
@@ -820,6 +603,14 @@ public class Hook implements IXposedHookLoadPackage {
             if (sLlmClassLogged.add(className)) {
                 Logs.i("模型调用: " + (third ? "三方" : "官方") + " " + className + " model=" + model);
             }
+            // 工具链采样（一次性）：只打类型、键名与名字，不打工具正文。
+            if (sToolSampled.add(className)) {
+                String desc = "工具采样: " + className + " messages=" + messages + " " + JsonNodes.describeTools(args);
+                // 日志单条有长度上限，按 280 字符分片输出，保证工具名不丢。
+                for (int off = 0; off < desc.length(); off += 280) {
+                    Logs.i(desc.substring(off, Math.min(desc.length(), off + 280)));
+                }
+            }
             // 已启用三方模型，却仍然是官方客户端在跑，且 getter 从未被读取 →
             // 这个版本装上了也不生效，是"hook 成功但功能不生效"的唯一硬证据。
             if (!third && c != null && c.enabled() && !HookStatus.rewriteHit()
@@ -830,14 +621,6 @@ public class Hook implements IXposedHookLoadPackage {
             Usage.record(third, main, model);
         } catch (Throwable ignored) {
         }
-    }
-
-    private static int sizeOf(Object[] args, int idx) {
-        if (args == null || idx >= args.length) return 0;
-        Object v = args[idx];
-        if (v instanceof java.util.List) return ((java.util.List<?>) v).size();
-        if (v instanceof java.util.Collection) return ((java.util.Collection<?>) v).size();
-        return 0;
     }
 
     private static String modelOf(Object[] args, int idx) {

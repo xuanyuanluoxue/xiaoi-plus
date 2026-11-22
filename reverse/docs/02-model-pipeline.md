@@ -63,11 +63,27 @@ function calling 的入口（见 `04-toolchain.md`）。
 结论：
 
 1. 第一条是 `system`，长度约 **30 KB**（小爱的人格 + 能力描述 + 工具说明）；
-2. 之后是 `user/assistant` 交替，单条 83 字符左右；
+2. 之后是 `user/assistant` 交替，单条 83–136 字符左右；
 3. 全部是 **`kotlinx.serialization.json.JsonObject`**，不是领域对象。
 
 这条 30KB 的 system 就是「改人格」要动的东西——也是为什么只追加一句
 "你叫小落" 往往无效：原文的人格描述太强。
+
+### 5.1 `tools` 参数的真实形状（实测）
+
+```
+工具采样: qm.i messages=26 tools=java.util.ArrayList size=20
+  agent, background_task, cli, cloud_sandbox, get_current_time, load_message,
+  mcp, miot_ask_assistant, personaldata_search, read_file, remote_file,
+  search_history, skill, url_fetch, var, web_search, write_file,
+  memory_write, memory_read, memory_forget
+```
+
+- 类型是 `ArrayList<ToolDefinition>`，`ToolDefinition(name, description, parameters: JsonObject)`；
+- 一次普通对话声明 **20 个**，其余 461 个靠 `tool_search` / `call_tool` 按需取；
+- 所以「小爱是否启用 function calling」的答案是**是**。
+
+详见 [04-toolchain.md](04-toolchain.md)。
 
 ## 6. JSON 模型的混淆形态（重要）
 
@@ -75,7 +91,7 @@ function calling 的入口（见 `04-toolchain.md`）。
 
 | 角色 | 混淆形态 | 结构 |
 |---|---|---|
-| 对象 | `JsonObject` | 实现 `Map`；字段 `Companion` + `a:Map`；构造器 `(Companion, Map)` |
+| 对象 | `JsonObject` | 实现 `Map`；字段 `Companion` + `a:Map`；构造器可能是 `(Map)` 或 `(Companion, Map)`（随混淆变化） |
 | 字符串 | `t92.r`（原名 JsonPrimitive） | 构造器 `(Object, boolean, <kind>)` |
 | 数组 | `JsonArray` | 构造器 `(Companion, List)` |
 
@@ -86,20 +102,29 @@ function calling 的入口（见 `04-toolchain.md`）。
 - 重建时用「样本对象自己的构造器」而不是硬编码签名；
 - 8.2.70 里旧的 `s92.b#d`（Json 单例）已经失效——**不要再用它解析字符串**。
 
-## 7. 改写点评估（进行中）
+## 7. 改写点评估（实测：A 方案无效）
 
 | 方案 | 位置 | 现状 |
 |---|---|---|
-| A | `build*Request` 返回后 setResult | 已实现；实测注入计数会涨，但**回复未变**——疑似返回值不是最终发送对象 |
-| B | `streamCompletion` 入参 `args[0]`（messages 列表） | 未实现；最接近网络层，优先级最高 |
-| C | HTTP body 序列化处 | 未定位（未见 okhttp 字符串，可能自研/其它栈） |
+| A | `build*Request` 返回后 setResult | 已实现；`消息重建: ok=true`、`注入后 system 长度 123`，但**回复完全不变** → 返回值不是最终发送对象 |
+| B | `streamCompletion` 入参 `args[0]`（`ArrayList<JsonObject>`） | 未实现；最接近网络层，优先级最高 |
+| C | HTTP body 序列化处 | 未定位 |
+| D | **走官方通道改人格** | `profile.json` / `update_custom_prompt` / `reload_prompt`，见 [08-internal-api.md](08-internal-api.md) |
 
-下一步（按顺序）：
+A 方案的证据链（同一次请求）：
 
-1. 看 `消息重建: ok=?` 日志，确认 A 方案里 JsonObject 是否真的重建成功；
-2. 若重建成功但回复仍不变 → 判定 A 无效，改做 B：在 `streamCompletion` 前把
-   `args[0]` 换成改好的列表；
-3. 若 B 仍无效 → 找序列化点（C）。
+```
+模型调用: 三方 qm.i model=deepseek-v4.1-flash
+工具采样: qm.i … size=20
+请求形状: 条数=27 roles=system,user,user,assistant,...
+消息重建: ok=true ctors=kotlinx.serialization.json.JsonObject (1:Map,)
+注入后 system 长度 123（block=123 替换=true）
+提示词注入已生效（system-message）
+→ 回复仍是「我是超级小爱…」
+```
+
+结论：**对象造出来了，但不是被发出的那一个**。下一步要么改 `streamCompletion` 的入参，
+要么放弃注入、改用 D。
 
 ## 8. 验收标准（人格）
 
@@ -113,7 +138,8 @@ function calling 的入口（见 `04-toolchain.md`）。
 
 | 项目 | 状态 |
 |---|---|
-| `tools` 参数的真实结构 | 未知，待 dump 全量 dex |
-| 是否启用 function calling | 未知（第二参数存在，但可能为空数组） |
-| 30KB system 的生成来源 | 推测：服务端下发 + 本地模板拼接；未验证 |
+| `tools` 参数的真实结构 | **已确认**：`ArrayList<ToolDefinition>`，20 个 |
+| 是否启用 function calling | **已确认**：是 |
+| 30KB system 的生成来源 | 推测：`profile.json` + `prompt.md` + 记忆大纲 + 工具选择规则拼接 |
 | 请求是否流式、如何拼装 | 未观察（hook 在调用前） |
+| A 方案为何无效 | 未定位（返回值非最终对象） |

@@ -4,13 +4,21 @@
 
 ## 1. 一句话
 
-小爱内部有一套「Agent 入口」：`OsbotFacade` 对外提供 facade/CLI 能力，只有具备它的
-进程才能接管数据面；外部 Agent（我们）平时调的就是这套 facade。
+小爱的「Agent 入口」有两层：
+
+1. **官方外部通道**（推荐了解）：5 个导出的 AIDL 服务 —— `ExternalAgentService`
+   （开/关会话、提交一轮、流式回调）、`CliCommandService`（执行 CLI）等，
+   权限 `com.aios.osbot.permission.EXTERNAL_AGENT`（signature|privileged）。
+   → 详见 [08-internal-api.md](08-internal-api.md)
+2. **进程内 facade**（我们目前在用的）：`OsbotFacade` 提供 facade/CLI，
+   只有具备它的进程才能接管我们的 8771 数据面。这一层是**我们**的用法，不是小爱官方给第三方的 API。
 
 ## 2. 已知组成
 
 | 组成 | 证据 | 说明 |
 |---|---|---|
+| `com.aios.osbot.external.ExternalAgentService` | Manifest（exported + 权限） | 官方外部 Agent 入口，interface_version=2 |
+| `com.aios.osbot.external.CliCommandService` | Manifest（exported + 权限） | CLI 执行（含流式与上传流） |
 | `com.aios.osbot.facade.OsbotFacadeImpl` | 静态类名（未混淆） | 能力桥 hook 的构造器 |
 | CLI 绑定 | 实测日志 `bindCli: 拿不到 Context` | 进程启动早期拿不到 Context，随后成功 |
 | facade 就绪 | `/health` 的 `facade=true` | 只有部分进程有 |
@@ -29,15 +37,18 @@ voice_trigger  唤起时出现，是否有 facade 取决于版本
 
 我们的判断逻辑（`BridgeLifecycle`）：先看 facade，再看 CLI；两者都没有就等 30 秒。
 
-## 4. 意图 / 技能分发（待剖析）
+## 4. 意图 / 技能分发（已澄清大半）
 
-目前只知道「入口在 facade」，还不知道：
+| 问题 | 答案 | 证据 |
+|---|---|---|
+| 一句话怎么变成动作 | 主 Agent 拿到消息 → 模型决定调用哪个工具 → `ToolExecutor.execute` | `ToolRegistry` / `ToolExecutor` 静态 + 运行时工具采样 |
+| 工具怎么注册 | `ToolRegistry.register` / `registerSystem`，按 Agent 的 allow/deny 过滤 | dexdump |
+| 工具太多怎么办 | 常驻 20 个 + `tool_search` 检索 + `call_tool` 调用 | 运行时采样 |
+| 本地 NLU | 有：`nlp_query` 直接返回语义解析 JSON | `assets/app_tools.json` |
+| 技能怎么注册 | 文件驱动：`assets/agents/*/` + `skills/*/SKILL.md`，可 `reload_*` | assets + 工具清单 |
+| 服务端下发 | 存在（A2A 索引 + 记忆云端），客户端只看得到缓存 | `a2a/index` 包 |
 
-- 一句话如何被解析成意图（本地 NLU？服务端？）
-- 本地技能如何注册（是否有 manifest / 注解 / 反射表）
-- 服务端下发的技能如何缓存
-
-> TODO：见 `05-skills.md` 的枚举计划。
+意图路由包：`com.aios.osbot.router`（284 类，含 `router/semantic` 15 类、`router/db` 10 类）。
 
 ## 5. 与我们模块的关系
 

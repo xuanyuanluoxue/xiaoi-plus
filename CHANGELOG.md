@@ -2,6 +2,28 @@
 
 ## 未发布（0.17.0）
 
+**逆向子项目 `reverse/`：先把小爱摸清楚**
+
+- 新增 `reverse/`（文档 9 篇 + 脚本 7 个 + 生成物 `data/tool-catalog.md`）：
+  全量 dex 索引（32 个 dex / 342 MB / 15.2 万类）、assets 抽取、工具目录生成。
+- 摸清的结论（均带证据级别）：
+  - **481 个工具**（12 个分组、42 个服务前缀），常驻 20 个，其余靠
+    `tool_search` / `call_tool` 两级检索；
+  - **19 个 Agent 定义**（`assets/agents/*/config.json` + `prompt.md`）与
+    `SKILL.md` 技能格式（文件驱动，可 `reload_*` 热更新）；
+  - **18 个进程内 App 工具**（`UIAgentServiceForOSBot`：`nlpQuery`、记忆读写、
+    文生图、翻译、媒体、屏幕理解…）；
+  - **5 个导出的 AIDL 服务**（`ExternalAgentService` / `CliCommandService` …，
+    interface_version=2，权限 signature|privileged）；
+  - 小爱自己是 **MCP 客户端**（`mcp/mcp_servers.json` + `mcp` 工具）。
+- 新增一次性「工具采样」日志（只打工具名，不打 schema）：确认 `streamCompletion`
+  的 `tools` 参数是 `ArrayList<ToolDefinition>`，一次对话 20 个。
+- **P2 注入结论**：`build*Request` 返回值的改写**不影响实际发送内容**
+  （对象重建成功、system 长度变成我们的 123 字符，回复完全不变）。下一步改
+  `streamCompletion` 入参，或改走官方 `profile.json` / `update_custom_prompt` 通道。
+- 重构：JSON 元素的结构反射从 `app/Hook.java` 移到 `platform/JsonNodes.java`
+  （app 壳回到 1334 行，低于 1500 上限）。
+
 **P2：用户自己的系统提示词 + 可读写的记忆（两个开关默认都关）**
 
 小爱 8.2.70.8421 上确认了两件事：请求构造方法（`qm.j buildResponsesRequest` /

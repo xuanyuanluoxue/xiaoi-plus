@@ -16,6 +16,20 @@
 
 ## 2. 重定位配方
 
+工具首选 `reverse/scripts/dexindex.py`（全量 dex 建索引，毫秒级查询），
+`scan.py` 只用于只有 dexdump 文本时的兜底。
+
+### 2.0 稳定锚点（本轮实测）
+
+| 名字 | 是否被混淆 | 说明 |
+|---|---|---|
+| `com.aios.osbot.*`、`com.aios.apptoolsdk.*` | **否**（大量保留） | 平台级 SDK 名，跨版本最稳 |
+| `com.aios.osbot.tools.Tool` 的 `getName` / `getParameters` | 否 | 工具接口 |
+| `OsbotFacadeImpl` | 否 | 我们正在用的进程内入口 |
+| `qm.i` / `qm.j` / `qm.b` / `um.h` | 短名，会漂移 | 模型客户端 |
+| `sm.a` 的四个 getter | 否 | 配置 |
+| `t92.r`（JsonPrimitive） | 会漂移 | 只按构造器形状识别 |
+
 ### 2.1 找配置对象
 
 特征：一个类提供三个返回 `String` 的 getter（端点/密钥/模型）+ 一个 provider 标识。
@@ -61,7 +75,8 @@ python3 reverse/scripts/scan.py ctors --shape object-bool
 2. 日志里「配置 hook 完成 / provider 标识 hook 完成 / 各客户端 hook 完成」
 3. xiaoai_submit 一次，看 stats.third 是否 +1（证明请求确实走了三方）
 4. 看 xiaoai_prompt 的 stats.failures 是否增加（提示词链路）
-5. 有问题就跑 scan.py 重定位，更新本表
+5. `dexindex.py pkgs --prefix Lcom/aios/osbot/` 看包结构是否还在
+6. 有问题就跑 dexindex.py / scan.py 重定位，更新本表
 ```
 
 ## 4. 反模式
