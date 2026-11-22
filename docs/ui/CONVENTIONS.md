@@ -1,15 +1,15 @@
 # UI 开发规范（Compose / Miuix）
 
-> 状态：**生效**（0.14 起）
-> 适用范围：`app/src/main/java/plus/xiaoi/module/ui/**`、`MainActivity.kt`、`capability/**`、`core/**` 的新增 UI 支撑类。
-> 关联：`PLAN.md`、[COMPONENTS.md](COMPONENTS.md)、[SCREENS.md](SCREENS.md)、[BUILD.md](BUILD.md)。
+> 状态：**生效**
+> 适用范围：`ui/src/main/java/plus/xiaoi/module/ui/**`、`app/.../MainActivity.kt`、`:domain` / `:application` 里的 UI 支撑类。
+> 关联：[COMPONENTS.md](COMPONENTS.md)、[SCREENS.md](SCREENS.md)、[BUILD.md](BUILD.md)。
 
 ## 1. 总原则
 
 1. **Java 核心不动**：`ConfigRepository/StateModel/BridgeStatus/AgentService/Actions/Mcp` 继续用 Java；Kotlin 只做 UI、导航与展示状态。
 2. **单一事实源**：配置写入只走 `ConfigRepository`；状态结论只走 `StateModel/BridgeStatus/ErrorCatalog`；UI 不复制判断。
 3. **先组件，后页面**：页面只能引用 [COMPONENTS.md](COMPONENTS.md) 的组件与主题令牌，不允许自写卡片/行/徽章样式。
-4. **不做假功能**：0.14 未实现的能力只能显示“规划中”只读行，不给可点击但无效的开关/按钮。
+4. **不做假功能**：未实现的能力只能显示“规划中”只读行，不给可点击但无效的开关/按钮。
 5. **安全默认**：高风险能力默认关闭；危险操作必须二次确认；UI 不显示 token/key 明文。
 
 ## 2. 目录与命名
@@ -128,7 +128,7 @@ MainActivity
 ## 10. 测试
 
 - 纯逻辑（`IssueResolver`、`CapabilityRegistry`、`NavStack`、`PermissionProbe`、格式化）用 Java 写，进 `tests/run.sh`。
-- Compose UI 0.14 不做 instrumentation 测试；用真机截图矩阵 + `uiautomator dump` 冒烟。
+- Compose UI 不做 instrumentation 测试；用真机截图矩阵 + `uiautomator dump` 冒烟。
 - 每个页面至少覆盖：正常、空、错误/离线、加载 四种状态（能静态复现的用调试开关）。
 - 修改核心逻辑必须补 JVM 断言；只改 UI 不强制新增断言，但不能让现有断言失败。
 

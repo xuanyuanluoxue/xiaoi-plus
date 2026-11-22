@@ -47,6 +47,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [refactor/README.md](refactor/README.md) | 重构总览：目标、边界、决策与文档地图 |
 | [refactor/NEXT.md](refactor/NEXT.md) | **下一步做什么**（入口） |
 | [refactor/LAYERING.md](refactor/LAYERING.md) | 分层与依赖倒置 |
 | [refactor/LAYERING-2.md](refactor/LAYERING-2.md) | 分层第二阶段 |

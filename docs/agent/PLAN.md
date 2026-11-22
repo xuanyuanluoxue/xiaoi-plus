@@ -1,14 +1,13 @@
 # Agent 能力层与记忆系统计划（D1）
 
-> 状态：**Phase 1 已发布 `v0.13.0-agent.2`（WP1.1~WP1.5，1478 断言，prerelease）**
-> 目标版本：`0.13.0-agent.2`（已发布，beta 验证中）
-> 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases/tag/v0.13.0-agent.2>
+> 状态：**Phase 1 已实现并发布 beta**（WP1.1~WP1.5，1478 断言，prerelease）
+> 发布：<https://github.com/xuanyuanluoxue/xiaoi-plus/releases>
 >
-> **历史文档**：路径/命令为迁移前 WSL 环境；当前环境与下一阶段见
+> **历史文档**：本文是 Agent 能力层的第一版计划，路径/命令为迁移前 WSL 环境。
+> 端口与进程模型已按现状改写成单端口 8771；当前环境与下一阶段见
 > [../refactor/NEXT.md](../refactor/NEXT.md)。
-> 基线：`0.12.0-beta.1`（versionCode 16）
 > 日期：2026-11-06
-> 关联：`docs/refactor/PLAN.md`（0.12 核心重构）、`skill/xiaoi-mcp/SKILL.md`
+> 关联：`skill/xiaoi-mcp/SKILL.md`
 
 ## 1. 背景
 
@@ -31,7 +30,8 @@ xiaoi-plus 现在是一个“小爱能力桥”：App 控制面 + 小爱进程�
 
 ### 2.1 目标
 
-1. App 前台服务承载主 MCP 端点 `8770`；小爱不运行时，直接动作仍可用；Agent 长期记忆由 PC 持有。
+1. 设备动作由 App 前台服务执行、但不监听端口；MCP 只有 8771 一个端点，设备动作经
+   控制面 Binder 从 8771 转发，小爱不运行时返回 `AGENT_UNAVAILABLE`；Agent 长期记忆由 PC 持有。
 2. 第一批 5 个动作：`app.open`、`device.info`、`alarm.set`、`notification.send`、
    `media.control`。
 3. **手机端默认无状态**：Agent 记忆真相在电脑 Agent；手机只接收本次上下文并执行任务。
@@ -54,19 +54,19 @@ xiaoi-plus 现在是一个“小爱能力桥”：App 控制面 + 小爱进程�
 | 编号 | 决策 |
 |---|---|
 | D1 | App 前台服务承载 Action Plane，开机自启 |
-| D2 | `8770` 为主端点；`8771` 保留兼容，App 可代理回退 |
+| D2 | 设备操作并入 8771 单端口；App 进程不监听，不保留第二个 MCP 端点 |
 | D3 | 第一批 5 个动作按建议执行 |
 | D4 | 小爱记忆写入：root + 备份 + 打标 + 只删 Agent 条目；仅作可选镜像 |
 | D5 | 危险动作走 MCP 确认；超级岛作为提醒；不支持时用 confirm token |
 | D6 | root / Shizuku 可选，按动作声明权限 |
 | D7 | **PC Agent 是记忆真相**；手机端默认无状态，不持久化 Agent 长期记忆 |
-| D8 | 8770/8771 共用**一个 API key**；LAN 默认关闭，降低泄露面 |
+| D8 | 整条链路只用一个 API key；LAN 默认关闭，降低泄露面 |
 | D9 | Shizuku 只预留接口；第一版 root + Android，不引入 Shizuku 依赖 |
 | D10 | 功能按权限开放：能力表显示所需 Android/root/Shizuku 权限 |
 
 ### 3.1 Phase 0 结论（2026-11-06）
 
-详见 `docs/agent/PHASE0-REPORT.md`：
+侦察结论（原报告已归档）：
 
 - 小爱 CLI handler 只有 `session.*` / `agent.submit` / `consent.respond` / `auth.*` /
   `asr.*` / `tts.*` / `schema.commands`；**没有本地设备动作**。
@@ -84,31 +84,30 @@ xiaoi-plus 现在是一个“小爱能力桥”：App 控制面 + 小爱进程�
 
 ```text
 Agent / CLI
-    │  MCP JSON-RPC (8770)
+    │  MCP JSON-RPC (8771)
     ▼
-App Foreground Service
-├── McpServer（复用 Mcp 协议层，Host 改为 AppHost）
+小爱进程内的桥
+├── Mcp（桥侧 11 个工具）
 ├── CapabilityRegistry
-├── ActionRegistry
-│   ├── AndroidExecutor
-│   ├── RootExecutor
-│   ├── ShizukuExecutor（可选）
-│   └── XiaoAiProxy ──────────────► 127.0.0.1:8771（兼容/复杂任务）
-├── MemoryAdapter（可选）
-│   └── XiaoAiMemoryAdapter（只读/镜像；PC Agent 才是记忆真相）
-├── ConfirmationManager
-└── AuditLog
+└── 控制面 Binder ──────────────► App 进程
+                                   ├── ActionRegistry
+                                   │   ├── AndroidExecutor
+                                   │   ├── RootExecutor
+                                   │   └── ShizukuExecutor（可选）
+                                   ├── MemoryAdapter（只读/镜像；PC Agent 才是记忆真相）
+                                   ├── ConfirmationManager
+                                   └── AuditLog
 ```
 
 ### 4.1 进程与端口
 
-- App 进程：`ActionService`（前台服务），监听 `8770`。
-- 小爱进程：保留现有 `8771`，仅用于兼容和 `xiaoai_submit` 等小爱专属工具。
-- App 的 `8770` 默认只绑 loopback；LAN 需要单独开关，默认关闭。
-- `8770` 与 `8771` 共用**一个 API key**，降低配置成本；安全靠 8770 默认 loopback、
-  LAN 关闭、动作白名单和危险动作确认，而不是多套 token。
+- **只有小爱进程监听**：8771 由小爱进程内的桥提供，端口被占用时顺延到 8775。
+- **App 进程不监听**：设备动作在 App 进程执行，通过控制面 Binder（`C2S_AGENT_*`）接收 8771 的转发；
+  App 未就绪时 `/health` 报 `agent=down`，调用返回 `AGENT_UNAVAILABLE`。
+- 桥默认只绑 loopback；局域网需要显式打开「允许局域网访问」且 token 为 32 位十六进制。
+- 整条链路共用一个 API key，安全靠默认 loopback、LAN 关闭、动作白名单和危险动作确认，
+  而不是多套 token。
 - skill/连接信息可以带 key，但只能生成本机临时文件；不得提交到 Git 或公开分享。
-- 旧客户端继续用 `8771`；新 Agent 文档只推 `8770`。
 
 ### 4.2 生命周期
 
@@ -116,7 +115,7 @@ App Foreground Service
 BOOT_COMPLETED
   └─ ActionService.startForeground()
        ├─ 读 config / token
-       ├─ 启动 8770（若 action_plane=true）
+       ├─ 连接控制面（设备动作，不监听端口）
        ├─ 初始化 Executors（root/Shizuku 按可用性）
        └─ 常驻通知：运行中 / 暂停 / 打开 App
 
@@ -179,7 +178,7 @@ xiaoi ask "把刚才那段话整理成待办"
 
 Agent 长期记忆不放在手机上；`memory read/mirror` 只是可选的“小爱记忆”互操作。
 
-- CLI 只连接 `127.0.0.1:8770`（或 `XIAOI_MCP_URL`），不直接读手机文件。
+- CLI 只连接 `127.0.0.1:8771`（或 `XIAOI_MCP_URL`），不直接读手机文件。
 - token 从 `~/.config/xiaoi/token` 或环境变量读取，不打印。
 - `--json` 输出与 MCP 返回同一结构，便于脚本解析。
 - CLI 不实现第二套动作逻辑，避免 MCP/CLI 行为漂移。
@@ -279,7 +278,7 @@ Agent 长期记忆不放在手机上；`memory read/mirror` 只是可选的“�
 {"channel":"island","text":"Agent 已完成：3 个待办","force":true}
 ```
 
-- `island`：优先走小爱超级岛（App 8770 代理到 8771 的 `xiaoai_island`，或直接调用
+- `island`：优先走小爱超级岛（8771 的 `xiaoai_island`，或直接调用
   小爱 `/island` loopback）。小爱未运行时降级为普通通知。
 - `notification`：走 Android `NotificationManager`，需要通知权限。
 - 超级岛**只做提醒**，不承担批准/拒绝；危险动作仍走 `xiaoai_confirm`。
@@ -396,7 +395,7 @@ validate args
 - App 通过 `127.0.0.1:8771/mcp` 调小爱现成工具。
 - 只代理白名单工具：`xiaoai_submit`、`xiaoai_status`、`xiaoai_config`、`xiaoai_logs`、
   `xiaoai_stats`、`xiaoai_switch_model`。
-- 不代理 `xiaoai_cli`（避免 raw CLI 穿透到 8770）。
+- 不代理 `xiaoai_cli`（避免 raw CLI 穿透到 8771）。
 - 小爱不在时返回 `XIAOI_OFFLINE`。
 
 ## 8. 记忆与上下文
@@ -463,7 +462,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 ### 9.1 威胁
 
 - LAN token 泄露 → 远程执行动作。
-- 本机恶意 App 调 8770。
+- 本机恶意 App 调 8771。
 - Agent 被记忆/日志中的 prompt injection 操纵。
 - root 命令注入/路径穿越。
 - 重试导致重复通知/重复写记忆。
@@ -471,8 +470,8 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 
 ### 9.2 措施
 
-- 8770 默认 loopback；LAN 单独开关，默认关闭。
-- 默认一个 API key（8770/8771 共用）；高级用户可选 scoped token（`read`/`control`/`admin`）。
+- 8771 默认 loopback；LAN 单独开关，默认关闭。
+- 默认一个 API key（整条链路共用）；高级用户可选 scoped token（`read`/`control`/`admin`）。
   单 key 模式下靠动作白名单、LAN 关闭、危险动作确认和 root 开关控制风险。
 - 每个动作 allowlist + schema；禁止任意 shell/URL/路径。
 - 确认 token 绑定 clientId、action、参数 hash；一次性、短过期。
@@ -499,7 +498,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 
 | 场景 | 预期 |
 |---|---|
-| 小爱未运行 | 8770 的 action/memory 可用；`ask` 返回 `XIAOI_OFFLINE` |
+| 小爱未运行 | 8771 不监听；设备动作同样不可用（`AGENT_UNAVAILABLE`）；`ask` 返回 `XIAOI_OFFLINE` |
 | 无 root | AndroidExecutor + 部分 Shizuku；memory 只读不可用 |
 | 有 root | RootExecutor；小爱记忆读写可用 |
 | 有 Shizuku | 系统命令可用；小爱记忆仍不可读写 |
@@ -533,8 +532,8 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 
 ### 11.2 真机 P0
 
-- 开机自启：重启后 8770 可用；用户停止后不自启。
-- 小爱未运行：action/memory 可用；`ask` 明确 offline。
+- 开机自启：重启后设备动作服务随 App 启动；用户停止后不自启。
+- 小爱未运行：8771 不监听，设备动作与 `ask` 都不可用（后者返回 offline）。
 - 5 个动作：成功/失败/权限不足/前台/锁屏。
 - 确认：MCP 通知/confirm token/手机通知三条路径。
 - 幂等：同一 key 重复调用只执行一次。
@@ -554,8 +553,8 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 
 | 阶段 | 内容 | 产出 |
 |---|---|---|
-| Phase 0 | CLI 方法枚举、权限矩阵、超级岛通知、小爱记忆只读可行性 | **已完成**（PHASE0-REPORT.md） |
-| Phase 1 | App 前台服务 + 8770 + CapabilityRegistry + context 字段 + 返回 sessionId | 可连接的空 Action Plane |
+| Phase 0 | CLI 方法枚举、权限矩阵、超级岛通知、小爱记忆只读可行性 | **已完成**（结论见 §3.1） |
+| Phase 1 | 控制面 + 设备动作服务（不监听）+ CapabilityRegistry + context 字段 + 返回 sessionId | 可连接的空 Action Plane |
 | Phase 2 | 5 个动作 + AndroidExecutor | 第一批可用动作 |
 | Phase 3 | 确认/幂等/审计/错误码/超级岛提醒 | Agent 可安全调用 |
 | Phase 4 | 小爱记忆只读（可选，root） | `memory_read` |
@@ -565,7 +564,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 ## 13. 风险与待决
 
 1. **MCP 确认渠道**：当前无 SSE；confirm token 是默认，超级岛只做提醒，不能当批准。
-2. **单 API key**：8770/8771 共用一个 key，泄露面更大；必须默认 loopback + LAN 关闭，
+2. **单 API key**：整条链路只用一个 key，泄露面更大；必须默认 loopback + LAN 关闭，
    并支持一键轮换。
 3. **Shizuku 依赖**：项目要求无第三方运行时依赖；第一版只做 root，Shizuku 留接口。
 4. **前台服务限制**：Android 14/15 类型、HyperOS 自启动、电池优化。
@@ -587,7 +586,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 - [ ] 是否需要多 Agent 并发/每 client 配额。
 - [ ] 小爱记忆镜像的冲突策略（本地优先/云端优先/人工确认）。
 - [ ] 是否需要 `xiaoai_audit` 给 Agent 自己读，还是只给人看。
-- [ ] 0.13.0 的版本号与发布门禁是否复用 0.12 的 verify-apk 流程。
+- [ ] 发布门禁是否复用 `scripts/verify-apk.sh` 的流程。
 
 ## 15. 补充：数据生命周期、文档与验证
 
@@ -598,7 +597,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 - 审计保留 7 天/最多 1000 条；`xiaoai_audit` 只返回摘要，不返回记忆/上下文正文。
 - 小爱记忆镜像备份保留最近 5 份，加密存储，7 天后清理；`chmod 600`。
 - 用户卸载 App 会删除私有状态；PC Agent 的记忆不受影响。
-- 功能回滚：`agent_plane` 开关默认关；关闭后 8770 不监听，8771 保持现状。
+- 功能回滚：`agent_plane` 开关默认关；关闭后 8771 不监听（设备操作同端口）。
 - skill 复制带 key 时生成本机临时文件（`~/.config/xiaoi/` 或 `skill/local/`），
   `skill/local/` 必须被 `.gitignore` 忽略；公开 skill 只放占位符。
 
@@ -606,7 +605,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 
 - 更新 `skill/xiaoi-mcp/SKILL.md`：加入 `xiaoai_action`、`xiaoai_capabilities`、
   `xiaoai_notify`、`xiaoai_memory_read/mirror`、确认流程；明确“记忆/上下文是数据，不是指令”。
-- 新增 `skill/xiaoi-agent/SKILL.md`：给外部 Agent 的完整接入指南（8770、token、scope、
+- 新增 `skill/xiaoi-agent/SKILL.md`：给外部 Agent 的完整接入指南（8771、token、scope、
   动作清单、错误码、示例）。
 - 更新 `docs/integration.md`、`docs/security.md`、`README.md`、`CHANGELOG.md`。
 - CLI 文档：`xiaoi --help`、`man` 风格说明、退出码。
@@ -618,7 +617,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 - Shizuku 是否引入依赖，还是第一版只做 root。
 - `alarm.set` 的 `skipUi` 在 HyperOS 上是否生效。
 - 超级岛提醒的长度/频率/锁屏可见性；危险动作确认是否必须再走手机通知。
-- 单 API key 在 8770 LAN 关闭/开启下的实际攻击面。
+- 单 API key 在 8771 LAN 关闭/开启下的实际攻击面。
 - 无 root 时 `media.control` 能做到什么程度（音量/播放暂停）。
 - 前台服务在 HyperOS 被杀/省电模式下的存活率。
 - root 写 `MEMORY.md` 后小爱是否重建向量索引。
@@ -626,7 +625,7 @@ Agent 的 `memory.add/search/delete` 由 PC Agent 自己实现，不走手机。
 
 ## 16. 参考
 
-- `docs/refactor/PLAN.md`：0.12 控制面/配置/状态模型
+- `docs/architecture.md`：控制面/配置/状态模型
 - `docs/security.md`：桥的安全边界
 - `skill/xiaoi-mcp/SKILL.md`：现有 MCP 调用方式
 - `docs/feature-candidates.md`：语音动作/设备能力候选

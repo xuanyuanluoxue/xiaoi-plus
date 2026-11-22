@@ -195,18 +195,17 @@ launcher 使用 adaptive-icon（前景 108、安全区 66、monochrome 层），
 5. 不要让多色品牌图兼任导航/信息行图标
 5. 不要让同一个语义出现两种文案（如"保存"与"提交"并存）
 
-## 9. 0.14 Compose/Miuix 例外
+## 9. Compose / Miuix 例外
 
-0.14 起设置页走 Compose + Miuix，组件默认值优先，不再套用旧 XML 的 24dp/56dp 自定尺寸：
+设置页走 Compose + Miuix，组件默认值优先，不再套用旧 XML 的 24dp/56dp 自定尺寸：
 
 - Card 默认 16dp 圆角；Button 默认 40dp；SmallTopAppBar 默认 52dp。
 - 颜色仍映射本文的语义令牌（bg/surface/text/primary 等）。
-- 旧 XML 页面（HomeActivity/ConfigActivity 等）仍按 24dp 卡片，不做回改。
 - 设置行不带前置图标：Miuix `ArrowPreference`/`BasicComponent` 默认无 icon，
-  0.14 暂不补 `startAction`，页面层级靠分组标题和行高区分。
+  不补 `startAction`，页面层级靠分组标题和行高区分。
 - 深色卡片使用 Miuix 默认容器色（实测 `#242424`），不等于 `surface2 #1F1F23`；
   这是组件默认值优先的结果，不在页面里覆盖。
-- 0.14 起 `XiaoiColors` 显式暴露 `heroOn`（映射本表 `hero-on`），供 `StatusHero`
+- `XiaoiColors` 显式暴露 `heroOn`（映射本表 `hero-on`），供 `StatusHero`
   与 `DimensionBadge` 使用；未新增其他颜色令牌。
 
 ### 9.1 对比度（WCAG 2.1）

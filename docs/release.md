@@ -1,8 +1,8 @@
 # 发版流程
 
-0.14 起用 Gradle wrapper 构建（Windows 原生 `gradlew.bat :app:assembleRelease`，
+用 Gradle wrapper 构建（Windows 原生 `gradlew.bat :app:assembleRelease`，
 Linux/WSL `./gradlew :app:assembleRelease`），CI 与本地发版都走 Gradle；
-旧的 `build.sh` 已在 0.16.0 删除（历史见 `archive/build-sh-legacy.md`）。
+旧的 `build.sh` 已删除。
 发版额外做三件事：定版本、用固定密钥签名、把产物和校验和挂到 GitHub Release。
 
 > 当前主环境是 Windows 原生；`scripts/*.sh` 用 Git Bash 或 WSL 执行。
@@ -12,8 +12,8 @@ Linux/WSL `./gradlew :app:assembleRelease`），CI 与本地发版都走 Gradle�
 唯一来源是 `app/src/main/AndroidManifest.xml`：
 
 ```xml
-android:versionCode="7"     <!-- 整数，每次发版 +1，只能增 -->
-android:versionName="0.7.0" <!-- 展示用，SemVer -->
+android:versionCode="<整数>"     <!-- 每次发版 +1，只能增 -->
+android:versionName="<SemVer>" <!-- 展示用，SemVer -->
 ```
 
 Gradle 构建直接读取 manifest 的 `versionName/versionCode`；CI 用
@@ -23,11 +23,11 @@ Gradle 构建直接读取 manifest 的 `versionName/versionCode`；CI 用
 
 | 变更 | 版本 | 示例 |
 |---|---|---|
-| 修 bug、文档 | patch | `0.1.0` → `0.1.1` |
-| 加功能、兼容新小爱版本 | minor | `0.1.1` → `0.2.0` |
-| 改配置格式、桥协议、hook 方式 | minor + 在 CHANGELOG 标「不兼容」 | `0.2.0` |
+| 修 bug、文档 | patch | `1.0.0` → `1.0.1` |
+| 加功能、兼容新小爱版本 | minor | `1.0.1` → `1.1.0` |
+| 改配置格式、桥协议、hook 方式 | minor + 在 CHANGELOG 标「不兼容」 | `1.1.0` |
 
-0.x 阶段不承诺接口稳定；破坏性改动也走 minor，并在 Release Notes 顶部写明。
+1.0 之前不承诺接口稳定；破坏性改动也走 minor，并在 Release Notes 顶部写明。
 
 发版前：
 
@@ -53,7 +53,7 @@ keytool -genkeypair -keystore keystore/xiaoi.keystore -alias xiaoi \
 
 口令自己定，别用仓库里的示例值。本地构建按 `KEYSTORE_PASSWORD` →
 `.secrets/keystore_pass` → 旧的 `~/.config/xiaoi/keystore_pass` 顺序读取
-（0.16.0 起凭据放项目内 `.secrets/`，已 gitignore），不写进源码。生成后**立刻离线备份**
+（凭据放项目内 `.secrets/`，已 gitignore），不写进源码。生成后**立刻离线备份**
 （密码管理器 + 仓库外的备份盘）。
 密钥丢失＝无法覆盖安装，只能换包名或让所有用户卸载重装。
 
@@ -114,7 +114,7 @@ scripts/release.sh --allow-dirty --allow-new-key
 d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b
 ```
 
-这是 0.11.0-beta.4 ~ 0.12.0 的正式签名证书（X.509）SHA-256，**只是公钥指纹，
+这是正式签名证书（X.509）的 SHA-256，**只是公钥指纹，
 不含私钥或口令**。私钥仍在 `keystore/xiaoi.keystore` 与 CI secrets。
 
 手动校验：
@@ -124,7 +124,7 @@ d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b
 scripts/verify-apk.sh build/xiaoi-plus.apk
 
 # 显式指定指纹 / 包名 / versionCode
-scripts/verify-apk.sh dist/xiaoi-plus-0.12.0-beta.1.apk \
+scripts/verify-apk.sh dist/xiaoi-plus-<version>.apk \
   --expect d7dd34b2e654562954c991730ba6ba88955ea1fcce9e13ae949f74b8b213d19b
 
 # 从 keystore 反查指纹（口令只通过环境变量，不会打印）
@@ -152,8 +152,8 @@ scripts/verify-apk.sh --self-test build/xiaoi-plus.apk
 ## 4. 打 tag 与发布
 
 ```bash
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+git tag -a v1.0.0 -m "v1.0.0"
+git push origin v1.0.0
 ```
 
 推送 tag 后 `.github/workflows/build.yml` 会：
@@ -169,14 +169,14 @@ git push origin v0.1.0
 7. 产出 `dist/xiaoi-plus-<version>.apk` + `.sha256` + notes，上传 artifact
 8. **只有 `startsWith(github.ref, 'refs/tags/v') && signed=true` 才创建 Release**；
    没有正式密钥的 tag 构建仍上传 artifact，但跳过 Release 并输出 warning/notice
-9. Release 附带 APK 与校验和；版本号含 `-`（如 `0.12.0-beta.1`）标为 prerelease
+9. Release 附带 APK 与校验和；版本号含 `-`（如 `1.0.0-beta.1`）标为 prerelease
 
 不想推送 tag 也可以手动发：
 
 ```bash
-gh release create v0.1.0 dist/xiaoi-plus-0.1.0.apk \
-  dist/xiaoi-plus-0.1.0.apk.sha256 \
-  --notes-file dist/release-notes-0.1.0.md
+gh release create v1.0.0 dist/xiaoi-plus-1.0.0.apk \
+  dist/xiaoi-plus-1.0.0.apk.sha256 \
+  --notes-file dist/release-notes-1.0.0.md
 ```
 
 PR 和普通分支推送只跑构建 + 上传 artifact，不建 Release。
@@ -185,13 +185,13 @@ PR 和普通分支推送只跑构建 + 上传 artifact，不建 Release。
 
 ```bash
 # 校验下载完整性
-sha256sum -c xiaoi-plus-0.1.0.apk.sha256
+sha256sum -c xiaoi-plus-1.0.0.apk.sha256
 
 # 确认签名证书与固定指纹一致（已签名 + 包名 + versionCode + 指纹）
-scripts/verify-apk.sh xiaoi-plus-0.12.0-beta.1.apk
+scripts/verify-apk.sh xiaoi-plus-1.0.0-beta.1.apk
 
 # 真机覆盖安装
-adb install -r xiaoi-plus-0.1.0.apk
+adb install -r xiaoi-plus-1.0.0.apk
 ```
 
 签名指纹应等于 `dist/release-notes-<version>.md` 里记录的值；
@@ -203,9 +203,9 @@ adb install -r xiaoi-plus-0.1.0.apk
 
 - Release 内容有问题（notes、附件错）：编辑/重传附件即可，APK 本身不动
 - APK 有严重 bug：
-  1. `git revert` 问题提交，`versionCode` +1，发一个更高版本（如 `0.1.2`）
-  2. 旧 Release 保留，在 notes 顶部加「已知问题，请用 0.1.2」，或把旧 Release 标为 prerelease
-  3. 需要立即止损时用 `gh release edit v0.1.1 --draft` 暂时隐藏，而不是删除
+  1. `git revert` 问题提交，`versionCode` +1，发一个更高版本（如 `1.0.2`）
+  2. 旧 Release 保留，在 notes 顶部加「已知问题，请用 1.0.2」，或把旧 Release 标为 prerelease
+  3. 需要立即止损时用 `gh release edit v1.0.1 --draft` 暂时隐藏，而不是删除
 - 用户侧降级：`adb install -d xiaoi-plus-<旧版本>.apk`（要求同签名；系统可能仍拒绝，必要时卸载重装，配置会丢）
 
 ## 7. 发版检查清单

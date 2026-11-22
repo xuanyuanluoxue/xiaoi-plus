@@ -117,43 +117,22 @@ flowchart TB
 
 校验规则：`baseUrl` http(s)、`model` 非空、`apiKey` 非空；不通过则阻止开启并提示。
 
-### 2.1 配置页类结构（0.12.0 WP5，机械拆分）
+### 2.1 模型页类结构
 
-`ConfigActivity` 只保留状态所有权与流程编排；纯视图/对话框移到 `plus.xiaoi.module.ui.config`，
-不改变任何布局 ID、文案与点击行为。Section 不持有 Activity：构造时传入 root View、宿主
-`AppConfig` 读取接口与必要的 `Runnable`/小接口，状态更新仍回调 Activity。
-
-```mermaid
-flowchart TB
-    A["ConfigActivity（shell）<br/>cfg / dirty / rendering / statusState / savedWaiting / ui Handler<br/>生命周期 · render() · save() · collect() · checkModelNow()"]
-    D["ConfigDialogs<br/>对话框容器 / 管理行 / 输入框 / 错误行"]
-    M["McpSection<br/>开关联动视图 / 令牌 / URL / JSON 速览 / 复制 / 端口探测"]
-    S["StatusSection<br/>状态条 / 推送行 / 文件冲突条 / 运行时冲突条"]
-    E["EditSection<br/>导入 / 脱敏导出 / 完整备份 / 还原 / 分享"]
-    R["ModelEditor<br/>服务商/模型管理列表与编辑对话框"]
-    P["AppearanceSection<br/>主题 chips"]
-
-    A --> D
-    A --> M
-    A --> S
-    A --> E
-    A --> R
-    A --> P
-```
-
-模型 chips 的渲染与“选中服务商/模型”仍留在 `ConfigActivity`（它们同时改 cfg、状态条与自动校验），
-`ModelEditor` 只接管管理/编辑对话框。文件选择器结果仍由 Activity 的 `onActivityResult`
-转发给 `EditSection`。
+`ModelScreen` 只做组合；草稿与脏状态在 `ModelStateHolder`（内存草稿、`rev` 变化即作废，
+显式保存才写盘），逐项错误与导出校验状态在 `ModelDraft`，字段区与对话框分别拆在
+`ModelSections` / `ModelDialogs`。保存冲突时回到 UI 让用户选择“载入最新 / 覆盖保存”，
+不做静默覆盖。
 
 ## 3. 日志（独立页）
 
 ```mermaid
 flowchart TB
-    BAR["顶栏：级别筛选 · 清空 · 分享"]
+    BAR["顶栏：级别/来源/进程筛选 · 清空 · 导出"]
     FOLLOW["跟随最新（开关）"]
     LIST["列表行：时间 · 级别胶囊 · 正文<br/>错误行左侧红条"]
-    EMPTY["空状态：未运行 / 暂无日志"]
-    SRC["数据源：GET /logs?limit=&since=<br/>环形缓冲 300 条"]
+    EMPTY["空状态：未运行 / 暂无日志 / 筛选无结果"]
+    SRC["数据源：跨进程合并视图（各进程 ring 汇总）"]
 
     BAR --> FOLLOW --> LIST
     LIST --> EMPTY
@@ -164,7 +143,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    H["Hero：图标 · 小爱同学plus · v0.6.0 (6) · 已安装"]
+    H["Hero：图标 · 小爱同学+ · 当前版本 · 已安装"]
     INFO["信息卡：作者 / GitHub / 许可证 / 致谢 / 检查更新"]
     DISC["免责声明卡"]
     BUILD["构建信息：日期 · commit"]

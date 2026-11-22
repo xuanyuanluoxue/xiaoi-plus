@@ -1,7 +1,7 @@
 # 日志子系统重构（LOGGING-1）
 
 > 状态：**已落地（WP-L1 ~ WP-L5）**
-> 基线：`main` @ `9785546`（0.16.2，2026-11-20）
+> 基线：`main` @ `9785546`（2026-11-20）
 > 上游：[NEXT.md](NEXT.md) 的 P2（UI 去控制面）/ [LAYERING-2.md](LAYERING-2.md) 的分层纪律
 > 关系：只改日志子系统；不动 Hook 目标、8771 MCP 协议、Binder 事务号与 `config.json` 格式
 
@@ -11,7 +11,7 @@
 
 ## 1. 现状与证据
 
-| 文件 | 现状（行号基于 0.16.2） |
+| 文件 | 现状（行号基于提交 `9785546`） |
 |---|---|
 | `platform/.../Logs.java` | 进程内静态 `ArrayDeque`，`CAP = 300`（:22），满后丢最旧；`add` 每次同时写 `XposedBridge.log`（:86）和文件镜像（:87） |
 | `platform/.../Logs.java` | `mirror` 每条日志 `new FileOutputStream(..., true)` → `write` → `close`（:122-141）；文件 256KB，`.1` 备份（:126-130） |
@@ -25,7 +25,7 @@
 | `platform/.../Bridge.java` | `GET /logs?limit=&since=` → `Logs.dump(BridgeHttpPolicy.logLimit(limit), since)`（:890-896）；`onToolCall` 写 `[mcp] tool=...`（:200-204） |
 | `application/.../Mcp.java` | `xiaoai_logs` 只接受 `limit`/`since`（:691-700），schema 上限来自 `Contract.LOGS_LIMIT_MAX`（:408-412） |
 | `platform/.../bridge/BridgeControlClient.java` | 每次 pull 后 `Logs.dump(80, sLogSeq)`，把 `t/level/msg` 重新拼成文本经 Binder 上报（:431-472）；收到 `S2C_FLUSH_LOGS` 只记一句「无需刷新」（:495-496） |
-| `app/.../Hook.java` | 0.16.2 三条关键诊断：`改写命中: ...`（:572）、`模型调用: 三方/官方 ...`（:349）、`第三方模型已启用，但配置 getter 从未被读取`（:355-356） |
+| `app/.../Hook.java` | 三条关键诊断：`改写命中: ...`（:572）、`模型调用: 三方/官方 ...`（:349）、`第三方模型已启用，但配置 getter 从未被读取`（:355-356） |
 | `domain/.../core/Contract.java` | `LOGS_LIMIT_DEFAULT = 80`、`LOGS_LIMIT_MAX = 300`（:53-54）；容量 300 目前只硬编码在 `Logs` |
 | `tests/` | `LogsTest` 锁定 300 容量、`lastSeq`、`t` 格式与字段顺序；`ControlLogRingTest` 覆盖脱敏/裁剪；`AgentCallLogTest` 覆盖档位门控 |
 
@@ -54,7 +54,7 @@
 2. 落盘从「每行一次 open/close」变成「批量写 + 显式 flush」，保持 256KB / `.1` 轮转不变。
 3. 环形缓冲、过滤、JSON 装配这些纯逻辑可脱离 Android/Xposed 单测。
 4. `/logs`、`xiaoai_logs` 的参数不变；返回 JSON 只做**追加字段**，旧字段名、顺序、含义不变。
-5. 三条 0.16.2 诊断日志的语义与可检索性不变（`改写命中` / `模型调用` / `getter 从未被读取`）。
+5. 三条关键诊断日志的语义与可检索性不变（`改写命中` / `模型调用` / `getter 从未被读取`）。
 
 ### 非目标
 
@@ -144,7 +144,7 @@
 ## 8. 本次不做
 
 1. **按级别保留 / 独立错误 ring**：会破坏 `since > lastSeq` 的增量语义，除非同时改 `BridgeControlClient` 与协议；本次只记录理由。
-2. ~~**四份事实源合并/去重**~~：**已在 0.16.3 完成，见第 10 节**。
+2. ~~**四份事实源合并/去重**~~：**已完成，见第 10 节**。
 3. **UI 结构化渲染（日期分组、tag 筛选、错误跳转）**：属于 UI 交互改动，先不做。
 4. **异步落盘线程/队列**：不引入新线程；批量缓冲已覆盖主要开销。
 5. **日志档位 push 通道**：现有 pull + reload 已能传播；不做新 Binder 事务。
@@ -163,7 +163,7 @@ $env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot"; .\grad
 wsl -e bash -c "cd /mnt/d/code/Android/xiaoi-plus && ANDROID_SDK_ROOT=/mnt/c/Users/Chatxavier/AppData/Local/Android/Sdk bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk"
 ```
 
-## 10. 合并视图（0.16.3）
+## 10. 合并视图
 
 **为什么必须合并**：三个小爱进程各自只有一个 partial ring。实测中 `xiaoai_logs` 返回的全是
 leader 进程（`pid=1346`）的行，而 `改写命中` / `模型调用` 落在另一个进程（`pid=962`）——

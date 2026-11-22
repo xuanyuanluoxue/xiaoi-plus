@@ -1,14 +1,11 @@
 # 核心重构：目标与边界
 
-> 状态：**WP1~WP8 已完成并合并；`0.12.0-beta.1` 已发布（prerelease）**
-> 目标版本：`0.12.0`（先发 `0.12.0-beta.1`）
-> 基线版本：`0.11.0-beta.4`（versionCode 15）
+> 状态：**已完成**（WP1~WP8 已合并并发布 beta）
 > 文档建立：2026-11-06
 >
-> **当前状态（2026-11-17 起）**：核心重构与分层改造（WP0–WP6）均已完成，
-> 主环境为 Windows 原生。**继续开发从这里开始：[NEXT.md](NEXT.md)。**
-> 本文件与 `WORKPACKAGES.md`、`drafts/` 是 0.12 阶段的历史计划，
-> 其中的路径/命令为迁移前 WSL 写法。
+> **当前状态**：核心重构与分层改造（WP0–WP6）均已完成，主环境为 Windows 原生。
+> **继续开发从这里开始：[NEXT.md](NEXT.md)。**
+> 本文记录这一阶段的目标、边界与决策，其中的路径/命令为迁移前 WSL 写法。
 
 ## 1. 为什么重构
 
@@ -40,7 +37,7 @@
 - 不更换包名、签名密钥、`plus.xiaoi.module` 身份
 - 不引入 Kotlin、Gradle、第三方运行时依赖
 - 不改写 MCP 工具语义（除鉴权/传输层）
-- 不做与 0.12.0 无关的新功能（语音动作引擎、统计增强等）
+- 不做与本次重构无关的新功能（语音动作引擎、统计增强等）
 
 ## 3. 优先级
 
@@ -95,25 +92,16 @@
 | 文档 | 内容 |
 |---|---|
 | [NEXT.md](NEXT.md) | **下一阶段优化（当前入口）**：Windows 环境、P0–P5 路线 |
-| `PLAN.md` | **权威计划**：最终决策、目标架构、工作包、迁移、验收 |
-| `WORKPACKAGES.md` | 8 个工作包的详细范围、验收、测试、子 Agent 指令模板（历史） |
 | [LAYERING.md](LAYERING.md) | 第一阶段分层改造（WP0~WP6，已完成） |
-| [LAYERING-2.md](LAYERING-2.md) | **第二阶段分层计划（WP7~WP13，3 模块 → 6 模块）** |
-| [LOGGING-1.md](LOGGING-1.md) | **日志子系统重构（WP-L1~WP-L5：纯 JVM ring / 批量落盘 / 追加字段）** |
-| `WP2-HOOK.md` | WP2 执行计划与记录（Hook 策略 + 进程宿主） |
-| `WP3-BRIDGE.md` | WP3 执行计划与记录（Mcp 端口拆分 + 生命周期决策） |
-| `WP4-UI.md` | WP4 执行计划与记录（AppRuntime + UI 去 Context） |
-| `WP5-CORE.md` | WP5 执行计划与记录（`:core` 物理模块） |
-| `WP6-DOMAIN.md` | WP6 执行计划与记录（`:domain` / `:application`） |
-| `RECOVERY-2026-11-17.md` | 仓库异常清空后的恢复记录 |
-| [drafts/](drafts/) | 被否决的 v1 草案（HMAC/Provider/配对码），仅作讨论记录 |
+| [LAYERING-2.md](LAYERING-2.md) | 第二阶段分层（WP7~WP13，3 模块 → 6 模块） |
+| [LOGGING-1.md](LOGGING-1.md) | 日志子系统重构（WP-L1~WP-L5：纯 JVM ring / 批量落盘 / 追加字段） |
 
 ## 8. 当前决策
 
 | 编号 | 决策 | 状态 |
 |---|---|---|
 | D1 | 采用 B 方案：核心重构，不推倒 Hook/MCP 协议 | 已定 |
-| D2 | 目标 `0.12.0`，先发 beta | 已定 |
+| D2 | 先发 beta 验证，再转正式版 | 已定 |
 | D3 | 包名/签名/配置升级兼容 | 已定 |
 | D4 | 优先级：安全 > 可信状态 > 可用性 > 可维护性 | 已定 |
 | D5 | 威胁模型包含本机普通应用 | 已定 |
@@ -130,10 +118,8 @@
 
 ## 9. 执行方式
 
-1. 计划已冻结；WP1~WP8 已完成并合并；0.12.0-beta.1 已发布
-2. 每个包合并前跑 `tests/run.sh` + `build.sh` + `check-consistency.sh`
-3. WP1/WP3/WP4 安全相关包合并前再过一次独立安全复核
-4. 每个包独立 commit；不跨包改文件
-5. 全部完成后跑真机 P0 矩阵，发 `0.12.0-beta.1`
-
-**在首个开发 Agent 启动前，不再修改 `app/`、`tests/`、`build.sh`、`.github/`。**
+1. WP1~WP8 已完成并合并，beta 已发布。
+2. 每个包合并前跑 `bash tests/run.sh` + `bash scripts/check-consistency.sh`。
+3. WP1/WP3/WP4 安全相关包合并前再过一次独立安全复核。
+4. 每个包独立 commit；不跨包改文件。
+5. 全部完成后跑真机 P0 矩阵，再发正式版。

@@ -5,8 +5,8 @@
 > 归档 tag：`archive-2026-11-17`（仅快照，项目已恢复开发）
 > 旧归档说明：[../../ARCHIVE.md](../../ARCHIVE.md)
 >
-> ⚠️ 0.16.0 清理：旧的 `build.sh` 已删除（历史文档里的 `./build.sh` 一律按
-> `./gradlew :app:assembleRelease` 理解）；模块清单也已扩到 6 个。
+> ⚠️ 旧的 `build.sh` 已删除（历史文档里的 `./build.sh` 一律按
+> `./gradlew :app:assembleRelease` 理解）；模块清单是 6 个。
 
 ## 1. 环境
 

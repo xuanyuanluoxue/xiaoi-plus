@@ -15,7 +15,7 @@
 | 桥的 token | 同样存在这份 XML 里，用于本机/局域网 HTTP 鉴权，不参与模型请求 |
 | 有没有进日志 | 没有。日志只输出 `model=` 名称和 hook 成败 |
 
-补充（0.12.0 起）：配置事实源改为 App 私有目录
+补充：配置事实源是 App 私有目录
 `/data/data/plus.xiaoi.module/files/config.json`（schema v3，带 `rev`），不再写
 `Android/data`；其他应用、`adb shell` 普通用户和 `run-as` 之外的工具都读不到这个文件。
 App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/config.json`
@@ -44,7 +44,7 @@ App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/co
 设计目标：让本机或**可信局域网**里的脚本调用小爱，而不是把能力暴露到公网。
 
 - **默认只绑 loopback**：监听 `127.0.0.1:8771~8775`，局域网和公网都连不上。
-- **局域网模式（0.12.0 起更强）**：设置页打开「允许局域网访问」且 Token 是
+- **局域网模式**：设置页打开「允许局域网访问」且 Token 是
   **32 位十六进制（128 bit）**时，才监听 `0.0.0.0:8771~8775`，同一 Wi-Fi 的电脑可直连。
   短 token / 非 hex token 不阻断本机 MCP，但只绑 loopback（不会把弱 token 暴露到局域网）。
 - **Bearer token 鉴权**：每个请求必须带 `Authorization: Bearer <token>`，token 在设置页填写；
@@ -57,7 +57,7 @@ App 内改动 1~2 秒自动应用；旧 `Android/data/plus.xiaoi.module/files/co
   驱动小爱）；因此默认关闭、打开需二次确认、可随时关闭（保存后 1~2 秒生效）。
   验证方式：`curl http://127.0.0.1:8771/health` 无 header 返回 200 即已生效；
   从电脑经局域网访问仍应返回 401。
-- **配置只能由 App 写**：`POST /config` 自 0.12.0 起固定返回 `410 Gone`，不解析 body、
+- **配置只能由 App 写**：`POST /config` 固定返回 `410 Gone`，不解析 body、
   不写 prefs；`/island` 仍只接受 loopback。MCP 的 `xiaoai_switch_model` 只允许
   `model`/`marker`，远程传入 `baseUrl`/`apiKey`/`bridge`/`lan` 会得到 `isError=true`，
   不能把 apiKey 导向攻击者端点，也不能远程打开数据面。
@@ -88,7 +88,7 @@ curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8771~8775/health
 |---|---|
 | **允许免令牌调用** | 本机与**局域网**都不校验 Bearer；打开需二次确认 |
 | **允许弱密码用于局域网** | 任意非空密码都能作为 Bearer；默认要求 32 hex |
-| 生效内容 | 8771 的 `/health`、`/mcp`、`/logs`、`/stats`、`/cli`，以及经它转发到 App 进程的全部设备动作（0.16.0 起只有这一个端口） |
+| 生效内容 | 8771 的 `/health`、`/mcp`、`/logs`、`/stats`、`/cli`，以及经它转发到 App 进程的全部设备动作（只有这一个端口） |
 | 关闭后 | 保存后 1~2 秒内恢复 401，不需要重启小爱 |
 | 代价 | 同一 Wi-Fi 下的任何设备都能驱动小爱 / 执行设备动作 / 读日志与配置摘要 |
 
@@ -105,7 +105,7 @@ curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8771~8775/health
 > 用完立刻关。局域网打开免鉴权时，任何接入同一 Wi-Fi 的设备都能读配置摘要
 > （`xiaoai_config` 不含密钥明文），并驱动小爱执行任务。
 
-#### 3.1.1 CORS 与「浏览器也能调」的风险（0.16.0）
+#### 3.1.1 CORS 与「浏览器也能调」的风险
 
 唯一的 MCP 端点（8771）回 `Access-Control-Allow-Origin: *`，并支持 `OPTIONS` 预检 ——
 这是为了让浏览器里的面板/网页 Agent 能直接调用。代价必须写清楚：

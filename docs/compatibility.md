@@ -6,12 +6,12 @@
 | 小爱版本 | 状态 | 已适配功能 | 混淆名 |
 |---|---|---|---|
 | 8.2.65.4714 | ✅ 已验证 | 模型重定向 / 请求头标识 | 配置 `sm.a`、请求 `qm.j`、Json `s92.b#d` |
-| 8.2.70.8421 | ✅ 已验证（0.16.1） | 模型重定向 / 请求头标识 / 调用统计 / 能力桥 | 配置 `sm.a`、视觉 `sm.f`、客户端 `qm.i/j/b`、`um.h` |
+| 8.2.70.8421 | ✅ 已验证 | 模型重定向 / 请求头标识 / 调用统计 / 能力桥 | 配置 `sm.a`、视觉 `sm.f`、客户端 `qm.i/j/b`、`um.h` |
 | 其他版本 | ⏸ 未适配 | —（自动跳过） | — |
 
 > 2026-11-19：测试机升到 `8.2.70.8421` 后模块一度整体 no-op（`/health` 的 `facade=false`）。
 > 逆向材料在 `artifacts/reverse/xiaoi-8.2.70.8421/`（不入库），确认 hook 点未迁移，
-> 0.16.1 起把该版本加入白名单并已真机验证。
+> 该版本已加入白名单并真机验证。
 
 查看当前版本：
 
@@ -19,7 +19,7 @@
 adb shell dumpsys package com.miui.voiceassist | grep -m1 versionName
 ```
 
-## 陌生设备自查（0.16.1+）
+## 陌生设备自查
 
 同一 `versionName` 的小爱，dex 是同一份（同签名、同构建），混淆名不随机型变化，
 所以**一台机器验证通过，同版本的其它机型通常也能用**。差异主要来自：小爱版本、
@@ -35,7 +35,7 @@ curl -s -X POST http://127.0.0.1:8771/mcp \
 ```
 
 ```text
-facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8.2.70.8421 rewrite=hit
+facade=true cli=true port=8771 version=<versionName> hooks=ok compat=whitelist xiaoai=8.2.70.8421 rewrite=hit
 ```
 
 | 结果 | 含义 | 下一步 |
@@ -46,7 +46,7 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 | `hooks=none compat=none` | 版本不在白名单，主动 no-op | 需要适配；把 `xiaoai=` 的版本报上来 |
 | `hooks=none compat=probe` | 早期加载读不到版本而放行，但 hook 全失败 | 通常也是版本不兼容；看 logcat 的「hook 失败」行 |
 | `rewrite=?` | 还没发生模型调用 | 先对小爱说一句话再看 |
-| 无 `hooks=` 字段 | 模块 ≤0.16.0，或请求被 App 进程服务 | 升级模块；或确认 MCP 由小爱进程提供 |
+| 无 `hooks=` 字段 | 模块版本较旧（未上报 `hooks=`），或请求被 App 进程服务 | 升级模块；或确认 MCP 由小爱进程提供 |
 
 对应日志（`logcat -s VectorLegacyBridge | grep 'xiaoi+'`）：
 
@@ -59,7 +59,7 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 
 > `compat=probe` 是历史行为：`handleLoadPackage` 执行时 Application 还没就绪，
 > `PackageManager` 读不到 versionName，于是「未知版本」按放行处理（fail-open）。
-> 0.16.1 起版本在 `xiaoai_status` 上报时惰性补读，`compat` 会修正成真实结论。
+> 版本在 `xiaoai_status` 上报时惰性补读，`compat` 会修正成真实结论。
 
 ## 契约测试
 

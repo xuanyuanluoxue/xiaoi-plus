@@ -28,7 +28,7 @@
 3. 模糊：`miuix-ui` 内**没有** blur 组件，仍在 `miuix-blur`；模糊带高度 = 顶栏**折叠后**高度，
    透明度可由 `collapsedFraction` / `overlappedFraction` 驱动。
 4. 页面顶部留白 = 顶栏折叠高度（单源常量，别再两处硬编码）。
-5. **不要动**：底栏玻璃胶囊、pager 滑动、8770/8771/8772 端口报文。
+5. **不要动**：底栏玻璃胶囊、pager 滑动、8771 端口报文。
 
 ## 已确认的 Miuix API（javap `miuix-ui-android/0.9.4/miuix-ui.aar`）
 

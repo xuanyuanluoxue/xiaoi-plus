@@ -11,7 +11,7 @@
 2. **JVM 单测**（`bash tests/run.sh`，含 domain 空 classpath 单编；测试红则不构建）
 3. `bash scripts/check-consistency.sh`（版本/SDK/R/线程/HTTP/Toast/分层边界/Hook-Bridge 依赖方向/死资源）
 4. `./gradlew :domain:compileJava :application:compileJava :infra:compileJava :app:assembleRelease`
-   （Windows 本地为 `gradlew.bat`；0.14 起 R8 + 资源收缩，Gradle wrapper 固定 9.9.0）
+   （Windows 本地为 `gradlew.bat`；R8 + 资源收缩，Gradle wrapper 固定 9.9.0）
 5. 无 `KEYSTORE_PASSWORD` 时产出未签名 APK；有 `KEYSTORE_BASE64` 时由
    `scripts/ci-sign.sh` 签名，否则警告 + 临时签名
 6. `scripts/verify-apk.sh` 校验：`signed=true` 必须命中
@@ -19,7 +19,7 @@
 7. 产物与 Release Notes 上传 artifact
 8. **tag 构建只有 `signed=true` 才创建 Release**。无正式密钥的 tag 仍产出 artifact，
    但跳过 Release 并打 `::warning::`/`::notice::`；
-   版本号含 `-`（如 `0.12.0-beta.1`）自动标为 prerelease
+   版本号含 `-`（如 `1.0.0-beta.1`）自动标为 prerelease
 
 ## 2. 本地全量门禁（`scripts/check-all.sh`）
 
@@ -61,7 +61,7 @@ git config core.hooksPath .githooks   # 每台克隆执行一次
 ## 4. 桥 token 的存放
 
 契约测试的 token 优先取 `XIAOI_TOKEN` 环境变量；未设置时读项目内的
-`.secrets/xiaoi-token`（0.16.0 起，已 gitignore），再回退旧的 `~/.config/xiaoi/token`：
+`.secrets/xiaoi-token`（已 gitignore），再回退旧的 `~/.config/xiaoi/token`：
 
 ```bash
 mkdir -p .secrets

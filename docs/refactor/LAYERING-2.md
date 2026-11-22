@@ -1,7 +1,7 @@
 # 第二阶段分层（LAYERING-2）：从 3 模块到 6 模块
 
-> 状态：**计划（未执行）**
-> 基线：`main` @ v0.15.0（versionCode 22），WP0–WP6 已完成
+> 状态：**已完成（WP7–WP13）**
+> 基线：`main`，WP0–WP6 已完成
 > 日期：2026-11-18
 > 上游：[LAYERING.md](LAYERING.md)（第一阶段，WP0–WP6）· [NEXT.md](NEXT.md)（P0–P5 路线）
 > 关系：本文件**取代** NEXT.md 的 P0–P4 并给出更细的工作包；NEXT.md 保留为环境指南。
@@ -111,8 +111,8 @@ Gradle 侧由模块依赖本身保证方向；`scripts/check-layering.sh` 补 im
 | WP9 | 删旧页面与旧 UI（`:app` 清场） | 无（可与 WP7/WP8 并行） | 1.5 天 | 中 | beta |
 | WP10 | 新建 `:platform` | WP8、WP9 | 1.5–2 天 | 中高 | 不发版 |
 | WP11 | 新建 `:ui` | WP9、WP10 | 1–1.5 天 | 高（资源/R） | beta |
-| WP12 | `:app` 瘦身为壳 + 门禁 | WP10、WP11 | 0.5 天 | 低 | 0.16.0 |
-| WP13 | domain 内部分层 + 去静态化 | WP8（可并行） | 1.5–2 天 | 高（面广） | 0.16.0 |
+| WP12 | `:app` 瘦身为壳 + 门禁 | WP10、WP11 | 0.5 天 | 低 | 收尾版本 |
+| WP13 | domain 内部分层 + 去静态化 | WP8（可并行） | 1.5–2 天 | 高（面广） | 收尾版本 |
 
 合计约 **8–10 个工作日**，可并行度：WP9 ∥ WP7/WP8；WP13 ∥ WP10/WP11（文件不重叠）。
 
@@ -187,7 +187,7 @@ bash scripts/contract-test.sh --check       # 47 项不变
 
 ---
 
-### WP9：删旧页面（`:app` 清场，NEXT.md 的 P0）—— ✅ 已完成（0.15.1，2026-11-18）
+### WP9：删旧页面（`:app` 清场，NEXT.md 的 P0）—— ✅ 已完成（2026-11-18）
 
 **目标**：只剩 Compose 一套入口；`ConfigActivity` 引用为 0。
 
@@ -351,26 +351,26 @@ bash scripts/ui-screenshot.sh --route Home --review   # 6 条一级路由视觉�
 | R3 | `exported` Service/Receiver 拆模块后清单合并出错 | 安全（导出了不该导出的组件） | 清单集中在 `:app`；`verify-apk` 增加 `aapt2 dump badging` 组件比对 |
 | R4 | Xposed 桩被误打进 APK | 体积/校验异常 | 桩是 `compileOnly`，不进 dex；2026-11-18 实测 APK 只有 1 处对 `robv/android/xposed` 的**调用引用**（`Logs.java` 调框架方法，运行时由 LSPosed 提供），无桩类本体 |
 | R5 | `AgentHttpServer` 下沉 `:infra` 造成 `infra↔application` 环 | 编译失败 | 允许 `infra→application`（单向）；出现环就把 `AgentCallLog`/`AuditLog` 一起下沉 |
-| R6 | 删旧页面时漏掉未迁移的小功能 | 功能缺失 | 按 `docs/ui/SCREENS.md` + 20 路由逐项对照；真机手工过 6 类操作 |
+| R6 | 删旧页面时漏掉未迁移的小功能 | 功能缺失 | 按 `docs/ui/SCREENS.md` + 21 路由逐项对照；真机手工过 6 类操作 |
 | R7 | WP13 去静态化打乱契约测试假设 | 47 项红色 | 先补断言再改；每子步骤单独 commit |
 
 ## 7. 明确不做
 
 - 不引入 DI 框架（Hilt/Koin）、不引入数据库（SQLite/Room）。
 - 不拆 `:domain` 为多个 Gradle 模块（只做包内分层）。
-- 不改 8771 / 8770 报文、端口、Token/LAN 规则、Binder UID 守卫。
+- 不改 8771 报文、端口、Token/LAN 规则、Binder UID 守卫。
 - 不改 `config.json` v3 格式与 rev 语义。
 - 不改 Hook 目标、顺序、版本白名单。
 - 不新增运行时依赖（除已有 Compose/Miuix）。
 
-## 8. 版本与发布
+## 8. 发布节奏
 
-| 阶段 | 版本 | 内容 |
+| 阶段 | 发布 | 内容 |
 |---|---|---|
 | WP7–WP8 | 不发版 | 内部重构，行为不变 |
-| WP9 | `0.15.1` beta | 旧页面移除（用户可感知） |
+| WP9 | beta | 旧页面移除（用户可感知） |
 | WP10–WP11 | 不发版 | 内部重构 |
-| WP12–WP13 | `0.16.0` | 第二阶段收尾 |
+| WP12–WP13 | 正式版 | 第二阶段收尾 |
 
 ## 9. 执行记录（执行时填）
 
@@ -379,9 +379,9 @@ bash scripts/ui-screenshot.sh --route Home --review   # 6 条一级路由视觉�
 | 2026-11-18 | 计划建立 | — | — |
 | 2026-11-18 | WP7 | `ConfigStorePort` + `FileConfigStore`；`ConfigService` 不再 import `java.io`（构造参数去掉 `File`，迁移改由端口 `migrateLegacy()`）；`ConfigRepository` 保留 `configFile()/legacyBackups()` 过渡门面；新增 `ConfigPortTest`（纯内存端口，28 断言）；新增门禁 `application_no_io`（基线 38 条） | 单测 2017 断言（48 套件）；分层 `--strict`、一致性、三模块构建、`verify-apk` PASS；真机配置读写 rev 31→33、字段不变、无崩溃 |
 | 2026-11-18 | WP8 | 新建 `:infra`（9 文件）：`Http`/`ConfigStore`/`FileConfigStore`/`BridgeClient`/`ModelValidator`/`LeaderElection`/`Lan`/`AgentHttpServer`/`BridgeAskHost`；`ConfigCodec.fromStream` 与 `ConfigRepository.parse/toJson` 删除；新增 `infra_no_android`/`infra_no_xposed` 门禁，`application_no_io` 基线 38 → **0**，总基线 49 → **11** | 单测 2017 断言；分层 `--strict`、一致性、四模块构建、`verify-apk` PASS；真机契约 **47/47** |
-| 2026-11-18 | WP9 | 删旧 Java 页面（`ConfigActivity` 1049 行 / `HomeActivity` / `AboutActivity` / `LogsActivity` / `BaseActivity` / `Nav` / `ui/config` 6 文件 / `SpikeActivity` / `LegacyScreen`，约 -1.5k 行）；4 处「打开 App」改指 `MainActivity`；删 6 布局 + 22 drawable + `dimens.xml` + `Widget.*`/`Dialog` 样式，`strings.xml` 只留 `app_name`；路由 20 → 19；版本 `0.15.1` (23) | 单测 2017 断言；一致性（死资源清零）、分层 `--strict`、构建、`verify-apk`（versionCode 23）全绿；真机：4 个 tab 正常、`我的` 无「兼容模式」、契约 **47/47**、无崩溃 |
+| 2026-11-18 | WP9 | 删旧 Java 页面（`ConfigActivity` 1049 行 / `HomeActivity` / `AboutActivity` / `LogsActivity` / `BaseActivity` / `Nav` / `ui/config` 6 文件 / `SpikeActivity` / `LegacyScreen`，约 -1.5k 行）；4 处「打开 App」改指 `MainActivity`；删 6 布局 + 22 drawable + `dimens.xml` + `Widget.*`/`Dialog` 样式，`strings.xml` 只留 `app_name`；路由 20 → 19 | 单测 2017 断言；一致性（死资源清零）、分层 `--strict`、构建、`verify-apk` 全绿；真机：4 个 tab 正常、`我的` 无「兼容模式」、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP10 | 新建 `:platform` Android library（namespace `.platform`），搬 30 个适配器（配置/桥/控制面/8770/通知/执行器/`PermissionProbe`/`ShareProvider`/`ThemeManager`/`Logs`）；`:app` 只剩清单+资源+`MainActivity`+`Hook`；Xposed 桩改由 `:platform` 产出；新增 `AppLaunch` 替代 `MainActivity` 直接引用；新增 `platform_no_compose`/`platform_no_miuix`/`platform_no_ui` 门禁，基线 11 → **3 行** | 单测 2017 断言；分层 `--strict`、一致性、五模块构建、`verify-apk` PASS；真机：启动 328ms、`我的` 页正常、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP11 | 新增 `:ui` Android library（namespace `.ui`），搬 62 个 Compose 文件 + `sponsor_wechat`；`:app` 只剩 `MainActivity.kt` + `Hook.java` + 清单 + 资源；前置把 7 处 platform/infra 耦合端口化（`ControlLogStore`/`UiPrefs`/`BackgroundTasks`/`NetworkInfo`/`UsageStats`/`ModelProbe`/`FileShare.AUTHORITY`），`AppRuntime` 6 → **11 端口**；删 `GlassSupport.userEnabled` 死代码；新增 `ui_no_infra`/`ui_no_bridge_pkg` 与 authority 一致性检查，**基线清零（0 行）** | 单测 2017+ 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS；真机：启动 104ms、进程存活、契约 **47/47**、无崩溃 |
 | 2026-11-18 | WP12 | `:app` 壳软门禁：一致性检查断言 app 源码 ≤ 8 文件 / ≤ 1500 行（当前 **2 文件 / 975 行**），业务代码必须放 `:ui`/`:platform` | 一致性通过 |
 | 2026-11-18 | WP13 | domain 去静态化 + 消环：`BridgeEndpoint` → `:infra`；`LogSettings` → `:application`；`AgentRuntimeStatus`/`BridgeStatus` 拆成「domain 不可变快照 + application 持有者」；`AgentLanPolicy` → `core`、`IssueInputFactory` 改用同包快照 → `core↔agent` 边清零；新增 `core_no_agent`/`agent_no_core` 门禁与「领域层无进程级可变状态」检查（包重组按记录推迟） | 单测 2030 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS |
-| 2026-11-18 | 复验 | 真机复验 WP11/WP13（M332BF / Android 17）：`ControlLogStore` 日志页 93 条实时刷新、`UiPrefs` 玻璃开关读写、`NetworkInfo` 本机 IP 192.168.0.118 + 默认端口、`AgentRuntimeSnapshot` 接入页 8770「运行中 · LAN · 0.0.0.0」、控制面 3 个进程注册 port=8771 rev=33；契约 47/47。修复 `contract-test.sh` 端口发现：带 token 时按 `facade=` 自证身份、无 token 时用 `/stats` 排除 8770（Agent 动作面与桥的 `/health` 401 体相同，曾误判到 8770） | 全部通过 |：`BridgeEndpoint` → `:infra`；`LogSettings` → `:application`；`AgentRuntimeStatus`/`BridgeStatus` 拆成「domain 不可变快照 + application 持有者」；`AgentLanPolicy` → `core`、`IssueInputFactory` 改用同包快照 → `core↔agent` 边清零；新增 `core_no_agent`/`agent_no_core` 门禁与「领域层无进程级可变状态」检查（包重组按记录推迟） | 单测 2030 断言；分层 `--strict`（0 基线）、一致性、六模块构建、`verify-apk` PASS |
+| 2026-11-18 | 复验 | 真机复验 WP11/WP13（M332BF / Android 17）：`ControlLogStore` 日志页 93 条实时刷新、`UiPrefs` 玻璃开关读写、`NetworkInfo` 本机 IP 192.168.0.118 + 默认端口、`AgentRuntimeSnapshot` 接入页 8770「运行中 · LAN · 0.0.0.0」、控制面 3 个进程注册 port=8771 rev=33；契约 47/47。修复 `contract-test.sh` 端口发现：带 token 时按 `facade=` 自证身份、无 token 时用 `/stats` 排除 8770（Agent 动作面与桥的 `/health` 401 体相同，曾误判到 8770） | 全部通过 |

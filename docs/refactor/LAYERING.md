@@ -1,9 +1,9 @@
 # 分层与依赖倒置改造：执行计划
 
 > 状态：**WP0–WP6 全部完成（WP6 `:domain` / `:application` 拆分）**
-> 基线：`v0.15.0`（versionCode 22，2026-11-11），HEAD `d753fb4`
+> 基线：`main`（2026-11-11），HEAD `d753fb4`
 > 日期：2026-11-16
-> 相关：[architecture.md](../architecture.md) · `refactor/PLAN.md` · `agent/PLAN.md`
+> 相关：[architecture.md](../architecture.md) · [agent/PLAN.md](../agent/PLAN.md)
 >
 > **当前环境（2026-11-17 起）**：Windows 原生 `D:\code\Android\xiaoi-plus`
 > （WSL 视角 `/mnt/d/code/Android/xiaoi-plus`）。
@@ -366,7 +366,6 @@ gradlew.bat :app:assembleRelease --offline                         # 构建通�
   双负例验证。
 - 明确保留：`Bridge → BridgeControlClient` 单向、`Bridge ↔ BridgeLifecycle`、
   root↔bridge 包级依赖，留给 WP3。
-- 详细计划与执行记录：`WP2-HOOK.md`。
 
 ## 8. WP3：桥/动作应用服务（已实现）
 
@@ -377,7 +376,6 @@ gradlew.bat :app:assembleRelease --offline                         # 构建通�
 - `BridgeHttpPolicy`（纯 JVM）承接 HTTP 路径与 limit/days clamp。
 - 新增 H3 门禁（BridgeLifecycle 不依赖 Bridge），并做负例验证。
 - `StatusService`/四维状态组装**未在本 WP 实施**，留给 WP4 或独立任务。
-- 详细计划与执行记录：`WP3-BRIDGE.md`。
 
 ## 9. WP4：运行时端口与 UI Context 清理（已实现）
 
@@ -388,7 +386,6 @@ gradlew.bat :app:assembleRelease --offline                         # 构建通�
 - 旧 `EditSection` 去掉 Context，注入 `RuntimeConfigImporter`。
 - 新增 4 条 `ui_no_*` 门禁与 `AppRuntimeTest` 9 条断言。
 - `ThemeManager` 端口化顺延；`ui_no_control` 3 条保留。
-- 详细计划与执行记录：`WP4-UI.md`。
 
 ## 10. WP5：`:core` 物理模块（已实现）
 
@@ -397,7 +394,6 @@ gradlew.bat :app:assembleRelease --offline                         # 构建通�
 3. `Logs`（Xposed）与 `Usage`（android）留在 app。
 4. `tests/run.sh` 改为 `find core/src` + `Logs.java`；`build.sh`/一致性/分层路径同步。
 5. 后续已由 WP6 拆成 `:domain` + `:application`。
-- 详细计划与记录：`WP5-CORE.md`。
 
 ## 10.1 WP6：`:domain` / `:application`（已实现）
 
@@ -406,7 +402,6 @@ gradlew.bat :app:assembleRelease --offline                         # 构建通�
 3. `:domain` 无 I/O/并发/Android/Xposed/org.json；`tests/run.sh` 用空 classpath
    单独编译 domain，不依赖 import 规则。
 4. `:application` 放用例、协议、纯 JVM 传输/文件适配器。
-5. 详细计划与记录：`WP6-DOMAIN.md`。
 
 ## 11. 子 Agent 编排
 
@@ -450,7 +445,7 @@ gradlew.bat :app:assembleRelease --offline                         # 构建通�
 2. `bash tests/run.sh` 全绿。
 3. `bash scripts/check-consistency.sh` 全绿（含 `check-layering --strict`）。
 4. `gradlew.bat :app:assembleRelease --offline` 成功（Linux/WSL 用 `./gradlew`）。
-5. 涉及运行时的 WP 补真机 P0 清单与结果（可写 `docs/ui/DEVICE-CHECK-*.md`）。
+5. 涉及运行时的 WP 补真机 P0 清单与结果（可写进 `docs/`）。
 6. `scripts/layering-baseline.tsv` 只减不增（该 WP 对应的行必须删除）。
 7. 独立 commit，commit message 带 `refactor(layering): WPn ...`。
 

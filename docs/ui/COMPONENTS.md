@@ -1,11 +1,10 @@
 # UI 组件契约（Compose / Miuix）
 
-> 状态：**生效**（0.14 起）
+> 状态：**生效**
 > 规则：页面只能使用本文件列出的组件；新增/修改组件先改本文件。
 > 关联：[CONVENTIONS.md](CONVENTIONS.md)、[SCREENS.md](SCREENS.md)、[design-system.md](../design-system.md)。
 >
-> ⚠️ **0.16.0**：设备操作并入 8771，`AgentStatus` / 端口行只展示一个端点；
-> 文中「8770 状态」相关表述按「设备操作（与 8771 同端口）」理解。
+> 设备操作与 MCP 同端口（8771），`AgentStatus` / 端口行只展示一个端点。
 
 ## 0. 通用约定
 
@@ -411,7 +410,7 @@ fun PortRow(
 ```
 
 - 56dp；状态点 + 名称 + Mono 端口 + 绑定；右侧箭头。
-- 8771/8770 分开；不合并成“小爱未运行”。
+- 小爱任务与设备操作分开；不合并成“小爱未运行”。
 
 ### CapabilityRow
 
@@ -458,7 +457,7 @@ fun FilterChips(
 - 28dp 视觉 + 48dp 触控；FlowRow 自动换行，不横向裁切。
 - 未选中 `chipBg` + `textSecondary`；选中 `primary` 实心 + `onPrimary`。
 - 全站唯一筛选 chip 视觉；日志、外观、能力页共用。
-- `XiaoiChip` 已删除（0.14 P2 视觉修复），不要再新增第二套筛选 chip。
+- `XiaoiChip` 已删除，不要再新增第二套筛选 chip。
 - 日志页 chip 行与下方卡片之间固定 12dp，避免卡片压住 chip 下缘。
 
 ### SearchField
@@ -486,10 +485,10 @@ fun agentPortUi(
 ): AgentPortUi
 ```
 
-- 设备操作接口（8770）状态的**唯一 UI 判定**；Access / Bridge / Diagnostics / Home 共用。
+- 设备操作接口（与 8771 同端口）状态的**唯一 UI 判定**；Access / Bridge / Diagnostics / Home 共用。
 - 只读 `AgentRuntimeStatus` 快照与 `known()`，不扫端口、不猜 loopback。
 - 文案固定：运行中 / 已停止 / 启动失败 / 未开启 / 未确认；未知统一“未确认”。
-- 不允许页面各自拼一套 `PortState`；新增 8770 状态展示先改本组件。
+- 不允许页面各自拼一套 `PortState`；新增设备操作状态展示先改本组件。
 
 ## 4. 组件验收
 
