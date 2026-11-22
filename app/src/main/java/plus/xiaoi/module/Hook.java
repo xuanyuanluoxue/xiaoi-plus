@@ -245,10 +245,157 @@ public class Hook implements IXposedHookLoadPackage {
             hookStr(a, "getBaseUrl", Kind.BASE);
             hookStr(a, "getApiKey", Kind.KEY);
             hookStr(a, "getModel", Kind.MODEL);
+            hookSystemPromptProviders(cl);
             sConfigHooked = true;
             Logs.i("配置 hook 完成");
         } catch (Throwable t) {
             Logs.i("配置 hook 失败: " + t);
+        }
+    }
+
+    /**
+     * 系统提示词注入：把「取 system 提示词」的几个出口统一挂上。
+     *
+     * <p>请求体里那条 30 KB system 不是从消息列表来的（{@code MessageRole} 只有
+     * USER/ASSISTANT/TOOL），而是从提示词提供方现取。已知四类出口：</p>
+     * <ul>
+     *   <li>{@code sm.a#getSystemPrompt()} —— 模型配置对象，实测返回 29870 字</li>
+     *   <li>{@code com.aios.osbot.facade.b$a#getResolvedSystemPrompt()} —— facade 解析后的版本</li>
+     *   <li>{@code rj.d0#getResolvedSystemPrompt()} —— 同名的另一处实现（混淆短名）</li>
+     *   <li>{@code com.aios.osbot.agent.unified.AgentDefinition#getSystemPrompt()}</li>
+     * </ul>
+     *
+     * <p>注入块带标记，{@code PromptInjector.merge} 幂等：同一条串被多个出口依次处理
+     * 也只会出现一份。失败即原样，绝不 setResult。</p>
+     */
+    private static void hookSystemPromptProviders(ClassLoader cl) {
+        hookSystemPromptMethod(cl, "sm.a", "getSystemPrompt");
+        hookSystemPromptMethod(cl, "com.aios.osbot.facade.b$a", "getResolvedSystemPrompt");
+        hookSystemPromptMethod(cl, "rj.d0", "getResolvedSystemPrompt");
+        hookSystemPromptMethod(cl, "com.aios.osbot.agent.unified.AgentDefinition", "getSystemPrompt");
+        hookAgentDefinition(cl);
+    }
+
+    /**
+     * Agent 定义里的 {@code systemPrompt} 是一个**字段**，请求组装时很可能直接 GETFIELD
+     * 读，不经过 getter（实测挂 getter 一次都没触发）。所以在构造完成后改字段。
+     */
+    private static void hookAgentDefinition(ClassLoader cl) {
+        try {
+            Class<?> c = Class.forName("com.aios.osbot.agent.unified.AgentDefinition", false, cl);
+            int n = 0;
+            for (java.lang.reflect.Constructor<?> ctor : c.getDeclaredConstructors()) {
+                try {
+                    XposedBridge.hookMethod(ctor, new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) {
+                            applyAgentDefinition(param.thisObject);
+                        }
+                    });
+                    n++;
+                } catch (Throwable ignored) {
+                }
+            }
+            Logs.i("AgentDefinition 构造 hook 完成（" + n + " 个）");
+        } catch (Throwable t) {
+            Logs.i("AgentDefinition hook 失败: " + t);
+        }
+    }
+
+    /** 读/改 AgentDefinition#systemPrompt 字段；顺带每进程打一次原始长度。 */
+    private static void applyAgentDefinition(Object def) {
+        try {
+            java.lang.reflect.Field field = null;
+            for (java.lang.reflect.Field f : def.getClass().getDeclaredFields()) {
+                if ("systemPrompt".equals(f.getName())) {
+                    field = f;
+                    break;
+                }
+            }
+            if (field == null) return;
+            field.setAccessible(true);
+            Object value = field.get(def);
+            if (!(value instanceof String)) return;
+            String original = (String) value;
+            if (sDefLogged.compareAndSet(false, true)) {
+                Logs.i("AgentDefinition systemPrompt=" + original.length());
+            }
+            Config c = Config.current();
+            if (c == null) return;
+            if (!c.promptEnabled() && !c.memoryInject()) return;
+            String outline = c.memoryInject() ? MemoryFiles.outline(c.memoryInjectLines()) : "";
+            PromptInjector.Options options = new PromptInjector.Options(
+                    c.promptEnabled(), c.promptMode(), c.promptText(),
+                    c.memoryInject(), c.memoryInjectLines(), outline);
+            String block = PromptInjector.block(options, promptVars(c));
+            if (block.length() == 0) return;
+            boolean replace = c.promptEnabled() && PromptInjector.isReplace(c.promptMode())
+                    && c.promptText() != null && c.promptText().trim().length() > 0;
+            String merged = PromptInjector.merge(original, block, replace);
+            if (merged.equals(original)) return;
+            field.set(def, merged);
+            PromptRuntime.recordInjected("agent-definition");
+        } catch (Throwable t) {
+            PromptRuntime.recordFailed("def-" + t.getClass().getSimpleName());
+        }
+    }
+
+    private static final java.util.concurrent.atomic.AtomicBoolean sDefLogged =
+            new java.util.concurrent.atomic.AtomicBoolean();
+
+    private static void hookSystemPromptMethod(ClassLoader cl, final String className, String methodName) {
+        try {
+            Class<?> c = Class.forName(className, false, cl);
+            for (Method m : c.getDeclaredMethods()) {
+                if (!methodName.equals(m.getName())) continue;
+                XposedBridge.hookMethod(m, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        applySystemPrompt(param, className);
+                    }
+                });
+                Logs.i("系统提示词 hook: " + className + "#" + methodName);
+                return;
+            }
+        } catch (Throwable t) {
+            Logs.i("系统提示词 hook 跳过: " + className + "#" + methodName + "（" + t + "）");
+        }
+    }
+
+    /** 追加或替换 system 提示词；没有开关、没有内容时原样返回。 */
+    private static void applySystemPrompt(XC_MethodHook.MethodHookParam param, String source) {
+        try {
+            Config c = Config.current();
+            if (c == null) return;
+            if (!c.promptEnabled() && !c.memoryInject()) return;
+            Object result = param.getResult();
+            String original = result instanceof String ? (String) result : "";
+
+            String outline = c.memoryInject() ? MemoryFiles.outline(c.memoryInjectLines()) : "";
+            PromptInjector.Options options = new PromptInjector.Options(
+                    c.promptEnabled(), c.promptMode(), c.promptText(),
+                    c.memoryInject(), c.memoryInjectLines(), outline);
+            String block = PromptInjector.block(options, promptVars(c));
+            if (block.length() == 0) {
+                PromptRuntime.recordSkipped("off");
+                return;
+            }
+            boolean replace = c.promptEnabled() && PromptInjector.isReplace(c.promptMode())
+                    && c.promptText() != null && c.promptText().trim().length() > 0;
+            String merged = PromptInjector.merge(original, block, replace);
+            if (merged.equals(original)) {
+                PromptRuntime.recordSkipped("no-change");
+                return;
+            }
+            param.setResult(merged);
+            if (sSystemLogged.add(source)) {
+                Logs.i("system 注入源 " + source + ": 原始=" + original.length()
+                        + " 注入后=" + merged.length()
+                        + "（block=" + block.length() + " 替换=" + replace + "）");
+            }
+            PromptRuntime.recordInjected("system-prompt");
+        } catch (Throwable t) {
+            PromptRuntime.recordFailed(t.getClass().getSimpleName());
         }
     }
 
@@ -287,7 +434,7 @@ public class Hook implements IXposedHookLoadPackage {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
                         logBuilderOnce(label, methodName);
-                        applyPromptInjection(param);
+                        mutateRequestInPlace(param, label + "#" + methodName);
                     }
                 });
                 count++;
@@ -332,27 +479,30 @@ public class Hook implements IXposedHookLoadPackage {
 
     // ------------------------------------------------------------- P2-C 提示词注入
 
-    /** 请求体顶层键只打印一次（debug 档），用于核对字段名，不打印任何值。 */
-    private static volatile boolean sRequestKeysLogged;
-
     /**
-     * 请求构造后的提示词注入。
+     * 原位改写请求体：改 {@code JsonObject} 内部的 backing Map，而不是 setResult。
      *
-     * <p>链路：复制返回的 {@code JsonObject} → 改 {@code instructions} / system 消息 →
-     * 用同类型构造函数重建。**不经过 JSON 文本，也不依赖 kotlinx Json 单例**——
-     * 那个单例的类名/字段名会随版本混淆变化（实测 8.2.70 已改）。</p>
+     * <p>实测：{@code build*Request} 的返回值被重建后，模型拿到的仍是原文——说明调用方
+     * 要么忽略返回值、要么用的是另一个引用。这里改成<b>原地修改</b>：反射拿到
+     * {@code JsonObject} 的 backing {@code Map} 与 {@code messages} 数组的 backing
+     * {@code List}，直接把 system 元素换掉，谁持有这个对象都看得到改动。</p>
      *
-     * <p><b>失败即原样</b>：任何异常都只记一行日志并保持小爱好原来的请求，
-     * 绝不因为提示词配置影响对话。</p>
+     * <p>失败即原样：任何异常都不改，只记一行原因。</p>
      */
-    private static void applyPromptInjection(XC_MethodHook.MethodHookParam param) {
+    private static void mutateRequestInPlace(XC_MethodHook.MethodHookParam param, String method) {
         try {
             Config c = Config.current();
             if (c == null) return;
             if (!c.promptEnabled() && !c.memoryInject()) return;
             Object result = param.getResult();
-            if (result == null || !(result instanceof Map)) return;
+            if (result == null) return;
+            int before = bodyLength(result);
 
+            java.util.Map<String, Object> root = JsonNodes.backingMap(result);
+            if (root == null) {
+                PromptRuntime.recordFailed("no-backing-map");
+                return;
+            }
             String outline = c.memoryInject() ? MemoryFiles.outline(c.memoryInjectLines()) : "";
             PromptInjector.Options options = new PromptInjector.Options(
                     c.promptEnabled(), c.promptMode(), c.promptText(),
@@ -365,97 +515,104 @@ public class Hook implements IXposedHookLoadPackage {
             boolean replace = c.promptEnabled() && PromptInjector.isReplace(c.promptMode())
                     && c.promptText() != null && c.promptText().trim().length() > 0;
 
-            // 直接复制活对象再重建：不依赖 kotlinx Json 单例（其类名/字段名随版本混淆变化）。
-            java.util.Map<String, Object> root = JsonNodes.copyMap((java.util.Map<?, ?>) result);
-            String note = rewriteRequest(root, block, replace);
+            String note = rewriteInPlace(root, block, replace);
             if (note == null) {
                 PromptRuntime.recordSkipped("no-target");
                 return;
             }
-            Object rebuilt = JsonNodes.constructLike(result, root);
-            if (rebuilt == null) {
-                PromptRuntime.recordFailed("construct-" + note);
-                return;
-            }
-            param.setResult(rebuilt);
             PromptRuntime.recordInjected(note);
+            logWireOnce(before, result, method);
         } catch (Throwable t) {
             PromptRuntime.recordFailed(t.getClass().getSimpleName());
         }
     }
 
-    /**
-     * 在请求体的键值上做替换，返回命中位置；没有可改字段返回 null。
-     *
-     * <p>Responses 改 {@code instructions}；chat 改 {@code messages} 里第一条
-     * {@code role=system} 的 {@code content}。消息/数组/对象都靠"复制后重建"完成，
-     * 不经过 JSON 文本。</p>
-     */
-    private static String rewriteRequest(java.util.Map<String, Object> root,
-                                        String block, boolean replace) {
+    /** 原位改「第一条 system 消息」与 {@code instructions}（两者可能同时存在）。 */
+    private static String rewriteInPlace(java.util.Map<String, Object> root, String block, boolean replace) {
+        String note = null;
+        Object messages = root.get("messages");
+        java.util.List<Object> list = JsonNodes.backingList(messages);
+        if (sStructCalls.incrementAndGet() <= 8) {
+            StringBuilder sb = new StringBuilder("请求结构: instructions=")
+                    .append(JsonNodes.isScalar(root.get("instructions")));
+            sb.append(" messages=").append(messages == null ? "null" : messages.getClass().getName());
+            sb.append(" listFound=").append(list != null);
+            if (list != null) {
+                sb.append(" size=").append(list.size());
+                if (!list.isEmpty()) {
+                    Object first = list.get(0);
+                    java.util.Map<String, Object> m0 = JsonNodes.backingMap(first);
+                    sb.append(" first=").append(first == null ? "null" : first.getClass().getSimpleName());
+                    sb.append(" mapFound=").append(m0 != null);
+                    if (m0 != null) {
+                        sb.append(" role=").append(JsonNodes.contentOf(m0.get("role")));
+                        sb.append(" contentLen=").append(JsonNodes.contentOf(m0.get("content")).length());
+                    }
+                }
+            }
+            Logs.i(sb.toString());
+        }
+        if (list != null) {
+            for (int i = 0; i < list.size(); i++) {
+                java.util.Map<String, Object> msg = JsonNodes.backingMap(list.get(i));
+                if (msg == null) continue;
+                if (!"system".equals(JsonNodes.contentOf(msg.get("role")))) continue;
+                Object merged = JsonNodes.mergeContent(msg.get("content"), block, replace);
+                if (merged != null) {
+                    msg.put("content", merged);
+                    note = "system-message";
+                }
+                break;
+            }
+            if (note == null) {
+                // 没有 system：用第一条消息做模板造一条，插到最前
+                Object template = list.isEmpty() ? null : list.get(0);
+                java.util.Map<String, Object> tpl = JsonNodes.backingMap(template);
+                if (tpl != null) {
+                    java.util.Map<String, Object> sys = new java.util.LinkedHashMap<String, Object>();
+                    sys.put("role", JsonNodes.newStringLike(tpl.get("role"), "system"));
+                    sys.put("content", JsonNodes.newStringLike(tpl.get("content"), block));
+                    Object sysMsg = JsonNodes.constructLike(template, sys);
+                    if (sysMsg != null) {
+                        list.add(0, sysMsg);
+                        note = "system-inserted";
+                    }
+                }
+            }
+        }
         Object instructions = root.get("instructions");
         if (JsonNodes.isScalar(instructions)) {
             root.put("instructions",
-                    JsonNodes.newStringLike(instructions, PromptInjector.merge(JsonNodes.contentOf(instructions), block, replace)));
-            return "instructions";
+                    JsonNodes.newStringLike(instructions,
+                            PromptInjector.merge(JsonNodes.contentOf(instructions), block, replace)));
+            if (note == null) note = "instructions";
         }
-        Object messages = root.get("messages");
-        if (!(messages instanceof java.util.List)) return null;
-
-        logMessageShape((java.util.List<?>) messages);
-
-        java.util.List<?> list = (java.util.List<?>) messages;
-        java.util.List<Object> out = new java.util.ArrayList<Object>();
-        Object template = null;
-        boolean replaced = false;
-        for (Object item : list) {
-            if (!(item instanceof java.util.Map)) {
-                out.add(item);
-                continue;
-            }
-            if (template == null) template = item;
-            java.util.Map<String, Object> msg = JsonNodes.copyMap((java.util.Map<?, ?>) item);
-            if (!replaced && "system".equals(JsonNodes.contentOf(msg.get("role")))) {
-                Object merged = JsonNodes.mergeContent(msg.get("content"), block, replace);
-                if (merged != null) msg.put("content", merged);
-                Object rebuilt = JsonNodes.constructLike(item, msg);
-                if (!sMsgRebuildLogged) {
-                    sMsgRebuildLogged = true;
-                    StringBuilder sb = new StringBuilder(item.getClass().getName());
-                    for (java.lang.reflect.Constructor<?> c2 : item.getClass().getDeclaredConstructors()) {
-                        sb.append(" (").append(c2.getParameterCount()).append(':');
-                        for (Class<?> t2 : c2.getParameterTypes()) sb.append(t2.getSimpleName()).append(',');
-                        sb.append(')');
-                    }
-                    Logs.i("消息重建: ok=" + (rebuilt != null) + " ctors=" + sb);
-                }
-                out.add(rebuilt == null ? item : rebuilt);
-                replaced = true;
-                if (!sMergeLogged) {
-                    sMergeLogged = true;
-                    Logs.i("注入后 system 长度 "
-                            + (merged == null ? -1 : JsonNodes.contentOf(merged).length())
-                            + "（block=" + block.length() + " 替换=" + replace + "）");
-                }
-            } else {
-                out.add(item);
-            }
-        }
-        if (template == null) return null;
-
-        if (!replaced) {
-            java.util.Map<String, Object> sys = new java.util.LinkedHashMap<String, Object>();
-            sys.put("role", JsonNodes.newStringLike(((java.util.Map<?, ?>) template).get("role"), "system"));
-            sys.put("content", JsonNodes.newStringLike(((java.util.Map<?, ?>) template).get("content"), block));
-            Object sysMsg = JsonNodes.constructLike(template, sys);
-            if (sysMsg == null) return null;
-            out.add(0, sysMsg);
-        }
-        Object rebuiltMessages = JsonNodes.constructLike(messages, out);
-        if (rebuiltMessages == null) return null;
-        root.put("messages", rebuiltMessages);
-        return replaced ? "system-message" : "system-inserted";
+        return note;
     }
+
+    /** 每次请求体构建都打一行（每进程最多 8 行）：注入前后长度。 */
+    private static void logWireOnce(int before, Object request, String method) {
+        if (sWireCalls.incrementAndGet() > 8) return;
+        try {
+            Logs.i("请求体: " + method + " 注入前=" + before + " 注入后=" + bodyLength(request));
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static int bodyLength(Object o) {
+        try {
+            return String.valueOf(o).length();
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    private static final java.util.concurrent.atomic.AtomicBoolean sWireLogged =
+            new java.util.concurrent.atomic.AtomicBoolean();
+    private static final java.util.concurrent.atomic.AtomicInteger sStructCalls =
+            new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicInteger sWireCalls =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     // ------------------------------------------------------------- 结构反射
 
@@ -479,66 +636,12 @@ public class Hook implements IXposedHookLoadPackage {
         return new PromptTemplate.Vars(date, time, c.model(), device);
     }
 
-    private static volatile boolean sMsgRebuildLogged;
 
 
-    /** 每进程打一次请求形状：角色序列与每段长度（不含正文）。 */
-    private static void logMessageShape(java.util.List<?> messages) {
-        if (sShapeLogged) return;
-        sShapeLogged = true;
-        try {
-            StringBuilder roles = new StringBuilder();
-            StringBuilder lens = new StringBuilder();
-            int limit = Math.min(messages.size(), 12);
-            for (int i = 0; i < limit; i++) {
-                Object m = messages.get(i);
-                if (roles.length() > 0) roles.append(',');
-                lens.append(lens.length() == 0 ? "" : ",");
-                if (m instanceof java.util.Map) {
-                    java.util.Map<?, ?> map = (java.util.Map<?, ?>) m;
-                    roles.append(JsonNodes.contentOf(map.get("role")));
-                    lens.append(JsonNodes.contentOf(map.get("content")).length());
-                } else {
-                    roles.append('?');
-                    lens.append(0);
-                }
-            }
-            if (messages.size() > limit) roles.append(",...");
-            Logs.i("请求形状: 条数=" + messages.size() + " roles=" + roles + " 长度=" + lens);
-            Object first = messages.isEmpty() ? null : messages.get(0);
-            if (first != null) {
-                StringBuilder fs = new StringBuilder(first.getClass().getName()).append(" 字段=");
-                for (java.lang.reflect.Field f : first.getClass().getDeclaredFields()) {
-                    fs.append(f.getName()).append(':').append(f.getType().getSimpleName()).append(' ');
-                }
-                Logs.i("消息对象结构: " + fs);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
 
-    private static volatile boolean sShapeLogged;
-    private static volatile boolean sMergeLogged;
-
-    private static volatile boolean sParseFailedLogged;
-
-    /** debug 档打印一次请求体顶层键名（无值），用来核对字段名是否与假设一致。 */
-    private static void logRequestKeysOnce(String json) {
-        if (sRequestKeysLogged) return;
-        sRequestKeysLogged = true;
-        try {
-            Object v = plus.xiaoi.module.Json.read(json);
-            if (!(v instanceof java.util.Map)) return;
-            StringBuilder sb = new StringBuilder();
-            for (Object k : ((java.util.Map<?, ?>) v).keySet()) {
-                if (sb.length() > 0) sb.append(',');
-                sb.append(String.valueOf(k));
-            }
-            Logs.event(plus.xiaoi.module.core.LogLevel.DEBUG, "D", "prompt",
-                    "请求顶层键=" + sb);
-        } catch (Throwable ignored) {
-        }
-    }
+    /** 每个「提示词出口」只打一次注入结果。 */
+    private static final java.util.Set<String> sSystemLogged =
+            java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<String>());
 
     /**
      * 调用量统计：挂在真正的模型客户端上，一次模型调用记一行。     *
@@ -851,3 +954,4 @@ public class Hook implements IXposedHookLoadPackage {
         return plus.xiaoi.module.core.Redact.host(value);
     }
 }
+

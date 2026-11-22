@@ -177,6 +177,52 @@ public final class JsonNodes {
     }
 
     /**
+     * 取 JsonObject 的**可写** backing Map。
+     *
+     * <p>kotlinx 的 JsonObject 覆写了 {@code put} 并直接抛
+     * {@code UnsupportedOperationException}，但它内部字段就是一个普通 Map。
+     * 想要「原地改一个别人已经持有的请求对象」，只能改这层 backing 结构。</p>
+     */
+    public static Map<String, Object> backingMap(Object node) {
+        if (node == null) return null;
+        for (java.lang.reflect.Field f : node.getClass().getDeclaredFields()) {
+            if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+            if (!Map.class.isAssignableFrom(f.getType())) continue;
+            try {
+                f.setAccessible(true);
+                Object v = f.get(node);
+                if (v instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> m = (Map<String, Object>) v;
+                    return m;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
+    /** 取 JsonArray 的**可写** backing List；拿不到返回 null。 */
+    public static List<Object> backingList(Object node) {
+        if (node == null) return null;
+        for (java.lang.reflect.Field f : node.getClass().getDeclaredFields()) {
+            if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+            if (!List.class.isAssignableFrom(f.getType())) continue;
+            try {
+                f.setAccessible(true);
+                Object v = f.get(node);
+                if (v instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> l = (List<Object>) v;
+                    return l;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
+    /**
      * content 可能是字符串、text part 数组，或带 {@code text} 的对象；
      * 返回注入后的新元素，识别不了返回 null（调用方保留原值）。
      */
