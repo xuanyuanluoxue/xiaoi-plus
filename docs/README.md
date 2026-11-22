@@ -42,6 +42,7 @@
 | [agent/P2-PROMPT-MEMORY.md](agent/P2-PROMPT-MEMORY.md) | 提示词与记忆：设计、验收、未做项 |
 | [feature-candidates.md](feature-candidates.md) | 候选能力与取舍 |
 | [plan-model-config.md](plan-model-config.md) | 模型与配置的规划 |
+| [../reverse/README.md](../reverse/README.md) | **逆向子项目**：架构、模型链路、工具链、技能、记忆与重放脚本 |
 
 ## 重构
 

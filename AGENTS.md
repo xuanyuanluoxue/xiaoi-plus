@@ -55,7 +55,10 @@
 
 仓库根**只放**：构建入口（`settings/build.gradle.kts`、`gradle*`、`gradle.properties`）、
 文档（`README.md` / `CHANGELOG.md` / `ARCHIVE.md`）、`AGENTS.md`、`LICENSE`，
-以及固定目录（`app/ domain/ application/ infra/ platform/ ui/ docs/ scripts/ tests/ skill/ libs/`）。
+以及固定目录（`app/ domain/ application/ infra/ platform/ ui/ docs/ scripts/ tests/ skill/ libs/ reverse/`）。
+
+`reverse/` 是**逆向子项目**：只放文档与脚本，APK/dex/dump 等大文件仍放
+`artifacts/reverse/<版本>/`（gitignore）。
 
 新增文件必须落到对应目录：
 
