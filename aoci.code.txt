@@ -80,7 +80,7 @@ build.gradle.kts[FV5T]: F:application 模块构建：java-library、Java 8、只
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/===
 ConfigCodec.java[DC8M]: F:config.json 编解码：固定键顺序、归一、白名单、脱敏导出与校验，含提示词/记忆/双向枢纽开关 | R:code:domain/src/main/java/plus/xiaoi/module/AppConfig.java | A:toJson | S:新键必须同时进白名单与固定顺序，否则会被当成 extra 原样写回；inboundEnabled 默认 false
-Mcp.java[IC9L]: F:8771 MCP 协议层：报文分发、工具表 schema、错误码；记忆工具有本地与官方两条通道 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:memoryToolCall | S:工具顺序与错误文案被契约锁定；写类 op 受写开关与 LAN 二次因子（X-Xiaoi-Write）双重约束；正文不进日志
+Mcp.java[IC9L]: F:8771 MCP 协议层：报文分发、工具表 schema、错误码；记忆双通道；按画像过滤工具（full/readonly） | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:filterTools | S:工具顺序与错误文案被契约锁定；readonly 只放 6 个入站工具，其余 FORBIDDEN_TOOL；过滤必须在合并 8772 工具之后做
 PromptInjector.java[IC8M]: F:请求体提示词注入纯函数：Responses 的 instructions / chat 的 system，标记块幂等 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:apply | S:不改就返回原文；replace 仅显式开启；标记块防止多轮累积
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/agent/===
@@ -286,7 +286,7 @@ build.gradle.kts[FV7T]: F:platform 模块构建：Android 库、独立 namespace
 AndroidAppRuntime.java[IU7M]: F:UI 运行时实现装配：把 12 个窄端口接到 App 进程内的具体实现 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/AppRuntime.java | A:AppRuntime | S:端口为 null 直接抛；记忆端口走桥，不要直接读文件
 AppExecutors.java[IR6T]: F:App 进程唯一的后台执行器：固定 3 个 IO 守护线程与主线程回调 | R:code:application/src/main/java/plus/xiaoi/module/application/runtime/BackgroundTasks.java | A:io | S:执行器被关闭时退化为同步执行，保证调用方逻辑不丢；小爱进程里的 Bridge 与 Hook 不能依赖它
 AppLaunch.java[IU5T]: F:打开本 App 的唯一入口：用包名加类名拼显式 Intent | R:code:app/src/main/AndroidManifest.xml | A:ENTRY_CLASS | S:platform 不能引用 app 的 MainActivity，否则依赖倒置；改启动页必须同步这里与一致性门禁
-Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听、HTTP 路由与鉴权、MCP 分发、日志合并、记忆端口（本地+官方）、MCP 客户端连接记录 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handleMcp | S:只有 leader 绑端口；LAN 写需 X-Xiaoi-Write 二次因子；只记录首个 initialize 的 clientInfo（实测 osbot 会连进来）
+Bridge.java[IN9L]: F:小爱进程内的能力桥：8771 监听、HTTP 路由与鉴权、MCP 分发（含 profile 解析）、日志合并、记忆端口、MCP 客户端记录 | R:code:application/src/main/java/plus/xiaoi/module/Mcp.java | A:handleMcp | S:只有 leader 绑端口；LAN 写需 X-Xiaoi-Write；`?profile=readonly` 由 URL 决定，实测 osbot 会连进来
 Config.java[DC7L]: F:进程内不可变配置快照：provider/模型/密钥/开关 + 提示词记忆 + 双向枢纽开关 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:create | S:新增开关必须进 create 的完整重载并随控制面 Binder 下发；实测目标进程读不到模块 prefs，prefs 不是生效路径
 ConfigRepository.java[DC7M]: F:配置读写与 prefs 镜像：提示词/记忆/双向枢纽开关同步写入，供控制面下发 | R:code:application/src/main/java/plus/xiaoi/module/ConfigCodec.java | A:save | S:新增配置键必须同时写 prefs 与 Binder 快照；实测目标进程读不到模块 prefs（660 不同 uid），prefs 不是生效路径
 ConfigSync.java[DC8M]: F:config.json 文件监听与自动应用：防抖、内容哈希去环、启动对齐、从运行中小爱导入 | R:code:platform/src/main/java/plus/xiaoi/module/ConfigRepository.java | A:applyIfChanged | S:用内容哈希去环，否则自己写文件会触发回环；运行时变更绝不静默写回文件，文件永远优先
@@ -304,7 +304,7 @@ MemoryFiles.java[IP5T]: F:记忆文件定位与注入文本读取：files/memory
 PromptRuntime.java[IR5T]: F:提示词注入的运行计数：命中位置、跳过与失败原因（不含正文） | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:recordInjected | S:只记计数与短码；绝不记录提示词/记忆正文
 JsonNodes.java[CI7M]: F:平台层 JSON 结构反射：按样本构造器重建 JsonObject/JsonPrimitive、取可写 backing Map/List、描述工具参数形状 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:constructLike | S:JsonObject/JsonArray 覆写 put/add 会抛异常，原地改写必须走 backingMap/backingList；按类名找不到 JsonPrimitive（R8 已改名）
 PromptFiles.java[CI7M]: F:复刻官方 UpdateCustomPromptTool：写 agents/osbot.main/custom_prompt.md 并调 rj.k1.e.invalidateMemoryCache 让提示词缓存失效 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:sync | S:必须用标记块包裹以便关闭时精确摘除；写前留一份 .bak-xiaoi，原子替换；类名或字段名取不到时安静放弃、回退请求体注入
-McpServerConfig.java[IP6S]: F:读写小爱 mcp/mcp_servers.json：合并/移除我们的条目，写前一次性备份、原子替换，坏 JSON 不动原文件 | R:code:domain/src/main/java/plus/xiaoi/module/core/mcp/InboundRegistration.java | A:sync | S:只在开关变化时改写（内容相同直接跳过）；目录不可用返回 false，调用方只记日志
+McpServerConfig.java[IP6S]: F:读写小爱 mcp/mcp_servers.json：合并/移除我们的条目（url 带 profile=readonly），写前备份、原子替换，坏 JSON 不动原文件 | R:code:domain/src/main/java/plus/xiaoi/module/core/mcp/InboundRegistration.java | A:sync | S:只在内容变化时改写；目录不可用返回 false；端口必须由调用方给真实值（0 会写出不可用地址）
 InboundSync.java[IP6T]: F:双向枢纽同步：按配置把 8771 写进小爱 mcp_servers.json；端口未就绪时后台重试（10×2s） | R:code:platform/src/main/java/plus/xiaoi/module/McpServerConfig.java | A:sync | S:配置热更新早于 leader 绑端口，port=0 时直接写会得到 127.0.0.1:0；非 leader 进程永远 port=0，必须靠重试
 
 ===/<repository>/platform/src/main/java/plus/xiaoi/module/agent/===
@@ -363,7 +363,7 @@ actions.md[SA7S]: F:动作参考：五个动作的参数、返回、风险与通
 SKILL.md[SA8M]: F:技能主文档：8771 单端口、17 个工具（桥 11 + 动作 6）、握手与常见故障 | R:code:.opencode/skills/xiaoi-mcp/SKILL.md | A:xiaoai_status | S:与 .opencode 下的副本内容一致，工具数改了两边都要改
 
 ===/<repository>/skill/xiaoi-mcp/references/===
-tools.md[SA7L]: F:工具逐个参考：17 个工具的参数/返回/错误码，含提示词与记忆（本地+官方）两条通道 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:initialize | S:与 .opencode 副本逐字节一致；上限全部来自 Contract；LAN 写必须写明 X-Xiaoi-Write 二次因子
+tools.md[SA7L]: F:工具逐个参考：17 个工具的参数/返回/错误码，含记忆双通道与入站只读画像 | R:code:domain/src/main/java/plus/xiaoi/module/core/Contract.java | A:协议方法 | S:与 .opencode 副本逐字节一致；上限全部来自 Contract；profile=readonly 的白名单必须与 Mcp.INBOUND_ALLOWED 同步
 
 ===/<repository>/ui/===
 build.gradle.kts[FV7T]: F:ui 模块构建：Android 库加 Compose、Miuix 与 graphics-shapes 依赖，独立 namespace | R:code:application/build.gradle.kts | A:namespace | S:只依赖 domain 与 application；引入 platform 或 infra 会直接破 ui_no_infra 与 ui_no_platform 门禁

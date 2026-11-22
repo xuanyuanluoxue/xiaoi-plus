@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-22T10:34:01Z",
+  "updated_at": "2026-11-22T11:04:49Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "0c357da6403b45f177ccccaf06e7eb47edd0d12752edea763928bc8c5e20113c",
-      "size": 91721,
-      "normalized_sha256": "0c357da6403b45f177ccccaf06e7eb47edd0d12752edea763928bc8c5e20113c"
+      "sha256": "878e012667c5c3255bbbad81fc6db5e3faf95b0074dc1b9bbc40b2b73488a395",
+      "size": 92061,
+      "normalized_sha256": "878e012667c5c3255bbbad81fc6db5e3faf95b0074dc1b9bbc40b2b73488a395"
     },
     "LICENSE": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "92377459b1a353d7f0e79d643b2ae1750838f1ed2fb426ee22f3121468ed0eed",
-      "size": 110393,
-      "normalized_sha256": "92377459b1a353d7f0e79d643b2ae1750838f1ed2fb426ee22f3121468ed0eed"
+      "sha256": "6229fa188676d810029bbab198cc01958cb7491a5e539435e1ab70f5bd64c1b7",
+      "size": 110436,
+      "normalized_sha256": "6229fa188676d810029bbab198cc01958cb7491a5e539435e1ab70f5bd64c1b7"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -245,9 +245,9 @@
     },
     "application/src/main/java/plus/xiaoi/module/Mcp.java": {
       "role": "index",
-      "sha256": "07968d7e2b050aebbde33ca9e4b9ccbc54e9e6880e9a71662546ded8e07527d6",
-      "size": 52675,
-      "normalized_sha256": "07968d7e2b050aebbde33ca9e4b9ccbc54e9e6880e9a71662546ded8e07527d6"
+      "sha256": "36b9366a97878be18a817245a82bffaa5ace98e78692cdd0fc7e3c14b26dacf3",
+      "size": 55664,
+      "normalized_sha256": "36b9366a97878be18a817245a82bffaa5ace98e78692cdd0fc7e3c14b26dacf3"
     },
     "application/src/main/java/plus/xiaoi/module/PromptInjector.java": {
       "role": "index",
@@ -1390,9 +1390,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Bridge.java": {
       "role": "index",
-      "sha256": "8bc9acaddb194b5014a66f0637157268f8b9b9d280b7bd5a3acc5efdd7154caf",
-      "size": 52750,
-      "normalized_sha256": "8bc9acaddb194b5014a66f0637157268f8b9b9d280b7bd5a3acc5efdd7154caf"
+      "sha256": "307f1b6064ed9de51952506a625c551ffc202ca66c071f5762522230097d4ba2",
+      "size": 52905,
+      "normalized_sha256": "307f1b6064ed9de51952506a625c551ffc202ca66c071f5762522230097d4ba2"
     },
     "platform/src/main/java/plus/xiaoi/module/Config.java": {
       "role": "index",
@@ -1438,9 +1438,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/McpServerConfig.java": {
       "role": "index",
-      "sha256": "f257a2769206321d1afb1520d667cea7885b9b4bd25f237a5205c5acacd79917",
-      "size": 5387,
-      "normalized_sha256": "f257a2769206321d1afb1520d667cea7885b9b4bd25f237a5205c5acacd79917"
+      "sha256": "b7338c75df338a9e91c41a17f2eb4ddc7ef37bac3635c0e051ea206c62f779cf",
+      "size": 5404,
+      "normalized_sha256": "b7338c75df338a9e91c41a17f2eb4ddc7ef37bac3635c0e051ea206c62f779cf"
     },
     "platform/src/main/java/plus/xiaoi/module/MemoryFiles.java": {
       "role": "index",
@@ -1864,9 +1864,9 @@
     },
     "skill/xiaoi-mcp/references/tools.md": {
       "role": "index",
-      "sha256": "fcbf283cf83a6426556750420315434a559a5b8022047ed1d9ca628314c37716",
-      "size": 17049,
-      "normalized_sha256": "fcbf283cf83a6426556750420315434a559a5b8022047ed1d9ca628314c37716"
+      "sha256": "4d5653a6fbe360c91b67d4e8cdb90a60c1d9b46adee64f1d990ca83dbf06a2cf",
+      "size": 17463,
+      "normalized_sha256": "4d5653a6fbe360c91b67d4e8cdb90a60c1d9b46adee64f1d990ca83dbf06a2cf"
     },
     "tests/baseline/cli_no_cmd.body": {
       "role": "observe",
@@ -2319,9 +2319,9 @@
     },
     "tests/src/plus/xiaoi/module/McpTest.java": {
       "role": "observe",
-      "sha256": "63690704e1468684847eba02c695e7e1ba6b9ee3eb5d1ab097279fc1080ca942",
-      "size": 37849,
-      "normalized_sha256": "63690704e1468684847eba02c695e7e1ba6b9ee3eb5d1ab097279fc1080ca942"
+      "sha256": "7904aaf6773cb82625dd9f1ea024fdbf7133de9d52a28bd20f798bb25ca465f0",
+      "size": 39772,
+      "normalized_sha256": "7904aaf6773cb82625dd9f1ea024fdbf7133de9d52a28bd20f798bb25ca465f0"
     },
     "tests/src/plus/xiaoi/module/MemoryServiceTest.java": {
       "role": "observe",
