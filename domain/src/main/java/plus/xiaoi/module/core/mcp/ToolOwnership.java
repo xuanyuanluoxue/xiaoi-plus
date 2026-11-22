@@ -20,6 +20,7 @@ public final class ToolOwnership {
 
     private static final String[] BRIDGE_TOOLS = {
             "xiaoai_status",
+            "xiaoai_nlp",
             "xiaoai_submit",
             "xiaoai_todo_create",
             "xiaoai_cli",

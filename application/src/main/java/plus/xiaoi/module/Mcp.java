@@ -77,6 +77,16 @@ public final class Mcp {
 
         /** 单次 tools/call 的元数据回调；不含参数值。 */
         default void onToolCall(String tool, boolean ok, long elapsedMs, int argCount) {}
+
+        /**
+         * 带调用方归属的版本：{@code caller=local|lan|inbound}。
+         *
+         * <p>默认退回旧回调，保持既有实现与测试不用改。</p>
+         */
+        default void onToolCall(String tool, boolean ok, long elapsedMs, int argCount,
+                                String caller) {
+            onToolCall(tool, ok, elapsedMs, argCount);
+        }
     }
 
     /**
@@ -107,6 +117,8 @@ public final class Mcp {
         public final AgentPort agent;
         /** P2 提示词与记忆；null = 两个工具返回「不可用」（单测默认）。 */
         public final MemoryPort memory;
+        /** 小爱进程内 AppTool（通道 A）；null = 相关工具返回不可用。 */
+        public final AppToolPort appTool;
 
         public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
                      IslandPort island, TelemetryPort telemetry) {
@@ -121,6 +133,12 @@ public final class Mcp {
         public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
                      IslandPort island, TelemetryPort telemetry, AgentPort agent,
                      MemoryPort memory) {
+            this(runtime, config, cli, island, telemetry, agent, memory, null);
+        }
+
+        public Hosts(RuntimePort runtime, ConfigPort config, CliPort cli,
+                     IslandPort island, TelemetryPort telemetry, AgentPort agent,
+                     MemoryPort memory, AppToolPort appTool) {
             if (runtime == null || config == null || cli == null
                     || island == null || telemetry == null) {
                 throw new IllegalArgumentException("Mcp.Hosts 端口不能为空");
@@ -132,6 +150,7 @@ public final class Mcp {
             this.telemetry = telemetry;
             this.agent = agent;
             this.memory = memory;
+            this.appTool = appTool;
         }
     }
 
@@ -177,6 +196,22 @@ public final class Mcp {
         default String officialWrite(String query) {
             return "{\"ok\":false,\"code\":\"APPTOOL_UNAVAILABLE\","
                     + "\"message\":\"官方记忆通道未实现\"}";
+        }
+    }
+
+    /**
+     * 小爱进程内 AppTool 端口（通道 A）。
+     *
+     * <p>与 {@link MemoryPort} 分开：记忆是文件语义，这里是「小爱自己的 18 个方法」。
+     * 实现方在 Bridge，底层走 {@code IAppToolProvider} 的 JSON-RPC。</p>
+     */
+    public interface AppToolPort {
+        /** 调用一个 AppTool；返回小爱原样 JSON 或结构化错误。 */
+        String call(String tool, Map<String, Object> args);
+
+        /** 就绪度，例如 {@code apptools=ok methods=18}。 */
+        default String summary() {
+            return "apptools=unknown";
         }
     }
 
@@ -331,8 +366,10 @@ public final class Mcp {
                     Map<String, Object> result = toolsCall(params, hosts, lan, lanWriteOk, profile);
                     try {
                         boolean ok = !Boolean.TRUE.equals(result.get("isError"));
+                        String caller = PROFILE_READONLY.equals(profile) ? "inbound"
+                                : (lan ? "lan" : "local");
                         hosts.telemetry.onToolCall(tool, ok,
-                                System.currentTimeMillis() - started, argCount);
+                                System.currentTimeMillis() - started, argCount, caller);
                     } catch (Throwable ignored) {
                         // 记录失败不能影响工具结果
                     }
@@ -411,9 +448,10 @@ public final class Mcp {
         r.put("protocolVersion", negotiated);
         r.put("capabilities", caps);
         r.put("serverInfo", info);
-        r.put("instructions", "小爱同学+ 统一 MCP 端点（8771，唯一端口）：17 个工具都从这里调用"
-                + "（桥 11 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
-                + "xiaoai_submit 让小爱执行一句话任务，xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
+        r.put("instructions", "小爱同学+ 统一 MCP 端点（8771，唯一端口）：18 个工具都从这里调用"
+                + "（桥 12 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
+                + "xiaoai_submit 让小爱执行一句话任务，xiaoai_nlp 走小爱语义引擎，"
+                + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
                 + "xiaoai_stats 看三方/官方模型调用量，xiaoai_prompt 看系统提示词状态，"
                 + "xiaoai_memory 读写记忆（写需在 App 内开启）。"
                 + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。");
@@ -426,14 +464,39 @@ public final class Mcp {
     public static final int TODO_CONTENT_MAX = plus.xiaoi.module.core.Contract.TODO_CONTENT_MAX;
     /** xiaoai_submit.text 上限。 */
     public static final int SUBMIT_TEXT_MAX = plus.xiaoi.module.core.Contract.SUBMIT_TEXT_MAX;
+    /** xiaoai_nlp.text 上限（自然语言一句）。 */
+    public static final int NLP_TEXT_MAX = 500;
 
     static Map<String, Object> toolsListAll() {
         List<Object> tools = Json.arr();
 
         Map<String, Object> status = Json.obj();
         status.put("name", "xiaoai_status");
-        status.put("description", "探活：返回小爱进程内 facade/CLI 是否就绪，以及桥的监听端口。");
+        status.put("description", "探活：返回小爱进程内 facade/CLI 是否就绪、桥的监听端口，"
+                + "以及 AppTool 通道就绪度（apptools=ok methods=N / apptools=none）。");
         status.put("inputSchema", emptySchema());
+
+        Map<String, Object> nlp = Json.obj();
+        nlp.put("name", "xiaoai_nlp");
+        nlp.put("description", "把小爱自己的语义解析结果以 JSON 返回（小爱进程内 nlp_query，"
+                + "不经过对话模型）：给出这句话会触发的执行计划，形如 "
+                + "{\"type\",\"instruction_types\":[...],\"instruction_count\"}，"
+                + "instruction_types 里的 Application.Operate / Template.Query / UIController.Navigate "
+                + "等即小爱的能力分组。适合外部 Agent 先判断「这句话小爱能不能直接执行、属于哪类」。"
+                + "只在本机解析的语句毫秒级返回；音乐/天气这类要联网的语句在小爱内部不返回，"
+                + "8 秒后回 CALL_TIMEOUT，之后短时间再调回 NLP_BUSY（那条线程仍占着），"
+                + "这类语句请改用 xiaoai_submit。");
+        Map<String, Object> nlpProps = Json.obj();
+        Map<String, Object> nlpText = prop("string", "要解析的自然语言，例如「明天早上八点叫我」");
+        nlpText.put("minLength", 1L);
+        nlpText.put("maxLength", (long) NLP_TEXT_MAX);
+        nlpProps.put("text", nlpText);
+        Map<String, Object> nlpSchema = Json.obj();
+        nlpSchema.put("type", "object");
+        nlpSchema.put("properties", nlpProps);
+        nlpSchema.put("required", list("text"));
+        nlpSchema.put("additionalProperties", Boolean.FALSE);
+        nlp.put("inputSchema", nlpSchema);
 
         Map<String, Object> submit = Json.obj();
         submit.put("name", "xiaoai_submit");
@@ -550,6 +613,7 @@ public final class Mcp {
         st.put("inputSchema", stSchema);
 
         tools.add(status);
+        tools.add(nlp);
         tools.add(submit);
         tools.add(todo);
         tools.add(cli);
@@ -784,7 +848,27 @@ public final class Mcp {
                         + " version=" + hosts.runtime.versionName();
                 String hook = hosts.runtime.hookSummary();
                 if (hook != null && hook.length() > 0) t = t + " " + hook;
+                if (hosts.appTool != null) {
+                    String at = hosts.appTool.summary();
+                    if (at != null && at.length() > 0) t = t + " " + at;
+                }
                 return toolText(t, false);
+            }
+            if ("xiaoai_nlp".equals(name)) {
+                String bad = unexpectedArg(args, "text");
+                if (bad != null) return toolText(bad, true);
+                String text = Json.optString(args, "text", "").trim();
+                if (text.length() == 0) return toolText("missing argument: text", true);
+                if (text.length() > NLP_TEXT_MAX) {
+                    return toolText("text too long (max " + NLP_TEXT_MAX + ")", true);
+                }
+                if (hosts.appTool == null) {
+                    return toolText("APPTOOL_UNAVAILABLE：小爱进程内 AppTool 端口不可用", true);
+                }
+                Map<String, Object> q = Json.obj();
+                q.put("query", text);
+                String out = hosts.appTool.call("nlp_query", q);
+                return toolText(out, failed(out));
             }
             if ("xiaoai_submit".equals(name)) {
                 String bad = unexpectedArg(args, "text", "sessionId", "structured");

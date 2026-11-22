@@ -204,8 +204,34 @@ public final class Bridge {
         }
     };
 
+    /**
+     * 通道 A 单次调用上限：普通工具 5s；{@code nlp_query} 独占线程池，
+     * 本机语句毫秒级，联网语句（音乐/天气）通常一直不返回。
+     */
+    private static final long APPTOOL_TIMEOUT_MS = 5000L;
+    private static final long NLP_TIMEOUT_MS = 8000L;
+
+    /** 通道 A：小爱进程内 AppTool（{@code UIAgentServiceForOSBot}）的 MCP 端口。 */
+    private static final Mcp.AppToolPort MCP_APPTOOL = new Mcp.AppToolPort() {
+        @Override
+        public String call(String tool, Map<String, Object> args) {
+            return plus.xiaoi.module.agent.AppToolClient.callTool(
+                    MemoryFiles.appContext(),
+                    plus.xiaoi.module.agent.AppToolProtocol.VOICEASSIST_PACKAGE,
+                    plus.xiaoi.module.agent.AppToolProtocol.VOICEASSIST_SERVICE,
+                    tool, args,
+                    "nlp_query".equals(tool) ? NLP_TIMEOUT_MS : APPTOOL_TIMEOUT_MS).text;
+        }
+
+        @Override
+        public String summary() {
+            return plus.xiaoi.module.agent.AppToolClient.probe(MemoryFiles.appContext());
+        }
+    };
+
     private static final Mcp.Hosts HOSTS = new Mcp.Hosts(
-            MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_AGENT, MCP_MEMORY);
+            MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_HOSTS, MCP_AGENT, MCP_MEMORY,
+            MCP_APPTOOL);
 
     /** /health 里的 tools 数：本进程自己提供的工具数（不触发对端探测）。 */
     private static int bridgeToolCount() {
@@ -301,8 +327,15 @@ public final class Bridge {
 
         @Override
         public void onToolCall(String tool, boolean ok, long elapsedMs, int argCount) {
+            onToolCall(tool, ok, elapsedMs, argCount, "local");
+        }
+
+        @Override
+        public void onToolCall(String tool, boolean ok, long elapsedMs, int argCount,
+                               String caller) {
             Logs.event(LogLevel.STANDARD, ok ? "I" : "W", "mcp",
-                    "tool=" + tool + " ok=" + ok + " ms=" + elapsedMs + " args=" + argCount);
+                    "caller=" + caller + " tool=" + tool + " ok=" + ok
+                            + " ms=" + elapsedMs + " args=" + argCount);
         }
 
         @Override

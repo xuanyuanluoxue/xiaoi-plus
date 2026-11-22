@@ -21,6 +21,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import plus.xiaoi.module.Logs;
 
@@ -46,6 +47,23 @@ public final class AppToolClient {
      */
     private static final ThreadPoolExecutor CALLS = new ThreadPoolExecutor(
             0, 2, 60L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+
+    /**
+     * {@code nlp_query} 独占的单线程池。
+     *
+     * <p>它对本机语句毫秒级返回，但音乐/天气这类要联网的语句在小爱内部可能**永不返回**
+     * （实测 30s 仍无响应，线程卡在 binder）。binder 不可中断，所以只能隔离：
+     * 卡住的是这一个池，记忆/待办共用 {@link #CALLS} 不受影响；同一时刻最多留一个
+     * 僵尸线程，后续调用直接 {@code NLP_BUSY}，不会越积越多。</p>
+     */
+    private static final ThreadPoolExecutor NLP_CALL = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new SynchronousQueue<Runnable>());
+
+    /** 上一个 nlp_query 是否仍在飞（含卡死后被放弃等待的那种）。 */
+    private static final AtomicBoolean NLP_INFLIGHT = new AtomicBoolean(false);
+
+    /** 独占线程池的工具名。 */
+    private static final String NLP_TOOL = "nlp_query";
 
     public static AppToolProtocol.Result createTodo(Context context, String title, String body) {
         if (context == null) {
@@ -80,7 +98,8 @@ public final class AppToolClient {
                         + component.flattenToShortString());
             }
             return callWithTimeout(app, binder,
-                    AppToolProtocol.buildTodoRequest(t, c));
+                    AppToolProtocol.buildTodoRequest(t, c),
+                    AppToolProtocol.CALL_TIMEOUT_MS, CALLS, false);
         } catch (Throwable e) {
             Logs.e("todo_create 调用失败: " + e);
             return AppToolProtocol.error("CALL_FAILED", "调用 Notes provider 失败", rootMessage(e));
@@ -97,6 +116,20 @@ public final class AppToolClient {
      */
     public static AppToolProtocol.Result callTool(Context context, String pkg, String serviceClass,
                                                  String tool, java.util.Map<String, Object> args) {
+        return callTool(context, pkg, serviceClass, tool, args,
+                AppToolProtocol.CALL_TIMEOUT_MS);
+    }
+
+    /**
+     * 同上，但可指定等待上限。
+     *
+     * <p>{@code nlp_query} 会走网络，调用方按需放宽；它同时独占 {@link #NLP_CALL}
+     * 单线程池，卡死也不会拖垮记忆/待办。binder 本身不可中断，超时后只放弃结果
+     * （线程仍停在原调用内）。</p>
+     */
+    public static AppToolProtocol.Result callTool(Context context, String pkg, String serviceClass,
+                                                 String tool, java.util.Map<String, Object> args,
+                                                 long timeoutMs) {
         if (context == null) {
             return AppToolProtocol.error("CONTEXT_UNAVAILABLE", "拿不到 voiceassist Context");
         }
@@ -104,10 +137,17 @@ public final class AppToolClient {
             return AppToolProtocol.error("MAIN_THREAD_BLOCKED",
                     "拒绝在主线程等待 AppTool binder（会造成 ServiceConnection 回调死锁）");
         }
+        boolean dedicated = NLP_TOOL.equals(tool);
+        if (dedicated && !NLP_INFLIGHT.compareAndSet(false, true)) {
+            return AppToolProtocol.error("NLP_BUSY",
+                    "上一次 nlp_query 还没返回（联网类语句会在小爱内部卡住），"
+                            + "稍后重试或改用 xiaoai_submit");
+        }
         Context app = context.getApplicationContext();
         if (app == null) app = context;
         ComponentName component = new ComponentName(pkg, serviceClass);
         Session session = new Session(app, component);
+        boolean submitted = false;
         try {
             if (!session.bind()) {
                 return AppToolProtocol.error("BIND_REJECTED",
@@ -120,12 +160,32 @@ public final class AppToolClient {
                 return AppToolProtocol.error(reason, "等待 provider 连接失败："
                         + component.flattenToShortString());
             }
-            return callWithTimeout(app, binder, AppToolProtocol.buildCall(tool, args));
+            submitted = true;
+            return callWithTimeout(app, binder, AppToolProtocol.buildCall(tool, args), timeoutMs,
+                    dedicated ? NLP_CALL : CALLS, dedicated);
         } catch (Throwable e) {
             Logs.e("apptool 调用失败: " + e);
             return AppToolProtocol.error("CALL_FAILED", "调用 provider 失败", rootMessage(e));
         } finally {
             session.unbind();
+            // 独占池的占用标记由任务本身释放；这里只兜住「根本没提交」的早退。
+            if (dedicated && !submitted) NLP_INFLIGHT.set(false);
+        }
+    }
+
+    /**
+     * 就绪度探针：只看类在不在、有多少方法，不实例化、不调用业务方法。
+     *
+     * @return 形如 {@code apptools=ok methods=64} / {@code apptools=none}（方法数含 binder 样板）
+     */
+    public static String probe(Context context) {
+        try {
+            ClassLoader cl = context != null ? context.getClassLoader()
+                    : AppToolClient.class.getClassLoader();
+            Class<?> c = Class.forName(AppToolProtocol.VOICEASSIST_SERVICE, false, cl);
+            return "apptools=ok methods=" + c.getDeclaredMethods().length;
+        } catch (Throwable t) {
+            return "apptools=none";
         }
     }
 
@@ -194,32 +254,40 @@ public final class AppToolClient {
     }
 
     private static AppToolProtocol.Result callWithTimeout(
-            final Context context, final IBinder binder, final String request) {
+            final Context context, final IBinder binder, final String request,
+            final long timeoutMs, ThreadPoolExecutor pool, final boolean dedicated) {
         Future<String> future;
         try {
-            future = CALLS.submit(new Callable<String>() {
+            future = pool.submit(new Callable<String>() {
                 @Override
                 public String call() throws Exception {
-                    return handleRequest(context, binder, request);
+                    try {
+                        return handleRequest(context, binder, request);
+                    } finally {
+                        // 真的返回了才释放独占标记；卡死的线程永远占着，后续调用走 NLP_BUSY。
+                        if (dedicated) NLP_INFLIGHT.set(false);
+                    }
                 }
             });
         } catch (RejectedExecutionException e) {
-            return AppToolProtocol.error("BUSY", "Notes 调用并发已满（前一次可能仍卡在 binder）");
+            if (dedicated) NLP_INFLIGHT.set(false);
+            return AppToolProtocol.error("BUSY",
+                    "AppTool 并发已满（前一次调用仍卡在 binder）");
         }
         try {
-            String raw = future.get(AppToolProtocol.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            String raw = future.get(timeoutMs, TimeUnit.MILLISECONDS);
             return AppToolProtocol.parseResponse(raw);
         } catch (TimeoutException e) {
             future.cancel(true);
             return AppToolProtocol.error("CALL_TIMEOUT",
-                    "handleRequest 超过 " + AppToolProtocol.CALL_TIMEOUT_MS + "ms");
+                    "handleRequest 超过 " + timeoutMs + "ms");
         } catch (InterruptedException e) {
             future.cancel(true);
             Thread.currentThread().interrupt();
-            return AppToolProtocol.error("INTERRUPTED", "等待 Notes 响应时被中断");
+            return AppToolProtocol.error("INTERRUPTED", "等待 AppTool 响应时被中断");
         } catch (ExecutionException e) {
             Throwable cause = e.getCause() == null ? e : e.getCause();
-            Logs.e("todo_create binder 异常: " + cause);
+            Logs.e("apptool binder 异常: " + cause);
             return AppToolProtocol.error("CALL_FAILED", "handleRequest 抛异常",
                     rootMessage(cause));
         }

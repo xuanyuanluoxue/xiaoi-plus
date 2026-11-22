@@ -128,9 +128,10 @@ public final class McpTest {
         eq("initialize", "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-03-26\","
                         + "\"capabilities\":{\"tools\":{\"listChanged\":false}},"
                         + "\"serverInfo\":{\"name\":\"xiaoi-plus\",\"version\":\"9.9.9\"},"
-                        + "\"instructions\":\"小爱同学+ 统一 MCP 端点（8771，唯一端口）：17 个工具都从这里调用"
-                        + "（桥 11 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
-                        + "xiaoai_submit 让小爱执行一句话任务，xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
+                        + "\"instructions\":\"小爱同学+ 统一 MCP 端点（8771，唯一端口）：18 个工具都从这里调用"
+                        + "（桥 12 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
+                        + "xiaoai_submit 让小爱执行一句话任务，xiaoai_nlp 走小爱语义引擎，"
+                        + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
                         + "xiaoai_stats 看三方/官方模型调用量，xiaoai_prompt 看系统提示词状态，"
                         + "xiaoai_memory 读写记忆（写需在 App 内开启）。"
                         + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。\"}}",
@@ -184,11 +185,11 @@ public final class McpTest {
         eq("frame jsonrpc", "2.0", root.get("jsonrpc"));
         eq("frame id", Long.valueOf(3), root.get("id"));
         List<?> tools = (List<?>) ((Map<?, ?>) root.get("result")).get("tools");
-        eq("tool count", 11, tools.size());
-        eq("tool order", "xiaoai_status,xiaoai_submit,xiaoai_todo_create,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats,xiaoai_prompt,xiaoai_memory",
+        eq("tool count", 12, tools.size());
+        eq("tool order", "xiaoai_status,xiaoai_nlp,xiaoai_submit,xiaoai_todo_create,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats,xiaoai_prompt,xiaoai_memory",
                 names(tools));
 
-        Map<?, ?> submit = (Map<?, ?>) tools.get(1);
+        Map<?, ?> submit = (Map<?, ?>) tools.get(2);
         eq("submit description independent transcription",
                 "让小爱（手机端语音助手）执行一句话任务。默认返回它的回复文本；"
                         + "structured=true 时返回 {\"ok\",\"text\",\"sessionId\"}，可用 sessionId 续聊。"
@@ -200,7 +201,7 @@ public final class McpTest {
         eq("submit props", "[text, sessionId, structured]",
                 ((Map<?, ?>) submitSchema.get("properties")).keySet().toString());
 
-        Map<?, ?> todo = (Map<?, ?>) tools.get(2);
+        Map<?, ?> todo = (Map<?, ?>) tools.get(3);
         ok("todo description says deterministic/no LLM",
                 ((String) todo.get("description")).contains("不经过 LLM"));
         ok("todo description recommends submit fallback",
@@ -211,22 +212,22 @@ public final class McpTest {
                 ((Map<?, ?>) todoSchema.get("properties")).keySet().toString());
         eq("todo additionalProperties", Boolean.FALSE, todoSchema.get("additionalProperties"));
 
-        Map<?, ?> sw = (Map<?, ?>) tools.get(6);
+        Map<?, ?> sw = (Map<?, ?>) tools.get(7);
         Map<?, ?> swSchema = (Map<?, ?>) sw.get("inputSchema");
         eq("switch required", "[model]", ((List<?>) swSchema.get("required")).toString());
         eq("switch props", "[model, marker]",
                 ((Map<?, ?>) swSchema.get("properties")).keySet().toString());
 
-        Map<?, ?> lg = (Map<?, ?>) tools.get(7);
+        Map<?, ?> lg = (Map<?, ?>) tools.get(8);
         ok("logs schema has no required",
                 !((Map<?, ?>) lg.get("inputSchema")).containsKey("required"));
 
         String toolText = Mcp.toolListText();
         ok("工具清单含 xiaoai_stats", toolText.contains("xiaoai_stats"));
         ok("工具清单含 xiaoai_todo_create", toolText.contains("xiaoai_todo_create"));
-        eq("工具清单行数", 11, toolText.split("\n").length);
+        eq("工具清单行数", 12, toolText.split("\n").length);
 
-        Map<?, ?> statsTool = (Map<?, ?>) tools.get(8);
+        Map<?, ?> statsTool = (Map<?, ?>) tools.get(9);
         eq("stats props", "[days]",
                 ((Map<?, ?>) ((Map<?, ?>) statsTool.get("inputSchema")).get("properties")).keySet().toString());
 
@@ -591,6 +592,19 @@ public final class McpTest {
                 !callProfile(p2, 47, "xiaoai_submit", "{\"text\":\"hi\"}",
                         Mcp.PROFILE_FULL).contains("FORBIDDEN_TOOL"));
 
+        // 通道 A：nlp_query + apptools 探针
+        FakeAppTool app = new FakeAppTool();
+        Mcp.Hosts p3 = new Mcp.Hosts(h, h, h, h, h, null, mem, app);
+        call(p3, 50, "xiaoai_nlp", "{\"text\":\"明天早上八点叫我\"}");
+        eq("nlp 透传工具名", "nlp_query", app.tool);
+        eq("nlp 透传 query", "明天早上八点叫我", app.query);
+        ok("nlp 缺 text 被拒",
+                call(p3, 50, "xiaoai_nlp", "{}").contains("missing argument: text"));
+        ok("status 带 apptools 探针",
+                call(p3, 51, "xiaoai_status", null).contains("apptools=ok methods=18"));
+        ok("无 appTool 时 nlp 报不可用",
+                call(p2, 52, "xiaoai_nlp", "{\"text\":\"hi\"}").contains("APPTOOL_UNAVAILABLE"));
+
         // 没有记忆端口时两个工具都明确报不可用，而不是伪造空结果
         ok("无端口时 xiaoai_prompt 报不可用",
                 call(hs, 36, "xiaoai_prompt", null).contains("不可用"));
@@ -695,6 +709,24 @@ public final class McpTest {
             sb.append(((Map<?, ?>) t).get("name"));
         }
         return sb.toString();
+    }
+
+    /** 通道 A 的假实现：记录调用参数，返回固定 JSON。 */
+    private static final class FakeAppTool implements Mcp.AppToolPort {
+        String tool;
+        String query;
+
+        @Override
+        public String call(String tool, Map<String, Object> args) {
+            this.tool = tool;
+            this.query = args == null ? null : String.valueOf(args.get("query"));
+            return "{\"ok\":true,\"data\":{\"alarm\":[]},\"render_token\":\"t1\"}";
+        }
+
+        @Override
+        public String summary() {
+            return "apptools=ok methods=18";
+        }
     }
 
     /** P2：提示词/记忆端口的假实现。 */
