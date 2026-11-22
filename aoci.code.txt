@@ -80,7 +80,7 @@ build.gradle.kts[FV5T]: F:application 模块构建：java-library、Java 8、只
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/===
 ConfigCodec.java[DC8M]: F:config.json 编解码：固定键顺序、归一、白名单、脱敏导出与校验，含提示词/记忆/双向枢纽开关 | R:code:domain/src/main/java/plus/xiaoi/module/AppConfig.java | A:toJson | S:新键必须同时进白名单与固定顺序，否则会被当成 extra 原样写回；inboundEnabled 默认 false
-Mcp.java[IC9L]: F:8771 MCP 协议层：报文分发、工具表 schema、错误码；记忆双通道；按画像过滤工具（full/readonly） | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:filterTools | S:工具顺序与错误文案被契约锁定；readonly 只放 6 个入站工具，其余 FORBIDDEN_TOOL；过滤必须在合并 8772 工具之后做
+Mcp.java[IC9L]: F:8771 MCP 协议层：报文分发、版本协商、工具表 schema、错误码；记忆双通道；按画像过滤工具 | R:code:platform/src/main/java/plus/xiaoi/module/Bridge.java | A:initializeResult | S:只认自己实现的协议版本（2025-03-26/2024-11-05），其余回落而非硬编；readonly 过滤必须在合并 8772 工具之后做
 PromptInjector.java[IC8M]: F:请求体提示词注入纯函数：Responses 的 instructions / chat 的 system，标记块幂等 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:apply | S:不改就返回原文；replace 仅显式开启；标记块防止多轮累积
 
 ===/<repository>/application/src/main/java/plus/xiaoi/module/agent/===
@@ -152,6 +152,7 @@ PLAN-MCP-SURFACE.md[SG8S]: F:MCP 工具面规划：先做通道 A 探针，只�
 PLAN-MEMORY.md[SG8S]: F:记忆规划：读写检索转官方 readMemory/writeMemory，本地 MEMORY.md 降级为只读快照与兜底 | R:code:docs/agent/P2-PROMPT-MEMORY.md | A:转调官方 | S:写入口是自然语言、官方会抽取改写，只承诺可被检索到；LAN 写 op 一律拒绝；正文不进日志与默认导出
 PLAN-PERSONA-SKILLS.md[SG8S]: F:人格/技能规划：客户端改 system 已证伪，只保留输入文本、工具面、文件面三条边界 | R:code:reverse/docs/05-skills.md | A:已证伪清单 | S:六条注入路径全部无效（含 bogus 模型仍正常回复）；人格包必须文件层+文本层双落地；诊断先行
 ROADMAP.md[SG9S]: F:路线图：四份专项去重后的 P0/P1/P2、依赖图与五个待拍板分叉 | R:code:docs/agent/PLAN-MEMORY.md | A:P0 | S:0.18.0 只做探针+记忆只读+LAN 写拦截+caller 审计；人格线与双向接入不得同期进；安全统一为来源/画像/拦截三层
+RESEARCH-CRAFT-ANYTHING.md[SG6T]: F:调研 storytold/craft-anything：它是逆向+重做引擎（Rust/stdio MCP），对本项目只在协议协商、工具表派生、命名归一三处可借鉴 | R:code:docs/agent/ROADMAP.md | A:建议 | S:4 万星但早期 alpha；Android 静态工具可对拍 dexindex，但需拿混淆 APK 实测；同名 RayCodes 仓库为噪声
 
 ===/<repository>/docs/refactor/===
 LAYERING-2.md[SG8M]: F:第二阶段分层：从 3 模块到 6 模块的缺口分析、依赖矩阵、WP7 至 WP13 工作包与 DoD | R:code:docs/refactor/LAYERING.md | A:G1 | S:本阶段已完成（WP7 到 WP13），门禁基线必须保持 0 条；文档保留“计划（未执行）”状态行是因为它记录的是开工前判断
