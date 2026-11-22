@@ -92,6 +92,27 @@ public final class PromptInjector {
     }
 
     /**
+     * 只算出要注入的块文本（记忆围栏 + 用户提示词），不改 JSON。
+     *
+     * <p>Hook 侧用它 + {@link #merge} 直接改活对象，避免"序列化再解析"依赖
+     * 小爱里的 kotlinx 单例——那个类名/字段名会随版本混淆变化。</p>
+     */
+    public static String block(Options o) {
+        Options opts = o == null ? Options.off() : o;
+        String prompt = opts.enabled ? truncate(PromptTemplate.render(opts.text, null).trim()) : "";
+        String memory = opts.memoryInject ? memoryBlock(opts.memoryText, opts.memoryInjectLines) : "";
+        return join(memory, prompt.length() == 0 ? "" : wrap(prompt));
+    }
+
+    /** 同 {@link #block}，但用给定变量渲染。 */
+    public static String block(Options o, PromptTemplate.Vars vars) {
+        Options opts = o == null ? Options.off() : o;
+        String prompt = opts.enabled ? truncate(PromptTemplate.render(opts.text, vars).trim()) : "";
+        String memory = opts.memoryInject ? memoryBlock(opts.memoryText, opts.memoryInjectLines) : "";
+        return join(memory, prompt.length() == 0 ? "" : wrap(prompt));
+    }
+
+    /**
      * 改写一条请求体。
      *
      * @param json 请求体 JSON 文本（kotlinx {@code JsonObject.toString()}）
@@ -102,10 +123,9 @@ public final class PromptInjector {
         if (json == null || json.length() == 0) return unchanged(json, "empty");
         Options opts = o == null ? Options.off() : o;
 
-        String prompt = opts.enabled ? truncate(PromptTemplate.render(opts.text, vars).trim()) : "";
-        boolean replace = opts.enabled && isReplace(opts.mode) && prompt.length() > 0;
-        String memory = opts.memoryInject ? memoryBlock(opts.memoryText, opts.memoryInjectLines) : "";
-        String block = join(memory, prompt.length() == 0 ? "" : wrap(prompt));
+        String block = block(opts, vars);
+        boolean replace = opts.enabled && isReplace(opts.mode) && opts.text != null
+                && opts.text.trim().length() > 0;
         if (block.length() == 0) return unchanged(json, "off");
 
         Map<String, Object> root;
@@ -202,7 +222,7 @@ public final class PromptInjector {
     // ------------------------------------------------------------- 合并
 
     /** 追加/替换一段标记块；已有标记时原位替换，避免重复累积。 */
-    static String merge(String current, String block, boolean replace) {
+    public static String merge(String current, String block, boolean replace) {
         String cur = current == null ? "" : current;
         if (replace) return block;
         int begin = cur.indexOf(MARKER_PREFIX);
