@@ -46,7 +46,7 @@ public final class McpServerConfig {
             String current = read(target);
             String next = enabled
                     ? InboundRegistration.upsert(current,
-                            "http://127.0.0.1:" + port + "/mcp", token)
+                            "http://127.0.0.1:" + port + "/mcp?profile=readonly", token)
                     : InboundRegistration.remove(current);
             if (next == null) {
                 Logs.i("mcp_servers.json 解析失败，未改动（" + current.length() + " 字）");

@@ -249,14 +249,32 @@ public final class Mcp {
      * @return 响应体；通知（无 id）返回 null，调用方应回 202 空体
      */
     public static String handle(String body, Hosts hosts) {
-        return handle(body, hosts, false, false);
+        return handle(body, hosts, false, false, PROFILE_FULL);
     }
+
+    /** 完整权限（本机 / 外部 Agent 默认）。 */
+    public static final String PROFILE_FULL = "full";
+
+    /** 只读画像：给「小爱反向调用」用，禁止一切会再触发小爱或改配置的工具。 */
+    public static final String PROFILE_READONLY = "readonly";
+
+    /** 入站（小爱）允许的工具：只读查询与设备动作，不含 submit/ask/cli/config/confirm。 */
+    private static final java.util.Set<String> INBOUND_ALLOWED =
+            new java.util.HashSet<String>(java.util.Arrays.asList(
+                    "xiaoai_status", "device.info", "app.open",
+                    "alarm.set", "media.control", "notification.send"));
 
     /**
      * @param lan         true = 请求来自非 loopback 连接（局域网）
      * @param lanWriteOk 局域网请求是否带了写二次因子（{@code X-Xiaoi-Write: <token>}）
+     * @param profile     {@link #PROFILE_FULL} 或 {@link #PROFILE_READONLY}
      */
     public static String handle(String body, Hosts hosts, boolean lan, boolean lanWriteOk) {
+        return handle(body, hosts, lan, lanWriteOk, PROFILE_FULL);
+    }
+
+    public static String handle(String body, Hosts hosts, boolean lan, boolean lanWriteOk,
+                                String profile) {
         try {
             if (body == null || body.length() == 0) {
                 return rpcError(null, -32700, "empty body");
@@ -289,7 +307,7 @@ public final class Mcp {
                 // 否则 A→B→A 无限递归。对端由 LoopbackMcpClient 带 params.own=true。
                 Object p = req.get("params");
                 boolean own = p instanceof Map && Json.optBoolean((Map<?, ?>) p, "own", false);
-                return rpcResult(id, own ? toolsList() : toolsListMerged(hosts));
+                return rpcResult(id, own ? toolsList(profile) : toolsListMerged(hosts, profile));
             }
             if ("tools/call".equals(m)) {
                 // 只覆盖同进程同步调用链：工具执行期间产生的 Logs 行会带 req=<id>。
@@ -305,7 +323,7 @@ public final class Mcp {
                         if (a instanceof Map) argCount = ((Map<?, ?>) a).size();
                     }
                     long started = System.currentTimeMillis();
-                    Map<String, Object> result = toolsCall(params, hosts, lan, lanWriteOk);
+                    Map<String, Object> result = toolsCall(params, hosts, lan, lanWriteOk, profile);
                     try {
                         boolean ok = !Boolean.TRUE.equals(result.get("isError"));
                         hosts.telemetry.onToolCall(tool, ok,
@@ -385,7 +403,7 @@ public final class Mcp {
     /** xiaoai_submit.text 上限。 */
     public static final int SUBMIT_TEXT_MAX = plus.xiaoi.module.core.Contract.SUBMIT_TEXT_MAX;
 
-    public static Map<String, Object> toolsList() {
+    static Map<String, Object> toolsListAll() {
         List<Object> tools = Json.arr();
 
         Map<String, Object> status = Json.obj();
@@ -524,6 +542,37 @@ public final class Mcp {
         return r;
     }
 
+    /** 按画像过滤后的工具表：readonly 只留入站白名单。 */
+    public static Map<String, Object> toolsList() {
+        return toolsList(PROFILE_FULL);
+    }
+
+    public static Map<String, Object> toolsList(String profile) {
+        return filterTools(toolsListAll(), profile);
+    }
+
+    /** 按画像过滤：readonly 只留 {@link #INBOUND_ALLOWED}。 */
+    static Map<String, Object> filterTools(Map<String, Object> all, String profile) {
+        if (!PROFILE_READONLY.equals(profile) || all == null) return all;
+        List<Object> kept = Json.arr();
+        Object v = all.get("tools");
+        if (v instanceof List) {
+            for (Object t : (List<?>) v) {
+                if (t instanceof Map && INBOUND_ALLOWED.contains(nameOf((Map<?, ?>) t))) {
+                    kept.add(t);
+                }
+            }
+        }
+        Map<String, Object> r = Json.obj();
+        r.put("tools", kept);
+        return r;
+    }
+
+    private static String nameOf(Map<?, ?> tool) {
+        Object n = tool.get("name");
+        return n == null ? "" : String.valueOf(n);
+    }
+
     /**
      * 单端口统一：本机（8771）工具 + 从 8772 转发来的动作面工具。
      *
@@ -531,17 +580,27 @@ public final class Mcp {
      * 只有能力桥工具，保证 8771 本身永远可用。</p>
      */
     public static Map<String, Object> toolsListMerged(Hosts hosts) {
-        Map<String, Object> r = toolsList();
-        if (hosts == null || hosts.agent == null) return r;
+        return toolsListMerged(hosts, PROFILE_FULL);
+    }
+
+    public static Map<String, Object> toolsListMerged(Hosts hosts, String profile) {
+        Map<String, Object> r = toolsListAll();
+        mergeAgentTools(r, hosts);
+        return filterTools(r, profile);
+    }
+
+    /** 把 8772 的动作面工具并进 {@code r}；对端不可用时静默跳过。 */
+    private static void mergeAgentTools(Map<String, Object> r, Hosts hosts) {
+        if (hosts == null || hosts.agent == null) return;
         Object extra;
         try {
             extra = hosts.agent.tools();
         } catch (Throwable t) {
-            return r;
+            return;
         }
-        if (!(extra instanceof List)) return r;
+        if (!(extra instanceof List)) return;
         Object mineObj = r.get("tools");
-        if (!(mineObj instanceof List)) return r;
+        if (!(mineObj instanceof List)) return;
         @SuppressWarnings("unchecked")
         List<Object> mine = (List<Object>) mineObj;
         java.util.Set<String> seen = new java.util.HashSet<String>();
@@ -556,7 +615,6 @@ public final class Mcp {
             seen.add(name);
             mine.add(o);
         }
-        return r;
     }
 
     /** 工具名列表（去掉 xiaoai_ 前缀），供状态速览等紧凑展示。 */
@@ -677,7 +735,16 @@ public final class Mcp {
     }
 
     static Map<String, Object> toolsCall(Map<?, ?> params, Hosts hosts, boolean lan, boolean lanWriteOk) {
+        return toolsCall(params, hosts, lan, lanWriteOk, PROFILE_FULL);
+    }
+
+    static Map<String, Object> toolsCall(Map<?, ?> params, Hosts hosts, boolean lan,
+                                         boolean lanWriteOk, String profile) {
         String name = params == null ? "" : Json.optString(params, "name", "");
+        if (PROFILE_READONLY.equals(profile) && !INBOUND_ALLOWED.contains(name)) {
+            return toolText("FORBIDDEN_TOOL: 入站（小爱）只允许 "
+                    + INBOUND_ALLOWED + "；其余工具请由外部 Agent 直接调用", true);
+        }
         Map<?, ?> args = null;
         if (params != null) {
             Object a = params.get("arguments");

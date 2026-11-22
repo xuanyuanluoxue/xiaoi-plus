@@ -1067,7 +1067,9 @@ public final class Bridge {
             }
             boolean lan = !isLoopback(s);
             logMcpClientOnce(req.body);
-            String out = Mcp.handle(req.body, HOSTS, lan, lan && writeFactorOk(req.headers));
+            String profile = Mcp.PROFILE_READONLY.equals(req.query.get("profile"))
+                    ? Mcp.PROFILE_READONLY : Mcp.PROFILE_FULL;
+            String out = Mcp.handle(req.body, HOSTS, lan, lan && writeFactorOk(req.headers), profile);
             if (out == null) {
                 Http.respondAccepted(s.getOutputStream());
                 return;

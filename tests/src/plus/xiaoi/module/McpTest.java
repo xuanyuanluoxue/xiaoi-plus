@@ -566,6 +566,22 @@ public final class McpTest {
                         "{\"op\":\"official_write\",\"q\":\"记住我喜欢猫\"}", true, false)
                         .contains("DENIED_LAN"));
 
+        // 入站画像（小爱反向调用）：只暴露只读/设备动作子集
+        String roList = listProfile(p2, Mcp.PROFILE_READONLY);
+        ok("readonly 工具表含 xiaoai_status", roList.contains("\"xiaoai_status\""));
+        ok("readonly 工具表不含 xiaoai_submit", !roList.contains("\"xiaoai_submit\""));
+        ok("readonly 工具表不含 xiaoai_cli", !roList.contains("\"xiaoai_cli\""));
+        ok("readonly 工具表不含 xiaoai_memory", !roList.contains("\"xiaoai_memory\""));
+
+        String roSubmit = callProfile(p2, 45, "xiaoai_submit", "{\"text\":\"hi\"}",
+                Mcp.PROFILE_READONLY);
+        ok("readonly 调用 submit 被拒", roSubmit.contains("FORBIDDEN_TOOL"));
+        String roStatus = callProfile(p2, 46, "xiaoai_status", null, Mcp.PROFILE_READONLY);
+        ok("readonly 调用 status 放行", !roStatus.contains("FORBIDDEN_TOOL"));
+        ok("full 画像仍可 submit",
+                !callProfile(p2, 47, "xiaoai_submit", "{\"text\":\"hi\"}",
+                        Mcp.PROFILE_FULL).contains("FORBIDDEN_TOOL"));
+
         // 没有记忆端口时两个工具都明确报不可用，而不是伪造空结果
         ok("无端口时 xiaoai_prompt 报不可用",
                 call(hs, 36, "xiaoai_prompt", null).contains("不可用"));
@@ -635,6 +651,24 @@ public final class McpTest {
         }
         sb.append("}}");
         return Mcp.handle(sb.toString(), hosts, lan, writeOk);
+    }
+
+    /** 指定画像的调用（readonly = 小爱入站）。 */
+    private static String callProfile(Mcp.Hosts hosts, int id, String name, String argsJson,
+                                      String profile) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"jsonrpc\":\"2.0\",\"id\":").append(id)
+                .append(",\"method\":\"tools/call\",\"params\":{\"name\":\"").append(name).append("\"");
+        if (argsJson != null) {
+            sb.append(",\"arguments\":").append(argsJson);
+        }
+        sb.append("}}");
+        return Mcp.handle(sb.toString(), hosts, false, false, profile);
+    }
+
+    private static String listProfile(Mcp.Hosts hosts, String profile) {
+        return Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}",
+                hosts, false, false, profile);
     }
 
     /** 取 tools/call 响应里 content[0].text（text 内嵌 JSON）。 */

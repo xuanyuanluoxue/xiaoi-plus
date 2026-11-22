@@ -4,6 +4,11 @@
 
 **方向：双向枢纽 + 官方记忆 + 局域网写鉴权**
 
+- **入站画像**：`/mcp?profile=readonly` 只暴露
+  `xiaoai_status` / `device.info` / `app.open` / `alarm.set` / `media.control` /
+  `notification.send`，其余调用返回 `FORBIDDEN_TOOL`。双向枢纽写入小爱
+  `mcp_servers.json` 的 url 即带该参数，避免「小爱调 `xiaoai_submit` 再触发小爱」的自递归。
+
 - **官方记忆通道**：`xiaoai_memory` 新增 `op=official`（转调小爱 `read_memory`，返回官方口径）
   与 `op=official_write`（自然语言交给官方抽取，拒绝「忘掉/删除/清空」）。走
   `UIAgentServiceForOSBot` 的 AppTool JSON-RPC，与 `xiaoai_todo_create` 同一条 binder 通道；

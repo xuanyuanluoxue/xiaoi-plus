@@ -3,6 +3,12 @@
 协议：JSON-RPC 2.0 over HTTP，单端点 `POST /mcp`，无会话。
 鉴权：`Authorization: Bearer <token>`。
 
+**入站画像**：`POST /mcp?profile=readonly` 只暴露
+`xiaoai_status` / `device.info` / `app.open` / `alarm.set` / `media.control` /
+`notification.send`，其余工具调用返回 `FORBIDDEN_TOOL`。
+双向枢纽写进小爱 `mcp_servers.json` 的 url 就带这个参数，防止「小爱调我们的 submit
+→ 我们再调小爱」的自递归；外部 Agent 用不带参数的 `/mcp` 拿到全部工具。
+
 **0.16.0 起只有一个端口 `8771`**：App 进程不再单独监听，设备动作工具由 App 执行但
 从同一个端点调用（共 17 个工具：桥 11 + 设备动作 6）。
 App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可判断；
