@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-22T10:14:01Z",
+  "updated_at": "2026-11-22T10:34:01Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "ddcc598c1ec20aedc3c45edce6afb6ca8c52b16acd30cc45c5e7ef17471661e3",
-      "size": 110370,
-      "normalized_sha256": "ddcc598c1ec20aedc3c45edce6afb6ca8c52b16acd30cc45c5e7ef17471661e3"
+      "sha256": "92377459b1a353d7f0e79d643b2ae1750838f1ed2fb426ee22f3121468ed0eed",
+      "size": 110393,
+      "normalized_sha256": "92377459b1a353d7f0e79d643b2ae1750838f1ed2fb426ee22f3121468ed0eed"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1390,9 +1390,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Bridge.java": {
       "role": "index",
-      "sha256": "36c49af86a02266e4b29375d5977d843d628c8285848ef8b9d544bb1f1a50685",
-      "size": 51322,
-      "normalized_sha256": "36c49af86a02266e4b29375d5977d843d628c8285848ef8b9d544bb1f1a50685"
+      "sha256": "8bc9acaddb194b5014a66f0637157268f8b9b9d280b7bd5a3acc5efdd7154caf",
+      "size": 52750,
+      "normalized_sha256": "8bc9acaddb194b5014a66f0637157268f8b9b9d280b7bd5a3acc5efdd7154caf"
     },
     "platform/src/main/java/plus/xiaoi/module/Config.java": {
       "role": "index",
