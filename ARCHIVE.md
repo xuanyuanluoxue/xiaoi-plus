@@ -49,9 +49,8 @@ LSPosed 模块 + 设置 App：把小米超级小爱的请求重定向到自己�
 1. **真机 P0 未跑完**：WP1–WP6 的权限矩阵、D2 TTL、8770 启停、配置导入、
    watcher、8771 LAN/leader、控制面端口上报仍需真机验收。
 2. ~~git 历史丢失~~ **已解决（2026-11-18）**：原 WSL 仓库 2026-11-17 被异常清空，
-   但原仓库副本 `D:\code\Android\xiaoi-plus` 保留了完整的 v0.15.0 历史、
-   WP0–WP3 提交、分支与 remote。WP4–WP6 与文档迁移已重放到真实历史上。详见
-   [docs/refactor/RECOVERY-2026-11-17.md](docs/refactor/RECOVERY-2026-11-17.md)。
+   但原仓库副本 `D:\code\Android\xiaoi-plus` 保留了完整历史、提交、分支与 remote。
+   WP4–WP6 与文档迁移已重放到真实历史上；一次性恢复记录已删除，过程见 git 历史。
 3. 既有产品限制仍有效：输出前缀（markerTemplate）未单点注入；
    官方调用量统计在真机未触发；部分 UI 仍硬编码中文；旧 `ConfigActivity` 保留为过渡入口。
 4. `:application` 仍包含纯 JVM I/O 适配器（`Http`、`ConfigStore`、`BridgeClient`、
@@ -100,7 +99,7 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 | `TASK-FOR-OPENCODE.md` | 2026-11-10 的临时任务书，内容已被本文件与 `docs/refactor/` 覆盖 |
 | `build.sh` | 无 Gradle 的旧构建（javac + aapt2 + d8），分层重构后已无法编译；构建只剩 `./gradlew :app:assembleRelease` |
 | `opencode.json` | AOCI MCP 的本机配置，路径是 WSL 时代且 `enabled:false`（本机工具不存在） |
-| `HANDOVER.md` → `docs/archive/HANDOVER-2026-11-08.md` | 0.14 时代的交接说明，文件自己也标注为历史；移入 `docs/archive/` 保留历史 |
+| `HANDOVER.md` | 一次性交接说明，内容已被 README 与 `docs/` 覆盖（已删除） |
 
 ### 项目外目录清理（2026-11-19）
 

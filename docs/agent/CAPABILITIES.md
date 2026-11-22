@@ -3,7 +3,7 @@
 > 状态：**草案，待评审**（2026-11-07）
 > 目的：把“这个项目能让用户做到什么”拆成可核对的条目，每条都写清
 > **实现方式、作用域、执行通道、现状与风险**，避免把“能做”和“已做”混在一起。
-> 关联：[PLAN.md](PLAN.md)、[PHASE0-REPORT.md](PHASE0-REPORT.md)、[PHASE1.md](PHASE1.md)。
+> 关联：`PLAN.md`、`PHASE0-REPORT.md`、`PHASE1.md`。
 
 ## 0. 字段说明
 

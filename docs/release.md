@@ -2,7 +2,7 @@
 
 0.14 起用 Gradle wrapper 构建（Windows 原生 `gradlew.bat :app:assembleRelease`，
 Linux/WSL `./gradlew :app:assembleRelease`），CI 与本地发版都走 Gradle；
-旧的 `build.sh` 已在 0.16.0 删除（历史见 [archive/build-sh-legacy.md](archive/build-sh-legacy.md)）。
+旧的 `build.sh` 已在 0.16.0 删除（历史见 `archive/build-sh-legacy.md`）。
 发版额外做三件事：定版本、用固定密钥签名、把产物和校验和挂到 GitHub Release。
 
 > 当前主环境是 Windows 原生；`scripts/*.sh` 用 Git Bash 或 WSL 执行。

@@ -95,17 +95,17 @@
 | 文档 | 内容 |
 |---|---|
 | [NEXT.md](NEXT.md) | **下一阶段优化（当前入口）**：Windows 环境、P0–P5 路线 |
-| [PLAN.md](PLAN.md) | **权威计划**：最终决策、目标架构、工作包、迁移、验收 |
-| [WORKPACKAGES.md](WORKPACKAGES.md) | 8 个工作包的详细范围、验收、测试、子 Agent 指令模板（历史） |
+| `PLAN.md` | **权威计划**：最终决策、目标架构、工作包、迁移、验收 |
+| `WORKPACKAGES.md` | 8 个工作包的详细范围、验收、测试、子 Agent 指令模板（历史） |
 | [LAYERING.md](LAYERING.md) | 第一阶段分层改造（WP0~WP6，已完成） |
 | [LAYERING-2.md](LAYERING-2.md) | **第二阶段分层计划（WP7~WP13，3 模块 → 6 模块）** |
 | [LOGGING-1.md](LOGGING-1.md) | **日志子系统重构（WP-L1~WP-L5：纯 JVM ring / 批量落盘 / 追加字段）** |
-| [WP2-HOOK.md](WP2-HOOK.md) | WP2 执行计划与记录（Hook 策略 + 进程宿主） |
-| [WP3-BRIDGE.md](WP3-BRIDGE.md) | WP3 执行计划与记录（Mcp 端口拆分 + 生命周期决策） |
-| [WP4-UI.md](WP4-UI.md) | WP4 执行计划与记录（AppRuntime + UI 去 Context） |
-| [WP5-CORE.md](WP5-CORE.md) | WP5 执行计划与记录（`:core` 物理模块） |
-| [WP6-DOMAIN.md](WP6-DOMAIN.md) | WP6 执行计划与记录（`:domain` / `:application`） |
-| [RECOVERY-2026-11-17.md](RECOVERY-2026-11-17.md) | 仓库异常清空后的恢复记录 |
+| `WP2-HOOK.md` | WP2 执行计划与记录（Hook 策略 + 进程宿主） |
+| `WP3-BRIDGE.md` | WP3 执行计划与记录（Mcp 端口拆分 + 生命周期决策） |
+| `WP4-UI.md` | WP4 执行计划与记录（AppRuntime + UI 去 Context） |
+| `WP5-CORE.md` | WP5 执行计划与记录（`:core` 物理模块） |
+| `WP6-DOMAIN.md` | WP6 执行计划与记录（`:domain` / `:application`） |
+| `RECOVERY-2026-11-17.md` | 仓库异常清空后的恢复记录 |
 | [drafts/](drafts/) | 被否决的 v1 草案（HMAC/Provider/配对码），仅作讨论记录 |
 
 ## 8. 当前决策

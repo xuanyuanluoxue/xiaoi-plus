@@ -1,7 +1,7 @@
 # 构建规范（Gradle / Compose / Miuix）
 
 > 状态：**生效**（0.14 P0 起；2026-11-17 起主环境为 Windows 原生）
-> 关联：[PLAN.md](PLAN.md)、[CONVENTIONS.md](CONVENTIONS.md)。
+> 关联：`PLAN.md`、[CONVENTIONS.md](CONVENTIONS.md)。
 > 目标：一条命令可复现地产出可覆盖安装的签名 APK，并保留现有 JVM 测试与门禁。
 
 ## 0. Windows 原生（当前主环境）

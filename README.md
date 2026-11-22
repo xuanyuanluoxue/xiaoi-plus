@@ -10,18 +10,15 @@
 > 仅作为快照 tag，项目继续优化。并行/后续计划见
 > [docs/refactor/NEXT.md](docs/refactor/NEXT.md)。
 >
-> 📦 当前版本：**v0.15.0**（Compose + Miuix UI 收尾：渐变模糊顶栏 / 玻璃底栏 / 统一配色 / 多档位日志）·
-> [更新日志](CHANGELOG.md) ·
-> [下载 / 发布状态](https://github.com/xuanyuanluoxue/xiaoi-plus/releases)
+> 📦 版本与下载：[Releases](https://github.com/xuanyuanluoxue/xiaoi-plus/releases) ·
+> [更新日志](CHANGELOG.md)（版本沿革只在这里）
 
 > 💬 **交流群**：QQ `1121057362`（问题反馈、版本适配、使用交流）
 > 提 issue 也可以，但群里回得更快。
 >
-> ✅ 0.14 的 JVM 单测、工程一致性、APK 签名指纹与 R8 release 构建可在本机复现；
-> P1/P2 功能与视觉验收结果见 [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)
-> 与 `docs/ui/reports/`。R8 后 APK 实测 **1.6 MiB**，LSPosed 注入已真机复验。
-> ⚠️ 0.16.0 起设备操作并入 8771，模块只占用一个端口（小爱自带服务仍会占用 8770，与本模块无关）。
-> 小爱任务接口（8771）不受影响。详见 [已知限制](docs/ui/RELEASE-0.14.md#4-已知限制)。
+> ✅ JVM 单测、工程一致性、APK 签名指纹与 R8 release 构建都在本机可复现；
+> R8 后 APK 约 **1.7 MiB**，LSPosed 注入已真机复验。
+> ⚠️ 设备操作与 MCP 共用 **8771 一个端口**（小爱自带服务仍占用 8770，与本模块无关）。
 
 ## 它做什么
 
@@ -32,19 +29,18 @@
 | 图片理解 | 让第三方模型正常收到截图/图片（hook `getSupportsVision`），不再被换成占位文本 | ✅ 已验证 |
 | 本地能力桥 | 在小爱进程内开一个 `8771~8775` 接口（`/health`、`/cli`、`/logs`、`/stats`、`/mcp`、`/island`），Bearer token 鉴权；默认只绑 `127.0.0.1`；全机只由 leader 进程监听一个端口；`POST /config` 已停用（410） | 🧪 实验性，默认关闭 |
 | 局域网 MCP | 显式打开「允许局域网访问」且 token 为 32 位 hex 时才监听 `0.0.0.0`，同一 Wi-Fi 的电脑可直接连；短/弱 token 自动回退 loopback；关闭开关立即回到仅本机。测试便利选项：「允许弱密码」放任意非空密码，「免鉴权」连 token 都不要（都可随时关） | 🧪 实验性，默认关闭 |
-| 设备操作接口 | **并入 8771**（0.16.0 单端口）：打开应用/通知/闹钟/音量/设备信息/小爱代理由 App 进程执行，但**不单独监听**，经控制面 Binder 从 8771 转发；局域网与令牌跟随 8771 | 🧪 实验性，随桥开启 |
-| 系统提示词 | 把用户自己的提示词追加到小爱每次请求（`instructions` / system 消息），带 `{{date}}/{{time}}/{{model}}/{{device}}` 变量与幂等标记；替换模式需二次确认 | 🧪 0.17 新增，默认关闭 |
-| 记忆 | 按小节只读 `files/memory/MEMORY.md`，可追加/替换小节（写前备份 5 份、原子替换、无删除入口）；摘要可注入提示词 | 🧪 0.17 新增，写入默认关闭 |
+| 设备操作接口 | **并入 8771**（单端口）：打开应用/通知/闹钟/音量/设备信息/小爱代理由 App 进程执行，但**不单独监听**，经控制面 Binder 从 8771 转发；局域网与令牌跟随 8771 | 🧪 实验性，随桥开启 |
+| 系统提示词 | 把用户自己的提示词追加到小爱每次请求（`instructions` / system 消息），带 `{{date}}/{{time}}/{{model}}/{{device}}` 变量与幂等标记；替换模式需二次确认 | 🧪 实验性，默认关闭 |
+| 记忆 | 按小节只读 `files/memory/MEMORY.md`，可追加/替换小节（写前备份 5 份、原子替换、无删除入口）；摘要可注入提示词 | 🧪 实验性，写入默认关闭 |
 | MCP 端点 | **只有一个端口 8771**：`POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），17 个工具（桥 11 + 设备动作 6）全部从这一个端点提供 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |
 
-已验证的小爱版本见 [兼容性矩阵](docs/compatibility.md)，目前只有 **8.2.65.4714**。
+已验证的小爱版本见 [兼容性矩阵](docs/compatibility.md)。
 
-## 设置 App（0.14 UI）
+## 设置 App
 
-0.14 起设置页是**单 Activity + Compose + Miuix**，底部 4 个 tab；0.15.1 起旧版
-`HomeActivity` / `ConfigActivity` / `BaseActivity` 与旧 `ui/config/*` 已删除，
-只剩 Compose 入口（通知/闹钟/桌面图标都指向 `MainActivity`）。
+设置页是**单 Activity + Compose + Miuix**，底部 4 个 tab；
+通知/闹钟/桌面图标都指向 `MainActivity`。
 
 | tab | 主要页面 | 能做什么 |
 |---|---|---|
@@ -57,8 +53,8 @@
 - 深浅色跟随系统或手动三档；颜色/字号来自 `XiaoiTheme`，组件优先用 Miuix
   （`Scaffold`、`SmallTopAppBar`、`NavigationBar`、`Card`、`Button`、`Switch`、
   `TextField`、`SnackbarHost`），只有 Miuix 没有的筛选 chip、空态、状态 Hero 自绘。
-- 日志页支持级别筛选、跟随、清空、分享；0.14 **没有域筛选**。
-- 「系统提示词」「记忆」0.17 起可用（默认关）：提示词追加/替换、记忆分节只读与追加；
+- 日志页支持级别/来源/进程筛选、跟随、清空，以及受筛选的导出（ZIP / 文本 / JSON）。
+- 「系统提示词」「记忆」可用（默认关）：提示词追加/替换、记忆分节只读与追加；
   工具注入、技能包、语音与路由仍是只读占位，没有开关也没有执行入口。
 - 页面与组件契约见 [docs/ui/SCREENS.md](docs/ui/SCREENS.md)、
   [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md)。
@@ -115,7 +111,7 @@ adb install -r xiaoi-plus-<version>.apk
 | 启用第三方模型 | 小爱（主开关） | 暂停只关重定向，不清配置 | 开 |
 | 开启本地能力桥 | 接入 › 令牌与局域网 | 实验性，默认关；默认监听 `127.0.0.1:8771~8775` | 开 |
 | 允许局域网访问 | 接入 › 令牌与局域网 | 需配合 **32 位十六进制** Token；满足时监听 `0.0.0.0`，同一 Wi-Fi 的设备可直连 `/mcp`。短 token/非 hex token 自动回退仅本机 | 关 |
-| 设备操作 · 局域网 | 接入 › 令牌与局域网 | 0.16.0 起与 MCP 同端口：由「小爱任务 · 局域网」统一控制，不再有独立开关 | — |
+| 设备操作 · 局域网 | 接入 › 令牌与局域网 | 与 MCP 同端口：由「小爱任务 · 局域网」统一控制，不再有独立开关 | — |
 | 能力桥 Token | 接入 › 令牌与局域网 | 调用方必须带 `Authorization: Bearer <token>`；**留空则拒绝所有请求**（除非显式打开「本机免鉴权」）。局域网要求 32 hex（128 bit） | 一段长随机串 |
 | 允许本机免令牌调用 | 接入 › 令牌与局域网 | 可选，默认关；打开后**本机与局域网**都不校验 Bearer（测试便利选项，风险见 security.md §3.1） | 关 |
 | 允许弱密码用于局域网 | 接入 › 令牌与局域网 | 可选，默认关；打开后任意非空密码都能作为 Bearer 并绑定 `0.0.0.0`（默认要求 32 hex） | 关 |
@@ -201,7 +197,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 
 ### MCP 端点（可选，随桥开启）
 
-0.16.0 起是**真正的单端口**：模块只监听 8771 一个端口，App 进程不再开任何 socket。
+**只有一个端口**：模块只监听 8771，App 进程不开任何 socket，App 进程不再开任何 socket。
 互相补齐工具，**两个端点都返回同一套 17 个工具**，客户端只配一个即可。
 
 - 端点不写死：桥从 `8771` 起，被占用会顺延（`8771~8775`），**以 `/health` 的 `port=`
@@ -296,8 +292,7 @@ App 保存配置后会通知小爱重新拉取（不再有 `/config` HTTP 推送
 
 ## 从源码构建
 
-**0.16.0 起 Gradle 是唯一构建入口**（旧的 `build.sh` 已删除，历史见
-[docs/archive/build-sh-legacy.md](docs/archive/build-sh-legacy.md)）：
+**Gradle 是唯一构建入口**（旧的 `build.sh` 已删除）：
 
 ```bash
 gradlew.bat :app:assembleRelease     # Windows
@@ -329,9 +324,6 @@ scripts\deploy.cmd
 
 **当前主开发环境是 Windows 原生**：`D:\code\Android\xiaoi-plus`；
 WSL 通过 `/mnt/d/code/Android/xiaoi-plus` 访问同一份源码跑脚本/单测。
-原 WSL 仓库在 2026-11-17 被异常清空，但原始历史（v0.15.0 及 WP0–WP3）在
-`D:\code\Android\xiaoi-plus` 中完整保留，WP4–WP6 已重放到该历史上；
-恢复记录见 [docs/refactor/RECOVERY-2026-11-17.md](docs/refactor/RECOVERY-2026-11-17.md)。
 
 环境：
 
@@ -386,12 +378,10 @@ bash scripts/verify-apk.sh app/build/outputs/apk/release/app-release.apk
 `bash scripts/contract-test.sh --check`（或 `XIAOI_TOKEN=<token> bash scripts/contract-test.sh`）
 是可选的真机契约，设备断开时会跳过/失败，不要把它当成日常构建门禁。
 
-R8/shrink 与 CI 已随 0.14 收尾：release 开启 `minifyEnabled` + `shrinkResources`，
-APK 从 8.4 MiB 降到 **1.9 MiB**（实测）。版本号单一来源是
-`app/src/main/AndroidManifest.xml` 的 `android:versionName` / `android:versionCode`
-（Gradle 读取）；当前为 `0.15.0` / `22`。完整构建说明见
-[docs/ui/BUILD.md](docs/ui/BUILD.md)，版本说明见
-[docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md)。
+R8/shrink 已开启：release 使用 `minifyEnabled` + `shrinkResources`，APK 约 **1.9 MiB**。
+版本号单一来源是 `app/src/main/AndroidManifest.xml` 的
+`android:versionName` / `android:versionCode`（Gradle 与 `scripts/version.sh` 都从这里读），
+不要在任何文档里写死当前版本。构建说明见 [docs/ui/BUILD.md](docs/ui/BUILD.md)。
 
 ## 完全卸载
 
@@ -417,19 +407,17 @@ APK 从 8.4 MiB 降到 **1.9 MiB**（实测）。版本号单一来源是
 
 | 文档 | 内容 |
 |---|---|
-| [docs/ui/RELEASE-0.14.md](docs/ui/RELEASE-0.14.md) | 0.14 版本内容、页面清单、验收、限制、截图索引 |
-| [docs/ui/BUILD.md](docs/ui/BUILD.md) | 0.14 Gradle/Compose 构建、门禁、截图命令 |
-| [docs/ui/SCREENS.md](docs/ui/SCREENS.md) | 22 条路由、页面区块与 0.14 不做项 |
-| [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md) | Miuix 组件契约、`FilterChips`、设备操作状态判定 |
-| [docs/archive/build-sh-legacy.md](docs/archive/build-sh-legacy.md) | 历史：≤0.13 的 `build.sh` 构建（脚本已在 0.16.0 删除） |
-| [docs/release.md](docs/release.md) | 版本号、签名密钥、发 tag、回滚 |
-| [docs/security.md](docs/security.md) | 密钥存哪、数据去向、桥的边界、回滚与风险 |
-| [docs/compatibility.md](docs/compatibility.md) | 版本矩阵、适配新版本的操作清单 |
-| [docs/architecture.md](docs/architecture.md) | hook 点与设计原则 |
-| [docs/design-system.md](docs/design-system.md) | UI 声明（令牌 / 组件 / 状态）+ 对比度实测 |
-| [docs/ui-architecture.md](docs/ui-architecture.md) | 旧版四页结构与数据流（0.14 新结构见 SCREENS） |
+| [docs/README.md](docs/README.md) | 文档索引（从这里进） |
+| [CHANGELOG.md](CHANGELOG.md) | 更新日志：版本沿革的唯一出处 |
+| [docs/ui/BUILD.md](docs/ui/BUILD.md) | Gradle/Compose 构建、门禁、截图命令 |
+| [docs/ui/SCREENS.md](docs/ui/SCREENS.md) | 路由表、页面区块与不做项 |
+| [docs/ui/COMPONENTS.md](docs/ui/COMPONENTS.md) | Miuix 组件契约、`FilterChips`、状态判定 |
+| [docs/release.md](docs/release.md) | 签名密钥、发 tag、回滚 |
+| [docs/security.md](docs/security.md) | 密钥存哪、数据去向、桥的边界 |
+| [docs/compatibility.md](docs/compatibility.md) | 小爱版本矩阵与适配清单 |
+| [docs/architecture.md](docs/architecture.md) | 单端口拓扑、hook 点与设计原则 |
+| [docs/design-system.md](docs/design-system.md) | UI 令牌、组件与对比度实测 |
 | [docs/remote-debug.md](docs/remote-debug.md) | 远程调试与排障 |
-| [CHANGELOG.md](CHANGELOG.md) | 更新日志 |
 
 ## 赞助
 

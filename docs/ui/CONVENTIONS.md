@@ -2,7 +2,7 @@
 
 > 状态：**生效**（0.14 起）
 > 适用范围：`app/src/main/java/plus/xiaoi/module/ui/**`、`MainActivity.kt`、`capability/**`、`core/**` 的新增 UI 支撑类。
-> 关联：[PLAN.md](PLAN.md)、[COMPONENTS.md](COMPONENTS.md)、[SCREENS.md](SCREENS.md)、[BUILD.md](BUILD.md)。
+> 关联：`PLAN.md`、[COMPONENTS.md](COMPONENTS.md)、[SCREENS.md](SCREENS.md)、[BUILD.md](BUILD.md)。
 
 ## 1. 总原则
 

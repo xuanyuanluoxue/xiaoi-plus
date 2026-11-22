@@ -1,7 +1,7 @@
 # 页面规范（0.14）
 
 > 状态：**生效**（0.14 parity）
-> 关联：[PLAN.md](PLAN.md)、[CONVENTIONS.md](CONVENTIONS.md)、[COMPONENTS.md](COMPONENTS.md)。
+> 关联：`PLAN.md`、[CONVENTIONS.md](CONVENTIONS.md)、[COMPONENTS.md](COMPONENTS.md)。
 > 数据来源以 Java 核心为准；本文只定义“展示什么、什么时候显示、点了去哪”。
 >
 > ⚠️ **0.16.0 变更（覆盖本文对应条目）**：设备操作不再有独立端口，已并入 8771。
