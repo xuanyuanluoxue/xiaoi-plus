@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-22T09:58:58Z",
+  "updated_at": "2026-11-22T10:14:01Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "d36b225c753194fb6c99c63c6533db7c1d0f3af8cd49257a7c0b8a0b37879c24",
-      "size": 109884,
-      "normalized_sha256": "d36b225c753194fb6c99c63c6533db7c1d0f3af8cd49257a7c0b8a0b37879c24"
+      "sha256": "ddcc598c1ec20aedc3c45edce6afb6ca8c52b16acd30cc45c5e7ef17471661e3",
+      "size": 110370,
+      "normalized_sha256": "ddcc598c1ec20aedc3c45edce6afb6ca8c52b16acd30cc45c5e7ef17471661e3"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -149,9 +149,9 @@
     },
     "app/src/main/java/plus/xiaoi/module/Hook.java": {
       "role": "index",
-      "sha256": "3de6b8271444791b3602123cd98e82f0879e8ca68b1da018c0a539b259bf476f",
-      "size": 47103,
-      "normalized_sha256": "3de6b8271444791b3602123cd98e82f0879e8ca68b1da018c0a539b259bf476f"
+      "sha256": "ec4f61469a60f724f9d782853f4aab761d71450bfe77075fea827cb6b46db5c4",
+      "size": 47362,
+      "normalized_sha256": "478ffcb5ceb590b24b995ebe38c7556183b423f908e6e85df16e793c2e5eead1"
     },
     "app/src/main/java/plus/xiaoi/module/MainActivity.kt": {
       "role": "index",
@@ -1390,15 +1390,15 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Bridge.java": {
       "role": "index",
-      "sha256": "a9eaa0501f78b1d97cf8e0ba9009912ab6c1192aa08f85190dcfe371c832ddb7",
-      "size": 51280,
-      "normalized_sha256": "a9eaa0501f78b1d97cf8e0ba9009912ab6c1192aa08f85190dcfe371c832ddb7"
+      "sha256": "36c49af86a02266e4b29375d5977d843d628c8285848ef8b9d544bb1f1a50685",
+      "size": 51322,
+      "normalized_sha256": "36c49af86a02266e4b29375d5977d843d628c8285848ef8b9d544bb1f1a50685"
     },
     "platform/src/main/java/plus/xiaoi/module/Config.java": {
       "role": "index",
-      "sha256": "445fe35c06d368123147e7ccfe3c7c0b101bd2ae73978f603b71f0aa7a01eed4",
-      "size": 23279,
-      "normalized_sha256": "445fe35c06d368123147e7ccfe3c7c0b101bd2ae73978f603b71f0aa7a01eed4"
+      "sha256": "d4db22b86aa708512293a119361104d84e13e07ef3712c4ca75ab4786b7487ee",
+      "size": 24522,
+      "normalized_sha256": "d4db22b86aa708512293a119361104d84e13e07ef3712c4ca75ab4786b7487ee"
     },
     "platform/src/main/java/plus/xiaoi/module/ConfigRepository.java": {
       "role": "index",
@@ -1411,6 +1411,12 @@
       "sha256": "0697b92525aadca6853df623b75a681eca0dcc0ddeb21473eab5449cc18829a1",
       "size": 13081,
       "normalized_sha256": "0697b92525aadca6853df623b75a681eca0dcc0ddeb21473eab5449cc18829a1"
+    },
+    "platform/src/main/java/plus/xiaoi/module/InboundSync.java": {
+      "role": "index",
+      "sha256": "f562c303f25c8dbf03ff5a77f8a84c602ddd6fc7eb4ea8878c74bf6b52b3f469",
+      "size": 2929,
+      "normalized_sha256": "f562c303f25c8dbf03ff5a77f8a84c602ddd6fc7eb4ea8878c74bf6b52b3f469"
     },
     "platform/src/main/java/plus/xiaoi/module/Island.java": {
       "role": "index",
@@ -1546,9 +1552,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/bridge/BridgeControlClient.java": {
       "role": "index",
-      "sha256": "18a6e73adb6dd41ae760cf15da259519db5a1b4fb721b50be450eae744d9ce26",
-      "size": 29334,
-      "normalized_sha256": "18a6e73adb6dd41ae760cf15da259519db5a1b4fb721b50be450eae744d9ce26"
+      "sha256": "d4968ef871c51210286bb9811ec0b8bddf11c55fcd63098dbfee5a738d9e2fb9",
+      "size": 29373,
+      "normalized_sha256": "d4968ef871c51210286bb9811ec0b8bddf11c55fcd63098dbfee5a738d9e2fb9"
     },
     "platform/src/main/java/plus/xiaoi/module/bridge/BridgeLifecycle.java": {
       "role": "index",
