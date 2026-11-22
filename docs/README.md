@@ -37,6 +37,11 @@
 | 文档 | 内容 |
 |---|---|
 | [agent/CAPABILITIES.md](agent/CAPABILITIES.md) | 能力清单与风险分级（唯一事实源） |
+| [agent/ROADMAP.md](agent/ROADMAP.md) | **路线图入口**：去重、P0/P1/P2、需要拍板的分叉 |
+| [agent/PLAN-MCP-SURFACE.md](agent/PLAN-MCP-SURFACE.md) | MCP 工具面扩张：探针、18 个 App 工具、先做什么 |
+| [agent/PLAN-PERSONA-SKILLS.md](agent/PLAN-PERSONA-SKILLS.md) | 人格/提示词/技能/多 Agent：已证伪路径与三条可行边界 |
+| [agent/PLAN-MEMORY.md](agent/PLAN-MEMORY.md) | 记忆：转调官方、本地只读快照、隐私红线 |
+| [agent/PLAN-INTEROP.md](agent/PLAN-INTEROP.md) | 双向接入：8771 反向注册、进程内 18 方法、AIDL/A2A |
 | [agent/PLAN.md](agent/PLAN.md) | Agent 能力层：设备动作、root/Shizuku、记忆 |
 | [agent/OSBOT-PROTOCOL.md](agent/OSBOT-PROTOCOL.md) | 小爱内部协议逆向笔记 |
 | [agent/P2-PROMPT-MEMORY.md](agent/P2-PROMPT-MEMORY.md) | 提示词与记忆：设计、验收、未做项 |

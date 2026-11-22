@@ -14,7 +14,7 @@
 Agent 是「一个专职助手」，skill 是「一份操作手册」。二者的共同点：
 都是**文件驱动的**，都能在不升级 APK 的情况下增删。
 
-## 2. Agent 清单（19 个）
+## 2. Agent 清单（20 个）
 
 `assets/agents/*/config.json` 的公共字段：
 
@@ -39,7 +39,7 @@ Agent 是「一个专职助手」，skill 是「一份操作手册」。二者�
 | `osbot.taiyi` | 太乙 | sub | 1 | 4 | 白名单：日历、个人数据、记忆、便签 |
 | `com.android.camera` | 相机 | sub | — | 15 | 自带 `skills/smart-camera/SKILL.md` |
 | `com.xiaomi.lyrabridge-watch` | 手表协同 | sub | 3 | 20 | 白名单含 `weather2__*`、应用商店 |
-| `com.miui.notes-*`（7 个） | 便签系列 | sub | 1–3 | 1–30 | 编辑/搜索/分类/标题/导入/语音创作 |
+| `com.miui.notes-*`（8 个） | 便签系列 | sub | 1–3 | 1–30 | 编辑/搜索/分类/标题/导入/语音创作 |
 | `com.xiaomi.type*`（5 个） | 输入法/写作 | sub | 1 | 1 | 纠错、改写、回复、翻译、通用 |
 
 要点：

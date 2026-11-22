@@ -19,7 +19,7 @@ flowchart TB
   end
 
   subgraph ORCH["编排层 com.aios.osbot（8145 类）"]
-    O1["AgentManager / AgentRegistry<br/>assets/agents/*/config.json（19 个）"]
+    O1["AgentManager / AgentRegistry<br/>assets/agents/*/config.json（20 个）"]
     O2["osbot.main 主 Agent<br/>mode=main · depth≤3 · iter≤30 · allow=*"]
     O3["子 Agent<br/>taiyi / chat / group_chat / notes×7 / type×5 / camera / watch"]
     O4["意图路由 router.semantic<br/>280+ 类"]
@@ -298,7 +298,7 @@ flowchart LR
 
 | 层 | 关键类 / 文件 | 职责 | 证据 |
 |---|---|---|---|
-| 编排 | `assets/agents/*/config.json` | 19 个 Agent：mode、depth、迭代数、工具白/黑名单 | 静态 |
+| 编排 | `assets/agents/*/config.json` | 20 个 Agent：mode、depth、迭代数、工具白/黑名单 | 静态 |
 | 编排 | `com.aios.osbot.tools.Tool` | 工具接口：`getName` / `getParameters` / `execute` | 静态 |
 | 能力 | `ToolRegistry` | 注册、`searchTools`、`getToolDefinitions`、denylist | 静态 |
 | 能力 | `ToolExecutor` | 权限、写路径安全、风险工具、执行轨迹 | 静态 |

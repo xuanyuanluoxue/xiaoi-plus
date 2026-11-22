@@ -9,7 +9,7 @@
 - 摸清的结论（均带证据级别）：
   - **481 个工具**（12 个分组、42 个服务前缀），常驻 20 个，其余靠
     `tool_search` / `call_tool` 两级检索；
-  - **19 个 Agent 定义**（`assets/agents/*/config.json` + `prompt.md`）与
+  - **20 个 Agent 定义**（`assets/agents/*/config.json` + `prompt.md`）与
     `SKILL.md` 技能格式（文件驱动，可 `reload_*` 热更新）；
   - **18 个进程内 App 工具**（`UIAgentServiceForOSBot`：`nlpQuery`、记忆读写、
     文生图、翻译、媒体、屏幕理解…）；

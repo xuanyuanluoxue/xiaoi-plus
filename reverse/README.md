@@ -18,7 +18,7 @@ reverse/
 │   ├── 02-model-pipeline.md   模型链路：配置对象、四个客户端、请求体、tools 参数
 │   ├── 03-agent-runtime.md    Agent 运行时：facade / CLI / 意图分发
 │   ├── 04-toolchain.md        工具链：481 个工具、20 个常驻、两级检索
-│   ├── 05-skills.md           Agent 定义（19 个）与 skill（SKILL.md）
+│   ├── 05-skills.md           Agent 定义（20 个）与 skill（SKILL.md）
 │   ├── 06-memory.md           记忆：ClawMemory、三件套工具、生成流水线
 │   ├── 07-obfuscation.md      混淆漂移与重定位配方
 │   ├── 08-internal-api.md     **内部 API**：18 个 App 工具 + 5 个导出 AIDL + MCP
@@ -108,7 +108,7 @@ reverse/  ──结论──▶  docs/（产品文档）
 
 ## 当前最重要的三条结论
 
-1. 小爱有 **481 个工具**、**19 个 Agent 定义**、**MCP 客户端**，全部是文件驱动的
+1. 小爱有 **481 个工具**、**20 个 Agent 定义**、**MCP 客户端**，全部是文件驱动的
    （`assets/agents/`、`assets/mcp/`），可 `reload_*` 热更新。
 2. 它对外导出了 **5 个 AIDL 服务**（`ExternalAgentService` / `CliCommandService` …），
    权限是 signature|privileged —— 普通 App 拿不到，但我们的 hook 跑在它进程里。
