@@ -50,7 +50,7 @@ AndroidManifest.xml[FV8T]: F:壳清单：versionName 与 versionCode 唯一来�
 xposed_init[FV6T]: F:Xposed 入口声明：一行写 Hook 类全名 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:plus.xiaoi.module.Hook | S:类改名必须同步这里，否则 LSPosed 找不到入口且不报任何错
 
 ===/<repository>/app/src/main/java/plus/xiaoi/module/===
-Hook.java[EI8L]: F:LSPosed 入口：白名单判定后装 hook（重定向/视觉/用量/provider/facade/请求注入），并一次性采样模型请求的 tools 形状 | R:code:platform/src/main/java/plus/xiaoi/module/JsonNodes.java | A:applyPromptInjection | S:注入失败必须保持原请求；JSON 元素重建与工具采样都委托 platform/JsonNodes；build*Request 返回值改写实测不影响实际发送内容
+Hook.java[EI8L]: F:LSPosed 入口：白名单判定后装 hook（重定向/视觉/用量/provider/facade/提示词注入），并一次性采样 tools 与请求体形状 | R:code:platform/src/main/java/plus/xiaoi/module/JsonNodes.java | A:mutateRequestInPlace | S:注入失败必须保持原请求；实测 8.2.70 改请求体与系统提示词出口都不影响云端回复，需走官方 custom_prompt 或 UI 路径
 MainActivity.kt[EU8L]: F:单 Activity 壳：4 个 tab、22 条路由、返回栈与 snackbar | R:code:ui/src/main/java/plus/xiaoi/module/ui/screen/xiaoai/PromptScreen.kt | A:NavHost | S:新路由必须同步 SCREENS.md；二级页隐藏底栏并显示返回
 
 ===/<repository>/app/src/main/res/drawable/===
@@ -296,7 +296,7 @@ XiaoiProcessHost.java[DO6T]: F:小爱进程宿主端口：进程启动、facade 
 XiaoiProcessHostImpl.java[IO6T]: F:小爱进程宿主的 Android 组装：把调用委托给 Bridge 与 Island，配置热更新走注入的回调 | R:code:platform/src/main/java/plus/xiaoi/module/XiaoiProcessHost.java | A:ConfigReloader | S:本类只做委托；reloader 由构造注入而非直接依赖 Hook，否则控制面会重新绑上 Hook
 MemoryFiles.java[IP5T]: F:记忆文件定位与注入文本读取：files/memory 下的 outline/MEMORY | R:code:infra/src/main/java/plus/xiaoi/module/memory/MemoryFileStore.java | A:outline | S:只读；读不到回空串；limit 要夹在 Contract 上限内
 PromptRuntime.java[IR5T]: F:提示词注入的运行计数：命中位置、跳过与失败原因（不含正文） | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:recordInjected | S:只记计数与短码；绝不记录提示词/记忆正文
-JsonNodes.java[CI7M]: F:平台层 JSON 元素结构反射：按样本对象自身构造器重建 JsonObject/JsonPrimitive，并描述模型请求的工具参数形状 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:constructLike | S:不要按类名找 JsonPrimitive（R8 已改名）；JsonObject 实现 Map 可直接 copyMap；重建失败返回 null 让调用方保留原值
+JsonNodes.java[CI7M]: F:平台层 JSON 结构反射：按样本构造器重建 JsonObject/JsonPrimitive、取可写 backing Map/List、描述工具参数形状 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:constructLike | S:JsonObject/JsonArray 覆写 put/add 会抛异常，原地改写必须走 backingMap/backingList；按类名找不到 JsonPrimitive（R8 已改名）
 
 ===/<repository>/platform/src/main/java/plus/xiaoi/module/agent/===
 AgentAlarmReceiver.java[IH6S]: F:App 内闹钟到点提醒：高优先级闹钟渠道、铃声、尽力全屏提醒与点击进入设置页 | R:code:platform/src/main/java/plus/xiaoi/module/agent/AndroidExecutor.java | A:onReceive | S:全屏提醒没权限时系统会直接忽略，不能因此判失败，通知与铃声仍必须发出
