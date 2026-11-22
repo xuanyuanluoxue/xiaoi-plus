@@ -221,6 +221,7 @@ public final class ConfigRepository implements ConfigGateway {
                     .putBoolean(Config.KEY_MEMORY_INJECT, c.memoryInject)
                     .putInt(Config.KEY_MEMORY_INJECT_LINES, c.memoryInjectLines)
                     .putBoolean(Config.KEY_MEMORY_WRITE, c.memoryWriteEnabled)
+                    .putBoolean(Config.KEY_INBOUND, c.inboundEnabled)
                     .putLong(Config.KEY_CFG_REV, c.rev)
                     .commit();
         }

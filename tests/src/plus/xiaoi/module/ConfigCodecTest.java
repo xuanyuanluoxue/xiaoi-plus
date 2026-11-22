@@ -12,7 +12,7 @@ public final class ConfigCodecTest {
             "{\"version\":3,\"rev\":1,\"enabled\":true,\"marker\":true,\"markerTemplate\":\"[模型: {model}] \","
             + "\"logLevel\":\"standard\","
             + "\"promptEnabled\":false,\"promptMode\":\"append\",\"promptText\":\"\","
-            + "\"memoryInject\":false,\"memoryInjectLines\":20,\"memoryWriteEnabled\":false,"
+            + "\"memoryInject\":false,\"memoryInjectLines\":20,\"memoryWriteEnabled\":false,\"inboundEnabled\":false,"
             + "\"activeProviderId\":\"crazyai\",\"activeModelId\":\"your-model\","
             + "\"mcp\":{\"enabled\":true,\"lan\":false,\"agentLan\":false,\"noAuth\":false,\"weakToken\":false,\"token\":\"tok-123\"},"
             + "\"providers\":[{\"id\":\"crazyai\",\"name\":\"CrashMail\","

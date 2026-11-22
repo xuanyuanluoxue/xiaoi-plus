@@ -107,6 +107,8 @@ public final class AppConfig {
     public int memoryInjectLines = 20;
     /** true = 允许 MCP / UI 写 MEMORY.md（写前备份）。默认 false。 */
     public boolean memoryWriteEnabled;
+    /** true = 把 8771 注册进小爱的 mcp_servers.json（双向枢纽）。默认 false。 */
+    public boolean inboundEnabled;
 
     public Provider activeProvider() {
         for (Provider p : providers) {

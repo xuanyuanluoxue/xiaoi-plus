@@ -59,6 +59,7 @@ public final class ConfigCodec {
         c.memoryInject = Json.optBoolean(o, "memoryInject", false);
         c.memoryInjectLines = (int) Json.optLong(o, "memoryInjectLines", 20L);
         c.memoryWriteEnabled = Json.optBoolean(o, "memoryWriteEnabled", false);
+        c.inboundEnabled = Json.optBoolean(o, "inboundEnabled", false);
 
         Object mcpV = o.get("mcp");
         if (mcpV instanceof Map) {
@@ -111,7 +112,7 @@ public final class ConfigCodec {
                 || "activeProviderId".equals(k) || "activeModelId".equals(k)
                 || "promptEnabled".equals(k) || "promptMode".equals(k) || "promptText".equals(k)
                 || "memoryInject".equals(k) || "memoryInjectLines".equals(k)
-                || "memoryWriteEnabled".equals(k)
+                || "memoryWriteEnabled".equals(k) || "inboundEnabled".equals(k)
                 || "mcp".equals(k) || "providers".equals(k);
     }
 
@@ -224,6 +225,7 @@ public final class ConfigCodec {
         o.put("memoryInject", c.memoryInject);
         o.put("memoryInjectLines", (long) c.memoryInjectLines);
         o.put("memoryWriteEnabled", c.memoryWriteEnabled);
+        o.put("inboundEnabled", c.inboundEnabled);
         o.put("activeProviderId", c.activeProviderId == null ? "" : c.activeProviderId);
         o.put("activeModelId", c.activeModelId == null ? "" : c.activeModelId);
 

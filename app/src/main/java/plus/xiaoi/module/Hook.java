@@ -186,7 +186,9 @@ public class Hook implements IXposedHookLoadPackage {
     private static void syncInbound(Config c) {
         try {
             boolean on = Config.inboundEnabledPref();
-            boolean ok = McpServerConfig.sync(on, host().port(), c.token());
+            int port = host().port();
+            Logs.i("双向枢纽: inbound=" + on + " port=" + port);
+            boolean ok = McpServerConfig.sync(on, port, c.token());
             if (on) {
                 Logs.i("双向枢纽: mcp_servers.json " + (ok ? "已写入" : "写入失败")
                         + "（重启小爱后生效）");
