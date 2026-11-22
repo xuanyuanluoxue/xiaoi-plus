@@ -4,6 +4,8 @@
 
 **方向：双向枢纽 + 官方记忆 + 局域网写鉴权**
 
+- **协议版本协商**：`initialize` 会回显客户端请求的 `2024-11-05`，其余（含 `2025-06-18`）
+  回落到本实现真正支持的 `2025-03-26`，不再对任何客户端都硬报同一版本。
 - **入站画像**：`/mcp?profile=readonly` 只暴露
   `xiaoai_status` / `device.info` / `app.open` / `alarm.set` / `media.control` /
   `notification.send`，其余调用返回 `FORBIDDEN_TOOL`。双向枢纽写入小爱

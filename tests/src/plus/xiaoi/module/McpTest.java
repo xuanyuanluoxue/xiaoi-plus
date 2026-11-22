@@ -136,6 +136,15 @@ public final class McpTest {
                         + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。\"}}",
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", hs));
 
+        ok("initialize 回显 2024-11-05",
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"initialize\","
+                        + "\"params\":{\"protocolVersion\":\"2024-11-05\"}}", hs)
+                        .contains("\"protocolVersion\":\"2024-11-05\""));
+        ok("initialize 未支持版本回落到 2025-03-26",
+                Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"initialize\","
+                        + "\"params\":{\"protocolVersion\":\"2025-06-18\"}}", hs)
+                        .contains("\"protocolVersion\":\"2025-03-26\""));
+
         eq("ping", "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}",
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"ping\"}", hs));
 

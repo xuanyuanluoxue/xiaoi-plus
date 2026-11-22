@@ -24,6 +24,8 @@ public final class Mcp {
 
     /** MCP Streamable HTTP 最小子集的协议版本。 */
     public static final String PROTOCOL = "2025-03-26";
+    /** 明确支持并可原样回显的协议版本（旧版客户端会挑一个）。 */
+    private static final String[] SUPPORTED_PROTOCOLS = {"2025-03-26", "2024-11-05"};
     public static final String SERVER = "xiaoi-plus";
 
     // ------------------------------------------------------------- 后端端口（WP3）
@@ -297,7 +299,10 @@ public final class Mcp {
             if (id == null) return null;
 
             if ("initialize".equals(m)) {
-                return rpcResult(id, initializeResult(hosts.runtime.versionName()));
+                Object ip = req.get("params");
+                String requested = ip instanceof Map
+                        ? Json.optString((Map<?, ?>) ip, "protocolVersion", "") : "";
+                return rpcResult(id, initializeResult(hosts.runtime.versionName(), requested));
             }
             if ("ping".equals(m)) {
                 return rpcResult(id, Json.obj());
@@ -374,6 +379,25 @@ public final class Mcp {
     // ------------------------------------------------------------- 方法实现
 
     public static Map<String, Object> initializeResult(String versionName) {
+        return initializeResult(versionName, null);
+    }
+
+    /**
+     * 协议版本协商：客户端请求的版本在支持列表里就原样回显，否则回我们最新的。
+     *
+     * <p>硬编码单一版本会让「要 2025-06-18 的客户端」认为不兼容；反过来乱报
+     * 未实现的版本又会诱导客户端使用我们没有的能力。这里只认自己真实现的版本。</p>
+     */
+    public static Map<String, Object> initializeResult(String versionName, String requested) {
+        String negotiated = PROTOCOL;
+        if (requested != null) {
+            for (String v : SUPPORTED_PROTOCOLS) {
+                if (v.equals(requested)) {
+                    negotiated = v;
+                    break;
+                }
+            }
+        }
         Map<String, Object> toolsCap = Json.obj();
         toolsCap.put("listChanged", Boolean.FALSE);
         Map<String, Object> caps = Json.obj();
@@ -384,7 +408,7 @@ public final class Mcp {
         info.put("version", versionName);
 
         Map<String, Object> r = Json.obj();
-        r.put("protocolVersion", PROTOCOL);
+        r.put("protocolVersion", negotiated);
         r.put("capabilities", caps);
         r.put("serverInfo", info);
         r.put("instructions", "小爱同学+ 统一 MCP 端点（8771，唯一端口）：17 个工具都从这里调用"
