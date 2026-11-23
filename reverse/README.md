@@ -23,6 +23,7 @@ reverse/
 │   ├── 07-obfuscation.md      混淆漂移与重定位配方
 │   ├── 08-internal-api.md     **内部 API**：18 个 App 工具 + 5 个导出 AIDL + MCP
 │   ├── 09-ai-components.md    澎湃 AI 12 项的组件实现 + AppTool 生态（17 provider / 112 工具）
+│   ├── 10-capability-map.md   能力全景：112 个工具的 8 个场景、价值-风险、产品缺口
 │   └── findings/              单点深挖（一个类/一个协议一篇）
 ├── data/
 │   └── tool-catalog.md        481 个工具 + 18 个 App 工具 + Agent 清单（生成物）

@@ -17,12 +17,16 @@
 | `xiaoai_alarms` | 无 | 便捷封装：闹钟列表 |
 | `xiaoai_weather` | `city`、`alert`（可选） | 便捷封装：天气/预警 |
 
-- 工具总数 18 → 22（桥 16 + 设备动作 6）。四个便捷工具只是「拼好参数的 `xiaoai_apptool`」，降低 Agent 出错率。
+- 工具总数 18 → 24（桥 18 + 设备动作 6）。四个便捷工具只是「拼好参数的 `xiaoai_apptool`」，降低 Agent 出错率。
 - `app` 别名：`alarm`(deskclock) / `calendar` / `notes` / `recorder` / `gallery` / `weather` / `phone` / `mishare` / `cleaner` / `wallet` / `launcher` / `milink` / `scanner` / `bugreport`。
 - 白名单：**只有清单里出现的 (app, tool) 组合可调**，其余 `UNKNOWN_APPTOOL`。
 - 风险分级沿用现有做法：`read` 直接放行；`write` 需要 `confirm=true`；`danger`（外呼、清理、发文件、提交反馈）默认关闭，需 App 内开关。
 
-## 2. 第一批：只读（建议先接，约 29 个）
+## 2. 第一批：只读（白名单口径 31 个）
+
+> 112 个工具里标只读的有 48 个，我们只收录 31 个：排除 telecom/scan/bugreport
+> （不接）、小爱自己的 16 个（已有）、钱包两个查询（留到第二批）、
+> milink/home/phone 的混合工具（按写处理）。
 
 ### 闹钟 `com.android.deskclock` → `AlarmToolService`
 
@@ -78,14 +82,16 @@
 | `gallery_sort` | `media_ids*`、`sort_by`、`order`、`min_aesthetic_score` | 排序/筛选 |
 | `gallery_list_collection` | 无 | 相册列表（含智能相册） |
 | `gallery_assess` | `media*`、`type`(1 美学 / 2 质量) | 评分（会跑端侧模型，较慢） |
+| `gallery_assess_trash` | `media_ids*` | 只回「建议保留/移除」的 ID，不改相册 |
 
 ### 电话 `com.android.phone` → `PhoneToolService`
 
 | 工具 | 参数 | 说明 |
 |---|---|---|
 | `phone_get_caller_info` | 无 | 当前来电号码归属（仅来电时可调） |
-| `phone_settings` | `category` | call / record 等设置查询 |
-| `phone_network_settings` | 无 | 网络与双卡设置查询 |
+
+> `phone_settings`（`paramCount=7`）与 `phone_network_settings` 的描述是「查询和**管理**」，
+> 同一工具能用 `action` 改设置，因此归到第二批（需 confirm），不放在只读清单。
 
 ### 其他
 
@@ -95,18 +101,22 @@
 | `launcher` | `home_settings` | 桌面设置查询（action=get） |
 | `milink` | `milink_cast_settings` / `milink_connectivity_settings` / `milink_desktop_position` / `milink_unlock_switch` | 均为 `action=get_status` 查询时只读 |
 
-> 合计 29 个只读工具。默认 `/mcp` 可见；`?profile=readonly`（小爱入站）建议也放这张表。
+> 合计 31 个只读工具。默认 `/mcp` 可见。
+
+**入站画像（`?profile=readonly`）暂不放这两组**：小爱自己就是调用方，开放 `xiaoai_apptool`
+会形成「小爱 → 我们 → 小爱/笔记」的递归与写放大；需要时再按 provider 白名单逐个子集开放。
 
 ## 3. 第二批：写（需 `confirm=true`，约 40 个）
 
 | 组 | 工具 |
 |---|---|
-| 闹钟（4） | `deskclock_add_alarm`、`deskclock_update_alarm`、`deskclock_delete_alarm`、`deskclock_start/pause/resume/cancel_timer`（算 4 个） |
+| 闹钟（7） | `deskclock_add_alarm`、`deskclock_update_alarm`、`deskclock_delete_alarm`、`deskclock_start_timer`、`deskclock_pause_timer`、`deskclock_resume_timer`、`deskclock_cancel_timer` |
 | 日历（6） | `create_event`、`create_birthday`、`create_anniversary`、`create_countdown`、`update_event`、`delete_event` |
-| 笔记（12） | `note_create`、`note_write`、`note_append`、`note_update`、`card_create`、`card_template`、`folder_create`、`note_move_to_folder`、`note_batch_move_to_folder`、`note_pin`、`note_insert_image`、`note_sync_schedule`、`rollback_operation` |
+| 笔记（12） | `note_create`、`note_write`、`note_append`、`note_update`、`card_create`、`folder_create`、`note_move_to_folder`、`note_batch_move_to_folder`、`note_pin`、`note_insert_image`、`note_sync_schedule`、`rollback_operation`（`card_template` 只读，已移到第一批） |
 | 录音（2） | `manage_recording`、`play_audio_file` |
-| 相册（4） | `gallery_mark`、`gallery_add_to_collection`、`gallery_create_collection`、`gallery_manage_story`、`gallery_assess_trash` |
+| 相册（4） | `gallery_mark`、`gallery_add_to_collection`、`gallery_create_collection`、`gallery_manage_story`（`gallery_assess_trash` 只读，已移到第一批） |
 | 互联（4） | `milink_manage_screen_media`、`milink_manage_device_control`、`milink_manage_tv_control`、`milink_desktop_device_switch` |
+| 电话（2，混合） | `phone_settings`、`phone_network_settings`（描述含「管理」，可改设置） |
 | 清理（1） | `manage_cleaner` |
 | 钱包（2） | `record_bill`、`get_bookkeeping_categories`（读，但属钱包域） |
 
@@ -141,3 +151,14 @@
 | 写闸门 | `app=alarm tool=deskclock_add_alarm` 无 `confirm` → 拒绝；带 `confirm=true` 才执行 |
 | 入站画像 | `?profile=readonly` 只放只读清单，写类返回 `FORBIDDEN_TOOL` |
 | 门禁 | 单测 / 一致性 / 分层 `--strict` / `assembleRelease` 全绿 |
+
+## 7. 校对记录（PM 复核后修正）
+
+| 项 | 原稿 | 修正 |
+|---|---|---|
+| 只读数量 | 写「约 29 个」 | 逐条相加实为 **31**（含 `gallery_assess_trash`、`card_template`） |
+| `phone_settings` / `phone_network_settings` | 列入只读 | 描述是「查询和**管理**」、`paramCount` 7/3，改列第二批（需 confirm） |
+| `gallery_assess_trash` | 列入写批次 | 只回建议 ID、不改相册，移到只读 |
+| `card_template` | 未收录 | 取模板不改数据，补进只读（notes 只读 13 条） |
+| 闹钟写批次 | 标「4 个」 | 实际 7 个（3 个闹钟 + 4 个倒计时操作） |
+| 工具总数 | 22 | 24（桥 18 + 设备动作 6） |

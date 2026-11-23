@@ -32,7 +32,7 @@
 | 设备操作接口 | **并入 8771**（单端口）：打开应用/通知/闹钟/音量/设备信息/小爱代理由 App 进程执行，但**不单独监听**，经控制面 Binder 从 8771 转发；局域网与令牌跟随 8771 | 🧪 实验性，随桥开启 |
 | 系统提示词 | 把用户自己的提示词追加到小爱每次请求（`instructions` / system 消息），带 `{{date}}/{{time}}/{{model}}/{{device}}` 变量与幂等标记；替换模式需二次确认 | 🧪 实验性，默认关闭 |
 | 记忆 | 按小节只读 `files/memory/MEMORY.md`，可追加/替换小节（写前备份 5 份、原子替换、无删除入口）；摘要可注入提示词 | 🧪 实验性，写入默认关闭 |
-| MCP 端点 | **只有一个端口 8771**：`POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），18 个工具（桥 12 + 设备动作 6）全部从这一个端点提供 | 🧪 实验性，随桥一起开启 |
+| MCP 端点 | **只有一个端口 8771**：`POST /mcp`，标准 JSON-RPC 2.0（`initialize` / `tools/list` / `tools/call`），24 个工具（桥 18 + 设备动作 6）全部从这一个端点提供 | 🧪 实验性，随桥一起开启 |
 | 第三方 agent | 通过桥的 `/cli` 或 MCP 工具驱动小爱执行任务 | 🧪 实验性，随桥一起关闭 |
 
 已验证的小爱版本见 [兼容性矩阵](docs/compatibility.md)。
@@ -198,7 +198,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 ### MCP 端点（可选，随桥开启）
 
 **只有一个端口**：模块只监听 8771，App 进程不开任何 socket，App 进程不再开任何 socket。
-互相补齐工具，**两个端点都返回同一套 18 个工具**，客户端只配一个即可。
+互相补齐工具，**两个端点都返回同一套 24 个工具**，客户端只配一个即可。
 
 - 端点不写死：桥从 `8771` 起，被占用会顺延（`8771~8775`），**以 `/health` 的 `port=`
   或设置页「连接信息」为准**；设备动作工具从同一个端点调用。
@@ -227,6 +227,12 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 | `xiaoai_stats` | 桥 | `days`（默认 7，上限 90，超出回 `clamped:true`） | 调用量统计：按天返回三方 / 官方模型的调用次数 |
 | `xiaoai_prompt` | 桥 | 无 | 读系统提示词配置（开关/模式/正文/记忆注入）与注入统计（命中次数、最后位置）；**默认关**，修改只能在 App 内 |
 | `xiaoai_memory` | 桥 | `op=get\|official\|stats\|live\|sync\|append\|replace\|official_write`（默认 get）、`section`、`text`、`limit`、`q`、`since`、`page`、`pageSize` | 四条通道：本地 `MEMORY.md` 分节读写（写需在 App 打开「允许写记忆」，写前备份 5 份，不提供删除）；`op=official`/`official_write` 转调小爱官方记忆；`op=stats`/`op=live` 直读加密库 `claw_memory.db`（行数；对话抽取条目，实测对话后 10s 内可见）；`op=sync` 读官方库 `memory_data_<uid>.db` 的 `syncStatus` 分布与待同步行 |
+| `xiaoai_apptools` | 桥 | `app`（可选） | 列出白名单内的系统应用工具（17 provider / 112 工具中的 76 个），带 `risk` 与参数摘要 |
+| `xiaoai_apptool` | 桥 | `app`（必填）、`tool`（必填）、`args`、`confirm` | 跨包调用 AppTool；写类需 `confirm=true`；白名单外回 `UNKNOWN_APPTOOL` |
+| `xiaoai_alarms` | 桥 | 无 | 封装 `deskclock_query_alarms`：设备真实闹钟列表 |
+| `xiaoai_events` | 桥 | `start`、`end`（必填）、`keyword`、`maxResults` | 封装 `calendar/query_events` |
+| `xiaoai_transcript` | 桥 | `db_id` 或 `q`+`limit` | 封装录音转录/搜索（`recorder`） |
+| `xiaoai_weather` | 桥 | `city`（必填）、`alert` | 封装天气/预警（`weather`） |
 | `xiaoai_capabilities` | App | `includeUnavailable` | 列出设备动作、schema、风险与可用性 |
 | `xiaoai_action` | App | `action`（必填）+ 动作参数 | 执行设备动作；`risk=confirm/danger` 需确认 |
 | `xiaoai_confirm` | App | `confirmToken`、`approve` | 批准/拒绝待确认动作；token 一次性、60 秒过期 |
@@ -310,7 +316,7 @@ scripts\deploy.cmd
 
 它按顺序做：构建 release → 用 `scripts/expected-signer.sha256` 校验签名指纹 →
 选设备（`--serial` / `XIAOI_SERIAL` / 唯一在线设备）→ `install -r` → 打开
-`MainActivity` → 启动设备动作服务 → 探活并报 18 个工具是否齐全。
+`MainActivity` → 启动设备动作服务 → 探活并报 24 个工具是否齐全。
 
 | 参数 | 作用 |
 |---|---|

@@ -110,3 +110,62 @@ action   com.aios.osbot.action.APP_TOOL_PROVIDER
 4. `com.xiaomi.aiservice` 的能力（ASR/OCR/NLU/LLM）**没有** AppTool 入口，
    只能由各 App 内部调用；要从外部用，只能借道小爱的 18 个工具（`trans_text`、
    `image_to_text`、`text_to_image`、`get_screen_context` 就是它的薄封装）。
+
+## 6. 能力侦测（怎么确认设备上有哪些实现）
+
+> 用途：换机、刷版本、疑似「功能被砍」时，5 分钟内确认 provider 还在不在、是否被禁用、
+> 入口是不是只是被隐藏。设备串号以 `192.168.0.118:5555` 为例（见 `phone-use-skill`）。
+> 每条都标了证据级别；标「推测」的只给了验证方法，没有本仓库的原始输出。
+
+### 6.1 列出全部 AppTool provider
+
+```bash
+adb -s 192.168.0.118:5555 shell cmd package query-services --brief \
+  -a com.aios.osbot.action.APP_TOOL_PROVIDER
+```
+
+- 判读：每行 `<包>/<服务>`，**期望 17 行**。少一行 = 该包升级后不再声明。
+  （包被禁用时是否仍出现在这个列表里，本仓库未验证；先按 6.2 交叉确认。）
+- 工具级枚举：`python3 reverse/scripts/survey-apptools.py --json`，末尾应打印
+  `合计 17 个 provider / 112 个工具`（脚本 `providers()` 用的就是上面这条命令）。
+- 证据：**实测**——§4 的 17 / 112 即由这两个命令产生。
+
+### 6.2 看某个 provider 的版本、安装状态、是否被禁用
+
+| 目的 | 命令 | 判读 | 证据 |
+|---|---|---|---|
+| APK 路径 | `pm path com.miui.notes` | 输出 `package:/…apk`；空 = 未安装或未对当前用户安装 | **实测**（`survey-apptools.py` 用它定位 APK 读 assets） |
+| 版本 | `dumpsys package com.miui.notes` → `versionName` / `versionCode` | 与本文的 8.2.70.8421 比对；变了就重跑 survey | **实测**（本篇版本号即取自此） |
+| 是否禁用 | `pm list packages -d` | 包名出现在列表 = 已禁用，其 AppTool 服务随之不可用 | **推测**（AOSP 标准行为，本仓库未留原始输出） |
+| 用户级状态 | `dumpsys package com.miui.notes` → `User 0:` 段 | `enabled=0` 默认 / `enabled=3` 已禁用 / `installed=false` 未装 | **推测** |
+| 服务与其权限 | `dumpsys package com.miui.notes` → 搜 `NoteToolService` | 应能看到服务条目及 `permission`，含 `com.aios.osbot.permission.BIND_APP_TOOL` | **静态**（§4 权限行来自 manifest） |
+
+Windows 下把管道换成 `Select-String`，例如
+`adb -s … shell dumpsys package com.miui.notes | Select-String 'versionName|User 0:|enabled='`。
+
+### 6.3 判断某个 AI 入口是否可用
+
+设置页条目是 `com.android.settings/.SubSettings` 的跳转项，可见性由 Settings 读的开关控制（**推测**）。
+三种现象，从外到内：
+
+| 现象 | 说明 | 怎么确认 | 证据 |
+|---|---|---|---|
+| 条目直接消失 | 入口被开关隐藏，能力可能还在 | 用 §1 表里的 Activity 直接 `am start -n …`；能起来 = 只是隐藏 | **推测** |
+| 条目在、点进去空白或全灰 | 依赖的模型/服务没就绪（如端侧模型未下载） | 起 Activity 后 `dumpsys activity top` 看最终落到哪个页面 | **推测** |
+| 条目在且能开 | 正常 | 逐条点击、取 `topResumedActivity`（§1 的做法） | **实测** |
+
+- 找开关键：`adb shell settings list global | Select-String -i 'ai|assist'`，`settings list secure` 同理。
+  键名本仓库**未确认**，不要照抄；先用 `dumpsys activity top` 验证实际行为再回填。
+- §1 表里被省略号截断的类名，用 `adb shell dumpsys package com.miui.voiceassist | Select-String MiuiVoiceSettingActivity`
+  取全名，再 `am start -n 包/全类名`。
+- `am start` 报 `Activity class {…} does not exist` → 该版本真的没有这个组件，不是被隐藏。
+- 反向提醒：设置页 12 项在这台设备上都在（§1 实测），但 `10-capability-map.md` §5.2 那 13 个包
+  （日历/闹钟/相册/天气/钱包/电话…）在设置页**没有任何 AI 入口**。
+  「设置页没有」不等于「设备没有」，更不等于「Agent 不能用」。
+
+### 6.4 换版后的回归清单
+
+1. 重跑 `survey-apptools.py`，与基线 **17 / 112** 比；工具名有增删就更新 §4 与本目录。
+2. 记录 `assets/app_tools.json` 的摘要，便于判断是「工具没变」还是「只是没重新统计」。
+3. `paramCount` 变化会让 `docs/agent/PLAN-APPTOOLS.md` 的调用示例失效——先看 `params` 再复用参数。
+4. 证据：**推测**（流程建议，无实测记录）。

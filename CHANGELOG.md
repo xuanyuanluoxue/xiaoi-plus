@@ -26,6 +26,11 @@
   `memory_relation_table` 1 行 `NULL`（不参与同步）、无 `2`（待同步）行。
 - **调用方归属**：每次 `tools/call` 的日志带 `caller=local|lan|inbound`，
   入站（`profile=readonly`）单独成一类，真机确认 `caller=inbound`。
+- **系统应用工具（AppTool）接入**：新增 `xiaoai_apptools`（列白名单）、`xiaoai_apptool`（跨包调用）、
+  `xiaoai_alarms` / `xiaoai_events` / `xiaoai_transcript` / `xiaoai_weather`（四个只读封装），
+  工具总数 18 → 24。白名单 76 条（31 只读 + 45 写），写类必须 `confirm=true`，
+  外呼/发文件/提交反馈/清理不收录。调用方是小爱，签名级 `BIND_APP_TOOL` 权限天然满足。
+  真机验证：闹钟列表 3 条、新建并删除一条 23:59 闹钟、录音列表 55 条、广州实时天气。
 - **协议版本协商**：`initialize` 会回显客户端请求的 `2024-11-05`，其余（含 `2025-06-18`）
   回落到本实现真正支持的 `2025-03-26`，不再对任何客户端都硬报同一版本。
 - **入站画像**：`/mcp?profile=readonly` 只暴露

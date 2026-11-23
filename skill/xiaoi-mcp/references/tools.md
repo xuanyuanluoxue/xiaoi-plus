@@ -10,7 +10,7 @@
 → 我们再调小爱」的自递归；外部 Agent 用不带参数的 `/mcp` 拿到全部工具。
 
 **0.16.0 起只有一个端口 `8771`**：App 进程不再单独监听，设备动作工具由 App 执行但
-从同一个端点调用（共 18 个工具：桥 12 + 设备动作 6）。
+从同一个端点调用（共 24 个工具：桥 18 + 设备动作 6）。
 App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可判断；
 失败带 `retryable:true`。
 
@@ -48,7 +48,7 @@ App 未就绪时返回 `AGENT_UNAVAILABLE`，`/health` 的 `agent=ipc|down` 可�
     "protocolVersion": "2025-03-26",
     "capabilities": {"tools": {"listChanged": false}},
     "serverInfo": {"name": "xiaoi-plus", "version": "0.12.0-beta.1"},
-    "instructions": "小爱同学+ 统一 MCP 端点（8771）：18 个工具都从这里调用..."
+    "instructions": "小爱同学+ 统一 MCP 端点（8771）：24 个工具都从这里调用..."
   }
 }
 ```
@@ -488,6 +488,62 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 - 常见错误码：`TEXT_TOO_LARGE` / `FILE_TOO_LARGE` / `MISSING_SECTION` /
   `MISSING_TEXT` / `SECTION_TOO_LONG` / `WRITE_FAILED` / `NO_CONTEXT`。
 - **不提供删除或清空**；`outline.md` 只读。
+
+### xiaoai_apptools / xiaoai_apptool
+
+系统应用工具（AppTool）的发现与调用。设备上共 17 个 provider / 112 个工具
+（日历、闹钟、录音、相册、天气、笔记、电话…），我们只暴露白名单里的组合。
+
+```json
+{"name":"xiaoai_apptools","arguments":{"app":"alarm"}}
+{"name":"xiaoai_apptool","arguments":{"app":"alarm","tool":"deskclock_query_alarms"}}
+{"name":"xiaoai_apptool","arguments":{"app":"alarm","tool":"deskclock_add_alarm",
+  "confirm":true,"args":{"hour":7,"minutes":0}}}
+```
+
+`xiaoai_apptools` 返回：
+
+```json
+{"ok":true,"count":9,"apps":[{"app":"alarm","pkg":"com.android.deskclock",
+ "tools":[{"tool":"deskclock_query_alarms","risk":"read","params":"-"},
+          {"tool":"deskclock_add_alarm","risk":"write","params":"hour*, minutes*, ..."}]}]}
+```
+
+| app 别名 | 包 | 代表工具 |
+|---|---|---|
+| `alarm` | com.android.deskclock | `deskclock_query_alarms` / `deskclock_add_alarm` |
+| `calendar` | com.android.calendar | `query_events` / `create_event` |
+| `notes` | com.miui.notes | `note_search` / `note_create` / `todo_create` |
+| `recorder` | com.android.soundrecorder | `search_recordings` / `get_transcription` |
+| `gallery` | com.miui.gallery | `gallery_search` / `gallery_get_photo_info` |
+| `weather` | com.miui.weather2 | `weather_get_city_weather` |
+| `phone` | com.android.phone | `phone_get_caller_info` / `phone_settings` |
+| `milink` / `cleaner` / `wallet` / `launcher` / `aicr` | 对应系统包 | 互联、清理、记账、桌面、AI 事件 |
+
+- `risk=read` 直接放行；`risk=write` 必须 `confirm:true`，否则回 `NEEDS_CONFIRM`。
+- 不在白名单 → `UNKNOWN_APPTOOL`（外呼、发文件、提交反馈、清理等刻意不收录）。
+- 返回值是各 App 自己的 JSON（可能是数组或纯文本），原样透传；只有我们自己的
+  结构化错误才带 `isError:true`。
+
+### xiaoai_alarms / xiaoai_events / xiaoai_transcript / xiaoai_weather
+
+四个高频只读封装，参数已经拼好，等价于 `xiaoai_apptool`：
+
+| 工具 | 参数 | 等价调用 |
+|---|---|---|
+| `xiaoai_alarms` | 无 | `alarm / deskclock_query_alarms` |
+| `xiaoai_events` | `start`、`end`（必填）、`keyword`、`maxResults` | `calendar / query_events` |
+| `xiaoai_transcript` | `db_id`（取某条转录）或 `q` + `limit`（搜录音） | `recorder / get_transcription` 或 `search_recordings` |
+| `xiaoai_weather` | `city`（必填）、`alert`（true=预警） | `weather / weather_get_city_alert` 或 `weather_get_city_weather` |
+
+```json
+{"name":"xiaoai_events","arguments":{"start":"2026-11-23","end":"2026-11-30"}}
+{"name":"xiaoai_transcript","arguments":{"q":"会议","limit":5}}
+{"name":"xiaoai_weather","arguments":{"city":"广州"}}
+```
+
+实测：`xiaoai_alarms` 返回设备真实闹钟（含 `daysOfWeekDesc`），
+`xiaoai_transcript` 返回 55 条录音列表，`xiaoai_weather` 返回实时温度与分钟级降水。
 
 ### xiaoai_cli
 
