@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-23T07:25:08Z",
+  "updated_at": "2026-11-23T07:55:12Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "aca66a5273368d95550eb72f63c969b880d2f44959bcbece452aea7040ac6516",
-      "size": 113413,
-      "normalized_sha256": "aca66a5273368d95550eb72f63c969b880d2f44959bcbece452aea7040ac6516"
+      "sha256": "86c1c5f77976fbee0db28f1421978ace07712d2ca30bd45b8edfe42b4ea76d38",
+      "size": 114197,
+      "normalized_sha256": "86c1c5f77976fbee0db28f1421978ace07712d2ca30bd45b8edfe42b4ea76d38"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1630,9 +1630,9 @@
     },
     "reverse/README.md": {
       "role": "index",
-      "sha256": "b7bb75c0721c8d2a046c97679597f0e864da70b1c4eaaebeb0b50dffa00cb5cb",
-      "size": 5958,
-      "normalized_sha256": "b7bb75c0721c8d2a046c97679597f0e864da70b1c4eaaebeb0b50dffa00cb5cb"
+      "sha256": "dee1ccadb4d87b0b1e2b6433e85ea620cb1f52f6ed20e795fe85e47808da2e5c",
+      "size": 6184,
+      "normalized_sha256": "dee1ccadb4d87b0b1e2b6433e85ea620cb1f52f6ed20e795fe85e47808da2e5c"
     },
     "reverse/data/tool-catalog.md": {
       "role": "index",
@@ -1693,6 +1693,12 @@
       "sha256": "37468034c91fb1705ac6c161d8f6e361e64c603323f186cd3837be6c13528014",
       "size": 10603,
       "normalized_sha256": "37468034c91fb1705ac6c161d8f6e361e64c603323f186cd3837be6c13528014"
+    },
+    "reverse/docs/09-ai-components.md": {
+      "role": "index",
+      "sha256": "9b9d86889584215d8ec836b6616fe8fa04ca0b77caf10414850d696c7784c407",
+      "size": 9045,
+      "normalized_sha256": "9b9d86889584215d8ec836b6616fe8fa04ca0b77caf10414850d696c7784c407"
     },
     "reverse/docs/findings/json-model.md": {
       "role": "index",
@@ -1759,6 +1765,12 @@
       "sha256": "142c6fc17eba96c45d98f73ef67988aa17a5386abee4a6f15ca5ddba5cd2542d",
       "size": 6548,
       "normalized_sha256": "142c6fc17eba96c45d98f73ef67988aa17a5386abee4a6f15ca5ddba5cd2542d"
+    },
+    "reverse/scripts/survey-apptools.py": {
+      "role": "index",
+      "sha256": "9a6f713cd9c52b80b341b97cbd404b74bc511a42f83fbbc846177ca4eed6043a",
+      "size": 4857,
+      "normalized_sha256": "9a6f713cd9c52b80b341b97cbd404b74bc511a42f83fbbc846177ca4eed6043a"
     },
     "scripts/check-all.sh": {
       "role": "index",

@@ -472,7 +472,7 @@ PromptTemplate.java[DP4T]: F:提示词模板变量替换：date/time/model/devic
 MemoryFileStore.java[IP6M]: F:记忆文件读写：备份→临时文件 fsync→原子替换，保留 5 份；替换在 POSIX 走 renameTo、Windows 回退 Files.move | R:code:application/src/main/java/plus/xiaoi/module/application/memory/MemoryStore.java | A:write | S:任一步失败原文件不变；同毫秒备份名要加序号；Windows 上 File.renameTo 不能覆盖已存在文件，本地单测会因此假失败
 
 ===/<repository>/reverse/===
-README.md[SG8S]: F:逆向子项目入口：目标、目录、快速开始（dex 索引/扫描/assets）、证据分级与边界 | R:code:reverse/scripts/dexindex.py | A:快速开始 | S:大文件只放 artifacts/reverse/<版本>/，本目录只入库存文本与脚本；结论必须标实测/静态/推测
+README.md[SG8S]: F:逆向子项目入口：目标、目录、快速开始（dex 索引/扫描/assets/AppTool 枚举）、证据分级与边界 | R:code:reverse/scripts/dexindex.py | A:快速开始 | S:大文件只放 artifacts/reverse/<版本>/，本目录只入库存文本与脚本；结论必须标实测/静态/推测
 
 ===/<repository>/reverse/data/===
 tool-catalog.md[SG8L]: F:生成物：481 个工具按服务前缀与分组全列，附 18 个进程内 App 工具与 19 个 Agent 定义 | R:code:reverse/scripts/catalog.py | A:工具清单 | S:勿手工编辑；改由 catalog.py 从 APK assets 重新生成；先跑 extract-assets.sh 解包
@@ -487,6 +487,7 @@ tool-catalog.md[SG8L]: F:生成物：481 个工具按服务前缀与分组全列
 06-memory.md[SG7S]: F:记忆系统：ClawMemory 三件套工具、MEMORY.md/outline 布局、生成流水线、两个加密库的密钥链、云端同步 API 与 syncStatus 实测语义 | R:code:reverse/docs/04-toolchain.md | A:三件套工具 | S:系统只自动注入记忆大纲不注入条目；claw_memory.db 不参与云同步，云同步只覆盖 memory_data_*.db；密钥材料只写链路不写具体值
 07-obfuscation.md[SG6T]: F:混淆漂移记录与重定位配方：稳定锚点、按结构查找、升级后的最小验证清单 | R:code:reverse/scripts/dexindex.py | A:重定位配方 | S:类名保留不等于字段或构造器保留；8.2.70 的 s92.b#d 已失效，不要硬编码短名
 08-internal-api.md[SG8S]: F:内部 API：18 个进程内 App 工具、5 个导出 AIDL 服务与签名、MCP 客户端，以及三条接入路径的取舍 | R:code:reverse/data/tool-catalog.md | A:三条通道 | S:EXTERNAL_AGENT 是 signature|privileged，第三方 App 绑不上；进程内调 UIAgentServiceForOSBot 的方法名最稳；优先复用官方记忆工具
+09-ai-components.md[SG8M]: F:澎湃 AI 的组件实现调研：设置页 12 项入口与实现包、aiservice 55 个能力服务、各 App 侧组件、AppTool 生态 17 provider / 112 工具 | R:code:reverse/docs/08-internal-api.md | A:AppTool 生态 | S:设置入口不等于实现，只有超级小爱属于小爱本体；aiservice 的能力无 AppTool 入口只能内部调用；跨包 AppTool 需签名权限 BIND_APP_TOOL
 
 ===/<repository>/reverse/docs/findings/===
 json-model.md[SG6T]: F:单点深挖：kotlinx Json 在小爱里的混淆形态与正确的重建方式，以及 A 方案为何无效 | R:code:app/src/main/java/plus/xiaoi/module/Hook.java | A:正确的重建方式 | S:重建要按样本构造器（可能带 Companion）；失败时不要 setResult，否则会出现计数成功但内容未变
@@ -502,3 +503,4 @@ pull-apk.sh[XG4T]: F:从设备拉取正在运行的那份 APK（pm path 加 cat�
 report.sh[XG4T]: F:生成当前版本的证据快照：包信息、组件、dex 概况与关键类是否仍在 | R:code:reverse/scripts/pull-apk.sh | A:输出 | S:依赖 aapt2 与 pull-apk 的产物；组件清单只做粗筛，导出面要回 Manifest 核对
 runtime-logs.sh[XG4T]: F:从 8771 取运行时证据：健康、合并日志与调用量，可加关键词过滤 | R:code:reverse/scripts/env.sh | A:鉴权 | S:token 从 .secrets 读取不打印；日志正文可能含敏感信息，筛选后再引用
 scan.py[XG6S]: F:在 dexdump 文本里按方法名/字段类型/构造器形状/字符串四类特征定位类 | R:code:reverse/scripts/dexindex.py | A:四种查询 | S:dump 是 UTF-16 要先判 BOM；类名保留但结构会漂移，优先按构造器形状匹配
+survey-apptools.py[XQ6S]: F:枚举设备上全部 APP_TOOL_PROVIDER 并列出各自 assets/app_tools.json 里的工具（支持 --json/--package/--device） | R:code:reverse/scripts/dexindex.py | A:providers | S:不整包拉 APK：用 tail -c 远程读 zip 中央目录再取单条目；只读操作；输出用于 09-ai-components 的清单
