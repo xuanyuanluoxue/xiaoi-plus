@@ -195,6 +195,22 @@ public final class Bridge {
                     MemoryFiles.appContext(), query).text;
         }
 
+        @Override
+        public String clawProbe() {
+            return plus.xiaoi.module.agent.ClawMemoryDb.probe(MemoryFiles.appContext());
+        }
+
+        @Override
+        public String clawStats() {
+            return plus.xiaoi.module.agent.ClawMemoryDb.stats(MemoryFiles.appContext());
+        }
+
+        @Override
+        public String clawLive(String q, long since, int limit) {
+            return plus.xiaoi.module.agent.ClawMemoryDb.live(
+                    MemoryFiles.appContext(), q, since, limit);
+        }
+
         private String unavailable() {
             Map<String, Object> o = Json.obj();
             o.put("ok", false);

@@ -36,6 +36,12 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL AppToolProtocolTest 套件异常: " + t);
         }
+        try {
+            failed += ClawMemorySqlTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL ClawMemorySqlTest 套件异常: " + t);
+        }
         failed += LogsTest.run();
         failed += LogFileSinkTest.run();
         failed += ModelValidatorTest.run();

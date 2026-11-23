@@ -559,6 +559,24 @@ public final class McpTest {
         call(p2, 40, "xiaoai_memory", "{\"op\":\"official_write\",\"q\":\"我每周三打球\"}");
         eq("official_write 透传 q", "我每周三打球", mem.officialWriteQ);
 
+        // 加密库（claw_memory.db）：stats / live
+        call(p2, 40, "xiaoai_memory", "{\"op\":\"stats\"}");
+        eq("stats 调到端口", 1, mem.statsCalls);
+        call(p2, 40, "xiaoai_memory", "{\"op\":\"live\",\"q\":\"羽毛球\"}");
+        eq("live 透传 q", "羽毛球", mem.liveQ);
+        eq("live 默认 20 条", 20, mem.liveLimit);
+        eq("live 默认 since=0", 0L, mem.liveSince);
+        call(p2, 40, "xiaoai_memory", "{\"op\":\"live\",\"limit\":9999,\"since\":1700000000000}");
+        eq("live limit 夹到 200", 200, mem.liveLimit);
+        eq("live 透传 since", 1700000000000L, mem.liveSince);
+        ok("live 不接受未知参数",
+                call(p2, 40, "xiaoai_memory", "{\"op\":\"live\",\"bogus\":1}")
+                        .contains("unknown argument"));
+        ok("live 不需要写开关",
+                !call(p2, 40, "xiaoai_memory", "{\"op\":\"live\"}").contains("memoryWriteEnabled"));
+        ok("status 带 clawdb 探针",
+                call(p2, 40, "xiaoai_status", null).contains("clawdb=ok"));
+
         // 局域网写：需要二次因子；只读不受影响
         ok("LAN 写无二次因子被拒",
                 callLan(p2, 41, "xiaoai_memory",
@@ -742,6 +760,10 @@ public final class McpTest {
         int officialSize = -1;
         String officialWriteQ;
         String officialResult = "{\"ok\":true,\"code\":\"OK\",\"items\":[{\"text\":\"羽毛球\"}]}";
+        int statsCalls;
+        String liveQ;
+        long liveSince = -1L;
+        int liveLimit = -1;
 
         @Override
         public String promptStatus() {
@@ -785,6 +807,25 @@ public final class McpTest {
         public String officialWrite(String query) {
             this.officialWriteQ = query;
             return officialResult;
+        }
+
+        @Override
+        public String clawProbe() {
+            return "clawdb=ok";
+        }
+
+        @Override
+        public String clawStats() {
+            statsCalls++;
+            return "{\"ok\":true,\"db\":\"claw_memory.db\",\"tables\":[],\"types\":[]}";
+        }
+
+        @Override
+        public String clawLive(String q, long since, int limit) {
+            this.liveQ = q;
+            this.liveSince = since;
+            this.liveLimit = limit;
+            return "{\"ok\":true,\"count\":1,\"items\":[{\"mem_key\":\"羽毛球\",\"mem_value\":\"每周三\"}]}";
         }
     }
 

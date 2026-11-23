@@ -68,6 +68,12 @@ public final class Contract {
     public static final int MEMORY_GET_LIMIT_MAX = 200;
     /** op=official_write 的自然语言入参上限（字符）。 */
     public static final int OFFICIAL_MEMORY_QUERY_MAX = 500;
+    /** op=live 默认返回条数。 */
+    public static final int MEMORY_LIVE_LIMIT_DEFAULT = 20;
+    /** op=live 返回条数上限。 */
+    public static final int MEMORY_LIVE_LIMIT_MAX = 200;
+    /** op=live 中 mem_value 的截断长度（字符），避免一次吐出整库。 */
+    public static final int MEMORY_LIVE_VALUE_CHARS = 300;
 
     // ------------------------------------------------------------- 查询上限
 

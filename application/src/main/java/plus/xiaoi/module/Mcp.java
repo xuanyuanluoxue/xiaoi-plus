@@ -197,6 +197,34 @@ public final class Mcp {
             return "{\"ok\":false,\"code\":\"APPTOOL_UNAVAILABLE\","
                     + "\"message\":\"官方记忆通道未实现\"}";
         }
+
+        /**
+         * 加密记忆库探针（{@code clawdb=ok} / {@code clawdb=none}）；null = 不显示。
+         *
+         * <p>库是 SQLCipher 加密的，口令由小爱自己的 AndroidKeyStore 条目解出，
+         * 只有小爱进程内能读。</p>
+         */
+        default String clawProbe() {
+            return null;
+        }
+
+        /** 加密库统计：各表行数 + 时间范围 + {@code mem_type} 分布（不含正文）。 */
+        default String clawStats() {
+            return "{\"ok\":false,\"code\":\"CLAWDB_UNAVAILABLE\","
+                    + "\"message\":\"加密库通道未实现\"}";
+        }
+
+        /**
+         * 实时查记忆条目（{@code memory_meta}，不经 {@code MEMORY.md}）。
+         *
+         * @param q     关键词，空串不限；匹配条目正文与键
+         * @param since 起始时间（epoch ms），0 不限
+         * @param limit 条数（已夹到 1..200）
+         */
+        default String clawLive(String q, long since, int limit) {
+            return "{\"ok\":false,\"code\":\"CLAWDB_UNAVAILABLE\","
+                    + "\"message\":\"加密库通道未实现\"}";
+        }
     }
 
     /**
@@ -756,16 +784,20 @@ public final class Mcp {
         t.put("name", "xiaoai_memory");
         t.put("description", "读写小爱记忆。op=get（默认）分节读本地 MEMORY.md；"
                 + "op=official 转调小爱官方记忆检索（向量+关键词，返回官方口径）；"
+                + "op=stats 读加密记忆库的行数与时间范围（不含正文）；"
+                + "op=live 实时读加密库里的记忆条目（memory_meta，不经过 MEMORY.md）；"
                 + "op=append / op=replace 改本地文件（保留标题）；"
                 + "op=official_write 交给官方抽取写入（自然语言，可能被改写）。"
                 + "写操作需要先在 App 内打开「允许写记忆」；局域网来源还需打开「允许局域网写」。"
                 + "每次本地写入前自动备份（保留 5 份）；不提供删除或清空。");
         Map<String, Object> props = Json.obj();
         Map<String, Object> op = prop("string",
-                "操作：get / official / append / replace / official_write，缺省 get");
+                "操作：get / official / stats / live / append / replace / official_write，缺省 get");
         List<Object> ops = Json.arr();
         ops.add("get");
         ops.add("official");
+        ops.add("stats");
+        ops.add("live");
         ops.add("append");
         ops.add("replace");
         ops.add("official_write");
@@ -774,12 +806,17 @@ public final class Mcp {
         props.put("section", prop("string", "小节路径，例如「长期记忆/重要事实」；append/replace 必填"));
         props.put("text", prop("string",
                 "要写入的内容，多行按条目拆分（上限 " + Contract.MEMORY_APPEND_MAX_BYTES + " 字节）"));
-        Map<String, Object> limit = prop("integer", "op=get 时每个小节返回多少条，缺省 50，上限 200");
+        Map<String, Object> limit = prop("integer",
+                "op=get 每个小节的条数（缺省 50，上限 200）；op=live 的条数（缺省 20，上限 200）");
         limit.put("minimum", 1L);
         limit.put("maximum", (long) Contract.MEMORY_GET_LIMIT_MAX);
         props.put("limit", limit);
         props.put("q", prop("string", "op=official 的检索关键词（空=最近记录）；"
-                + "op=official_write 的自然语言内容（上限 " + Contract.OFFICIAL_MEMORY_QUERY_MAX + " 字）"));
+                + "op=official_write 的自然语言内容（上限 " + Contract.OFFICIAL_MEMORY_QUERY_MAX + " 字）；"
+                + "op=live 的关键词（匹配条目正文与键，空=不限）"));
+        Map<String, Object> since = prop("integer", "op=live 的起始时间（epoch 毫秒），缺省 0=不限");
+        since.put("minimum", 0L);
+        props.put("since", since);
         Map<String, Object> page = prop("integer", "op=official 页码，缺省 1");
         page.put("minimum", 1L);
         props.put("page", page);
@@ -851,6 +888,10 @@ public final class Mcp {
                 if (hosts.appTool != null) {
                     String at = hosts.appTool.summary();
                     if (at != null && at.length() > 0) t = t + " " + at;
+                }
+                if (hosts.memory != null) {
+                    String cdb = hosts.memory.clawProbe();
+                    if (cdb != null && cdb.length() > 0) t = t + " " + cdb;
                 }
                 return toolText(t, false);
             }
@@ -1048,7 +1089,8 @@ public final class Mcp {
      */
     private static Map<String, Object> memoryToolCall(Map<?, ?> args, Hosts hosts,
                                                           boolean lan, boolean lanWriteOk) {
-        String bad = unexpectedArg(args, "op", "section", "text", "limit", "q", "page", "pageSize");
+        String bad = unexpectedArg(args, "op", "section", "text", "limit", "q", "page",
+                "pageSize", "since");
         if (bad != null) return toolText(bad, true);
         if (hosts.memory == null) return memoryUnavailable();
 
@@ -1088,9 +1130,24 @@ public final class Mcp {
             String text = hosts.memory.officialWrite(q);
             return toolText(text, failed(text));
         }
+        if ("stats".equals(op)) {
+            String text = hosts.memory.clawStats();
+            return toolText(text, failed(text));
+        }
+        if ("live".equals(op)) {
+            int limit = Json.has(args, "limit")
+                    ? (int) Json.optLong(args, "limit", Contract.MEMORY_LIVE_LIMIT_DEFAULT)
+                    : Contract.MEMORY_LIVE_LIMIT_DEFAULT;
+            if (limit < 1) limit = 1;
+            if (limit > Contract.MEMORY_LIVE_LIMIT_MAX) limit = Contract.MEMORY_LIVE_LIMIT_MAX;
+            long since = Json.has(args, "since") ? Json.optLong(args, "since", 0L) : 0L;
+            if (since < 0L) since = 0L;
+            String text = hosts.memory.clawLive(Json.optString(args, "q", "").trim(), since, limit);
+            return toolText(text, failed(text));
+        }
         if (!"append".equals(op) && !"replace".equals(op)) {
             return toolText("unknown op: " + op
-                    + "（可用：get, append, replace, official, official_write）", true);
+                    + "（可用：get, append, replace, official, official_write, stats, live）", true);
         }
         String denied = writeDenied(hosts, lan, lanWriteOk);
         if (denied != null) return toolText(denied, true);
