@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-23T06:59:26Z",
+  "updated_at": "2026-11-23T07:25:08Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -59,9 +59,9 @@
     },
     ".opencode/skills/xiaoi-mcp/references/tools.md": {
       "role": "index",
-      "sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db",
-      "size": 21866,
-      "normalized_sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db"
+      "sha256": "ec4bce51898d2f5191ed275ef6bdec6987d12a53beed8cf1f114c2ad99108110",
+      "size": 23119,
+      "normalized_sha256": "ec4bce51898d2f5191ed275ef6bdec6987d12a53beed8cf1f114c2ad99108110"
     },
     ".opencode/skills/xiaoi-release/SKILL.md": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "c08fba00deb9c649a4b260eb77a18afdda1c82a10b954528d66a88e29b44399e",
-      "size": 94157,
-      "normalized_sha256": "c08fba00deb9c649a4b260eb77a18afdda1c82a10b954528d66a88e29b44399e"
+      "sha256": "bbfe7ae8e7abdbff37bca18ef576603aea3d8f55d53026cb0ad9c8ccbd381c16",
+      "size": 94668,
+      "normalized_sha256": "bbfe7ae8e7abdbff37bca18ef576603aea3d8f55d53026cb0ad9c8ccbd381c16"
     },
     "LICENSE": {
       "role": "index",
@@ -101,15 +101,15 @@
     },
     "README.md": {
       "role": "index",
-      "sha256": "f870dc1e98d2fa3420f02f5a7e6e3a81c9eadf8ba74aca9a7933442196df425a",
-      "size": 27474,
-      "normalized_sha256": "f870dc1e98d2fa3420f02f5a7e6e3a81c9eadf8ba74aca9a7933442196df425a"
+      "sha256": "93e1998fa5b1bc40d12fc37b6dc9fe156c9d27a66c5433ea719b167de3933e62",
+      "size": 27509,
+      "normalized_sha256": "93e1998fa5b1bc40d12fc37b6dc9fe156c9d27a66c5433ea719b167de3933e62"
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "18cb0e263c5568186854b80eb1a3187855d803cff95ba6ff170e4338d1cbcf37",
-      "size": 112433,
-      "normalized_sha256": "18cb0e263c5568186854b80eb1a3187855d803cff95ba6ff170e4338d1cbcf37"
+      "sha256": "aca66a5273368d95550eb72f63c969b880d2f44959bcbece452aea7040ac6516",
+      "size": 113413,
+      "normalized_sha256": "aca66a5273368d95550eb72f63c969b880d2f44959bcbece452aea7040ac6516"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -245,9 +245,9 @@
     },
     "application/src/main/java/plus/xiaoi/module/Mcp.java": {
       "role": "index",
-      "sha256": "3a84ae76e9f66e406ce24bfa8e5a861526304ae88d2319265fe2d181623d2685",
-      "size": 64148,
-      "normalized_sha256": "3a84ae76e9f66e406ce24bfa8e5a861526304ae88d2319265fe2d181623d2685"
+      "sha256": "5fb5cc7ac227962e874e867e3750197d5dd8d06b06c067350efebbd133ba0b0d",
+      "size": 65311,
+      "normalized_sha256": "5fb5cc7ac227962e874e867e3750197d5dd8d06b06c067350efebbd133ba0b0d"
     },
     "application/src/main/java/plus/xiaoi/module/PromptInjector.java": {
       "role": "index",
@@ -1085,9 +1085,9 @@
     },
     "domain/src/main/java/plus/xiaoi/module/core/Contract.java": {
       "role": "index",
-      "sha256": "04b74d6c52389b41999d39aa374019d363074288ff92c8ffb5c35dd618d5bcb7",
-      "size": 4575,
-      "normalized_sha256": "04b74d6c52389b41999d39aa374019d363074288ff92c8ffb5c35dd618d5bcb7"
+      "sha256": "c6f3d86048215521b9b961f535e1babf8c878bb015d2bde6d8cc5a3295702e8a",
+      "size": 4694,
+      "normalized_sha256": "c6f3d86048215521b9b961f535e1babf8c878bb015d2bde6d8cc5a3295702e8a"
     },
     "domain/src/main/java/plus/xiaoi/module/core/ControlKeys.java": {
       "role": "index",
@@ -1226,6 +1226,12 @@
       "sha256": "710f3e8cb3be052b5092cfd9d4730b3423a95ff6c6b948f5505a23bf177c3c39",
       "size": 14156,
       "normalized_sha256": "710f3e8cb3be052b5092cfd9d4730b3423a95ff6c6b948f5505a23bf177c3c39"
+    },
+    "domain/src/main/java/plus/xiaoi/module/core/memory/OfficialMemorySql.java": {
+      "role": "index",
+      "sha256": "c7abc7a102a78e415ab6ffd2ac12f89d9e3103a85359c7b136fdf1c91a831260",
+      "size": 4158,
+      "normalized_sha256": "c7abc7a102a78e415ab6ffd2ac12f89d9e3103a85359c7b136fdf1c91a831260"
     },
     "domain/src/main/java/plus/xiaoi/module/core/prompt/PromptTemplate.java": {
       "role": "index",
@@ -1402,9 +1408,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Bridge.java": {
       "role": "index",
-      "sha256": "76cf78a41c44a7a8e549eedf373d85430637e63d1db08c7daa4d66381f01ac63",
-      "size": 54876,
-      "normalized_sha256": "76cf78a41c44a7a8e549eedf373d85430637e63d1db08c7daa4d66381f01ac63"
+      "sha256": "a5d1910d10dbc803d704982ae53c17fb34a883dbc6dec7820cf314417c90ad42",
+      "size": 55073,
+      "normalized_sha256": "a5d1910d10dbc803d704982ae53c17fb34a883dbc6dec7820cf314417c90ad42"
     },
     "platform/src/main/java/plus/xiaoi/module/Config.java": {
       "role": "index",
@@ -1562,6 +1568,12 @@
       "size": 10855,
       "normalized_sha256": "47b4e3196c6aa2598edd7ea7411001d37a5f274dda4cf94441dcfd778ee7a1fd"
     },
+    "platform/src/main/java/plus/xiaoi/module/agent/OfficialMemoryDb.java": {
+      "role": "index",
+      "sha256": "bd654a21f4e2ddb8c6e2fe185ae162d394e2519d32fa0cad190aef66ec07bf7f",
+      "size": 8041,
+      "normalized_sha256": "bd654a21f4e2ddb8c6e2fe185ae162d394e2519d32fa0cad190aef66ec07bf7f"
+    },
     "platform/src/main/java/plus/xiaoi/module/agent/RootExecutor.java": {
       "role": "index",
       "sha256": "039dfac46a5e572a14c42c49c6421189da190621c0cc484d10f52337f7fe1406",
@@ -1666,9 +1678,9 @@
     },
     "reverse/docs/06-memory.md": {
       "role": "index",
-      "sha256": "55e5692847d4b0556051ca17f2f79e0009a3d247baf475a4241db204e8b39af0",
-      "size": 12793,
-      "normalized_sha256": "55e5692847d4b0556051ca17f2f79e0009a3d247baf475a4241db204e8b39af0"
+      "sha256": "63ba81e929cae744e324585416e3305829eff4b9afdcae614b851359ec85d62a",
+      "size": 13383,
+      "normalized_sha256": "63ba81e929cae744e324585416e3305829eff4b9afdcae614b851359ec85d62a"
     },
     "reverse/docs/07-obfuscation.md": {
       "role": "index",
@@ -1882,9 +1894,9 @@
     },
     "skill/xiaoi-mcp/references/tools.md": {
       "role": "index",
-      "sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db",
-      "size": 21866,
-      "normalized_sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db"
+      "sha256": "ec4bce51898d2f5191ed275ef6bdec6987d12a53beed8cf1f114c2ad99108110",
+      "size": 23119,
+      "normalized_sha256": "ec4bce51898d2f5191ed275ef6bdec6987d12a53beed8cf1f114c2ad99108110"
     },
     "tests/baseline/cli_no_cmd.body": {
       "role": "observe",
@@ -2343,9 +2355,9 @@
     },
     "tests/src/plus/xiaoi/module/McpTest.java": {
       "role": "observe",
-      "sha256": "dcd7ab41177955d8475dedb4c67b1854854b3fef26790e6c4065d2dbe96d548f",
-      "size": 43557,
-      "normalized_sha256": "dcd7ab41177955d8475dedb4c67b1854854b3fef26790e6c4065d2dbe96d548f"
+      "sha256": "4209a3246dfd341fe633c9a18861200bc00b3afd7dd6fbe677f2cdcc3fc5d9f5",
+      "size": 44250,
+      "normalized_sha256": "4209a3246dfd341fe633c9a18861200bc00b3afd7dd6fbe677f2cdcc3fc5d9f5"
     },
     "tests/src/plus/xiaoi/module/MemoryServiceTest.java": {
       "role": "observe",
@@ -2364,6 +2376,12 @@
       "sha256": "e75235392bd8622a8f404a3900fe7d6604c9e6bfeda7cae7ca98689828f7f5aa",
       "size": 5717,
       "normalized_sha256": "e75235392bd8622a8f404a3900fe7d6604c9e6bfeda7cae7ca98689828f7f5aa"
+    },
+    "tests/src/plus/xiaoi/module/OfficialMemorySqlTest.java": {
+      "role": "observe",
+      "sha256": "d7f4776e0343a39b764bbb5fb0ff059b96dc7459d79a372ed7aaef27bcf5983c",
+      "size": 2735,
+      "normalized_sha256": "d7f4776e0343a39b764bbb5fb0ff059b96dc7459d79a372ed7aaef27bcf5983c"
     },
     "tests/src/plus/xiaoi/module/PromptInjectorTest.java": {
       "role": "observe",
@@ -2415,9 +2433,9 @@
     },
     "tests/src/plus/xiaoi/module/TestMain.java": {
       "role": "observe",
-      "sha256": "983f34f86b3c6e8fa2a7ff68714b1e0ea1a36c925b9b77ed65d81c8c6d1b04df",
-      "size": 10045,
-      "normalized_sha256": "983f34f86b3c6e8fa2a7ff68714b1e0ea1a36c925b9b77ed65d81c8c6d1b04df"
+      "sha256": "2c87eaccda44f43f9e5cb80968d68fb611ab6b8814a73ffa44b05ab69d283073",
+      "size": 10257,
+      "normalized_sha256": "2c87eaccda44f43f9e5cb80968d68fb611ab6b8814a73ffa44b05ab69d283073"
     },
     "tests/src/plus/xiaoi/module/ThemeModeTest.java": {
       "role": "observe",
