@@ -385,16 +385,17 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 | 本地文件 | `get` / `append` / `replace` | `files/memory/MEMORY.md` | 明文 Markdown，按 `#`/`##` 分节 |
 | 官方记忆 | `official` / `official_write` | 小爱官方记忆服务（`read_memory`/`write_memory`） | 云端口径，实体/隐私/个人标签 |
 | 加密记忆库 | `stats` / `live` | `databases/claw_memory.db`（SQLCipher） | 对话抽取出的条目（`memory_meta`），带来源与抽取器 |
+| 官方本地库 | `sync` | `databases/memory_data_<uid>.db`（SQLCipher，密钥在小爱 JCEKS 里） | 各表条数、`syncStatus` 分布、待同步行 |
 
 加密库的口令由小爱自己的 AndroidKeyStore 条目解开，**只能在 voiceassist 进程内读**
 （模块已在该进程）；读不到时返回 `CLAWDB_*` 结构化错误，不影响其它通道。
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `op` | string | 否 | `get`（默认）/ `official` / `stats` / `live` / `append` / `replace` / `official_write` |
+| `op` | string | 否 | `get`（默认）/ `official` / `stats` / `live` / `sync` / `append` / `replace` / `official_write` |
 | `section` | string | append/replace 必填 | 小节路径，例如 `长期记忆/重要事实`；不存在时新建 |
 | `text` | string | append/replace 必填 | 内容，多行按条目拆分；≤4 KB |
-| `limit` | integer | 否 | `get` 每小节条数（缺省 50）；`live` 条数（缺省 20）；上限 200 |
+| `limit` | integer | 否 | `get` 每小节条数（缺省 50，上限 200）；`live` 条数（缺省 20，上限 200）；`sync` 每表待同步行（缺省 20，上限 100） |
 | `q` | string | 见 op | `official` 关键词；`official_write` 的自然语言内容（≤500 字）；`live` 的匹配词（正文与键） |
 | `since` | integer | 否 | `live` 起始时间（epoch 毫秒），缺省 0=不限 |
 | `page` | integer | 否 | `official` 页码，缺省 1 |
@@ -407,6 +408,7 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 {"name":"xiaoai_memory","arguments":{"op":"stats"}}
 {"name":"xiaoai_memory","arguments":{"op":"live","q":"跑步","limit":5}}
 {"name":"xiaoai_memory","arguments":{"op":"live","since":1795415000000}}
+{"name":"xiaoai_memory","arguments":{"op":"sync","limit":10}}
 {"name":"xiaoai_memory","arguments":{
   "op":"append","section":"长期记忆/重要事实","text":"项目代号 xiaoi-plus"}}
 {"name":"xiaoai_memory","arguments":{
@@ -438,6 +440,23 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 - `op=live` 只读 `memory_meta`，**不暴露 `conversation` 原文**；官方写入（`official_write`）
   落在官方记忆服务里，用 `op=official` 查，不在这个库里。
 - `op=stats` / `op=live` 是只读，不受「允许写记忆」与局域网写开关约束。
+
+`op=sync` 返回官方记忆库（`memory_data_<uid>.db`）的同步状态，只回身份字段，不回 `meta` 正文：
+
+```json
+{"ok":true,
+ "tables":[{"table":"collect_data_table","rows":42,"sync":[{"s":"1","n":"42"}]},
+           {"table":"memory_public_table","rows":9,"sync":[{"s":"1","n":"9"}]},
+           {"table":"memory_relation_table","rows":1,"sync":[{"s":null,"n":"1"}]},
+           {"table":"memory_private_table","rows":2},
+           {"table":"image_table","rows":0}],
+ "pendingStatus":2,"pendingCount":0,"pending":[]}
+```
+
+`syncStatus`：`1`=已同步（云上已有，实测写入后即 1）、`2`=待同步、`NULL`=不参与同步。
+`pending` 里每条是 `{table,id,name,nickName,relationship,category,syncStatus,updateTime}`，
+最多 100 条。读法：进程内调小爱自己的 `MemoryDbHelper.createDb(Context)`，不自己解密钥；
+失败返回 `OFFICIALDB_UNAVAILABLE`（该库只在 voiceassist 进程内可开）。
 
 写类操作（`append` / `replace` / `official_write`）有两道闸：
 

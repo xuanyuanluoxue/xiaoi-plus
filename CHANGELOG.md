@@ -19,6 +19,11 @@
   `claw_memory_db_master_key` 解出（AES-256-GCM），再经小爱自带的 SQLCipher 以只读打开，
   **不导出 `conversation` 原文**，口令不落日志。实测对小爱说一句后 10s 内可查到新条目
   （`id=1145 生活习惯=每天早上七点跑步`，`mem_extractor=conv_worker`）。
+- **`xiaoai_memory op=sync`**：读官方本地库 `memory_data_<uid>.db` 的同步状态——各表条数、
+  `syncStatus` 分布、待同步行（只回 id/name/关系/时间，不回 `meta`）。进程内反射小爱自己的
+  `MemoryDbHelper.createDb(Context)` 拿 Room 实例，我们不解 JCEKS 密钥。
+  实测：`memory_public_table` 9 行全为 `1`（已同步）、`collect_data_table` 42 行全为 1、
+  `memory_relation_table` 1 行 `NULL`（不参与同步）、无 `2`（待同步）行。
 - **调用方归属**：每次 `tools/call` 的日志带 `caller=local|lan|inbound`，
   入站（`profile=readonly`）单独成一类，真机确认 `caller=inbound`。
 - **协议版本协商**：`initialize` 会回显客户端请求的 `2024-11-05`，其余（含 `2025-06-18`）

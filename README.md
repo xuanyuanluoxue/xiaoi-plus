@@ -226,7 +226,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 | `xiaoai_island` | 桥 | `text`（默认「小爱同学plus」）、`force` | 手动发一次超级岛提示（deprecated，建议用 `xiaoai_notify`） |
 | `xiaoai_stats` | 桥 | `days`（默认 7，上限 90，超出回 `clamped:true`） | 调用量统计：按天返回三方 / 官方模型的调用次数 |
 | `xiaoai_prompt` | 桥 | 无 | 读系统提示词配置（开关/模式/正文/记忆注入）与注入统计（命中次数、最后位置）；**默认关**，修改只能在 App 内 |
-| `xiaoai_memory` | 桥 | `op=get\|official\|stats\|live\|append\|replace\|official_write`（默认 get）、`section`、`text`、`limit`、`q`、`since`、`page`、`pageSize` | 三条通道：本地 `MEMORY.md` 分节读写（写需在 App 打开「允许写记忆」，写前备份 5 份，不提供删除）；`op=official`/`official_write` 转调小爱官方记忆；`op=stats`/`op=live` 直读加密库 `claw_memory.db`（各表行数；对话抽取出的条目，带 `mem_type`/`mem_source`/`mem_extractor`，实测对话后 10s 内可见） |
+| `xiaoai_memory` | 桥 | `op=get\|official\|stats\|live\|sync\|append\|replace\|official_write`（默认 get）、`section`、`text`、`limit`、`q`、`since`、`page`、`pageSize` | 四条通道：本地 `MEMORY.md` 分节读写（写需在 App 打开「允许写记忆」，写前备份 5 份，不提供删除）；`op=official`/`official_write` 转调小爱官方记忆；`op=stats`/`op=live` 直读加密库 `claw_memory.db`（行数；对话抽取条目，实测对话后 10s 内可见）；`op=sync` 读官方库 `memory_data_<uid>.db` 的 `syncStatus` 分布与待同步行 |
 | `xiaoai_capabilities` | App | `includeUnavailable` | 列出设备动作、schema、风险与可用性 |
 | `xiaoai_action` | App | `action`（必填）+ 动作参数 | 执行设备动作；`risk=confirm/danger` 需确认 |
 | `xiaoai_confirm` | App | `confirmToken`、`approve` | 批准/拒绝待确认动作；token 一次性、60 秒过期 |

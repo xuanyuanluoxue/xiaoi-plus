@@ -150,8 +150,18 @@ SQLCipher（Room 的 SupportOpenHelperFactory(byte[])）
 | `image_table` | `id` / `entityId` / `privacyId` / `base64RawData` | 记忆配图（base64 存库） |
 | `collect_data_table` | `id` / `favoriteData` / `syncStatus DEFAULT 1` | 收藏数据（迁移脚本里建的） |
 
-`syncStatus`：`changeDbStatusToNeedSync()` 会把它置为 **2**（日志原文「修改状态为待同步」），
-`collect_data_table` 建表默认 1；0/1 的精确语义（已同步/未变更）尚未实测确认。
+`syncStatus`（静态 + 实测）：
+
+| 值 | 含义 | 证据 |
+|---|---|---|
+| `1` | **已同步**（云上已有） | 用 `write_memory` 写一条后，`memory_public_table` 从 8 → 9 且新行 `syncStatus=1`；`collect_data_table` 42 行全为 1 |
+| `2` | **待同步** | `changeDbStatusToNeedSync()` 置 2，日志原文「修改状态为待同步」 |
+| `NULL` | 该行不参与同步 | `memory_relation_table` 的唯一一行是 NULL |
+| `0` | 未观测到 | — |
+
+实测当前设备：`memory_public_table` 9 / `memory_relation_table` 1 / `memory_private_table` 2 /
+`collect_data_table` 42 / `image_table` 0，**没有待同步行**——因为 `write_memory` 直接写云端，
+本地这条是回填的副本。
 
 `read_memory` / `write_memory`（通道 A）落的就是这套模型：`read_memory` 返回的
 `entityMemories` / `privacyMemories` / `generalMemories` 与上面三张表一一对应。
@@ -230,9 +240,10 @@ read_memory ──► getByPage / syncCloudMemory（云端） + 本地 memory_da
 | `stats` / `live` | `claw_memory.db` | 对话抽取，**不参与云端同步**（另一套管线） |
 
 结论：**`claw_memory.db` 目前只在本地，云同步只覆盖 `memory_data_*.db` 这套官方记忆。**
-如果要判断「这条记忆有没有上云」，需要读 `memory_data_*.db` 的 `syncStatus`
-（密钥链见 7.2，可在进程内通过 `MemoryDbHelper.createDb(Context)` 直接拿 Room 实例，
-不必自己解密钥）。
+
+判断「这条记忆有没有上云」已经落地为 `xiaoai_memory op=sync`：进程内反射
+`MemoryDbHelper.createDb(Context)` 拿小爱自己的 Room 实例（不用我们解 JCEKS 密钥），
+读各表条数、`syncStatus` 分布与 `syncStatus=2` 的行（只回 id/name/关系/时间，不回 `meta`）。
 
 ## 9. 已知未知
 
