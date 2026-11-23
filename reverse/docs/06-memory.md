@@ -44,7 +44,7 @@ Manifest 里的记忆相关组件：
 └── facts/                      事实条目
 ```
 
-加密库（`claw_memory*.db` / `memory_data_*.db`）在别处，本子项目只做只读分析、不碰。
+加密库（`claw_memory*.db` / `memory_data_*.db`）的密钥链与表结构见 §7。
 
 `MEMORY.md` 的分节（脱敏，只留结构）：
 
@@ -101,12 +101,145 @@ Manifest 里的记忆相关组件：
 | 并发 | 小爱自己也写 | 备份 + 临时文件 + 原子 rename |
 | 隐私 | 记忆是最敏感的数据 | 正文不进日志、不进导出包 |
 
-## 7. 已知未知
+## 7. 两个加密库（已解，静态 + 实测）
+
+小爱有两套互不相干的本地库，都用自带 `net.zetetic` SQLCipher，但**密钥链完全不同**。
+
+### 7.1 `databases/claw_memory.db` — 对话抽取（`MEMORY.md` 的来源）
+
+```
+SharedPreferences(claw_memory_db_security)
+├── db_enc_passphrase_v1 = base64(AES-256-GCM 密文)
+└── db_enc_iv_v1         = base64(IV)
+        ▼ AndroidKeyStore 别名 claw_memory_db_master_key（AES-256-GCM，无需用户认证）
+     32 字节随机密钥 → 小写 hex（64 字符）= SQLCipher 口令
+```
+
+表（Room v11）：
+
+| 表 | 主要列 | 作用 |
+|---|---|---|
+| `conversation` | `session_id` / `query` / `answer` / `timestamp` / `agent_id` / `memory_extracted` | 全部会话问答原文 |
+| `memory_meta` | `mem_key` / `mem_value` / `mem_type` / `mem_filename` / `mem_dir` / `mem_source` / `mem_extractor` / `timestamp` / `status` | 抽取出的记忆条目，`MEMORY.md` 就是它的渲染 |
+| `memory_meta_new` | 同上（无 `mem_extractor`） | 迁移中的新表 |
+| `memory_file_sync_state` | `file_key` / `content_hash` / `file_mtime` / `file_size` | 落盘文件的同步状态（改写 `MEMORY.md` 前后比对） |
+
+工作进程（`com/aios/osbot/memory/claw/worker/`）：`SessionWorker` / `FlowWorker` /
+`TopicWorker` + `scheduler/photo/*`。实测：对小爱说一句后 **10 秒内**
+`memory_meta` 多出一条（`mem_extractor=conv_worker`），`MEMORY.md` 同时被改写。
+
+> 本项目已在 `platform/agent/ClawMemoryDb` 里实现只读访问（`xiaoai_memory op=stats/live`）。
+
+### 7.2 `databases/memory_data_<uid>.db` — 官方「记忆」（云端的本地副本）
+
+```
+MMKV files/mmkv/default → KEY_STORE_PASSWORD
+        ▼
+files/MemoryKeyStore.jceks（KeyStore.getDefaultType()，别名 MemoryKey，AES）
+        ▼ SecretKey.getEncoded() 的 32 字节
+SQLCipher（Room 的 SupportOpenHelperFactory(byte[])）
+```
+
+表（`com.xiaomi.voiceassistant.database.memory.MemoryDbHelper`）：
+
+| 表 | 主要列 | 作用 |
+|---|---|---|
+| `memory_public_table` | `id` / `maskuid` / `maskDeviceId` / `entityId` / `name` / `nickName` / `relationship` / `category` / `secondCategory` / `meta` / `syncStatus` | 人物/实体档案 |
+| `memory_private_table` | `id` / `maskuid` / `entityId` / `category` / `secondCategory` / `meta` | 隐私条目（号码、地址…） |
+| `memory_relation_table` | `entityId` / `name` / `relationship` / `meta` / `syncStatus` | 实体关系 |
+| `image_table` | `id` / `entityId` / `privacyId` / `base64RawData` | 记忆配图（base64 存库） |
+| `collect_data_table` | `id` / `favoriteData` / `syncStatus DEFAULT 1` | 收藏数据（迁移脚本里建的） |
+
+`syncStatus`：`changeDbStatusToNeedSync()` 会把它置为 **2**（日志原文「修改状态为待同步」），
+`collect_data_table` 建表默认 1；0/1 的精确语义（已同步/未变更）尚未实测确认。
+
+`read_memory` / `write_memory`（通道 A）落的就是这套模型：`read_memory` 返回的
+`entityMemories` / `privacyMemories` / `generalMemories` 与上面三张表一一对应。
+
+## 8. 联网同步：云端记忆 API（静态，未主动调用）
+
+### 8.1 端点
+
+```
+POST https://api.open.xiaomixiaoai.com/rag/open/user/memory/common?method=<action>
+```
+
+`<action>` 取自 14 个常量（`classes3.dex → Lfg0/p;`，Retrofit 接口）：
+
+| action | 请求体 | 作用 |
+|---|---|---|
+| `getByPage` | `GetByPageRequestBody` | 分页拉取记忆 |
+| `extractMemory` | `ExtractMemoryRequestBody` | 云端抽取（`sessionQa[]` + `source` + `needSave` / `needVerify`） |
+| `insertMemory` | `hg2.g0`（JSON） | 新建 |
+| `updateMemory` / `upsertFavoriteData` | JSON | 更新 |
+| `deleteMemory` | `MemoryDeleteRequestBody{category, ids[]}` | 删除单条 |
+| `deleteAllSyncData` | JSON | 清空同步数据 |
+| `syncMemory` | `MemorySyncBean{deleteAll, existingMemoryIds[], modifyMemories}` | **本地→云端批量同步** |
+| `syncCloudMemory` | JSON | 云端→本地（下拉） |
+| `syncHistoryUserData` | JSON | 历史用户数据同步 |
+| `syncFavoriteData` / `deleteFavoriteData` | `FavoriteDataSyncBean` | 收藏同步 |
+| `legalityCheck` | `LegalityCheckBean{meta, nickName}` | 写入前合法性/重名校验 |
+| `syncFestivalInfo` / `syncFestivalInfoCallback` | 无 / JSON | 节日信息同步 |
+
+响应统一是 `CommonMemoryResponse{code, msg, data{aboutme, memories, ...}}`，
+`code=200` 成功；`3001` / `30041` / `30042` 对应「多个同名同关系的人」「已存在同名同关系」
+「已存在关系为本人」这类业务错误（`MemoryRepo` 里带中文常量）。
+
+### 8.2 鉴权
+
+请求头（`ah1.n0.getHeader()`）：
+
+| 头 | 来源 |
+|---|---|
+| `rid` | 每次随机（`APIUtils.randomRequestId(false)`） |
+| `userid` | `baselibrary.utils.g.getCurUserId()` |
+| `appid` | `r31.a.getAccountClientId()` |
+| `deviceid` | `d91.e.getDeviceId()` |
+| `Cookie` | `"<appid>_serviceToken=<token>;userId=<uid>"`（`r31.c$b.getCookieFromToken`） |
+
+即 **MiPassport 的 serviceToken**，走 Cookie 而不是 Bearer。token 由 Passport SDK 维护，
+过期由 `AccountAuthenticator` 续。
+
+### 8.3 同步方向与触发
+
+```
+                    写路径
+write_memory / 语音写入 ──► 本地 memory_data_*.db（syncStatus=2 待同步）
+                                    │  (changeDbStatusToNeedSync)
+                                    ▼
+                          gh1.p1 同步器（MemorySyncHelper）
+                            ├ getAllModifiedData / getModifiedCollectData
+                            ├ syncToServer  → POST syncMemory（分页、existingMemoryIds 去重）
+                            ├ handleFailData → 失败的置回待同步 / 记失败
+                            └ doSyncIfNeed  ← onNetworkConnectivityChanged（网络恢复时补传）
+                    读路径
+read_memory ──► getByPage / syncCloudMemory（云端） + 本地 memory_data 库
+```
+
+- 同步是**网络恢复 + 本地标脏**驱动的，没有固定心跳；
+- 一次 `syncMemory` 带 `existingMemoryIds`（云端已有的 id）与 `modifyMemories`（增量），
+  即「差量上传」，服务器按 id 决定 insert/update；
+- `extractMemory` 是另一条线：把 `sessionQa[]` 交给云端抽记忆，返回本地再落库。
+
+### 8.4 与我们 MCP 的关系
+
+| 我们的 op | 数据源 | 与同步的关系 |
+|---|---|---|
+| `official` / `official_write` | 通道 A `read_memory` / `write_memory` | 直接走云端（写入即云上可见，实测约 8 s 抽取延迟） |
+| `get` / `append` / `replace` | `MEMORY.md` | 本地渲染，**不参与云端同步** |
+| `stats` / `live` | `claw_memory.db` | 对话抽取，**不参与云端同步**（另一套管线） |
+
+结论：**`claw_memory.db` 目前只在本地，云同步只覆盖 `memory_data_*.db` 这套官方记忆。**
+如果要判断「这条记忆有没有上云」，需要读 `memory_data_*.db` 的 `syncStatus`
+（密钥链见 7.2，可在进程内通过 `MemoryDbHelper.createDb(Context)` 直接拿 Room 实例，
+不必自己解密钥）。
+
+## 9. 已知未知
 
 | 项目 | 状态 | 验证方法 |
 |---|---|---|
-| 云端记忆的真正存储与同步协议 | 不可见 | 只能观察 `MiclawSyncService` 的调用 |
-| `outline.md` 由谁生成、何时重建 | 未知 | 改 MEMORY.md 后看 mtime |
-| `daily/` `facts/` 与 MEMORY.md 的关系 | 未知 | 逐日对比 |
-| `memory_forget` 的作用范围（本地/云端） | 未知 | 谨慎试删一条测试数据 |
-| 加密库表结构 | 不研究（边界） | — |
+| `syncStatus` 0/1 的精确语义 | 未确认（2=待同步已确认） | 读一条刚写入的官方记忆再看同步前后取值 |
+| `claw_memory.db` 是否也会上云 | 静态看没有对应调用 | 改一条 `memory_meta` 后看云端 `getByPage` 是否出现 |
+| `MiclawSyncService` / `MiclawSyncProvider` 的独立通道 | 只看到 Manifest 声明 | 抓 binder 调用或看日志 |
+| 云端 `getByPage` 的分页与排序 | 未调用过 | 用 Cookie 直接打一次 API |
+| `outline.md` 的重建时机 | 部分已知（抽取时同写） | 改 `MEMORY.md` 后看是否被覆盖 |

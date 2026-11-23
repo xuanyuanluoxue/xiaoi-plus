@@ -19,7 +19,7 @@ reverse/
 │   ├── 03-agent-runtime.md    Agent 运行时：facade / CLI / 意图分发
 │   ├── 04-toolchain.md        工具链：481 个工具、20 个常驻、两级检索
 │   ├── 05-skills.md           Agent 定义（20 个）与 skill（SKILL.md）
-│   ├── 06-memory.md           记忆：ClawMemory、三件套工具、生成流水线
+│   ├── 06-memory.md           记忆：ClawMemory、加密库密钥链、云端同步 API
 │   ├── 07-obfuscation.md      混淆漂移与重定位配方
 │   ├── 08-internal-api.md     **内部 API**：18 个 App 工具 + 5 个导出 AIDL + MCP
 │   └── findings/              单点深挖（一个类/一个协议一篇）
