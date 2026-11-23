@@ -22,6 +22,7 @@ reverse/
 │   ├── 06-memory.md           记忆：ClawMemory、加密库密钥链、云端同步 API
 │   ├── 07-obfuscation.md      混淆漂移与重定位配方
 │   ├── 08-internal-api.md     **内部 API**：18 个 App 工具 + 5 个导出 AIDL + MCP
+│   ├── 09-ai-components.md    澎湃 AI 12 项的组件实现 + AppTool 生态（17 provider / 112 工具）
 │   └── findings/              单点深挖（一个类/一个协议一篇）
 ├── data/
 │   └── tool-catalog.md        481 个工具 + 18 个 App 工具 + Agent 清单（生成物）
@@ -35,6 +36,7 @@ reverse/
     ├── extract-assets.sh      解出 assets（工具目录/Agent/提示词/MCP 配置）
     ├── catalog.py             assets → Markdown 工具目录
     ├── runtime-logs.sh        从 8771 取合并日志与调用量
+    ├── survey-apptools.py     枚举全系统 AppTool provider 与各自工具（远程读 assets）
     └── report.sh              一键生成当前版本的证据快照
 ```
 
