@@ -577,6 +577,15 @@ public final class McpTest {
         ok("status 带 clawdb 探针",
                 call(p2, 40, "xiaoai_status", null).contains("clawdb=ok"));
 
+        // 官方记忆库同步状态：op=sync
+        call(p2, 40, "xiaoai_memory", "{\"op\":\"sync\"}");
+        eq("sync 默认 20 行", 20, mem.syncLimit);
+        call(p2, 40, "xiaoai_memory", "{\"op\":\"sync\",\"limit\":9999}");
+        eq("sync limit 夹到 100", 100, mem.syncLimit);
+        ok("sync 只读，不需要写开关",
+                !call(p2, 40, "xiaoai_memory", "{\"op\":\"sync\"}")
+                        .contains("memoryWriteEnabled"));
+
         // 局域网写：需要二次因子；只读不受影响
         ok("LAN 写无二次因子被拒",
                 callLan(p2, 41, "xiaoai_memory",
@@ -761,6 +770,7 @@ public final class McpTest {
         String officialWriteQ;
         String officialResult = "{\"ok\":true,\"code\":\"OK\",\"items\":[{\"text\":\"羽毛球\"}]}";
         int statsCalls;
+        int syncLimit = -1;
         String liveQ;
         long liveSince = -1L;
         int liveLimit = -1;
@@ -818,6 +828,12 @@ public final class McpTest {
         public String clawStats() {
             statsCalls++;
             return "{\"ok\":true,\"db\":\"claw_memory.db\",\"tables\":[],\"types\":[]}";
+        }
+
+        @Override
+        public String officialSync(int limit) {
+            this.syncLimit = limit;
+            return "{\"ok\":true,\"tables\":[],\"pendingCount\":0,\"pending\":[]}";
         }
 
         @Override

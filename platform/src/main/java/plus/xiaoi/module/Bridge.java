@@ -211,6 +211,12 @@ public final class Bridge {
                     MemoryFiles.appContext(), q, since, limit);
         }
 
+        @Override
+        public String officialSync(int limit) {
+            return plus.xiaoi.module.agent.OfficialMemoryDb.sync(
+                    MemoryFiles.appContext(), limit);
+        }
+
         private String unavailable() {
             Map<String, Object> o = Json.obj();
             o.put("ok", false);

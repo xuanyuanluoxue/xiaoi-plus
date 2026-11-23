@@ -225,6 +225,17 @@ public final class Mcp {
             return "{\"ok\":false,\"code\":\"CLAWDB_UNAVAILABLE\","
                     + "\"message\":\"加密库通道未实现\"}";
         }
+
+        /**
+         * 官方记忆库的同步状态（{@code memory_data_<uid>.db}）：各表条数、
+         * {@code syncStatus} 分布与待同步行。只读，不含 {@code meta} 正文。
+         *
+         * @param limit 每张表返回的待同步行数（已夹到 1..100）
+         */
+        default String officialSync(int limit) {
+            return "{\"ok\":false,\"code\":\"OFFICIALDB_UNAVAILABLE\","
+                    + "\"message\":\"官方记忆库通道未实现\"}";
+        }
     }
 
     /**
@@ -786,18 +797,20 @@ public final class Mcp {
                 + "op=official 转调小爱官方记忆检索（向量+关键词，返回官方口径）；"
                 + "op=stats 读加密记忆库的行数与时间范围（不含正文）；"
                 + "op=live 实时读加密库里的记忆条目（memory_meta，不经过 MEMORY.md）；"
+                + "op=sync 读官方记忆库的同步状态（各表条数、syncStatus 分布、待同步行）；"
                 + "op=append / op=replace 改本地文件（保留标题）；"
                 + "op=official_write 交给官方抽取写入（自然语言，可能被改写）。"
                 + "写操作需要先在 App 内打开「允许写记忆」；局域网来源还需打开「允许局域网写」。"
                 + "每次本地写入前自动备份（保留 5 份）；不提供删除或清空。");
         Map<String, Object> props = Json.obj();
         Map<String, Object> op = prop("string",
-                "操作：get / official / stats / live / append / replace / official_write，缺省 get");
+                "操作：get / official / stats / live / sync / append / replace / official_write，缺省 get");
         List<Object> ops = Json.arr();
         ops.add("get");
         ops.add("official");
         ops.add("stats");
         ops.add("live");
+        ops.add("sync");
         ops.add("append");
         ops.add("replace");
         ops.add("official_write");
@@ -807,7 +820,7 @@ public final class Mcp {
         props.put("text", prop("string",
                 "要写入的内容，多行按条目拆分（上限 " + Contract.MEMORY_APPEND_MAX_BYTES + " 字节）"));
         Map<String, Object> limit = prop("integer",
-                "op=get 每个小节的条数（缺省 50，上限 200）；op=live 的条数（缺省 20，上限 200）");
+                "op=get 每个小节的条数（缺省 50，上限 200）；op=live / op=sync 的条数（缺省 20，上限 200 / 100）");
         limit.put("minimum", 1L);
         limit.put("maximum", (long) Contract.MEMORY_GET_LIMIT_MAX);
         props.put("limit", limit);
@@ -1145,9 +1158,18 @@ public final class Mcp {
             String text = hosts.memory.clawLive(Json.optString(args, "q", "").trim(), since, limit);
             return toolText(text, failed(text));
         }
+        if ("sync".equals(op)) {
+            int limit = Json.has(args, "limit")
+                    ? (int) Json.optLong(args, "limit", Contract.MEMORY_LIVE_LIMIT_DEFAULT)
+                    : Contract.MEMORY_LIVE_LIMIT_DEFAULT;
+            if (limit < 1) limit = 1;
+            if (limit > Contract.MEMORY_SYNC_LIMIT_MAX) limit = Contract.MEMORY_SYNC_LIMIT_MAX;
+            String text = hosts.memory.officialSync(limit);
+            return toolText(text, failed(text));
+        }
         if (!"append".equals(op) && !"replace".equals(op)) {
             return toolText("unknown op: " + op
-                    + "（可用：get, append, replace, official, official_write, stats, live）", true);
+                    + "（可用：get, append, replace, official, official_write, stats, live, sync）", true);
         }
         String denied = writeDenied(hosts, lan, lanWriteOk);
         if (denied != null) return toolText(denied, true);

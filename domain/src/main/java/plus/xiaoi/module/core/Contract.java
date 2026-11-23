@@ -74,6 +74,8 @@ public final class Contract {
     public static final int MEMORY_LIVE_LIMIT_MAX = 200;
     /** op=live 中 mem_value 的截断长度（字符），避免一次吐出整库。 */
     public static final int MEMORY_LIVE_VALUE_CHARS = 300;
+    /** op=sync 每张表返回的待同步行数上限。 */
+    public static final int MEMORY_SYNC_LIMIT_MAX = 100;
 
     // ------------------------------------------------------------- 查询上限
 
