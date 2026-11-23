@@ -249,6 +249,13 @@ public final class Bridge {
         public String summary() {
             return plus.xiaoi.module.agent.AppToolClient.probe(MemoryFiles.appContext());
         }
+
+        @Override
+        public String callExternal(String pkg, String service, String tool,
+                                   Map<String, Object> args, long timeoutMs) {
+            return plus.xiaoi.module.agent.AppToolClient.callExternal(
+                    MemoryFiles.appContext(), pkg, service, tool, args, timeoutMs).text;
+        }
     };
 
     private static final Mcp.Hosts HOSTS = new Mcp.Hosts(

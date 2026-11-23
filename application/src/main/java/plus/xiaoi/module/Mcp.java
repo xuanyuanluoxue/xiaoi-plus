@@ -245,12 +245,28 @@ public final class Mcp {
      * 实现方在 Bridge，底层走 {@code IAppToolProvider} 的 JSON-RPC。</p>
      */
     public interface AppToolPort {
-        /** 调用一个 AppTool；返回小爱原样 JSON 或结构化错误。 */
+        /** 调用小爱自己的一个 AppTool；返回原样 JSON 或结构化错误。 */
         String call(String tool, Map<String, Object> args);
 
-        /** 就绪度，例如 {@code apptools=ok methods=18}。 */
+        /** 就绪度，例如 {@code apptools=ok methods=64}。 */
         default String summary() {
             return "apptools=unknown";
+        }
+
+        /**
+         * 调其它应用的 AppTool provider（跨包 bind，调用方是小爱）。
+         *
+         * @param pkg       目标包名
+         * @param service   目标 Service 全类名
+         * @param tool      provider 声明的工具名
+         * @param args      参数对象（可为空 Map）
+         * @param timeoutMs 等待上限
+         * @return provider 原样 JSON 或结构化错误
+         */
+        default String callExternal(String pkg, String service, String tool,
+                                    Map<String, Object> args, long timeoutMs) {
+            return "{\"ok\":false,\"code\":\"APPTOOL_UNAVAILABLE\","
+                    + "\"message\":\"外部 AppTool 通道未实现\"}";
         }
     }
 
@@ -487,12 +503,14 @@ public final class Mcp {
         r.put("protocolVersion", negotiated);
         r.put("capabilities", caps);
         r.put("serverInfo", info);
-        r.put("instructions", "小爱同学+ 统一 MCP 端点（8771，唯一端口）：18 个工具都从这里调用"
-                + "（桥 12 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
+        r.put("instructions", "小爱同学+ 统一 MCP 端点（8771，唯一端口）：24 个工具都从这里调用"
+                + "（桥 18 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
                 + "xiaoai_submit 让小爱执行一句话任务，xiaoai_nlp 走小爱语义引擎，"
                 + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
                 + "xiaoai_stats 看三方/官方模型调用量，xiaoai_prompt 看系统提示词状态，"
                 + "xiaoai_memory 读写记忆（写需在 App 内开启）。"
+                + "xiaoai_apptools 列出可调用的系统应用工具，xiaoai_apptool 按白名单调用"
+                + "（日历/闹钟/录音/相册/天气/笔记…，写类要 confirm）。"
                 + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。");
         return r;
     }
@@ -505,6 +523,8 @@ public final class Mcp {
     public static final int SUBMIT_TEXT_MAX = plus.xiaoi.module.core.Contract.SUBMIT_TEXT_MAX;
     /** xiaoai_nlp.text 上限（自然语言一句）。 */
     public static final int NLP_TEXT_MAX = 500;
+    /** 外部 AppTool 单次调用上限（转录/相册搜索会跑模型或扫库）。 */
+    public static final long APPTOOL_EXT_TIMEOUT_MS = 20000L;
 
     static Map<String, Object> toolsListAll() {
         List<Object> tools = Json.arr();
@@ -663,6 +683,34 @@ public final class Mcp {
         tools.add(st);
         tools.add(promptTool());
         tools.add(memoryTool());
+        tools.add(appToolsListTool());
+        tools.add(appToolCallTool());
+        tools.add(appToolWrapper("xiaoai_alarms", "闹钟与倒计时：列出设备上已设置的闹钟或当前倒计时状态。"
+                + "等价于 xiaoai_apptool{app=alarm,tool=deskclock_query_alarms}，只读。", emptySchema()));
+        Map<String, Object> evProps = Json.obj();
+        evProps.put("start", prop("string", "起始时间，例如「2026-11-23」或「2026-11-23 00:00:00」"));
+        evProps.put("end", prop("string", "结束时间，格式同 start"));
+        evProps.put("keyword", prop("string", "可选，按标题/地点过滤"));
+        evProps.put("maxResults", prop("integer", "最多返回多少条，缺省 20"));
+        tools.add(appToolWrapper("xiaoai_events", "查日程：按时间范围读日历（只读）。"
+                + "等价于 xiaoai_apptool{app=calendar,tool=query_events}。", schema(evProps, list("start", "end"))));
+        Map<String, Object> trProps = Json.obj();
+        trProps.put("db_id", prop("integer", "录音的数据库 ID；给了就取这一条的转录"));
+        trProps.put("q", prop("string", "不给 db_id 时按关键词搜索录音（空=最近录音）"));
+        Map<String, Object> trLimit = prop("integer", "搜索返回条数，缺省 10，上限 50");
+        trLimit.put("minimum", 1L);
+        trLimit.put("maximum", 50L);
+        trProps.put("limit", trLimit);
+        tools.add(appToolWrapper("xiaoai_transcript", "录音转写：按 db_id 取转录全文，或按关键词搜索录音（只读）。"
+                + "等价于 xiaoai_apptool{app=recorder,tool=get_transcription|search_recordings}。",
+                schema(trProps, null)));
+        Map<String, Object> wtProps = Json.obj();
+        wtProps.put("city", prop("string", "城市名，例如「广州」"));
+        Map<String, Object> wtAlert = prop("boolean", "true=查气象预警，false/缺省=查实时+预报");
+        wtProps.put("alert", wtAlert);
+        tools.add(appToolWrapper("xiaoai_weather", "天气：查指定城市的实时天气/预报或气象预警（只读）。"
+                + "等价于 xiaoai_apptool{app=weather,tool=weather_get_city_weather|weather_get_city_alert}。",
+                schema(wtProps, list("city"))));
 
         Map<String, Object> r = Json.obj();
         r.put("tools", tools);
@@ -787,6 +835,51 @@ public final class Mcp {
                 + "修改提示词只能在手机 App「小爱 › 系统提示词」里做。");
         t.put("inputSchema", emptySchema());
         return t;
+    }
+
+    /** 通用 inputSchema：properties + 可选 required。 */
+    private static Map<String, Object> schema(Map<String, Object> props, List<Object> required) {
+        Map<String, Object> s = Json.obj();
+        s.put("type", "object");
+        s.put("properties", props);
+        if (required != null && !required.isEmpty()) s.put("required", required);
+        s.put("additionalProperties", Boolean.FALSE);
+        return s;
+    }
+
+    /** 便捷封装工具：只有名字、描述与 schema。 */
+    private static Map<String, Object> appToolWrapper(String name, String description,
+                                                      Map<String, Object> inputSchema) {
+        Map<String, Object> t = Json.obj();
+        t.put("name", name);
+        t.put("description", description);
+        t.put("inputSchema", inputSchema);
+        return t;
+    }
+
+    /** xiaoai_apptools：列出可调用的 AppTool（白名单）。 */
+    private static Map<String, Object> appToolsListTool() {
+        Map<String, Object> props = Json.obj();
+        props.put("app", prop("string", "可选，只看某个应用："
+                + plus.xiaoi.module.core.apptool.AppToolCatalog.apps().toString()));
+        return appToolWrapper("xiaoai_apptools",
+                "列出可调用的系统应用工具（AppTool 白名单）：日历/闹钟/录音/相册/天气/笔记/电话等。"
+                        + "每条带 app 别名、工具名、风险级与参数摘要；写类（risk=write）调用时需要 confirm=true。",
+                schema(props, null));
+    }
+
+    /** xiaoai_apptool：按别名调用白名单里的任意工具。 */
+    private static Map<String, Object> appToolCallTool() {
+        Map<String, Object> props = Json.obj();
+        props.put("app", prop("string", "应用别名，来自 xiaoai_apptools（alarm/calendar/notes/recorder/gallery/weather/phone/…）"));
+        props.put("tool", prop("string", "工具名，来自 xiaoai_apptools"));
+        props.put("args", prop("object", "工具参数对象，键名见 xiaoai_apptools 的 params"));
+        props.put("confirm", prop("boolean", "写类工具（risk=write）必须为 true"));
+        return appToolWrapper("xiaoai_apptool",
+                "调用系统应用的某个 AppTool（跨包 bind，调用方是小爱）。"
+                        + "只允许白名单里的 (app, tool) 组合；未知组合回 UNKNOWN_APPTOOL。"
+                        + "写类工具要 confirm=true，否则回 NEEDS_CONFIRM。",
+                schema(props, list("app", "tool")));
     }
 
     /** xiaoai_memory：记忆读写（写操作需在 App 内打开）。 */
@@ -1081,6 +1174,72 @@ public final class Mcp {
             if ("xiaoai_memory".equals(name)) {
                 return memoryToolCall(args, hosts, lan, lanWriteOk);
             }
+            if ("xiaoai_apptools".equals(name)) {
+                String bad = unexpectedArg(args, "app");
+                if (bad != null) return toolText(bad, true);
+                String app = Json.optString(args, "app", "").trim();
+                if (app.length() > 0
+                        && !plus.xiaoi.module.core.apptool.AppToolCatalog.hasApp(app)) {
+                    return toolText("unknown app: " + app + "（可用："
+                            + plus.xiaoi.module.core.apptool.AppToolCatalog.apps() + "）", true);
+                }
+                return toolText(appToolsJson(app), false);
+            }
+            if ("xiaoai_apptool".equals(name)) {
+                return appToolCall(args, hosts);
+            }
+            if ("xiaoai_alarms".equals(name)) {
+                String bad = unexpectedArg(args);
+                if (bad != null) return toolText(bad, true);
+                return appToolForward(hosts, "alarm", "deskclock_query_alarms", Json.obj());
+            }
+            if ("xiaoai_events".equals(name)) {
+                String bad = unexpectedArg(args, "start", "end", "keyword", "maxResults");
+                if (bad != null) return toolText(bad, true);
+                String start = Json.optString(args, "start", "").trim();
+                String end = Json.optString(args, "end", "").trim();
+                if (start.length() == 0 || end.length() == 0) {
+                    return toolText("missing argument: start / end（例如 2026-11-23）", true);
+                }
+                Map<String, Object> q = Json.obj();
+                q.put("start_time", start);
+                q.put("end_time", end);
+                String kw = Json.optString(args, "keyword", "").trim();
+                if (kw.length() > 0) q.put("keyword", kw);
+                if (Json.has(args, "maxResults")) {
+                    q.put("max_results", (long) Math.max(1, Json.optLong(args, "maxResults", 20L)));
+                }
+                return appToolForward(hosts, "calendar", "query_events", q);
+            }
+            if ("xiaoai_transcript".equals(name)) {
+                String bad = unexpectedArg(args, "db_id", "q", "limit");
+                if (bad != null) return toolText(bad, true);
+                long dbId = Json.optLong(args, "db_id", 0L);
+                if (dbId > 0L) {
+                    Map<String, Object> q = Json.obj();
+                    q.put("db_id", Long.valueOf(dbId));
+                    return appToolForward(hosts, "recorder", "get_transcription", q);
+                }
+                Map<String, Object> q = Json.obj();
+                String kw = Json.optString(args, "q", "").trim();
+                if (kw.length() > 0) q.put("keyword", kw);
+                long limit = Json.has(args, "limit") ? Json.optLong(args, "limit", 10L) : 10L;
+                if (limit < 1L) limit = 1L;
+                if (limit > 50L) limit = 50L;
+                q.put("limit", Long.valueOf(limit));
+                return appToolForward(hosts, "recorder", "search_recordings", q);
+            }
+            if ("xiaoai_weather".equals(name)) {
+                String bad = unexpectedArg(args, "city", "alert");
+                if (bad != null) return toolText(bad, true);
+                String city = Json.optString(args, "city", "").trim();
+                if (city.length() == 0) return toolText("missing argument: city", true);
+                Map<String, Object> q = Json.obj();
+                q.put("city", city);
+                String tool = Json.optBoolean(args, "alert", false)
+                        ? "weather_get_city_alert" : "weather_get_city_weather";
+                return appToolForward(hosts, "weather", tool, q);
+            }
             return forwardOrUnknown(name, args, hosts);
         } catch (Throwable t) {
             try {
@@ -1189,6 +1348,90 @@ public final class Mcp {
         return toolText(out, failed(out));
     }
 
+    /** 白名单目录 → JSON（供 xiaoai_apptools）。 */
+    private static String appToolsJson(String app) {
+        List<Object> appsOut = Json.arr();
+        int total = 0;
+        List<String> apps = app.length() > 0
+                ? java.util.Collections.singletonList(app)
+                : plus.xiaoi.module.core.apptool.AppToolCatalog.apps();
+        for (String alias : apps) {
+            List<plus.xiaoi.module.core.apptool.AppToolCatalog.Entry> entries =
+                    plus.xiaoi.module.core.apptool.AppToolCatalog.byApp(alias);
+            if (entries.isEmpty()) continue;
+            Map<String, Object> item = Json.obj();
+            item.put("app", alias);
+            item.put("pkg", plus.xiaoi.module.core.apptool.AppToolCatalog.packageOf(alias));
+            List<Object> toolsOut = Json.arr();
+            for (plus.xiaoi.module.core.apptool.AppToolCatalog.Entry e : entries) {
+                Map<String, Object> t = Json.obj();
+                t.put("tool", e.tool);
+                t.put("risk", e.risk);
+                t.put("params", e.params);
+                toolsOut.add(t);
+                total++;
+            }
+            item.put("tools", toolsOut);
+            appsOut.add(item);
+        }
+        Map<String, Object> out = Json.obj();
+        out.put("ok", Boolean.TRUE);
+        out.put("count", (long) total);
+        out.put("apps", appsOut);
+        return Json.write(out);
+    }
+
+    /** xiaoai_apptool 的实现：白名单 + 风险闸门 + 跨包调用。 */
+    private static Map<String, Object> appToolCall(Map<?, ?> args, Hosts hosts) {
+        String bad = unexpectedArg(args, "app", "tool", "args", "confirm");
+        if (bad != null) return toolText(bad, true);
+        String app = Json.optString(args, "app", "").trim();
+        String tool = Json.optString(args, "tool", "").trim();
+        if (app.length() == 0) return toolText("missing argument: app", true);
+        if (tool.length() == 0) return toolText("missing argument: tool", true);
+        if (hosts.appTool == null) {
+            return toolText("APPTOOL_UNAVAILABLE：小爱进程内 AppTool 端口不可用", true);
+        }
+        plus.xiaoi.module.core.apptool.AppToolCatalog.Entry entry =
+                plus.xiaoi.module.core.apptool.AppToolCatalog.find(app, tool);
+        if (entry == null) {
+            return toolText("UNKNOWN_APPTOOL：" + app + "/" + tool + " 不在白名单"
+                    + "（先调 xiaoai_apptools 看可用组合）", true);
+        }
+        if (entry.writable() && !Json.optBoolean(args, "confirm", false)) {
+            return toolText("NEEDS_CONFIRM：" + app + "/" + tool + " 会改系统状态，"
+                    + "确认后加 \"confirm\":true 再调用", true);
+        }
+        Map<String, Object> callArgs = Json.obj();
+        Object raw = args.get("args");
+        if (raw instanceof Map) {
+            for (Map.Entry<?, ?> e : ((Map<?, ?>) raw).entrySet()) {
+                if (e.getKey() instanceof String) callArgs.put((String) e.getKey(), e.getValue());
+            }
+        }
+        return forwardCatalog(hosts, app, tool, callArgs);
+    }
+
+    /** 便捷封装走的统一出口。 */
+    private static Map<String, Object> appToolForward(Hosts hosts, String app, String tool,
+                                                      Map<String, Object> callArgs) {
+        if (hosts.appTool == null) {
+            return toolText("APPTOOL_UNAVAILABLE：小爱进程内 AppTool 端口不可用", true);
+        }
+        return forwardCatalog(hosts, app, tool, callArgs);
+    }
+
+    private static Map<String, Object> forwardCatalog(Hosts hosts, String app, String tool,
+                                                      Map<String, Object> callArgs) {
+        String pkg = plus.xiaoi.module.core.apptool.AppToolCatalog.packageOf(app);
+        String svc = plus.xiaoi.module.core.apptool.AppToolCatalog.serviceOf(app);
+        if (pkg == null || svc == null) {
+            return toolText("UNKNOWN_APPTOOL：" + app, true);
+        }
+        String out = hosts.appTool.callExternal(pkg, svc, tool, callArgs, APPTOOL_EXT_TIMEOUT_MS);
+        return toolText(out, failed(out));
+    }
+
     /** 写操作的两道闸：本机写开关 + 局域网写开关；通过返回 null。 */
     private static String writeDenied(Hosts hosts, boolean lan, boolean lanWriteOk) {
         if (!hosts.memory.writable()) {
@@ -1216,11 +1459,14 @@ public final class Mcp {
         if (json == null || json.length() == 0) return true;
         try {
             Object v = Json.read(json);
-            if (!(v instanceof Map)) return true;
+            // 系统 AppTool 会直接返回数组（闹钟列表）或纯文本（「已删除闹钟 4」），
+            // 只有我们自己的结构化 JSON 才用 ok=false 表示失败。
+            if (!(v instanceof Map)) return false;
             Object ok = ((Map<?, ?>) v).get("ok");
             return Boolean.FALSE.equals(ok);
         } catch (Throwable t) {
-            return true;
+            // 非 JSON 文本：provider 已经给出答复，不算失败。
+            return false;
         }
     }
 

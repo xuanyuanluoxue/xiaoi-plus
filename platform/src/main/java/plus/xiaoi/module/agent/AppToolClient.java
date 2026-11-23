@@ -65,6 +65,15 @@ public final class AppToolClient {
     /** 独占线程池的工具名。 */
     private static final String NLP_TOOL = "nlp_query";
 
+    /**
+     * 外部 AppTool（日历/闹钟/录音/相册/天气…）专用池：上限 4。
+     *
+     * <p>这些工具里 {@code get_transcription} / {@code gallery_search} 会跑模型或扫库，
+     * 5s 不够；和记忆/待办分开，避免长调用把 {@link #CALLS} 占满。</p>
+     */
+    private static final ThreadPoolExecutor EXTERNAL = new ThreadPoolExecutor(
+            0, 4, 60L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+
     public static AppToolProtocol.Result createTodo(Context context, String title, String body) {
         if (context == null) {
             return AppToolProtocol.error("CONTEXT_UNAVAILABLE", "拿不到 voiceassist Context");
@@ -130,6 +139,27 @@ public final class AppToolClient {
     public static AppToolProtocol.Result callTool(Context context, String pkg, String serviceClass,
                                                  String tool, java.util.Map<String, Object> args,
                                                  long timeoutMs) {
+        boolean dedicated = NLP_TOOL.equals(tool);
+        return execute(context, pkg, serviceClass, tool, args, timeoutMs,
+                dedicated ? NLP_CALL : CALLS, dedicated);
+    }
+
+    /**
+     * 调其它应用的 AppTool provider（跨包 bind，走 {@link #EXTERNAL} 池）。
+     *
+     * <p>调用方 uid 是小爱，签名级 {@code BIND_APP_TOOL} 权限天然满足。</p>
+     */
+    public static AppToolProtocol.Result callExternal(Context context, String pkg,
+                                                      String serviceClass, String tool,
+                                                      java.util.Map<String, Object> args,
+                                                      long timeoutMs) {
+        return execute(context, pkg, serviceClass, tool, args, timeoutMs, EXTERNAL, false);
+    }
+
+    private static AppToolProtocol.Result execute(Context context, String pkg, String serviceClass,
+                                                  String tool, java.util.Map<String, Object> args,
+                                                  long timeoutMs, ThreadPoolExecutor pool,
+                                                  boolean dedicated) {
         if (context == null) {
             return AppToolProtocol.error("CONTEXT_UNAVAILABLE", "拿不到 voiceassist Context");
         }
@@ -137,7 +167,6 @@ public final class AppToolClient {
             return AppToolProtocol.error("MAIN_THREAD_BLOCKED",
                     "拒绝在主线程等待 AppTool binder（会造成 ServiceConnection 回调死锁）");
         }
-        boolean dedicated = NLP_TOOL.equals(tool);
         if (dedicated && !NLP_INFLIGHT.compareAndSet(false, true)) {
             return AppToolProtocol.error("NLP_BUSY",
                     "上一次 nlp_query 还没返回（联网类语句会在小爱内部卡住），"
@@ -162,7 +191,7 @@ public final class AppToolClient {
             }
             submitted = true;
             return callWithTimeout(app, binder, AppToolProtocol.buildCall(tool, args), timeoutMs,
-                    dedicated ? NLP_CALL : CALLS, dedicated);
+                    pool, dedicated);
         } catch (Throwable e) {
             Logs.e("apptool 调用失败: " + e);
             return AppToolProtocol.error("CALL_FAILED", "调用 provider 失败", rootMessage(e));

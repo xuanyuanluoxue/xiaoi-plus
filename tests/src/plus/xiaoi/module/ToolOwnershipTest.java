@@ -18,7 +18,7 @@ public final class ToolOwnershipTest {
 
     public static int run() {
         List<?> bridge = toolsOf(Mcp.toolsList());
-        T.eq("8771 工具数", 12, bridge.size());
+        T.eq("8771 工具数", 18, bridge.size());
         for (Object o : bridge) {
             String name = nameOf(o);
             T.ok("8771 工具归属 bridge: " + name, ToolOwnership.isBridge(name));

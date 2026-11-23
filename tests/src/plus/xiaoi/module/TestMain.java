@@ -48,6 +48,12 @@ public final class TestMain {
             failed++;
             System.out.println("  FAIL OfficialMemorySqlTest 套件异常: " + t);
         }
+        try {
+            failed += AppToolCatalogTest.run();
+        } catch (Throwable t) {
+            failed++;
+            System.out.println("  FAIL AppToolCatalogTest 套件异常: " + t);
+        }
         failed += LogsTest.run();
         failed += LogFileSinkTest.run();
         failed += ModelValidatorTest.run();

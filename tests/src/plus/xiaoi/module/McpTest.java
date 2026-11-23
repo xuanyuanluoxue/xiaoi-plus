@@ -128,12 +128,14 @@ public final class McpTest {
         eq("initialize", "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-03-26\","
                         + "\"capabilities\":{\"tools\":{\"listChanged\":false}},"
                         + "\"serverInfo\":{\"name\":\"xiaoi-plus\",\"version\":\"9.9.9\"},"
-                        + "\"instructions\":\"小爱同学+ 统一 MCP 端点（8771，唯一端口）：18 个工具都从这里调用"
-                        + "（桥 12 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
+                        + "\"instructions\":\"小爱同学+ 统一 MCP 端点（8771，唯一端口）：24 个工具都从这里调用"
+                        + "（桥 18 + 设备动作 6，设备动作经控制面转发到 App 进程执行）。"
                         + "xiaoai_submit 让小爱执行一句话任务，xiaoai_nlp 走小爱语义引擎，"
                         + "xiaoai_status 探活，xiaoai_cli 走原始 CLI，"
                         + "xiaoai_stats 看三方/官方模型调用量，xiaoai_prompt 看系统提示词状态，"
                         + "xiaoai_memory 读写记忆（写需在 App 内开启）。"
+                        + "xiaoai_apptools 列出可调用的系统应用工具，xiaoai_apptool 按白名单调用"
+                        + "（日历/闹钟/录音/相册/天气/笔记…，写类要 confirm）。"
                         + "端点与密钥只能在手机 App 内修改；远程只能切换已有端点的 model/marker。\"}}",
                 Mcp.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", hs));
 
@@ -185,8 +187,8 @@ public final class McpTest {
         eq("frame jsonrpc", "2.0", root.get("jsonrpc"));
         eq("frame id", Long.valueOf(3), root.get("id"));
         List<?> tools = (List<?>) ((Map<?, ?>) root.get("result")).get("tools");
-        eq("tool count", 12, tools.size());
-        eq("tool order", "xiaoai_status,xiaoai_nlp,xiaoai_submit,xiaoai_todo_create,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats,xiaoai_prompt,xiaoai_memory",
+        eq("tool count", 18, tools.size());
+        eq("tool order", "xiaoai_status,xiaoai_nlp,xiaoai_submit,xiaoai_todo_create,xiaoai_cli,xiaoai_config,xiaoai_island,xiaoai_switch_model,xiaoai_logs,xiaoai_stats,xiaoai_prompt,xiaoai_memory,xiaoai_apptools,xiaoai_apptool,xiaoai_alarms,xiaoai_events,xiaoai_transcript,xiaoai_weather",
                 names(tools));
 
         Map<?, ?> submit = (Map<?, ?>) tools.get(2);
@@ -225,7 +227,7 @@ public final class McpTest {
         String toolText = Mcp.toolListText();
         ok("工具清单含 xiaoai_stats", toolText.contains("xiaoai_stats"));
         ok("工具清单含 xiaoai_todo_create", toolText.contains("xiaoai_todo_create"));
-        eq("工具清单行数", 12, toolText.split("\n").length);
+        eq("工具清单行数", 18, toolText.split("\n").length);
 
         Map<?, ?> statsTool = (Map<?, ?>) tools.get(9);
         eq("stats props", "[days]",
@@ -577,6 +579,7 @@ public final class McpTest {
         ok("status 带 clawdb 探针",
                 call(p2, 40, "xiaoai_status", null).contains("clawdb=ok"));
 
+
         // 官方记忆库同步状态：op=sync
         call(p2, 40, "xiaoai_memory", "{\"op\":\"sync\"}");
         eq("sync 默认 20 行", 20, mem.syncLimit);
@@ -631,6 +634,56 @@ public final class McpTest {
                 call(p3, 51, "xiaoai_status", null).contains("apptools=ok methods=18"));
         ok("无 appTool 时 nlp 报不可用",
                 call(p2, 52, "xiaoai_nlp", "{\"text\":\"hi\"}").contains("APPTOOL_UNAVAILABLE"));
+
+        // AppTool 通用通道：白名单 + 风险闸门 + 四个便捷封装
+        String list = call(p3, 60, "xiaoai_apptools", null);
+        ok("apptools 列出闹钟", list.contains("deskclock_query_alarms"));
+        ok("apptools 带风险级", list.contains("risk") && list.contains("read"));
+        ok("apptools 可过滤 app",
+                !call(p3, 60, "xiaoai_apptools", "{\"app\":\"alarm\"}").contains("gallery_search"));
+        ok("apptools 未知 app 被拒",
+                call(p3, 60, "xiaoai_apptools", "{\"app\":\"telecom\"}")
+                        .contains("unknown app: telecom"));
+
+        call(p3, 61, "xiaoai_apptool",
+                "{\"app\":\"alarm\",\"tool\":\"deskclock_query_alarms\"}");
+        eq("apptool 路由包名", "com.android.deskclock", app.extPkg);
+        eq("apptool 路由 Service", "com.android.deskclock.tool.AlarmToolService", app.extService);
+        eq("apptool 透传工具名", "deskclock_query_alarms", app.extTool);
+        ok("未知组合被拒",
+                call(p3, 62, "xiaoai_apptool",
+                        "{\"app\":\"alarm\",\"tool\":\"phone_make_call\"}")
+                        .contains("UNKNOWN_APPTOOL"));
+        ok("未收录的 provider 被拒",
+                call(p3, 63, "xiaoai_apptool",
+                        "{\"app\":\"telecom\",\"tool\":\"phone_make_call\"}")
+                        .contains("UNKNOWN_APPTOOL"));
+        ok("写类无 confirm 被拒",
+                call(p3, 64, "xiaoai_apptool",
+                        "{\"app\":\"alarm\",\"tool\":\"deskclock_add_alarm\","
+                                + "\"args\":{\"hour\":7,\"minutes\":0}}")
+                        .contains("NEEDS_CONFIRM"));
+        call(p3, 65, "xiaoai_apptool",
+                "{\"app\":\"alarm\",\"tool\":\"deskclock_add_alarm\",\"confirm\":true,"
+                        + "\"args\":{\"hour\":7,\"minutes\":0}}");
+        eq("confirm 后放行", "deskclock_add_alarm", app.extTool);
+        eq("参数透传", 7L, app.extArgs.get("hour"));
+
+        call(p3, 66, "xiaoai_alarms", null);
+        eq("alarms 路由", "deskclock_query_alarms", app.extTool);
+        call(p3, 67, "xiaoai_events", "{\"start\":\"2026-11-23\",\"end\":\"2026-11-30\"}");
+        eq("events 路由", "query_events", app.extTool);
+        eq("events 起止透传", "2026-11-23", app.extArgs.get("start_time"));
+        call(p3, 68, "xiaoai_transcript", "{\"q\":\"会议\",\"limit\":3}");
+        eq("transcript 搜索路由", "search_recordings", app.extTool);
+        eq("transcript limit 透传", 3L, app.extArgs.get("limit"));
+        call(p3, 69, "xiaoai_transcript", "{\"db_id\":12}");
+        eq("transcript 详情路由", "get_transcription", app.extTool);
+        eq("transcript db_id 透传", 12L, app.extArgs.get("db_id"));
+        call(p3, 70, "xiaoai_weather", "{\"city\":\"广州\",\"alert\":true}");
+        eq("weather 预警路由", "weather_get_city_alert", app.extTool);
+        call(p3, 71, "xiaoai_weather", "{\"city\":\"广州\"}");
+        eq("weather 默认查天气", "weather_get_city_weather", app.extTool);
 
         // 没有记忆端口时两个工具都明确报不可用，而不是伪造空结果
         ok("无端口时 xiaoai_prompt 报不可用",
@@ -742,12 +795,26 @@ public final class McpTest {
     private static final class FakeAppTool implements Mcp.AppToolPort {
         String tool;
         String query;
+        String extPkg;
+        String extService;
+        String extTool;
+        Map<String, Object> extArgs;
 
         @Override
         public String call(String tool, Map<String, Object> args) {
             this.tool = tool;
             this.query = args == null ? null : String.valueOf(args.get("query"));
             return "{\"ok\":true,\"data\":{\"alarm\":[]},\"render_token\":\"t1\"}";
+        }
+
+        @Override
+        public String callExternal(String pkg, String service, String tool,
+                                   Map<String, Object> args, long timeoutMs) {
+            this.extPkg = pkg;
+            this.extService = service;
+            this.extTool = tool;
+            this.extArgs = args;
+            return "{\"ok\":true,\"tool\":\"" + tool + "\"}";
         }
 
         @Override

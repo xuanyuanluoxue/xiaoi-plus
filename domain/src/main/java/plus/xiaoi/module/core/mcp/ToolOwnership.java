@@ -31,6 +31,12 @@ public final class ToolOwnership {
             "xiaoai_stats",
             "xiaoai_prompt",
             "xiaoai_memory",
+            "xiaoai_apptools",
+            "xiaoai_apptool",
+            "xiaoai_alarms",
+            "xiaoai_events",
+            "xiaoai_transcript",
+            "xiaoai_weather",
     };
 
     private static final String[] APP_TOOLS = {
