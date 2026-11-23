@@ -215,7 +215,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 
 | 工具 | 归属 | 参数 | 作用 |
 |---|---|---|---|
-| `xiaoai_status` | 桥 | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` / `hooks=` / `compat=` / `xiaoai=` / `rewrite=` / `apptools=` |
+| `xiaoai_status` | 桥 | 无 | 探活：`facade=` / `cli=` / `port=` / `version=` / `hooks=` / `compat=` / `xiaoai=` / `rewrite=` / `apptools=` / `clawdb=` |
 | `xiaoai_nlp` | 桥 | `text`（必填，≤500） | 小爱自己的语义解析（进程内 `nlp_query`，不经对话模型）：回 `{type,instruction_types,instruction_count}`，即这句话会触发的执行计划；联网语句上限 12s |
 | `xiaoai_submit` | 桥 | `text`（必填，≤4000）、`sessionId`、`structured` | 让小爱执行一句话任务；默认回文本，`structured:true` 时回 `{ok,text,sessionId}` |
 | `xiaoai_todo_create` | 桥 | `title`（必填，≤200）、`content`（≤8192） | 确定性创建小米笔记待办卡片，不经 LLM |
@@ -226,7 +226,7 @@ curl -s -H "Authorization: Bearer <你设置的 token>" http://<手机IP>:8771/h
 | `xiaoai_island` | 桥 | `text`（默认「小爱同学plus」）、`force` | 手动发一次超级岛提示（deprecated，建议用 `xiaoai_notify`） |
 | `xiaoai_stats` | 桥 | `days`（默认 7，上限 90，超出回 `clamped:true`） | 调用量统计：按天返回三方 / 官方模型的调用次数 |
 | `xiaoai_prompt` | 桥 | 无 | 读系统提示词配置（开关/模式/正文/记忆注入）与注入统计（命中次数、最后位置）；**默认关**，修改只能在 App 内 |
-| `xiaoai_memory` | 桥 | `op=get\|official\|append\|replace\|official_write`（默认 get）、`section`、`text`、`limit`、`q`、`page`、`pageSize` | 本地 `MEMORY.md` 分节读写（append/replace **需先在 App 打开「允许写记忆」**，写前自动备份 5 份，不提供删除）；`op=official`/`official_write` 转调小爱官方记忆（`read_memory`/`write_memory`），`official_write` 被抽成偏好标签后约 8s 可检索，删除类指令被拒 |
+| `xiaoai_memory` | 桥 | `op=get\|official\|stats\|live\|append\|replace\|official_write`（默认 get）、`section`、`text`、`limit`、`q`、`since`、`page`、`pageSize` | 三条通道：本地 `MEMORY.md` 分节读写（写需在 App 打开「允许写记忆」，写前备份 5 份，不提供删除）；`op=official`/`official_write` 转调小爱官方记忆；`op=stats`/`op=live` 直读加密库 `claw_memory.db`（各表行数；对话抽取出的条目，带 `mem_type`/`mem_source`/`mem_extractor`，实测对话后 10s 内可见） |
 | `xiaoai_capabilities` | App | `includeUnavailable` | 列出设备动作、schema、风险与可用性 |
 | `xiaoai_action` | App | `action`（必填）+ 动作参数 | 执行设备动作；`risk=confirm/danger` 需确认 |
 | `xiaoai_confirm` | App | `confirmToken`、`approve` | 批准/拒绝待确认动作；token 一次性、60 秒过期 |

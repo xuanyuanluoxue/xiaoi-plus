@@ -109,6 +109,8 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 - `apptools=ok methods=N` / `apptools=none`：小爱进程内 AppTool 通道是否可用，
   `N` 是 `UIAgentServiceForOSBot` 声明的方法总数（含 binder 样板，非业务方法数）。
   `none` 表示拿不到该类，`xiaoai_nlp` 会返回 `APPTOOL_UNAVAILABLE`。
+- `clawdb=ok|none`：加密记忆库（`claw_memory.db`）通道。`ok` 表示 AndroidKeyStore 里的
+  主密钥能解出口令（`xiaoai_memory op=stats/live` 可用）；`none` 只影响这两个 op。
 
 排查顺序：`hooks=none` + `compat=none` → 版本没进白名单；`hooks=ok` + `rewrite=none`
 → 装上了但该版本不读这些 getter（不兼容）；`hooks=ok` + `rewrite=hit` 但回复不对 →
@@ -376,16 +378,25 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 
 ### xiaoai_memory
 
-读写小爱记忆。两条通道：**本地文件**（`MEMORY.md`，明文 Markdown，按 `#`/`##` 分节）
-与**官方记忆**（转调小爱的 `read_memory` / `write_memory`）。
+读写小爱记忆。三条通道：
+
+| 通道 | op | 数据源 | 说明 |
+|---|---|---|---|
+| 本地文件 | `get` / `append` / `replace` | `files/memory/MEMORY.md` | 明文 Markdown，按 `#`/`##` 分节 |
+| 官方记忆 | `official` / `official_write` | 小爱官方记忆服务（`read_memory`/`write_memory`） | 云端口径，实体/隐私/个人标签 |
+| 加密记忆库 | `stats` / `live` | `databases/claw_memory.db`（SQLCipher） | 对话抽取出的条目（`memory_meta`），带来源与抽取器 |
+
+加密库的口令由小爱自己的 AndroidKeyStore 条目解开，**只能在 voiceassist 进程内读**
+（模块已在该进程）；读不到时返回 `CLAWDB_*` 结构化错误，不影响其它通道。
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `op` | string | 否 | `get`（默认）/ `official` / `append` / `replace` / `official_write` |
+| `op` | string | 否 | `get`（默认）/ `official` / `stats` / `live` / `append` / `replace` / `official_write` |
 | `section` | string | append/replace 必填 | 小节路径，例如 `长期记忆/重要事实`；不存在时新建 |
 | `text` | string | append/replace 必填 | 内容，多行按条目拆分；≤4 KB |
-| `limit` | integer | 否 | `get` 每小节返回条数：缺省 50，上限 200 |
-| `q` | string | 见 op | `official` 的检索关键词（空=最近记录）；`official_write` 的自然语言内容（≤500 字） |
+| `limit` | integer | 否 | `get` 每小节条数（缺省 50）；`live` 条数（缺省 20）；上限 200 |
+| `q` | string | 见 op | `official` 关键词；`official_write` 的自然语言内容（≤500 字）；`live` 的匹配词（正文与键） |
+| `since` | integer | 否 | `live` 起始时间（epoch 毫秒），缺省 0=不限 |
 | `page` | integer | 否 | `official` 页码，缺省 1 |
 | `pageSize` | integer | 否 | `official` 每页条数，缺省 10，上限 50 |
 
@@ -393,11 +404,40 @@ facade=true cli=true port=8771 version=0.16.2 hooks=ok compat=whitelist xiaoai=8
 {"name":"xiaoai_memory","arguments":{"op":"get","limit":50}}
 {"name":"xiaoai_memory","arguments":{"op":"official","q":"羽毛球","page":1,"pageSize":10}}
 {"name":"xiaoai_memory","arguments":{"op":"official_write","q":"我每周三晚上打羽毛球"}}
+{"name":"xiaoai_memory","arguments":{"op":"stats"}}
+{"name":"xiaoai_memory","arguments":{"op":"live","q":"跑步","limit":5}}
+{"name":"xiaoai_memory","arguments":{"op":"live","since":1795415000000}}
 {"name":"xiaoai_memory","arguments":{
   "op":"append","section":"长期记忆/重要事实","text":"项目代号 xiaoi-plus"}}
 {"name":"xiaoai_memory","arguments":{
   "op":"replace","section":"长期记忆/待办","text":"- 检查日志"}}
 ```
+
+`op=stats` 返回（不含正文）：
+
+```json
+{"ok":true,"db":"claw_memory.db",
+ "tables":[{"t":"conversation","n":"292","lo":"1793540904600","hi":"1795415668718"},
+           {"t":"memory_meta","n":"207","lo":"1793541156000","hi":"1795415674000"},
+           {"t":"memory_file_sync_state","n":"17","lo":"1795415587356","hi":"1795415676871"}],
+ "types":[{"t":"每日记忆","n":"154"},{"t":"用户画像","n":"18"},{"t":"长期记忆","n":"12"}]}
+```
+
+`op=live` 返回条目（`mem_value` 超过 300 字截断并带 `"truncated":true`）：
+
+```json
+{"ok":true,"count":1,"items":[{"id":"1145","mem_key":"生活习惯",
+ "mem_value":"每天早上七点跑步","mem_type":"用户画像","mem_filename":"MEMORY.md",
+ "mem_source":"conversation","mem_extractor":"conv_worker",
+ "timestamp":"1795415672000","date":"2026-11-23 14:34:32","status":"1"}]}
+```
+
+- 实测：对小爱说一句后 **10 秒内**就能在 `op=live` 查到 `conv_worker` 抽出的条目
+  （同一次抽取也会改写 `MEMORY.md`，所以 `get` 差不多同步，但 `live` 多了
+  `mem_type` / `mem_source` / `mem_extractor` / 时间 / 状态，并能按词与时间过滤）。
+- `op=live` 只读 `memory_meta`，**不暴露 `conversation` 原文**；官方写入（`official_write`）
+  落在官方记忆服务里，用 `op=official` 查，不在这个库里。
+- `op=stats` / `op=live` 是只读，不受「允许写记忆」与局域网写开关约束。
 
 写类操作（`append` / `replace` / `official_write`）有两道闸：
 

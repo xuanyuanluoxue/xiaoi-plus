@@ -13,6 +13,12 @@
   超时后 `xiaoai_memory` 仍 284ms 正常）。
 - **`xiaoai_status` 增加 AppTool 探针**：`apptools=ok methods=N` / `apptools=none`
   （只反射类与方法数，不调用业务方法）。
+- **`xiaoai_memory` 直读加密记忆库**：新增 `op=stats`（`conversation` / `memory_meta` /
+  `memory_file_sync_state` 的行数与时间范围、`mem_type` 分布）与 `op=live`（按关键词/时间查
+  `memory_meta`，带 `mem_type`/`mem_source`/`mem_extractor`）。口令用 KeyStore 里的
+  `claw_memory_db_master_key` 解出（AES-256-GCM），再经小爱自带的 SQLCipher 以只读打开，
+  **不导出 `conversation` 原文**，口令不落日志。实测对小爱说一句后 10s 内可查到新条目
+  （`id=1145 生活习惯=每天早上七点跑步`，`mem_extractor=conv_worker`）。
 - **调用方归属**：每次 `tools/call` 的日志带 `caller=local|lan|inbound`，
   入站（`profile=readonly`）单独成一类，真机确认 `caller=inbound`。
 - **协议版本协商**：`initialize` 会回显客户端请求的 `2024-11-05`，其余（含 `2025-06-18`）
