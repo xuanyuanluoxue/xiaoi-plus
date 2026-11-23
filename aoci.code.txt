@@ -482,7 +482,7 @@ tool-catalog.md[SG8L]: F:生成物：481 个工具按服务前缀与分组全列
 03-agent-runtime.md[SG7S]: F:Agent 运行时：官方 AIDL 外部通道与进程内 facade、意图分发、A2A 与 AppToolSDK 的连接方式 | R:code:reverse/docs/08-internal-api.md | A:意图分发 | S:facade 是我们自己的用法不是官方 API；OsbotFacadeImpl 类名未混淆但方法签名会变
 04-toolchain.md[SG8S]: F:工具链：481 个工具的分组与前缀、运行时实测的 20 个常驻工具、两级检索与风险工具机制 | R:code:reverse/data/tool-catalog.md | A:常驻工具 | S:常驻 20 个 = preload_tools + 记忆三件套；其余靠 tool_search/call_tool；update_custom_prompt 被主 Agent 禁用
 05-skills.md[SG7S]: F:Agent 定义（20 个）与 skill：config.json 字段、allow/deny 边界、SKILL.md 格式与 reload 机制 | R:code:reverse/docs/04-toolchain.md | A:Agent 清单 | S:Agent 与 skill 是两套机制（专职助手 vs 操作手册）；max_agent_depth 限制嵌套；profile.json 是人格来源
-06-memory.md[SG7S]: F:记忆：ClawMemory 三件套工具、MEMORY.md/outline.md 布局、生成流水线与风险清单 | R:code:reverse/docs/04-toolchain.md | A:三件套工具 | S:系统只自动注入记忆大纲不注入条目；云端是真相、本地可能被覆盖；我们只做追加不做删除
+06-memory.md[SG7S]: F:记忆系统：ClawMemory 三件套工具、MEMORY.md/outline 布局、生成流水线、两个加密库的密钥链、云端同步 API 与风险清单 | R:code:reverse/docs/04-toolchain.md | A:三件套工具 | S:系统只自动注入记忆大纲不注入条目；claw_memory.db 不参与云同步，云同步只覆盖 memory_data_*.db；密钥材料只写链路不写具体值
 07-obfuscation.md[SG6T]: F:混淆漂移记录与重定位配方：稳定锚点、按结构查找、升级后的最小验证清单 | R:code:reverse/scripts/dexindex.py | A:重定位配方 | S:类名保留不等于字段或构造器保留；8.2.70 的 s92.b#d 已失效，不要硬编码短名
 08-internal-api.md[SG8S]: F:内部 API：18 个进程内 App 工具、5 个导出 AIDL 服务与签名、MCP 客户端，以及三条接入路径的取舍 | R:code:reverse/data/tool-catalog.md | A:三条通道 | S:EXTERNAL_AGENT 是 signature|privileged，第三方 App 绑不上；进程内调 UIAgentServiceForOSBot 的方法名最稳；优先复用官方记忆工具
 
