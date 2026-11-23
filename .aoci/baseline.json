@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T03:58:21Z",
-  "updated_at": "2026-11-22T16:04:52Z",
+  "updated_at": "2026-11-23T06:43:24Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -59,9 +59,9 @@
     },
     ".opencode/skills/xiaoi-mcp/references/tools.md": {
       "role": "index",
-      "sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe",
-      "size": 19344,
-      "normalized_sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe"
+      "sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db",
+      "size": 21866,
+      "normalized_sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db"
     },
     ".opencode/skills/xiaoi-release/SKILL.md": {
       "role": "index",
@@ -89,9 +89,9 @@
     },
     "CHANGELOG.md": {
       "role": "index",
-      "sha256": "072eaa85616f1e7c7aeaf93a974136ebe0537f1da60dfb3bb4cecfa97cb29083",
-      "size": 93541,
-      "normalized_sha256": "072eaa85616f1e7c7aeaf93a974136ebe0537f1da60dfb3bb4cecfa97cb29083"
+      "sha256": "c08fba00deb9c649a4b260eb77a18afdda1c82a10b954528d66a88e29b44399e",
+      "size": 94157,
+      "normalized_sha256": "c08fba00deb9c649a4b260eb77a18afdda1c82a10b954528d66a88e29b44399e"
     },
     "LICENSE": {
       "role": "index",
@@ -101,15 +101,15 @@
     },
     "README.md": {
       "role": "index",
-      "sha256": "7debf82badf7fea9471a800ac4a4cf900e049f996fef695d132a050b5fe1a7c7",
-      "size": 27388,
-      "normalized_sha256": "7debf82badf7fea9471a800ac4a4cf900e049f996fef695d132a050b5fe1a7c7"
+      "sha256": "f870dc1e98d2fa3420f02f5a7e6e3a81c9eadf8ba74aca9a7933442196df425a",
+      "size": 27474,
+      "normalized_sha256": "f870dc1e98d2fa3420f02f5a7e6e3a81c9eadf8ba74aca9a7933442196df425a"
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "9a99c922847ee99018335dd0a2d6b1da94f3811250175a8fea94e743e1145f0c",
-      "size": 111297,
-      "normalized_sha256": "9a99c922847ee99018335dd0a2d6b1da94f3811250175a8fea94e743e1145f0c"
+      "sha256": "af1a4a6bdd6d2ceb67ce9be0cdc496806223434c3a8e2022ddc0ea475cc1ac1e",
+      "size": 112339,
+      "normalized_sha256": "af1a4a6bdd6d2ceb67ce9be0cdc496806223434c3a8e2022ddc0ea475cc1ac1e"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -245,9 +245,9 @@
     },
     "application/src/main/java/plus/xiaoi/module/Mcp.java": {
       "role": "index",
-      "sha256": "3b3409b52760d0438ad33ce731d05904f1b4670cdfee76dee82ac9b60e275b6e",
-      "size": 61346,
-      "normalized_sha256": "3b3409b52760d0438ad33ce731d05904f1b4670cdfee76dee82ac9b60e275b6e"
+      "sha256": "3a84ae76e9f66e406ce24bfa8e5a861526304ae88d2319265fe2d181623d2685",
+      "size": 64148,
+      "normalized_sha256": "3a84ae76e9f66e406ce24bfa8e5a861526304ae88d2319265fe2d181623d2685"
     },
     "application/src/main/java/plus/xiaoi/module/PromptInjector.java": {
       "role": "index",
@@ -1085,9 +1085,9 @@
     },
     "domain/src/main/java/plus/xiaoi/module/core/Contract.java": {
       "role": "index",
-      "sha256": "5c61f5b0174804e6daae31a70b612224bdd1a7ac5c3962149dc9d35c35a22366",
-      "size": 4226,
-      "normalized_sha256": "5c61f5b0174804e6daae31a70b612224bdd1a7ac5c3962149dc9d35c35a22366"
+      "sha256": "04b74d6c52389b41999d39aa374019d363074288ff92c8ffb5c35dd618d5bcb7",
+      "size": 4575,
+      "normalized_sha256": "04b74d6c52389b41999d39aa374019d363074288ff92c8ffb5c35dd618d5bcb7"
     },
     "domain/src/main/java/plus/xiaoi/module/core/ControlKeys.java": {
       "role": "index",
@@ -1214,6 +1214,12 @@
       "sha256": "65e62f42547033c5082417572e6307e3479a1a8327fe69832492f3b4d335f33f",
       "size": 2228,
       "normalized_sha256": "65e62f42547033c5082417572e6307e3479a1a8327fe69832492f3b4d335f33f"
+    },
+    "domain/src/main/java/plus/xiaoi/module/core/memory/ClawMemorySql.java": {
+      "role": "index",
+      "sha256": "3280bf84c60be1a53eae8a1a9c6642da7e62695ba91117a1d74f3e767a51b977",
+      "size": 3768,
+      "normalized_sha256": "3280bf84c60be1a53eae8a1a9c6642da7e62695ba91117a1d74f3e767a51b977"
     },
     "domain/src/main/java/plus/xiaoi/module/core/memory/MemoryDoc.java": {
       "role": "index",
@@ -1396,9 +1402,9 @@
     },
     "platform/src/main/java/plus/xiaoi/module/Bridge.java": {
       "role": "index",
-      "sha256": "c8043e0d643134ac99d30a4a72c5764a31e40b07b41d12a257aa1571bec5479b",
-      "size": 54347,
-      "normalized_sha256": "c8043e0d643134ac99d30a4a72c5764a31e40b07b41d12a257aa1571bec5479b"
+      "sha256": "76cf78a41c44a7a8e549eedf373d85430637e63d1db08c7daa4d66381f01ac63",
+      "size": 54876,
+      "normalized_sha256": "76cf78a41c44a7a8e549eedf373d85430637e63d1db08c7daa4d66381f01ac63"
     },
     "platform/src/main/java/plus/xiaoi/module/Config.java": {
       "role": "index",
@@ -1549,6 +1555,12 @@
       "sha256": "ff12906d9edb4607834c9cd8f612912a4ed35524f38e2176bad3ed5b2a7a2ee3",
       "size": 18197,
       "normalized_sha256": "ff12906d9edb4607834c9cd8f612912a4ed35524f38e2176bad3ed5b2a7a2ee3"
+    },
+    "platform/src/main/java/plus/xiaoi/module/agent/ClawMemoryDb.java": {
+      "role": "index",
+      "sha256": "47b4e3196c6aa2598edd7ea7411001d37a5f274dda4cf94441dcfd778ee7a1fd",
+      "size": 10855,
+      "normalized_sha256": "47b4e3196c6aa2598edd7ea7411001d37a5f274dda4cf94441dcfd778ee7a1fd"
     },
     "platform/src/main/java/plus/xiaoi/module/agent/RootExecutor.java": {
       "role": "index",
@@ -1870,9 +1882,9 @@
     },
     "skill/xiaoi-mcp/references/tools.md": {
       "role": "index",
-      "sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe",
-      "size": 19344,
-      "normalized_sha256": "0bf2552be39fef600b482bcc07db92b0762563533e1e4ac3377285920c0eb5fe"
+      "sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db",
+      "size": 21866,
+      "normalized_sha256": "a24c10916321ad90fa3caed05b5f2a6c023c8d82c5d82bd44fe55fe0a48440db"
     },
     "tests/baseline/cli_no_cmd.body": {
       "role": "observe",
@@ -2185,6 +2197,12 @@
       "size": 7335,
       "normalized_sha256": "659a93d716c2742c3d6fc992152bf6b00ef2ee90ed82270af0e46629d48ed2ac"
     },
+    "tests/src/plus/xiaoi/module/ClawMemorySqlTest.java": {
+      "role": "observe",
+      "sha256": "55632fea7db0bf58b5ce118d9f8b824492e12763d8cf733d6fd9adfad4c240d8",
+      "size": 2207,
+      "normalized_sha256": "55632fea7db0bf58b5ce118d9f8b824492e12763d8cf733d6fd9adfad4c240d8"
+    },
     "tests/src/plus/xiaoi/module/ConfigCodecTest.java": {
       "role": "observe",
       "sha256": "5e9a304d145e64b3a200e9ec1758c261a8763786f2d20c69a2939b7c5954fbb0",
@@ -2325,9 +2343,9 @@
     },
     "tests/src/plus/xiaoi/module/McpTest.java": {
       "role": "observe",
-      "sha256": "f48ceb057ae48fa550a98a1b5c7f07ea463004b5ddb168f3a167f3196fcbf417",
-      "size": 41804,
-      "normalized_sha256": "f48ceb057ae48fa550a98a1b5c7f07ea463004b5ddb168f3a167f3196fcbf417"
+      "sha256": "dcd7ab41177955d8475dedb4c67b1854854b3fef26790e6c4065d2dbe96d548f",
+      "size": 43557,
+      "normalized_sha256": "dcd7ab41177955d8475dedb4c67b1854854b3fef26790e6c4065d2dbe96d548f"
     },
     "tests/src/plus/xiaoi/module/MemoryServiceTest.java": {
       "role": "observe",
@@ -2397,9 +2415,9 @@
     },
     "tests/src/plus/xiaoi/module/TestMain.java": {
       "role": "observe",
-      "sha256": "c8136e47dc41df8130a29615c4dd593d93dacdc61c6670fed8d93d3f5a67a1fa",
-      "size": 9841,
-      "normalized_sha256": "c8136e47dc41df8130a29615c4dd593d93dacdc61c6670fed8d93d3f5a67a1fa"
+      "sha256": "983f34f86b3c6e8fa2a7ff68714b1e0ea1a36c925b9b77ed65d81c8c6d1b04df",
+      "size": 10045,
+      "normalized_sha256": "983f34f86b3c6e8fa2a7ff68714b1e0ea1a36c925b9b77ed65d81c8c6d1b04df"
     },
     "tests/src/plus/xiaoi/module/ThemeModeTest.java": {
       "role": "observe",
